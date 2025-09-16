@@ -1,67 +1,74 @@
 import { API_BASE_URL, ENDPOINTS } from '@/config';
-import type { ChatMessage, ChatResponse } from '@/types';
+import type { ChatMessage } from '@/types';
 
 function url(path: string) {
-    return `${API_BASE_URL}${path}`;
+  return `${API_BASE_URL}${path}`;
 }
 
 export async function healthcheck(): Promise<boolean> {
-    try {
-        const res = await fetch(url(ENDPOINTS.health));
-        return res.ok;
-    } catch {
-        return false;
-    }
+  try {
+    const res = await fetch(url(ENDPOINTS.health));
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
-* Send chat as a single JSON POST. The backend should accept:
-* { messages: [{role, content}], strategy?: string }
-* and respond with { message }.
-*/
-export async function chatOnce(
-    messages: Array<Pick<ChatMessage, 'role' | 'content'>>,
-    strategy?: string,
-): Promise<ChatResponse> {
-    const res = await fetch(url(ENDPOINTS.chat), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, strategy }),
-    });
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Chat error ${res.status}: ${text}`);
-    }
-    return res.json();
+ * Backend contract:
+ * POST /chat
+ * {
+ *   question: string,
+ *   strategy?: string | null,
+ *   session_id: string
+ * }
+ * Response:
+ * {
+ *   response: string,            // HTML/text
+ *   response_parts?: unknown[]   // optional structured pieces
+ * }
+ */
+
+// Build the "question" from the last user message.
+function extractQuestion(messages: Array<Pick<ChatMessage, 'role' | 'content'>>): string {
+  const lastUser = [...messages].reverse().find(m => m.role === 'user');
+  return lastUser?.content ?? '';
 }
 
-/** Optional: Server-Sent Events streaming support */
-export async function chatStream(
-    messages: Array<Pick<ChatMessage, 'role' | 'content'>>,
-    onToken: (token: string) => void,
-    strategy?: string,
-): Promise<void> {
-    const res = await fetch(url(ENDPOINTS.stream), {
+export type ChatBackendResponse = {
+  response: string;
+  response_parts?: unknown[];
+};
+
+export async function sendChat(
+  messages: Array<Pick<ChatMessage, 'role' | 'content'>>,
+  sessionId: string,
+  strategy?: string,
+): Promise<ChatBackendResponse> {
+  const question = extractQuestion(messages);
+  const res = await fetch(url(ENDPOINTS.chat), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({ messages, strategy }),
-});
-if (!res.ok || !res.body) {
-    throw new Error(`Stream error ${res.status}`);
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      question,
+      strategy: strategy || null,
+      session_id: sessionId,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Chat error ${res.status}: ${text}`);
+  }
+  return res.json();
 }
-const reader = res.body.getReader();
-const decoder = new TextDecoder();
-let done = false;
-while (!done) {
-    const read = await reader.read();
-    done = read.done || false;
-    const chunk = decoder.decode(read.value || new Uint8Array(), { stream: !done });
-    // Simple SSE parse: lines like "data: token"
-    chunk.split('\n').forEach((line) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('data:')) {
-            onToken(trimmed.slice(5).trim());
-            }
-        });
-    }
+
+/**
+ * Optional reset endpoint
+ * POST /reset?session_id=abc   (FastAPI parses query param)
+ */
+export async function resetSession(sessionId: string): Promise<boolean> {
+  const res = await fetch(url(`${ENDPOINTS.reset}?session_id=${encodeURIComponent(sessionId)}`), {
+    method: 'POST',
+  });
+  return res.ok;
 }

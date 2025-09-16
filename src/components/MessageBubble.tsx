@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ACCENT, PANEL, BG, MUTED } from '@/theme';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 
 export default function MessageBubble({ role, content, createdAt }: { role: 'user'|'assistant', content: string, createdAt: number }) {
     const isUser = role === 'user';

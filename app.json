@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "DP-ScoutIQ",
+    "slug": "dp-scoutiq",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "dpscoutiq",
+    "ios": { "supportsTablet": true },
+    "android": {},
+    "web": { "bundler": "metro" }
+  }
+}
