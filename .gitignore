@@ -50,3 +50,4 @@ android/local.properties
 .env.*
 .DS_Store
 Thumbs.db
+ios/

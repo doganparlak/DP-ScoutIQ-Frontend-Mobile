@@ -6,8 +6,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "dpscoutiq",
-    "ios": { "supportsTablet": true },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.dp-scoutiq"
+    },
     "android": {},
-    "web": { "bundler": "metro" }
+    "web": {
+      "bundler": "metro"
+    }
   }
 }
