@@ -28,6 +28,7 @@ const { useState, useEffect, useRef } = React;
 type ChatMessageExt = ChatMessage & {
   kind?: 'text' | 'visuals';
   players?: PlayerData[];
+  pending?: boolean; 
 };
 
 export default function ChatScreen() {
@@ -61,7 +62,10 @@ export default function ChatScreen() {
   // persist chat locally
   useEffect(() => { saveHistory(messages as ChatMessage[]); }, [messages]);
 
-  function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'>) {
+  const pendingIdRef = React.useRef<string | null>(null);
+
+  function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'>& { id?: string }) {
+    const id = msg.id || Math.random().toString(36).slice(2);
     const withMeta: ChatMessageExt = {
       id: Math.random().toString(36).slice(2),
       createdAt: Date.now(),
@@ -69,12 +73,13 @@ export default function ChatScreen() {
     };
     setMessages(m => [...m, withMeta]);
     // no auto-scroll → user keeps control
+    return id;
   }
 
   async function send(text: string) {
     if (!text.trim()) return;
 
-    // Append the user's message as a bubble (history item)
+    // 1) Append the user's message
     const userMsg: Omit<ChatMessageExt, 'id' | 'createdAt'> = {
       role: 'user',
       content: text.trim(),
@@ -82,7 +87,17 @@ export default function ChatScreen() {
     };
     append(userMsg);
 
-    // Build payload from TEXT messages only (skip visuals in history)
+    // 2) Add a temporary assistant bubble (pending)
+    const pendingId = append({
+      role: 'assistant',
+      content: '',         // content ignored while pending
+      kind: 'text',
+      pending: true,
+      id: 'pending-' + Math.random().toString(36).slice(2),
+    });
+    pendingIdRef.current = pendingId;
+
+    // 3) Build payload
     const textOnly = messages
       .filter(m => (m.kind ?? 'text') === 'text')
       .concat({ ...userMsg, id: 'temp', createdAt: Date.now() });
@@ -92,6 +107,12 @@ export default function ChatScreen() {
     try {
       setSending(true);
       const res = await sendChat(payload, sessionId, strategy);
+
+      // Remove pending bubble BEFORE appending real content
+      if (pendingIdRef.current) {
+        setMessages(m => m.filter(x => x.id !== pendingIdRef.current));
+        pendingIdRef.current = null;
+      }
 
       const players = Array.isArray(res?.data?.players) ? (res.data.players as PlayerData[]) : [];
       const narrative = String(res?.response ?? '');
@@ -106,6 +127,11 @@ export default function ChatScreen() {
         append({ role: 'assistant', content: narrative.trim(), kind: 'text' });
       }
     } catch (err: any) {
+      // Remove pending on error too
+      if (pendingIdRef.current) {
+        setMessages(m => m.filter(x => x.id !== pendingIdRef.current));
+        pendingIdRef.current = null;
+      }
       Alert.alert('Chat failed', String(err?.message || err));
     } finally {
       setSending(false);
@@ -154,6 +180,7 @@ export default function ChatScreen() {
         role={item.role === 'user' ? 'user' : 'assistant'}
         content={item.content}
         createdAt={item.createdAt}
+        pending={item.pending}   // ✅ pass through
       />
     );
   }
@@ -171,7 +198,6 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={startNewChat} style={styles.newChatBtn}>
           <Text style={styles.newChatText}>New Chat</Text>
         </TouchableOpacity>
-        {sending && <ActivityIndicator style={{ marginLeft: 12 }} />}
       </View>
 
       <FlatList
