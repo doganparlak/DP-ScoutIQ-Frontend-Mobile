@@ -54,13 +54,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    minHeight: 44,   
     maxHeight: 130,
+    textAlign: 'left'
   },
   btn: {
     backgroundColor: ACCENT,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
+    height: 44, 
+    justifyContent: 'center',
   },
   btnText: { color: 'white', fontWeight: '700' },
 });

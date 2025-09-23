@@ -11,7 +11,7 @@ import { ACCENT, TEXT, CARD, MUTED } from '@/theme';
 
 export type SpiderPoint = {
   label: string;
-  value: number | string; // supports "52%" etc.
+  value: number | string;
   min: number;
   max: number;
 };
@@ -21,31 +21,37 @@ type Props = {
   points: SpiderPoint[];
 };
 
-// Split metric names after the first word: "Pass Accuracy (%)" -> "Pass\nAccuracy (%)"
-function breakAfterFirstWord(label: string) {
+function splitAfterFirstWord(label: string) {
   const parts = label.trim().split(/\s+/);
-  if (parts.length <= 1) return label;
-  return parts[0] + '\n' + parts.slice(1).join(' ');
+  if (parts.length <= 1) return { first: parts[0] || '', rest: '' };
+  return { first: parts[0], rest: parts.slice(1).join(' ') };
 }
 
 function normalize(points: SpiderPoint[]) {
+  const seen = new Set<string>();
+
   return points
-    .map((p, i) => {
+    .map((p) => {
+      if (seen.has(p.label)) return null; // dedupe by label
+      seen.add(p.label);
+
       const min = Number(p.min);
       const max = Number(p.max);
-      const v = typeof p.value === 'string'
-        ? Number(String(p.value).replace('%', ''))
-        : Number(p.value);
+      const v =
+        typeof p.value === 'string'
+          ? Number(String(p.value).replace('%', ''))
+          : Number(p.value);
 
       if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return null;
 
       const raw = (v - min) / (max - min);
       const y = Math.max(0, Math.min(1, raw));
 
-      const metricBroken = breakAfterFirstWord(p.label);
-      const show = `${metricBroken}\n${p.value}`; // "metric (possibly two lines)\nvalue"
+      const { first, rest } = splitAfterFirstWord(p.label);
+      // Always three lines: first word, rest (or a space), value
+      const show = `${first}\n${rest || ' '}\n${p.value}`;
 
-      return { x: i + 1, y, label: p.label, show };
+      return { x: seen.size, y, label: p.label, show };
     })
     .filter(Boolean) as Array<{ x: number; y: number; label: string; show: string }>;
 }
@@ -55,8 +61,8 @@ export default function SpiderChart({ title, points }: Props) {
   if (cleaned.length < 3) return null;
 
   const categories = cleaned.map((_, i) => i + 1);
-  const axisLabels = cleaned.map(p => p.show);
-  const data = cleaned.map(p => ({ x: p.x, y: p.y }));
+  const axisLabels = cleaned.map((p) => p.show);
+  const data = cleaned.map((p) => ({ x: p.x, y: p.y }));
 
   const ticks = [0.2, 0.4, 0.6, 0.8, 1];
 
@@ -67,8 +73,7 @@ export default function SpiderChart({ title, points }: Props) {
       <VictoryChart
         polar
         height={360}
-        // Shift the plot slightly LEFT by giving the right side a bit more padding than the left
-        padding={{ top: 40, bottom: 40, left: 62, right: 78 }}
+        padding={{ top: 30, bottom: 40, left: 62, right: 82 }}
         domain={{ y: [0, 1] }}
       >
         {/* radial grid (rings) */}
@@ -82,19 +87,22 @@ export default function SpiderChart({ title, points }: Props) {
           }}
         />
 
-        {/* spokes + category labels (metric split after 1st word + value on new line) */}
+        {/* spokes + category labels:
+            line1 = first word (muted), line2 = rest (muted), line3 = value (highlighted) */}
         <VictoryPolarAxis
           tickValues={categories}
           tickFormat={(_, i) => axisLabels[i] ?? ''}
           tickLabelComponent={
             <VictoryLabel
+              angle={360}
               textAnchor="middle"
-              style={[
-                { fill: TEXT, fontSize: 11, fontWeight: '700' }, // metric (first word)
-                { fill: TEXT, fontSize: 11, fontWeight: '600' }, // metric (rest)
-                { fill: MUTED, fontSize: 11 },                   // value
-              ]}
+              verticalAnchor="middle"
               dy={4}
+              style={[
+                { fill: MUTED, fontSize: 12, fontWeight: '600' }, // first word
+                { fill: MUTED, fontSize: 12, fontWeight: '600' }, // rest (or blank)
+                { fill: TEXT,  fontSize: 13, fontWeight: '700' }, // value (highlighted)
+              ]}
             />
           }
           style={{

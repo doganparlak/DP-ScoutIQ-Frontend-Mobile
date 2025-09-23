@@ -23,7 +23,7 @@ export default function WelcomeCard() {
     <View style={styles.card}>
       <View style={{ height: 8 }} />
       <Row Icon={Users} text="Find and compare players based on your needs." />
-      <Row Icon={Database} text="Instant answers to data-based football questions." />
+      <Row Icon={Database} text="Get instant, data-based answers." />
       <Row Icon={Compass} text="Adapt recommendations to your team’s identity and plans." />
       <Row Icon={SlidersHorizontal} text="Filter by age, nationality, role, stats, or tactical fit." />
       <Row Icon={BarChart3} text="Visualize key stats with charts, comparisons, and summaries." />
