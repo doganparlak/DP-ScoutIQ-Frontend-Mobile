@@ -10,8 +10,8 @@ export const GK_METRICS = [
 
 export const IN_POS_METRICS = [
   'Shots', 'Shot Accuracy (%)', 'Shot Accuracy %', 'Goals', 'Assists', 'xG', 'Key Passes',
-  'Passes Attempted', 'Pass Accuracy (%)', 'Pass Accuracy %',
-  'Crosses Attempted', 'Cross Accuracy (%)', 'Cross Accuracy %', 'Carries', 'Dribbles', 'Dribble Accuracy %',
+  'Passes Attempted', 'Pass Accuracy (%)', 'Pass Accuracy %', 'Crosses Attempted', 'Cross Accuracy (%)',
+  'Cross Accuracy %', 'Carries', 'Dribbles', 'Dribble Accuracy (%)', 'Dribble Accuracy %'
 ] as const;
 
 export const OUT_POS_METRICS = [
@@ -71,7 +71,7 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Smother': { min: 0, max: 1.0 },
   'Keeper Sweeper': { min: 0, max: 5.0 },
   'Success': { min: 0, max: 11.0 },
-  'Lost in Play': { min: 0, max: 0.0 },
+  'Lost in Play': { min: 0, max: 10.0 },
   'Clear': { min: 0, max: 3.0 },
   'No Touch': { min: 0, max: 11.0 },
   'In Play Safe': { min: 0, max: 5.0 },
@@ -91,8 +91,7 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Cross Accuracy (%)': { min: 0, max: 100.0 },
   'Carries': { min: 0, max: 97.0 },
   'Dribbles': { min: 0, max: 13.0 },
-  'Dribble Accuracy (%)': { min: 0, max: 100 },
-  'Dribble Accuracy %': { min: 0, max: 100 },
+  'Dribble Accuracy (%)': { min: 0, max: 100.0 },
 
   // Out of possession
   'Pressures': { min: 0, max: 55.0 },
@@ -130,7 +129,6 @@ export function toSpiderPoints(
   stats: Array<{ metric: string; value: number | string }>,
   metrics: readonly string[],
 ): SpiderPoint[] {
-  // Index the incoming stats by canonical label
   const index = new Map(
     (stats || []).map((s) => {
       const key = canonicalizeLabel((s.metric || '').trim());
@@ -141,9 +139,22 @@ export function toSpiderPoints(
   const points: SpiderPoint[] = [];
   for (const m of metrics) {
     const canonical = canonicalizeLabel(m);
-    if (!index.has(canonical)) continue; // only include provided metrics
-    const r = RANGES[canonical] ?? { min: 0, max: 1 };
-    points.push({ label: canonical, value: index.get(canonical)!, min: r.min, max: r.max });
+    const r = RANGES[canonical];
+    if (!r) continue;
+
+    // drop zero/invalid ranges
+    if (!Number.isFinite(r.min) || !Number.isFinite(r.max) || r.max <= r.min) continue;
+
+    const raw = index.get(canonical);
+    // coerce numeric; drop if NaN/undefined/empty
+    const vNum =
+      typeof raw === 'number' ? raw :
+      typeof raw === 'string' ? Number(raw.replace('%', '').trim()) :
+      NaN;
+    if (!Number.isFinite(vNum)) continue;
+
+    points.push({ label: canonical, value: vNum, min: r.min, max: r.max });
   }
   return points;
 }
+
