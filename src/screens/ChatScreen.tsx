@@ -207,11 +207,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   newChatBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: ACCENT,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  newChatText: { color: 'white', fontWeight: '700' },
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 20,          // pill shape
+  borderWidth: 1,
+  borderColor: ACCENT,       // outline instead of full solid
+  backgroundColor: 'transparent',
+},
+newChatText: {
+  color: ACCENT,
+  fontWeight: '500',
+  fontSize: 14,
+},
 });
