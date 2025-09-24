@@ -1,16 +1,28 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { BrainCog } from 'lucide-react-native'; // 👈 brain-like icon
-import { ACCENT, BG, MUTED } from '@/theme';
+import { BrainCog } from 'lucide-react-native'; 
+import { ACCENT, BG, MUTED, TEXT } from '@/theme';
 
 export default function Header() {
   return (
     <View style={styles.wrap}>
+      {/* Logo row */}
       <View style={styles.logoRow}>
-        <BrainCog size={20} color="red" style={{ marginTop: 10 }} />
-        <Text style={styles.title}>DP-ScoutIQ</Text>
+        <BrainCog size={22} color={ACCENT} />
+        <Text style={styles.title}>
+          <Text style={styles.dim}>DP-</Text>
+          <Text style={styles.main}>SCOUT</Text>
+          <Text style={styles.accent}>IQ</Text>
+        </Text>
       </View>
-      <Text style={styles.subtitle}>AI-Powered Scouting & Recruitment Intelligence</Text>
+
+      {/* Divider line */}
+      <View style={styles.divider} />
+
+      {/* Subtitle */}
+      <Text style={styles.subtitle}>
+        AI-Powered Scouting & Recruitment Intelligence
+      </Text>
     </View>
   );
 }
@@ -18,26 +30,35 @@ export default function Header() {
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: BG,
-    paddingTop: 50,
+    paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 16,
-    alignItems: 'center',            // ⬅️ center everything
+    alignItems: 'center',
   },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   title: {
-    color: 'white',
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 0.3,
-    marginTop: 10
+    color: TEXT,
   },
   subtitle: {
     color: MUTED,
-    marginTop: 5,
+    marginTop: 8,
     textAlign: 'center',
+    fontSize: 13,
   },
+  divider: {
+    width: '70%',
+    height: 1,
+    backgroundColor: '#2b2b2f', // subtle gray line
+    marginVertical: 10,
+  },
+  dim:   { color: TEXT, opacity: 0.9 }, 
+  main:  { color: TEXT, opacity: 0.9 },
+  accent:{ color: ACCENT },
 });

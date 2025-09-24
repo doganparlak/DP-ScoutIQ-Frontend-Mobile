@@ -41,7 +41,6 @@ export default function MessageBubble({ role, content, pending }: Props) {
       <View style={[styles.bubble, isUser ? styles.user : styles.assistant]}>
         {pending && !isUser ? (
           <View style={styles.pendingRow}>
-            <HatGlasses size={18} color={ACCENT} style={{ marginRight: 8 }} />
             <Text style={styles.pendingText}>Unveiling insights{dots}</Text>
           </View>
         ) : (

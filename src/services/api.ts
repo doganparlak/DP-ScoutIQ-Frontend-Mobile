@@ -47,7 +47,7 @@ function extractMessage(messages: Array<Pick<ChatMessage, 'role' | 'content'>>):
 
 /** --- Frontend-facing data types (you can move these to @/types later) --- */
 export type PlayerStat = { metric: string; value: number };
-export type PlayerMeta = { nationality?: string; age?: number; roles?: string[] };
+export type PlayerMeta = { nationality?: string; age?: number; roles?: string[]; potential?: number;};
 export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 export type ChatData = { players: PlayerData[] };
 

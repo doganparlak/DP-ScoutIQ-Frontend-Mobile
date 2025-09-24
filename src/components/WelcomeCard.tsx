@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SlidersHorizontal, Users, Database, Compass, User, BarChart3} from 'lucide-react-native';
-import { ACCENT, PANEL, MUTED } from '@/theme';
+import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3} from 'lucide-react-native';
+import { ACCENT, PANEL, MUTED, TEXT } from '@/theme';
 
 function Row({
   Icon,
@@ -21,12 +21,16 @@ function Row({
 export default function WelcomeCard() {
   return (
     <View style={styles.card}>
-      <View style={{ height: 8 }} />
+      <Text style={styles.titleWelcome}>Kick Off!</Text>
+      <Text style={styles.subtitle}>Your intelligent football scouting companion</Text>
+
+      <View style={styles.divider} />
       <Row Icon={Users} text="Find and compare players based on your needs." />
-      <Row Icon={Database} text="Get instant, data-based answers." />
+      <Row Icon={Database} text="Get instant, data-driven answers." />
+      <Row Icon={SquareChevronUp} text="Discover the quantified potential of players." />
       <Row Icon={Compass} text="Adapt recommendations to your team’s identity and plans." />
       <Row Icon={SlidersHorizontal} text="Filter by age, nationality, role, stats, or tactical fit." />
-      <Row Icon={BarChart3} text="Visualize key stats with charts, comparisons, and summaries." />
+      <Row Icon={BarChart3} text="Visualize key stats with charts and summaries." />
     </View>
   );
 }
@@ -64,5 +68,22 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     lineHeight: 21,
+  },
+  titleWelcome: {
+    color: ACCENT,
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  subtitle: {
+    color: MUTED,
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: 'center'
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#2b2b2f',
+    marginVertical: 8,
   },
 });
