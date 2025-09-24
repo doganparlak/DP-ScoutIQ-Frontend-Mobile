@@ -12,7 +12,7 @@ function Row({
 }) {
   return (
     <View style={styles.row}>
-      <Icon size={18} color={ACCENT} />
+      <Icon size={16} color={ACCENT} />
       <Text style={styles.rowText}>{text}</Text>
     </View>
   );
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   rowText: {
     color: MUTED,
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 21,
   },
   titleWelcome: {
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: MUTED,
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 6,
     textAlign: 'center'
   },
