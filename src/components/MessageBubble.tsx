@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 15,
     lineHeight: 21,
-    textAlign: 'justify',
+    textAlign: 'left',
   },
 
   pendingRow: { flexDirection: 'row', alignItems: 'center' },
