@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 4,
   },
   user: {
-    backgroundColor: ACCENT, // softer red
+    backgroundColor: ACCENT, 
     borderTopRightRadius: 4,
   },
 

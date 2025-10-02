@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
-import { ACCENT, BG, PANEL, MUTED } from '@/theme';
+import { ACCENT, BG, PANEL, MUTED, LINE } from '@/theme';
 
 export default function ChatInput({ onSend, disabled }: { onSend: (text: string) => void, disabled?: boolean }) {
   const [text, setText] = useState('');
@@ -42,9 +42,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 10,
-    marginBottom: 40,                // <-- this moves the input up
+    marginBottom: 40,                
     backgroundColor: BG,
-    borderTopColor: '#1e1e20',
+    borderTopColor: LINE,
     borderTopWidth: 1,
   },
   input: {

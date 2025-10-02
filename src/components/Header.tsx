@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BrainCog } from 'lucide-react-native'; 
-import { ACCENT, BG, MUTED, TEXT } from '@/theme';
+import { ACCENT, BG, MUTED, TEXT, LINE } from '@/theme';
 
 export default function Header() {
   return (
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   divider: {
     width: '70%',
     height: 1,
-    backgroundColor: '#2b2b2f', // subtle gray line
+    backgroundColor: LINE,
     marginVertical: 10,
   },
   dim:   { color: TEXT, opacity: 0.9 }, 

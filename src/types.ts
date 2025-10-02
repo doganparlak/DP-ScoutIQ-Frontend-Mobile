@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type Role = 'system' | 'user' | 'assistant';
 
 export interface ChatMessage {
@@ -6,6 +8,24 @@ export interface ChatMessage {
     content: string;
     createdAt: number; // epoch ms
 }
+
+export type MainTabsParamList = {
+  Strategy: undefined;
+  Chat: undefined;
+  Profile: undefined;
+};
+
+export type RootStackParamList = {
+  Welcome: undefined;
+  Login: undefined;
+  SignUp: undefined;
+  Verification: { email: string; context: 'signup' | 'reset' };
+  //Strategy: undefined;
+  //Chat: undefined;
+  ResetPassword?: undefined;
+  //Profile: undefined;
+  MainTabs: NavigatorScreenParams<MainTabsParamList>;
+};
 
 export interface ChatResponse {
     message: string; // assistant reply

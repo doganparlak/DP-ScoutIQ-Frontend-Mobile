@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3} from 'lucide-react-native';
-import { ACCENT, PANEL, MUTED, TEXT } from '@/theme';
+import { ACCENT, PANEL, MUTED, TEXT, LINE } from '@/theme';
 
 function Row({
   Icon,
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     backgroundColor: PANEL,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#2a2a2c',
+    borderColor: LINE,
     paddingVertical: 18,
     paddingHorizontal: 16,
     marginHorizontal: 16,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#2b2b2f',
+    borderColor: LINE,
     marginVertical: 8,
   },
 });

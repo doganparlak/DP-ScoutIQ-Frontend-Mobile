@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
 import { Save, RotateCcw } from 'lucide-react-native';
-import { ACCENT, BG, MUTED, PANEL, shadows } from '@/theme';
+import { ACCENT, BG, MUTED, PANEL, LINE, shadows } from '@/theme';
 import { loadStrategy, saveStrategy } from '@/storage';
 
 const INITIAL_PLACEHOLDER =
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   input: {
     color: 'white',
     backgroundColor: BG,
-    borderColor: '#232326',
+    borderColor: LINE,
     borderWidth: 1.5,
     borderRadius: 14,
     paddingHorizontal: 14,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   },
 
   btnPrimary: { backgroundColor: ACCENT },
-  btnOutline: { borderWidth: 1.5, borderColor: '#3a3a3f', backgroundColor: 'transparent' },
+  btnOutline: { borderWidth: 1.5, borderColor: LINE, backgroundColor: 'transparent' },
   btnText: { color: 'white', fontWeight: '800', marginLeft: 8 },
   pressed: { opacity: 0.9 },
 });
