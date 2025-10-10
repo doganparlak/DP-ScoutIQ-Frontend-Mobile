@@ -18,4 +18,6 @@ export const ENDPOINTS = {
   login: '/auth/login',
   me: '/me',
   logout: '/logout',
+  requestReset: '/auth/request_reset',
+  verifyReset: '/auth/verify_reset',
 };

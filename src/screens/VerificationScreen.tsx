@@ -15,10 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
-
-// For demo purposes, accept 123456 as the correct code.
-// Replace with your server-side verification later.
-const isCorrectCode = (code: string) => code === '123456';
+import { verifyResetCode, verifySignupCode} from '@/services/api';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Verification'>;
 type Route = RouteProp<RootStackParamList, 'Verification'>;
@@ -38,18 +35,16 @@ export default function VerificationScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      // TODO: replace with your verification API call
-      await new Promise((r) => setTimeout(r, 600));
 
-      if (isCorrectCode(code)) {
-        // Successful verification → Login page
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Login' }],
-        });
+      if (params.context === 'reset') {
+        await verifyResetCode(params.email, code);
       } else {
-        setError('Incorrect verification code. Please try again.');
+        await verifySignupCode(params.email, code); // <-- backend verification (no 123456)
       }
+
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (e: any) {
+      setError(e?.message || 'Verification failed. Please try again.');
     } finally {
       setSubmitting(false);
     }

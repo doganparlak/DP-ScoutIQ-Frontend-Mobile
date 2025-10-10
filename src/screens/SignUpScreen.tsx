@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
-import { signUp } from '@/services/api';
+import { signUp, requestSignupCode } from '@/services/api';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -54,16 +54,8 @@ export default function SignUpScreen() {
       setError(null);
       setSubmitting(true);
 
-      await signUp({
-        email,
-        password,
-        dob,
-        country,
-        plan: 'Free',
-        favorite_players: [],
-        newsletter,
-      });
-
+      await signUp({ email, password, dob, country, plan: 'Free', favorite_players: [], newsletter });
+      await requestSignupCode(email);
       // Your Verification screen expects: { email, context: 'signup' }
       navigation.replace('Verification', { email, context: 'signup' });
     } catch {

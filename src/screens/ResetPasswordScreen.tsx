@@ -14,14 +14,13 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
+import { requestPasswordReset } from '@/services/api';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ResetPassword'>;
-
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<Nav>();
-
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -34,8 +33,8 @@ export default function ResetPasswordScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      // TODO: call your password-reset service (services/)
-      await new Promise((r) => setTimeout(r, 650));
+      await requestPasswordReset(email);
+      setSent(true);
       navigation.replace('Verification', { email, context: 'reset' });
     } catch {
       setError('We couldn’t start the reset process. Please try again.');

@@ -208,3 +208,20 @@ export async function updateMe(patch: Partial<Pick<Profile, 'dob' | 'country' | 
     body: JSON.stringify(patch),
   });
 }
+
+// ----- Email code (Reset)
+export async function requestPasswordReset(email: string): Promise<{ ok: boolean }> {
+  return request('/auth/request_reset', { method: 'POST', body: JSON.stringify({ email }) });
+}
+export async function verifyResetCode(email: string, code: string): Promise<{ ok: boolean }> {
+  return request('/auth/verify_reset', { method: 'POST', body: JSON.stringify({ email, code }) });
+}
+
+// ----- Email code (Signup)
+export async function requestSignupCode(email: string): Promise<{ ok: boolean }> {
+  return request('/auth/request_signup_code', { method: 'POST', body: JSON.stringify({ email }) });
+}
+export async function verifySignupCode(email: string, code: string): Promise<{ ok: boolean }> {
+  return request('/auth/verify_signup_code', { method: 'POST', body: JSON.stringify({ email, code }) });
+}
+
