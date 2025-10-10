@@ -38,11 +38,12 @@ export default function VerificationScreen() {
 
       if (params.context === 'reset') {
         await verifyResetCode(params.email, code);
+        navigation.replace('NewPassword', { email: params.email });
+        return
       } else {
-        await verifySignupCode(params.email, code); // <-- backend verification (no 123456)
+        await verifySignupCode(params.email, code); 
+        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       }
-
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e: any) {
       setError(e?.message || 'Verification failed. Please try again.');
     } finally {

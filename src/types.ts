@@ -19,6 +19,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
   SignUp: undefined;
+  NewPassword: { email: string };
   Verification: { email: string; context: 'signup' | 'reset' };
   //Strategy: undefined;
   //Chat: undefined;

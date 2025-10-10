@@ -13,6 +13,7 @@ import MainTabs from '@/navigation/MainTabs';
 import MyProfileScreen from '@/screens/MyProfileScreen';
 import { BG } from '@/theme';
 import { RootStackParamList } from '@/types';
+import NewPasswordScreen from '@/screens/NewPasswordScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -26,6 +27,7 @@ export default function App() {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Verification" component={VerificationScreen} />
+        <Stack.Screen name="NewPassword" component={NewPasswordScreen} />
         {/*<Stack.Screen name="Profile" component={MyProfileScreen} /> 
         <Stack.Screen name="Strategy" component={StrategyScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />*/}

@@ -225,3 +225,10 @@ export async function verifySignupCode(email: string, code: string): Promise<{ o
   return request('/auth/verify_signup_code', { method: 'POST', body: JSON.stringify({ email, code }) });
 }
 
+export async function setNewPassword(input: { email: string; new_password: string }): Promise<{ ok: boolean }> {
+  return request('/auth/set_new_password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+

@@ -1,5 +1,5 @@
 // src/screens/SignUpScreen.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useMemo as useRNMemo } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   Switch,
-  Linking,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { signUp, requestSignupCode } from '@/services/api';
+import { COUNTRIES } from '@/constants/countries';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -35,6 +37,16 @@ export default function SignUpScreen() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // country picker state
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countryQuery, setCountryQuery] = useState('');
+
+  const filteredCountries = useRNMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    if (!q) return COUNTRIES;
+    return COUNTRIES.filter(c => c.toLowerCase().includes(q));
+  }, [countryQuery]);
 
   const isValid = useMemo(() => {
     return (
@@ -56,13 +68,22 @@ export default function SignUpScreen() {
 
       await signUp({ email, password, dob, country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
-      // Your Verification screen expects: { email, context: 'signup' }
       navigation.replace('Verification', { email, context: 'signup' });
     } catch {
       setError('Sign up failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openCountryPicker = () => {
+    setCountryQuery('');
+    setCountryOpen(true);
+  };
+
+  const pickCountry = (name: string) => {
+    setCountry(name);
+    setCountryOpen(false);
   };
 
   return (
@@ -77,6 +98,7 @@ export default function SignUpScreen() {
           <Text style={styles.title}>Create your account</Text>
           <Text style={styles.subtitle}>Join the scouting revolution.</Text>
 
+          {/* Email */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -91,6 +113,7 @@ export default function SignUpScreen() {
             />
           </View>
 
+          {/* Password */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>Password</Text>
             <TextInput
@@ -105,6 +128,7 @@ export default function SignUpScreen() {
             <Text style={styles.hint}>Min 6 characters</Text>
           </View>
 
+          {/* DOB + Country */}
           <View style={styles.row2}>
             <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
               <Text style={styles.label}>Date of birth</Text>
@@ -117,19 +141,22 @@ export default function SignUpScreen() {
                 returnKeyType="next"
               />
             </View>
+
             <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
               <Text style={styles.label}>Country</Text>
-              <TextInput
-                value={country}
-                onChangeText={setCountry}
-                placeholder="e.g., Türkiye"
-                placeholderTextColor={MUTED}
-                style={styles.input}
-                returnKeyType="done"
-              />
+
+              {/* Country "input" behaves like a select */}
+              <Pressable onPress={openCountryPicker}>
+                <View style={[styles.input, { justifyContent: 'center' }]}>
+                  <Text style={{ color: country ? TEXT : MUTED }}>
+                    {country || 'Select your country'}
+                  </Text>
+                </View>
+              </Pressable>
             </View>
           </View>
 
+          {/* Newsletter + Terms */}
           <View style={[styles.switchRow, { marginTop: 12 }]}>
             <Text style={styles.switchLabel}>Subscribe to newsletter</Text>
             <Switch value={newsletter} onValueChange={setNewsletter} />
@@ -142,6 +169,7 @@ export default function SignUpScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          {/* Submit */}
           <Pressable
             onPress={handleSubmit}
             disabled={!isValid || submitting}
@@ -153,9 +181,14 @@ export default function SignUpScreen() {
               },
             ]}
           >
-            {submitting ? <ActivityIndicator /> : <Text style={styles.primaryBtnText}>Sign up</Text>}
+            {submitting ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.primaryBtnText}>Sign up</Text>
+            )}
           </Pressable>
 
+          {/* Go to Login */}
           <Pressable
             onPress={goToLogin}
             style={({ pressed }) => [
@@ -169,12 +202,51 @@ export default function SignUpScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Country Picker Modal */}
+      <Modal
+        visible={countryOpen}
+        animationType="slide"
+        onRequestClose={() => setCountryOpen(false)}
+        transparent
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Select your country</Text>
+
+            <TextInput
+              value={countryQuery}
+              onChangeText={setCountryQuery}
+              placeholder="Search country..."
+              placeholderTextColor={MUTED}
+              style={[styles.input, { marginTop: 10 }]}
+            />
+
+            <FlatList
+              data={filteredCountries}
+              keyExtractor={(item) => item}
+              keyboardShouldPersistTaps="handled"
+              style={{ marginTop: 10, maxHeight: 360 }}
+              renderItem={({ item }) => (
+                <Pressable onPress={() => pickCountry(item)}>
+                  <View style={styles.countryRow}>
+                    <Text style={{ color: TEXT }}>{item}</Text>
+                  </View>
+                </Pressable>
+              )}
+            />
+
+            <Pressable onPress={() => setCountryOpen(false)} style={({ pressed }) => [
+              styles.secondaryBtn, { marginTop: 12, opacity: pressed ? 0.85 : 1 }
+            ]}>
+              <Text style={styles.secondaryBtnText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
-
-
-const BOX_SIZE = 18;
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
@@ -217,4 +289,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   secondaryBtnText: { color: MUTED, fontSize: 14 },
+
+  // Modal styles
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center', justifyContent: 'center', padding: 16,
+  },
+  modalCard: {
+    width: '100%', maxWidth: 560, backgroundColor: PANEL,
+    borderRadius: 16, borderWidth: 1, borderColor: LINE, padding: 16,
+  },
+  modalTitle: { color: TEXT, fontSize: 18, fontWeight: '700' },
+  countryRow: {
+    paddingVertical: 12, paddingHorizontal: 8, borderBottomColor: LINE, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
 });

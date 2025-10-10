@@ -20,4 +20,6 @@ export const ENDPOINTS = {
   logout: '/logout',
   requestReset: '/auth/request_reset',
   verifyReset: '/auth/verify_reset',
+  setNewPassword: '/auth/set_new_password',
+  verifySignup: '/auth/verify_signup',
 };
