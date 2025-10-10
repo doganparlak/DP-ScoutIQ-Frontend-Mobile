@@ -1,5 +1,6 @@
 import { API_BASE_URL, ENDPOINTS } from '@/config';
 import type { ChatMessage } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function url(path: string) {
   return `${API_BASE_URL}${path}`;
@@ -105,4 +106,105 @@ export async function resetSession(sessionId: string): Promise<boolean> {
     method: 'POST',
   });
   return res.ok;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await AsyncStorage.getItem('auth_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.detail) msg = data.detail;
+    } catch {
+      const text = await res.text();
+      if (text) msg = text;
+    }
+    throw new Error(msg);
+  }
+  // 204 / empty body guard
+  const text = await res.text();
+  return (text ? JSON.parse(text) : {}) as T;
+}
+
+export type FavoritePlayer = {
+  id: string;
+  name: string;
+  nationality?: string;
+  age?: number;
+  roles?: string[];
+  potential?: number;
+};
+
+export type Profile = {
+  id: number;
+  email: string;
+  dob?: string;
+  country?: string;
+  plan: 'Free' | 'Pro' | 'Elite' | string;
+  favorite_players: FavoritePlayer[];
+};
+
+export async function health(): Promise<boolean> {
+  try {
+    await request('/health');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
+// -------- Auth
+export async function signUp(input: {
+  email: string;
+  password: string;
+  dob: string;      // YYYY-MM-DD
+  country: string;
+  favorite_players?: FavoritePlayer[];
+  plan?: string;
+  newsletter?: boolean;
+}): Promise<{ ok: boolean }> {
+  return request('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function login(input: {
+  email: string;
+  password: string;
+}): Promise<{ token: string; user: Profile }> {
+  const data = await request<{ token: string; user: Profile }>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  await AsyncStorage.setItem('auth_token', data.token);
+  return data;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await request('/logout', { method: 'POST' });
+  } finally {
+    await AsyncStorage.removeItem('auth_token');
+  }
+}
+
+
+// -------- Profile
+export async function getMe(): Promise<Profile> {
+  return request<Profile>('/me');
+}
+
+export async function updateMe(patch: Partial<Pick<Profile, 'dob' | 'country' | 'plan' | 'favorite_players'>>): Promise<Profile> {
+  return request<Profile>('/me', {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
 }

@@ -14,4 +14,8 @@ export const ENDPOINTS = {
   chat: '/chat',
   health: '/health',
   reset: '/reset',
+  signup: '/auth/signup',
+  login: '/auth/login',
+  me: '/me',
+  logout: '/logout',
 };

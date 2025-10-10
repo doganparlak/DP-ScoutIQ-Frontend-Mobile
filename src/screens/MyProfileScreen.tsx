@@ -1,5 +1,5 @@
 // src/screens/MyProfileScreen.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   TextInput,
   Alert,
   Linking,
+  ActivityIndicator,
+  FlatList
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList, MainTabsParamList } from '@/types';
+import { getMe, logout, type FavoritePlayer, type Profile } from '@/services/api';
 
 type ProfileTabNav = BottomTabNavigationProp<MainTabsParamList, 'Profile'>;
 type RootNav = NativeStackNavigationProp<RootStackParamList>;

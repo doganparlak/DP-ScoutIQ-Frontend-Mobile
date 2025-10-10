@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
+import { login } from '@/services/api';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,8 +40,7 @@ export default function LoginScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      // TODO: plug in real auth (services/)
-      await new Promise((r) => setTimeout(r, 600));
+      await login({ email, password });
       goToMainTabs();
     } catch {
       setError('Log in failed. Please check your credentials.');

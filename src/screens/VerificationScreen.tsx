@@ -16,12 +16,13 @@ import type { RouteProp } from '@react-navigation/native';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'Verification'>;
-type Route = RouteProp<RootStackParamList, 'Verification'>;
-
 // For demo purposes, accept 123456 as the correct code.
 // Replace with your server-side verification later.
 const isCorrectCode = (code: string) => code === '123456';
+
+type Nav = NativeStackNavigationProp<RootStackParamList, 'Verification'>;
+type Route = RouteProp<RootStackParamList, 'Verification'>;
+
 
 export default function VerificationScreen() {
   const navigation = useNavigation<Nav>();
