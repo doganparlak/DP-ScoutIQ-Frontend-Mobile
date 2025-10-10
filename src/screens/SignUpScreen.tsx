@@ -25,12 +25,20 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
+// Format "YYYY-MM-DD" as the user types
+function formatDob(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 8); // keep up to 8 digits
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [dob, setDob] = useState('');       // e.g., 1998-04-21
+  const [dob, setDob] = useState('');       // auto-formatted as YYYY-MM-DD
   const [country, setCountry] = useState('');
   const [agree, setAgree] = useState(false);
   const [newsletter, setNewsletter] = useState(false);
@@ -134,10 +142,12 @@ export default function SignUpScreen() {
               <Text style={styles.label}>Date of birth</Text>
               <TextInput
                 value={dob}
-                onChangeText={setDob}
+                onChangeText={(t) => setDob(formatDob(t))}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={MUTED}
                 style={styles.input}
+                keyboardType="number-pad"
+                maxLength={10} // "YYYY-MM-DD"
                 returnKeyType="next"
               />
             </View>
@@ -236,9 +246,13 @@ export default function SignUpScreen() {
               )}
             />
 
-            <Pressable onPress={() => setCountryOpen(false)} style={({ pressed }) => [
-              styles.secondaryBtn, { marginTop: 12, opacity: pressed ? 0.85 : 1 }
-            ]}>
+            <Pressable
+              onPress={() => setCountryOpen(false)}
+              style={({ pressed }) => [
+                styles.secondaryBtn,
+                { marginTop: 12, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
               <Text style={styles.secondaryBtnText}>Close</Text>
             </Pressable>
           </View>
@@ -292,15 +306,26 @@ const styles = StyleSheet.create({
 
   // Modal styles
   modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center', justifyContent: 'center', padding: 16,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
   modalCard: {
-    width: '100%', maxWidth: 560, backgroundColor: PANEL,
-    borderRadius: 16, borderWidth: 1, borderColor: LINE, padding: 16,
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: PANEL,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: LINE,
+    padding: 16,
   },
   modalTitle: { color: TEXT, fontSize: 18, fontWeight: '700' },
   countryRow: {
-    paddingVertical: 12, paddingHorizontal: 8, borderBottomColor: LINE, borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomColor: LINE,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });
