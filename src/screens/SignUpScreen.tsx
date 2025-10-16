@@ -38,6 +38,12 @@ export default function SignUpScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  const hasMin = password.length >= 8;
+  const hasLetter = /[A-Za-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const pwValid = hasMin && hasLetter && hasNumber;
+
   const [dob, setDob] = useState('');       // auto-formatted as YYYY-MM-DD
   const [country, setCountry] = useState('');
   const [agree, setAgree] = useState(false);
@@ -59,7 +65,7 @@ export default function SignUpScreen() {
   const isValid = useMemo(() => {
     return (
       emailRegex.test(email) &&
-      password.length >= 6 &&
+      pwValid &&
       dateRegex.test(dob) &&
       country.trim().length >= 2 &&
       agree
@@ -133,7 +139,13 @@ export default function SignUpScreen() {
               style={styles.input}
               returnKeyType="next"
             />
-            <Text style={styles.hint}>Min 6 characters</Text>
+            
+            <View style={styles.pwChecklist}>
+              <PwRule ok={hasMin} text="At least 8 characters" />
+              <PwRule ok={hasLetter} text="Contains a letter (A–Z)" />
+              <PwRule ok={hasNumber} text="Contains a number (0–9)" />
+            </View>
+            
           </View>
 
           {/* DOB + Country */}
@@ -147,8 +159,12 @@ export default function SignUpScreen() {
                 placeholderTextColor={MUTED}
                 style={styles.input}
                 keyboardType="number-pad"
-                maxLength={10} // "YYYY-MM-DD"
-                returnKeyType="next"
+                inputMode="numeric"
+                autoCorrect={false}
+                autoComplete="off"
+                importantForAutofill="no"
+                maxLength={10}
+                blurOnSubmit
               />
             </View>
 
@@ -262,12 +278,27 @@ export default function SignUpScreen() {
   );
 }
 
+function PwRule({ ok, text }: { ok: boolean; text: string }) {
+  return (
+    <View style={styles.pwRuleRow}>
+      <View
+        style={[
+          styles.pwRuleDot,
+          { backgroundColor: ok ? ACCENT : MUTED },
+        ]}
+      />
+      <Text style={[styles.pwRuleText, { color: ok ? ACCENT : MUTED }]}>{text}</Text>
+    </View>
+  );
+}
+
+
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   appName: { color: TEXT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
   card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
-  title: { color: TEXT, fontSize: 20, fontWeight: '700' },
-  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20 },
+  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center', },
+  subtitle: { color: ACCENT, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center', },
 
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },
@@ -282,6 +313,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   hint: { color: MUTED, marginTop: 6, fontSize: 12 },
+  pwChecklist: { marginTop: 8, gap: 6 },
+  pwRuleRow: { flexDirection: 'row', alignItems: 'center' },
+  pwRuleDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  pwRuleText: { fontSize: 12 },
 
   row2: { flexDirection: 'row', alignItems: 'center' },
 

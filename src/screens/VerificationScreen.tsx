@@ -82,7 +82,6 @@ export default function VerificationScreen() {
               style={styles.input}
               maxLength={6}
             />
-            <Text style={styles.hint}>6 digits</Text>
           </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -114,8 +113,8 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   appName: { color: TEXT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
   card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
-  title: { color: TEXT, fontSize: 20, fontWeight: '700' },
-  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20 },
+  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center',},
+  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center',},
 
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },
@@ -131,8 +130,7 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     textAlign: 'center',
   },
-  hint: { color: MUTED, marginTop: 6, fontSize: 12 },
-
+ 
   error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
 
   primaryBtn: { marginTop: 16, borderRadius: 14, alignItems: 'center', paddingVertical: 14 },

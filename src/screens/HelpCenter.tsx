@@ -158,7 +158,7 @@ export default function HelpCenter() {
             <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> Chat with ScoutIQ to discover the best-fit players for your needs—just as you would with a regular chatbot.{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> All responses are data-driven and interpreted through your defined preferences.{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> Ask for filters on the fly (age, role, nationality, potential, stats, tactical fit, etc.), compare players, and add favorites to your <Text style={styles.bold}>Player Portfolio</Text>.{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> Ask for filters on the fly (age, role, nationality, stats, tactical fit, etc.), compare players, and add favorites to your <Text style={styles.bold}>Player Portfolio</Text>.{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> When requested, ScoutIQ will introduce a player. Each introduction includes a <Text style={styles.bold}>Player Card</Text>, <Text style={styles.bold}>Radar Charts</Text>, and an <Text style={styles.bold}>Interpretation</Text> of the player’s performance and fit.
             </Text>
             </View>

@@ -144,33 +144,20 @@ export default function MyProfileScreen() {
   const openPlans = () => Linking.openURL('https://example.com/plans');       // TODO replace
   const openHelp  = () => rootNav.navigate('HelpCenter');
 
-  const deleteAccount = async () => {
-    // TODO: call your API, clear local storage, revoke tokens, etc.
-  };
-
-  const confirmDelete = () => {
-    Alert.alert(
-      'Delete account',
-      'This will permanently delete your account and data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => { await deleteAccount(); resetToWelcome(); }
-        },
-      ],
-    );
-  };
-
   const handleLogout = async () => {
-  // TODO: clear tokens / storage / revoke session
-  rootNav.reset({
-    index: 0,
-    routes: [{ name: 'Login' }],
-  });
-};
-
+    try {
+      await logout(); // calls POST /logout and clears AsyncStorage token
+    } catch (e: any) {
+      // even if the call fails, we still kick the user to Login
+      // (logout should be idempotent)
+    } finally {
+      rootNav.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    }
+  };
+  
   const renderHeaderCell = (label: string, key: SortKey) => {
     const active = sortKey === key;
     return (
@@ -223,7 +210,7 @@ export default function MyProfileScreen() {
               { backgroundColor: pressed ? ACCENT_DARK : ACCENT },
             ]}
           >
-            <Text style={styles.primaryBtnText}> Subscription Plans</Text>
+            <Text style={styles.primaryBtnText}> Subscription plans</Text>
           </Pressable>
 
           <Pressable
@@ -233,14 +220,16 @@ export default function MyProfileScreen() {
               { opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <Text style={styles.outlineBtnText}>Help Center</Text>
+            <Text style={styles.outlineBtnText}>Help center</Text>
           </Pressable>
         </View>
 
         {/* Subtle delete link */}
         <Pressable
           onPress={handleLogout}
-          style={({ pressed }) => [{ alignSelf: 'center', marginTop: 10, opacity: pressed ? 0.8 : 1 }]}
+          accessibilityRole="button"
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          style={({ pressed }) => [styles.logoutLinkWrap, pressed && { opacity: 0.7 }]}
         >
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
@@ -403,7 +392,7 @@ const styles = StyleSheet.create({
 
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   primaryBtn: { flex: 1, borderRadius: 12, alignItems: 'center', paddingVertical: 12 },
-  primaryBtnText: { color: TEXT, fontWeight: '700' },
+  primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
   outlineBtn: {
     flex: 1,
     borderRadius: 12,
@@ -413,10 +402,21 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     backgroundColor: CARD,
   },
-  outlineBtnText: { color: TEXT, fontWeight: '700' },
+  outlineBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
 
   // Subtle delete link
-  logoutText: { color: MUTED, fontWeight: '700', fontSize: 14, textAlign: 'center' },
+  logoutLinkWrap: { 
+    alignSelf: 'center',
+    marginTop: 10, 
+    paddingBottom: 2, 
+    borderBottomWidth: 2,
+    borderBottomColor: ACCENT},
+  logoutText: {
+    color: TEXT,
+    fontWeight: '800',
+    fontSize: 15,
+    textAlign: 'center',
+  },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   filterCol: { flexBasis: '48%', flexGrow: 1, gap: 6 },
   filterLabel: { color: MUTED, fontSize: 12 },

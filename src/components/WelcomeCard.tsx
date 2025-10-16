@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3} from 'lucide-react-native';
+import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3, BookmarkPlus} from 'lucide-react-native';
 import { ACCENT, PANEL, MUTED, TEXT, LINE } from '@/theme';
 
 function Row({
@@ -26,11 +26,12 @@ export default function WelcomeCard() {
 
       <View style={styles.divider} />
       <Row Icon={Users} text="Find and compare players based on your needs." />
-      <Row Icon={Database} text="Get instant, data-driven answers." />
+      <Row Icon={SlidersHorizontal} text="Filter your search by age, nationality, role, stats, or tactical fit." />
       <Row Icon={SquareChevronUp} text="Discover the quantified potential of players." />
-      <Row Icon={Compass} text="Adapt recommendations to your team’s identity and plans." />
-      <Row Icon={SlidersHorizontal} text="Filter by age, nationality, role, stats, or tactical fit." />
+      <Row Icon={Database} text="Get instant, data-driven answers." />
       <Row Icon={BarChart3} text="Visualize key stats with charts and summaries." />
+      <Row Icon={Compass} text="Adapt recommendations to your team’s identity and plans." />
+      <Row Icon={BookmarkPlus} text="Curate your dream squad in your portfolio." />
     </View>
   );
 }

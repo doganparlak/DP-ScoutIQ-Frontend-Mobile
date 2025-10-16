@@ -28,7 +28,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(
-    () => emailRegex.test(email) && password.length >= 6,
+    () => emailRegex.test(email) && password.length >= 8,
     [email, password]
   );
 
@@ -93,7 +93,6 @@ export default function LoginScreen() {
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
-            <Text style={styles.hint}>Min 6 characters</Text>
           </View>
 
           {/* Forgot password link */}
@@ -164,7 +163,7 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   greeting: {
-    color: TEXT,
+    color: ACCENT,
     textAlign: 'center',
     fontSize: 16,
     lineHeight: 22,
@@ -182,8 +181,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
   },
-  hint: { color: MUTED, marginTop: 6, fontSize: 12 },
-  forgotLink: { color: ACCENT, fontWeight: '700', marginTop: 8 },
+  forgotLink: { color: MUTED, fontWeight: '700', marginTop: 8, fontSize: 13 },
   error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
 
   primaryBtn: {
