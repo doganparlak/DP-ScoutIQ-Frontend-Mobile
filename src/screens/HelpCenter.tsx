@@ -18,6 +18,7 @@ import {
   BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK,
 } from '@/theme';
 import type { RootStackParamList } from '@/types';
+import { deleteAccount as apiDeleteAccount } from  '@/services/api';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
@@ -28,6 +29,7 @@ export default function HelpCenter() {
   const [message, setMessage] = useState('');
   const [sentMessage, setSentMessage] = useState<string | null>(null);
   const [hasSentThisLogin, setHasSentThisLogin] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -48,8 +50,27 @@ export default function HelpCenter() {
           style: 'destructive',
           onPress: async () => {
             // TODO: Hook up to your API (e.g., await api.deleteAccount())
-            Alert.alert('Account deleted', 'We lost a valuable scout and a tactician.');
-            nav.reset({ index: 0, routes: [{ name: 'Login' }] });
+            if (deleting) return;
+            try {
+                setDeleting(true);
+                // 1) Delete the account on backend
+                await apiDeleteAccount();
+                // 2) Clear local auth/session
+                await AsyncStorage.multiRemove([
+                    'auth_token',
+                    'reachout_sent_this_login',
+                ]);
+                // 3) Inform the user, then go to Login
+                Alert.alert(
+                    'Account deleted',
+                    'We lost a valuable scout and a tactician.',
+                    [{ text: 'OK', onPress: () => nav.reset({ index: 0, routes: [{ name: 'Login' }] }) }],
+                );
+                } catch (e: any) {
+                  Alert.alert('Delete failed', e?.message || 'Please try again.');
+                } finally {
+                  setDeleting(false);
+                }
           },
         },
       ],

@@ -231,4 +231,9 @@ export async function setNewPassword(input: { email: string; new_password: strin
     body: JSON.stringify(input),
   });
 }
-
+// -------- Account
+/** Permanently delete the authenticated user. Returns void (204 expected). */
+export async function deleteAccount(): Promise<void> {
+  // Uses the same auth header setup inside request()
+  await request<void>(ENDPOINTS.me, { method: 'DELETE' });
+}
