@@ -14,6 +14,9 @@ export const ACCENT= '#16A34A';   // football green (≈ Tailwind green-600)
 export const ACCENT_DARK = '#15803D';
 export const MUTED = '#7A7A85';   // subtle, softer gray
 export const LINE  = '#1F2937';   // borders/dividers (slate-800)
+export const DANGER = '#E5484D';
+export const DANGER_DARK = '#C43C42';
+
 
 export const shadows = {
   card: {

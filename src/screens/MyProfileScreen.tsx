@@ -142,7 +142,7 @@ export default function MyProfileScreen() {
   };
 
   const openPlans = () => Linking.openURL('https://example.com/plans');       // TODO replace
-  const openHelp  = () => Linking.openURL('https://example.com/help-center');  // TODO replace
+  const openHelp  = () => rootNav.navigate('HelpCenter');
 
   const deleteAccount = async () => {
     // TODO: call your API, clear local storage, revoke tokens, etc.

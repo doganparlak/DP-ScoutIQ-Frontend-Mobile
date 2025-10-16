@@ -18,13 +18,12 @@ export type MainTabsParamList = {
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
+  MyProfile: undefined;
+  HelpCenter: undefined;
   SignUp: undefined;
   NewPassword: { email: string };
   Verification: { email: string; context: 'signup' | 'reset' };
-  //Strategy: undefined;
-  //Chat: undefined;
   ResetPassword?: undefined;
-  //Profile: undefined;
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
 };
 

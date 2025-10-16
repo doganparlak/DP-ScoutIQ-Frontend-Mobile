@@ -1,5 +1,6 @@
 // src/screens/LoginScreen.tsx
 import React, { useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -41,6 +42,7 @@ export default function LoginScreen() {
       setError(null);
       setSubmitting(true);
       await login({ email, password });
+      await AsyncStorage.removeItem('reachout_sent_this_login').catch(() => {});
       goToMainTabs();
     } catch {
       setError('Log in failed. Please check your credentials.');
