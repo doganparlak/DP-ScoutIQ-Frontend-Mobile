@@ -10,7 +10,6 @@ export default function Header() {
       <View style={styles.logoRow}>
         <BrainCog size={22} color={ACCENT} />
         <Text style={styles.title}>
-          <Text style={styles.dim}>DP-</Text>
           <Text style={styles.main}>SCOUT</Text>
           <Text style={styles.accent}>IQ</Text>
         </Text>
