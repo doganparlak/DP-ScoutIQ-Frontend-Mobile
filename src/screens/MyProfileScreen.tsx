@@ -28,7 +28,6 @@ export default function MyProfileScreen() {
   const rootNav = useNavigation<RootNav>();
 
   // ----- account (placeholder; wire to /me if you want here) -----
-  const [email] = useState('you@club.com');
   const [plan] = useState<'Free' | 'Pro' | 'Elite'>('Pro');
 
   const openPlans = () => Linking.openURL('https://example.com/plans'); // TODO: replace
@@ -44,13 +43,12 @@ export default function MyProfileScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: -10, paddingBottom: 50 }}>
         {/* Account card */}
         <Account
-          email={email}
           plan={plan}
           onOpenPlans={openPlans}
           onOpenHelp={openHelp}
           onLogout={handleLogout}
         />
-        
+
         {/* Favorite players section moved to component */}
         <FavoritePlayers />
       </ScrollView>

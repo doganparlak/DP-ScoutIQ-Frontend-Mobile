@@ -1,16 +1,31 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { PANEL, LINE, TEXT, MUTED, ACCENT, ACCENT_DARK, CARD } from '../theme';
+import { getMe, type Profile } from '../services/api';
 
 type Props = {
-  email: string;
   plan: 'Free' | 'Pro' | 'Elite';
   onOpenPlans: () => void;
   onOpenHelp: () => void;
   onLogout: () => void;
 };
 
-export default function Account({ email, plan, onOpenPlans, onOpenHelp, onLogout }: Props) {
+export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Props) {
+  const [email, setEmail] = React.useState<string>('—');
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const me: Profile = await getMe();
+        if (alive) setEmail(me?.email ?? '—');
+      } catch {
+        // keep placeholder on error
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   return (
     <View style={styles.card}>
       <Text style={styles.sectionTitle}>Account</Text>
