@@ -5,18 +5,15 @@ import type { PlayerData } from '@/types';
 
 type Props = {
   player: PlayerData;
-  /**
-   * Should resolve to true on success, false on handled failure (optional).
-   * If it throws, we'll re-enable the button.
-   */
   onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
+  titleAlign?: 'left' | 'center';
 };
 
 function isValidPotential(x: unknown): x is number {
   return typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 100;
 }
 
-export default function PlayerCard({ player, onAddFavorite }: Props) {
+export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' }: Props) {
   const { name, meta } = player;
   const roles = meta?.roles ?? [];
   const potential = meta?.potential;
@@ -47,7 +44,7 @@ export default function PlayerCard({ player, onAddFavorite }: Props) {
     <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 14, gap: 8 }}>
       {/* header row: name + add button */}
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', flex: 1 }}>{name}</Text>
+        <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', flex: 1, textAlign: titleAlign }}>{name}</Text>
         {onAddFavorite && (
           <TouchableOpacity
             accessibilityRole="button"
