@@ -31,7 +31,7 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
       <Text style={styles.sectionTitle}>Account</Text>
 
       <View style={styles.kv}>
-        <Text style={styles.k}>Email</Text>
+        <Text style={styles.k}>E-mail</Text>
         <Text style={styles.v}>{email}</Text>
       </View>
 
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
-  sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
 
   kv: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   k: { color: MUTED },

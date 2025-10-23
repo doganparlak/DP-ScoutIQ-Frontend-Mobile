@@ -114,7 +114,7 @@ export default function SignUpScreen() {
 
           {/* Email */}
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>E-mail</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -142,7 +142,7 @@ export default function SignUpScreen() {
             
             <View style={styles.pwChecklist}>
               <PwRule ok={hasMin} text="At least 8 characters" />
-              <PwRule ok={hasLetter} text="Contains a letter (A–Z)" />
+              <PwRule ok={hasLetter} text="Contains a letter (A–Z or a–z)" />
               <PwRule ok={hasNumber} text="Contains a number (0–9)" />
             </View>
             
@@ -223,7 +223,7 @@ export default function SignUpScreen() {
             ]}
           >
             <Text style={styles.secondaryBtnText}>
-              Already have an account? <Text style={{ fontWeight: '700' }}>Log in</Text>
+              Already have an account? <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>Log in</Text>
             </Text>
           </Pressable>
         </View>
@@ -295,10 +295,10 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  appName: { color: TEXT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
+  appName: { color: ACCENT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
   card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center', },
-  subtitle: { color: ACCENT, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center', },
+  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center', },
 
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },

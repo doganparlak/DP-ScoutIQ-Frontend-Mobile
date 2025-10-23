@@ -58,17 +58,18 @@ export default function LoginScreen() {
     >
       <View style={styles.wrap}>
         {/* App name above the frame */}
-        <Text style={styles.appName}>Login</Text>
+        <Text style={styles.appName}>ScoutIQ</Text>
 
         {/* Login frame/card */}
         <View style={styles.card}>
+          <Text style={styles.title}>Login</Text>
           {/* Scouting-context greeting (centered) */}
           <Text style={styles.greeting}>
             Spot the next star before anyone else.
           </Text>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>E-mail</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -130,7 +131,7 @@ export default function LoginScreen() {
             ]}
           >
             <Text style={styles.secondaryBtnText}>
-              Don’t have an account yet? <Text style={{ fontWeight: '700' }}>Sign up</Text>
+              Don’t have an account yet? <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>Sign up</Text>
             </Text>
           </Pressable>
         </View>
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   appName: {
-    color: TEXT,
+    color: ACCENT,
     fontSize: 28,
     fontWeight: '800',
     marginBottom: 14, // sits on top of the frame
@@ -163,11 +164,11 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   greeting: {
-    color: ACCENT,
+    color: MUTED,
     textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: 12,
+    marginTop: 6
   },
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },
@@ -202,4 +203,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   secondaryBtnText: { color: MUTED, fontSize: 14 },
+  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center', },
 });

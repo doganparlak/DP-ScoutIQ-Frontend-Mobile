@@ -276,7 +276,7 @@ export default function FavoritePlayers() {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.sectionTitle}>Favorite players</Text>
+      <Text style={styles.sectionTitle}>Squad Portfolio</Text>
 
       {/* Filters */}
       <View style={{ height: 8 }} />
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
-  sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
 
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   filterCol: { flexBasis: '48%', flexGrow: 1, gap: 6 },

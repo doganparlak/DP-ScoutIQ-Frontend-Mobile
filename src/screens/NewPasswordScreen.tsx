@@ -7,6 +7,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // ✨ NEW
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { setNewPassword } from '@/services/api';
@@ -16,6 +17,7 @@ type Route = RouteProp<RootStackParamList, 'NewPassword'>;
 
 export default function NewPasswordScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets(); // ✨
   const { params } = useRoute<Route>(); // { email }
   const email = params.email;
 
@@ -24,14 +26,24 @@ export default function NewPasswordScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ✨ measure container width → align back button to card's left edge
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const cardWidth = useMemo(() => {
+    if (containerWidth == null) return null;
+    const available = Math.max(containerWidth - 36, 0); // wrap paddingHorizontal: 18 → total 36
+    return Math.min(available, 560);
+  }, [containerWidth]);
+  const cardLeft = useMemo(() => {
+    if (containerWidth == null || cardWidth == null) return 12; // fallback
+    return (containerWidth - cardWidth) / 2;
+  }, [containerWidth, cardWidth]);
+
   // Same rules as SignUp:
   const hasMin = password.length >= 8;
   const hasLetter = /[A-Za-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const pwValid = hasMin && hasLetter && hasNumber;
-
   const match = password.length > 0 && password === again;
-
   const isValid = useMemo(() => pwValid && match, [pwValid, match]);
 
   const handleSave = async () => {
@@ -39,10 +51,7 @@ export default function NewPasswordScreen() {
     try {
       setError(null);
       setSubmitting(true);
-
       await setNewPassword({ email, new_password: password });
-
-      // done → back to Login
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e: any) {
       setError(e?.message || 'Could not set your new password. Please try again.');
@@ -56,7 +65,24 @@ export default function NewPasswordScreen() {
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
-      <View style={styles.wrap}>
+      {/* ✨ Top-left back button aligned to card left */}
+      <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
+        <Pressable
+          onPress={() => navigation.replace('Login')}
+          hitSlop={14}
+          style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Login"
+        >
+          <Text style={styles.backIcon}>←</Text>
+          <Text style={styles.backText}>Login</Text>
+        </Pressable>
+      </View>
+
+      <View
+        style={styles.wrap}
+        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)} // ✨ capture width
+      >
         <Text style={styles.appName}>ScoutIQ</Text>
 
         <View style={styles.card}>
@@ -80,7 +106,7 @@ export default function NewPasswordScreen() {
             {/* Always-visible checklist (same format as SignUp) */}
             <View style={styles.pwChecklist}>
               <PwRule ok={hasMin} text="At least 8 characters" />
-              <PwRule ok={hasLetter} text="Contains a letter (A–Z)" />
+              <PwRule ok={hasLetter} text="Contains a letter (A–Z or a–z)" />
               <PwRule ok={hasNumber} text="Contains a number (0–9)" />
             </View>
           </View>
@@ -132,8 +158,16 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
 }
 
 const styles = StyleSheet.create({
+  // ✨ Top bar holder (absolute; left set dynamically)
+  topBar: { position: 'absolute', zIndex: 10 },
+
+  // ✨ Back button styles (same sizing as other screens)
+  back: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backIcon: { color: TEXT, fontSize: 24, fontWeight: '800', marginRight: 2 },
+  backText: { color: TEXT, fontWeight: '700', fontSize: 18 },
+
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  appName: { color: TEXT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
+  appName: { color: ACCENT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
 
   card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },

@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
-  title: { color: 'white', fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  title: { color: ACCENT, fontSize: 18, fontWeight: '700', textAlign: 'center' },
   hint: { color: MUTED, marginTop: 6, marginBottom: 14, fontSize: 13, textAlign: 'center'},
 
   input: {
