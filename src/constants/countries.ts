@@ -32,3 +32,107 @@ export const COUNTRIES = [
   "Saint Martin","Saint Pierre and Miquelon","Sint Maarten","South Georgia & South Sandwich Islands","Tokelau","Turks and Caicos Islands",
   "U.S. Outlying Islands","U.S. Virgin Islands","Wallis and Futuna","Western Sahara"
 ];
+
+// Alpha-2 short codes (curated + special cases). Add more as needed.
+export const COUNTRY_CODE2: Record<string, string> = {
+  Argentina: "AR",
+  Australia: "AU",
+  Austria: "AT",
+  Belgium: "BE",
+  Bolivia: "BO",
+  Bosnia: "BA",
+  "Bosnia and Herzegovina": "BA",
+  Brazil: "BR",
+  Canada: "CA",
+  Chile: "CL",
+  China: "CN",
+  Colombia: "CO",
+  Croatia: "HR",
+  Cyprus: "CY",
+  Czechia: "CZ",
+  Denmark: "DK",
+  "Dominican Republic": "DO",
+  Ecuador: "EC",
+  Egypt: "EG",
+  England: "GB", // in case you ever use it
+  Finland: "FI",
+  France: "FR",
+  Georgia: "GE",
+  Germany: "DE",
+  Ghana: "GH",
+  Greece: "GR",
+  Hungary: "HU",
+  Iceland: "IS",
+  India: "IN",
+  Indonesia: "ID",
+  Iran: "IR",
+  Iraq: "IQ",
+  Ireland: "IE",
+  Israel: "IL",
+  Italy: "IT",
+  Jamaica: "JM",
+  Japan: "JP",
+  Jordan: "JO",
+  Kazakhstan: "KZ",
+  Kenya: "KE",
+  Kuwait: "KW",
+  Latvia: "LV",
+  Lebanon: "LB",
+  Lithuania: "LT",
+  Luxembourg: "LU",
+  Malaysia: "MY",
+  Mexico: "MX",
+  Morocco: "MA",
+  Netherlands: "NL",
+  "New Zealand": "NZ",
+  Nigeria: "NG",
+  "North Macedonia": "MK",
+  Norway: "NO",
+  Pakistan: "PK",
+  Panama: "PA",
+  Paraguay: "PY",
+  Peru: "PE",
+  Philippines: "PH",
+  Poland: "PL",
+  Portugal: "PT",
+  Qatar: "QA",
+  Romania: "RO",
+  Russia: "RU",
+  "Saudi Arabia": "SA",
+  Senegal: "SN",
+  Serbia: "RS",
+  Singapore: "SG",
+  Slovakia: "SK",
+  Slovenia: "SI",
+  "South Africa": "ZA",
+  "South Korea": "KR",
+  Spain: "ES",
+  Sweden: "SE",
+  Switzerland: "CH",
+  Türkiye: "TR",
+  Ukraine: "UA",
+  "United Arab Emirates": "AE",
+  "United Kingdom": "GB",
+  "United States": "US",
+  Uruguay: "UY",
+  Uzbekistan: "UZ",
+  Venezuela: "VE",
+  Vietnam: "VN",
+};
+
+export function countryToCode2(name?: string | null): string {
+  if (!name) return '';
+  const direct = COUNTRY_CODE2[name];
+  if (direct) return direct;
+  // Fallback: make a 3-letter code from letters in the name
+  const letters = (name.normalize('NFKD').replace(/[^\p{Letter}]+/gu, ' ').trim() || '').split(/\s+/);
+  if (!letters.length) return '';
+  const first = letters[0].slice(0, 3).toUpperCase();
+  return first;
+}
+
+export function code2ToCountry(code?: string | null): string {
+  if (!code) return '';
+  const entry = Object.entries(COUNTRY_CODE2).find(([, c]) => c.toUpperCase() === code.toUpperCase());
+  return entry ? entry[0] : '';
+}

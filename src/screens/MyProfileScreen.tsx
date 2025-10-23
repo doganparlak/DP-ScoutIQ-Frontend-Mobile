@@ -9,56 +9,83 @@ import {
   TextInput,
   Alert,
   Linking,
-  ActivityIndicator,
-  FlatList
+  Modal,
 } from 'react-native';
-import { useNavigation, useFocusEffect  } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
-import { RootStackParamList, MainTabsParamList } from '@/types';
-import { deleteFavoritePlayer, getFavoritePlayers, ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG, getMe, logout, type FavoritePlayer, type Profile } from '@/services/api';
+import { X, UserX } from 'lucide-react-native';
+import PlayerCard from '@/components/PlayerCard';
+
+import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '@/theme';
+import { RootStackParamList, MainTabsParamList, type PlayerData } from '@/types';
+import {
+  deleteFavoritePlayer,
+  getFavoritePlayers,
+  ROLE_LONG_TO_SHORT,
+  getMe,
+  logout,
+  type FavoritePlayer,
+  type Profile,
+} from '@/services/api';
+import { countryToCode2 } from '@/constants/countries';
 
 type ProfileTabNav = BottomTabNavigationProp<MainTabsParamList, 'Profile'>;
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 type PlayerRow = {
   id: string;
-  name: string;
-  nationality?: string;
+  name: string;                // full name
+  nationality?: string;        // full country name
   age?: number;
-  rolesShort: string[];  // SHORT for display/filter
+  rolesShort: string[];        // SHORT for display/filter
   potential?: number;
 };
 
 const ALL_ROLE_SHORTS = [
-  'GK','LB','LCB','CB','RCB','RB',
-  'LWB','LCM','CDM','CM','RCM','RWB', 
-  'LW', 'LCF','CF','RCF','RW'
+  'GK', 'LB', 'LCB', 'CB', 'RCB', 'RB',
+  'LWB', 'LCM', 'CDM', 'CM', 'RCM', 'RWB',
+  'LW', 'LCF', 'CF', 'RCF', 'RW',
 ] as const;
 
-const ROW_HEIGHT = 48; // for max-3-rows viewport
+const ROW_HEIGHT = 48;
+
+// keep identical flexes for header & rows to align separators
+const COL = { name: 1.0, nat: 0.8, age: 0.7, roles: 1.2, pot: 0.8, del: 0.6 } as const;
 
 type SortKey = 'name' | 'nationality' | 'age' | 'roles' | 'potential';
 type SortDir = 'asc' | 'desc';
 
+// 'Lionel Andres Messi Cuccittini' -> 'Lionel'
+function firstWord(full: string): string {
+  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  return parts[0] ?? '';
+}
+
 export default function MyProfileScreen() {
   const insets = useSafeAreaInsets();
-  // const tabNav  = useNavigation<ProfileTabNav>();
   const rootNav = useNavigation<RootNav>();
+
+  // ----- account (placeholder; wire to /me if you want here) -----
+  const [email] = useState('you@club.com');
+  const [plan] = useState<'Free' | 'Pro' | 'Elite'>('Pro');
+
+  // ----- favorites state -----
+  const [rows, setRows] = useState<PlayerRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchFavorites = React.useCallback(async () => {
     try {
       setLoading(true);
-      const favs = await getFavoritePlayers();
-      const mapped = favs.map((f: FavoritePlayer) => ({
+      const favs = await getFavoritePlayers(); // LONG roles from backend
+      const mapped: PlayerRow[] = favs.map((f: FavoritePlayer) => ({
         id: f.id,
         name: f.name,
         nationality: f.nationality || '',
         age: typeof f.age === 'number' ? f.age : undefined,
         potential: typeof f.potential === 'number' ? f.potential : undefined,
-        rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long),
+        rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long), // convert to SHORT
       }));
       setRows(mapped);
     } catch (e: any) {
@@ -68,62 +95,48 @@ export default function MyProfileScreen() {
     }
   }, []);
 
+  // ---------- PlayerCard preview overlay state ----------
+  const [previewPlayer, setPreviewPlayer] = React.useState<PlayerData | null>(null);
+
+  const toPlayerData = (p: PlayerRow): PlayerData => ({
+    name: p.name,
+    meta: {
+      nationality: p.nationality,
+      age: p.age,
+      roles: p.rolesShort,
+      potential: p.potential,
+    },
+    stats: [], // required by PlayerData; populate if/when you have stats
+  });
+
+  // initial fetch
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
 
+  // refetch whenever Profile tab gains focus
   useFocusEffect(React.useCallback(() => {
     fetchFavorites();
   }, [fetchFavorites]));
 
-  // ----- account (replace with real data from storage/services) -----
-  const [email] = useState('you@club.com');
-  const [plan] = useState<'Free' | 'Pro' | 'Elite'>('Pro');
-
-  // ----- favorites state -----
-  const [rows, setRows] = useState<PlayerRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const favs = await getFavoritePlayers(); // LONG roles
-        const mapped: PlayerRow[] = favs.map((f: FavoritePlayer) => ({
-          id: f.id,
-          name: f.name,
-          nationality: f.nationality || '',
-          age: typeof f.age === 'number' ? f.age : undefined,
-          potential: typeof f.potential === 'number' ? f.potential : undefined,
-          rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long), // convert to SHORT
-        }));
-        setRows(mapped);
-      } catch (e: any) {
-        Alert.alert('Favorites error', String(e?.message || e));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  // per-column filters
+  // ----- filters -----
   const [qName, setQName] = useState('');
   const [qNat, setQNat] = useState('');
   const [minAge, setMinAge] = useState<string>('');
   const [maxAge, setMaxAge] = useState<string>('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [minPot, setMinPot] = useState<string>('');
-  const [maxPot, setMaxPot] = useState<string>(''); // NEW: potential max
+  const [maxPot, setMaxPot] = useState<string>('');
 
   // sorting
   const [sortKey, setSortKey] = useState<SortKey>('potential');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const toggleRole = (r: string) => {
-    setSelectedRoles((prev) => (prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]));
+    setSelectedRoles(prev => (prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]));
   };
 
   const cycleSort = (key: SortKey) => {
     if (key !== sortKey) { setSortKey(key); setSortDir('asc'); }
-    else { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }
+    else { setSortDir(d => (d === 'asc' ? 'desc' : 'asc')); }
   };
 
   const filtered = useMemo(() => {
@@ -139,11 +152,10 @@ export default function MyProfileScreen() {
       if (maxA !== undefined && (p.age ?? Infinity) > maxA) return false;
       if (minP !== undefined && (p.potential ?? -Infinity) < minP) return false;
       if (maxP !== undefined && (p.potential ?? Infinity) > maxP) return false;
-      // role filter must consider ALL roles of player (match if any selected matches any player role)
       if (selectedRoles.length > 0 && !selectedRoles.some(r => p.rolesShort.includes(r))) return false;
       return true;
     });
-    
+
     list.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
       switch (sortKey) {
@@ -163,10 +175,16 @@ export default function MyProfileScreen() {
   }, [rows, qName, qNat, minAge, maxAge, minPot, maxPot, selectedRoles, sortKey, sortDir]);
 
   const clearFilters = () => {
-    setQName(''); setQNat(''); setMinAge(''); setMaxAge(''); setMinPot(''); setMaxPot(''); setSelectedRoles([]);
+    setQName('');
+    setQNat('');
+    setMinAge('');
+    setMaxAge('');
+    setMinPot('');
+    setMaxPot('');
+    setSelectedRoles([]);
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteFavoritePlayer(id);
       setRows(s => s.filter(x => x.id !== id));
@@ -175,188 +193,235 @@ export default function MyProfileScreen() {
     }
   };
 
-  const renderHeaderCell = (label: string, key: SortKey) => {
-    const active = sortKey === key;
+  // ---- Unified table row renderer: first row is header; rest are data rows
+  const renderUnifiedRow = (item: PlayerRow | 'HEADER', index: number) => {
+    const isHeader = item === 'HEADER';
+    const pressedStyle = { opacity: 0.9 };
+
+    const RowInner = (
+      <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
+        {/* Name */}
+        {isHeader ? (
+          <Pressable onPress={() => cycleSort('name')} style={({ pressed }) => [styles.cell, { flex: COL.name }, pressed && pressedStyle, sortKey === 'name' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>Name {sortKey === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          </Pressable>
+        ) : (
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+            {firstWord((item as PlayerRow).name)}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+        {/* Nat */}
+        {isHeader ? (
+          <Pressable onPress={() => cycleSort('nationality')} style={({ pressed }) => [styles.cell, { flex: COL.nat }, pressed && pressedStyle, sortKey === 'nationality' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>Nat. {sortKey === 'nationality' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          </Pressable>
+        ) : (
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
+            {countryToCode2((item as PlayerRow).nationality)}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+        {/* Age */}
+        {isHeader ? (
+          <Pressable onPress={() => cycleSort('age')} style={({ pressed }) => [styles.cell, { flex: COL.age }, pressed && pressedStyle, sortKey === 'age' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>Age {sortKey === 'age' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          </Pressable>
+        ) : (
+          <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
+            {(item as PlayerRow).age ?? '—'}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+        {/* Roles */}
+        {isHeader ? (
+          <Pressable onPress={() => cycleSort('roles')} style={({ pressed }) => [styles.cell, { flex: COL.roles }, pressed && pressedStyle, sortKey === 'roles' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>Roles {sortKey === 'roles' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          </Pressable>
+        ) : (
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
+            {(item as PlayerRow).rolesShort.join(', ')}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+        {/* Potential */}
+        {isHeader ? (
+          <Pressable onPress={() => cycleSort('potential')} style={({ pressed }) => [styles.cell, { flex: COL.pot }, pressed && pressedStyle, sortKey === 'potential' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>Pot. {sortKey === 'potential' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          </Pressable>
+        ) : (
+          <Text style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}>
+            {(item as PlayerRow).potential ?? '—'}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+        {/* Delete (no header label) */}
+        {isHeader ? (
+          <View style={[styles.cell, { flex: COL.del }]} />
+        ) : (
+          <View style={[styles.cell, { flex: COL.del, alignItems: 'center' }]}>
+            <Pressable
+              onPress={() => handleDelete((item as PlayerRow).id)}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+            >
+              {({ pressed }) => (
+                <UserX size={20} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
+              )}
+            </Pressable>
+          </View>
+        )}
+
+      </View>
+    );
+
     return (
-      <Pressable onPress={() => cycleSort(key)} style={[styles.th, active && { backgroundColor: CARD }]}>
-        <Text style={styles.thText}>
-          {label} {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
-        </Text>
-      </Pressable>
+      <View key={isHeader ? 'header' : (item as PlayerRow).id}>
+        {isHeader ? (
+          RowInner
+        ) : (
+          <Pressable onPress={() => setPreviewPlayer(toPlayerData(item as PlayerRow))}>
+            {RowInner}
+          </Pressable>
+        )}
+        {/* unified, thicker horizontal row divider (between every row, including after header) */}
+        <View style={styles.hsepThick} />
+      </View>
     );
   };
 
-  const renderRow = (item: PlayerRow) => (
-    <View style={[styles.row, { minHeight: ROW_HEIGHT, alignItems: 'center' }]}>
-      <Text numberOfLines={1} style={[styles.td, styles.name]}>{item.name}</Text>
-      <Text numberOfLines={1} style={[styles.td, styles.nat]}>{item.nationality}</Text>
-      <Text style={[styles.td, styles.age]}>{item.age ?? '—'}</Text>
-      <Text numberOfLines={1} style={[styles.td, styles.roles]}>{item.rolesShort.join(', ')}</Text>
-      <Text style={[styles.td, styles.pot]}>{item.potential ?? '—'}</Text>
-
-      {/* ✖️ delete */}
-      <Pressable
-        onPress={() => handleDelete(item.id, item.name)}
-        style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1, borderColor: LINE, marginLeft: 6 }}
-      >
-        <Text style={{ color: MUTED, fontWeight: '800' }}>✖️</Text>
-      </Pressable>
-    </View>
-  );
-
-  const openPlans = () => Linking.openURL('https://example.com/plans');       // TODO replace
+  const openPlans = () => Linking.openURL('https://example.com/plans'); // TODO: replace
   const openHelp  = () => rootNav.navigate('HelpCenter');
 
   const handleLogout = async () => {
-    try {
-      await logout(); // calls POST /logout and clears AsyncStorage token
-    } catch (e: any) {
-      // even if the call fails, we still kick the user to Login
-      // (logout should be idempotent)
-    } finally {
-      rootNav.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
-    }
+    try { await logout(); } catch {}
+    rootNav.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
-  
+
   return (
-  <SafeAreaView
-    edges={['top']}
-    style={[styles.safe, { paddingTop: 0 }]}
-  >
-    <ScrollView contentContainerStyle={{ paddingTop: -10, paddingBottom: 50 }}>
-      {/* Account card */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Account</Text>
+    <SafeAreaView edges={['top']} style={[styles.safe, { paddingTop: 0 }]}>
+      <ScrollView contentContainerStyle={{ paddingTop: -10, paddingBottom: 50 }}>
+        {/* Account card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Account</Text>
 
-        <View style={styles.kv}>
-          <Text style={styles.k}>Email</Text>
-          <Text style={styles.v}>{email}</Text>
-        </View>
+          <View style={styles.kv}>
+            <Text style={styles.k}>Email</Text>
+            <Text style={styles.v}>{email}</Text>
+          </View>
 
-        <View style={styles.kv}>
-          <Text style={styles.k}>Current plan</Text>
-          <Text style={styles.v}>{plan}</Text>
-        </View>
+          <View style={styles.kv}>
+            <Text style={styles.k}>Current plan</Text>
+            <Text style={styles.v}>{plan}</Text>
+          </View>
 
-        <View style={styles.btnRow}>
+          <View style={styles.btnRow}>
+            <Pressable
+              onPress={openPlans}
+              style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed ? ACCENT_DARK : ACCENT }]}
+            >
+              <Text style={styles.primaryBtnText}> Subscription plans</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={openHelp}
+              style={({ pressed }) => [styles.outlineBtn, { opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Text style={styles.outlineBtnText}>Help center</Text>
+            </Pressable>
+          </View>
+
+          {/* Subtle logout link */}
           <Pressable
-            onPress={openPlans}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              { backgroundColor: pressed ? ACCENT_DARK : ACCENT },
-            ]}
+            onPress={handleLogout}
+            accessibilityRole="button"
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            style={({ pressed }) => [styles.logoutLinkWrap, pressed && { opacity: 0.7 }]}
           >
-            <Text style={styles.primaryBtnText}> Subscription plans</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={openHelp}
-            style={({ pressed }) => [
-              styles.outlineBtn,
-              { opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={styles.outlineBtnText}>Help center</Text>
+            <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         </View>
 
-        {/* Subtle delete link */}
-        <Pressable
-          onPress={handleLogout}
-          accessibilityRole="button"
-          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          style={({ pressed }) => [styles.logoutLinkWrap, pressed && { opacity: 0.7 }]}
-        >
-          <Text style={styles.logoutText}>Log out</Text>
-        </Pressable>
-      </View>
-
-      {/* Favorite players */}
+        {/* Favorite players */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Favorite players</Text>
 
           {/* Filters */}
+          <View style={{ height: 8 }} />
+
           <View style={styles.filters}>
-            {/* name, nationality, age, potential inputs — same as before */}
-            {/* ... (reuse your existing filter inputs unchanged) ... */}
-          </View>
-
-          
-
-        {/* Filters */}
-        <View style={styles.filters}>
-          <View style={styles.filterCol}>
-            <Text style={styles.filterLabel}>Name</Text>
-            <TextInput
-              value={qName}
-              onChangeText={setQName}
-              placeholder="Search name"
-              placeholderTextColor={MUTED}
-              style={styles.input}
-            />
-          </View>
-
-          <View style={styles.filterCol}>
-            <Text style={styles.filterLabel}>Nationality</Text>
-            <TextInput
-              value={qNat}
-              onChangeText={setQNat}
-              placeholder="Search nationality"
-              placeholderTextColor={MUTED}
-              style={styles.input}
-            />
-          </View>
-
-          <View style={styles.filterCol}>
-            <Text style={styles.filterLabel}>Age (min / max)</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={styles.filterCol}>
+              <Text style={styles.filterLabel}>Name</Text>
               <TextInput
-                value={minAge}
-                onChangeText={(t) => setMinAge(t.replace(/[^\d]/g, ''))}
-                keyboardType="numeric"
-                placeholder="min"
+                value={qName}
+                onChangeText={setQName}
+                placeholder="Search name"
                 placeholderTextColor={MUTED}
-                style={[styles.input, { flex: 1 }]}
+                style={styles.input}
               />
+            </View>
+
+            <View style={styles.filterCol}>
+              <Text style={styles.filterLabel}>Nationality</Text>
               <TextInput
-                value={maxAge}
-                onChangeText={(t) => setMaxAge(t.replace(/[^\d]/g, ''))}
-                keyboardType="numeric"
-                placeholder="max"
+                value={qNat}
+                onChangeText={setQNat}
+                placeholder="Search nationality"
                 placeholderTextColor={MUTED}
-                style={[styles.input, { flex: 1 }]}
+                style={styles.input}
               />
+            </View>
+
+            <View style={styles.filterCol}>
+              <Text style={styles.filterLabel}>Age (min / max)</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  value={minAge}
+                  onChangeText={(t) => setMinAge(t.replace(/[^\d]/g, ''))}
+                  keyboardType="numeric"
+                  placeholder="min"
+                  placeholderTextColor={MUTED}
+                  style={[styles.input, { flex: 1 }]}
+                />
+                <TextInput
+                  value={maxAge}
+                  onChangeText={(t) => setMaxAge(t.replace(/[^\d]/g, ''))}
+                  keyboardType="numeric"
+                  placeholder="max"
+                  placeholderTextColor={MUTED}
+                  style={[styles.input, { flex: 1 }]}
+                />
+              </View>
+            </View>
+
+            <View style={styles.filterCol}>
+              <Text style={styles.filterLabel}>Potential (min / max)</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TextInput
+                  value={minPot}
+                  onChangeText={(t) => setMinPot(t.replace(/[^\d]/g, '').slice(0, 3))}
+                  keyboardType="numeric"
+                  placeholder="min"
+                  placeholderTextColor={MUTED}
+                  style={[styles.input, { flex: 1 }]}
+                />
+                <TextInput
+                  value={maxPot}
+                  onChangeText={(t) => setMaxPot(t.replace(/[^\d]/g, '').slice(0, 3))}
+                  keyboardType="numeric"
+                  placeholder="max"
+                  placeholderTextColor={MUTED}
+                  style={[styles.input, { flex: 1 }]}
+                />
+              </View>
             </View>
           </View>
 
-          {/* Potential min / max */}
-          <View style={styles.filterCol}>
-            <Text style={styles.filterLabel}>Potential (min / max)</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
-                value={minPot}
-                onChangeText={(t) => setMinPot(t.replace(/[^\d]/g, '').slice(0, 3))}
-                keyboardType="numeric"
-                placeholder="min"
-                placeholderTextColor={MUTED}
-                style={[styles.input, { flex: 1 }]}
-              />
-              <TextInput
-                value={maxPot}
-                onChangeText={(t) => setMaxPot(t.replace(/[^\d]/g, '').slice(0, 3))}
-                keyboardType="numeric"
-                placeholder="max"
-                placeholderTextColor={MUTED}
-                style={[styles.input, { flex: 1 }]}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Role chips — EXACT set requested */}
+          {/* Role chips */}
           <View style={styles.rolesWrap}>
             {ALL_ROLE_SHORTS.map((r) => {
               const active = selectedRoles.includes(r);
@@ -372,53 +437,81 @@ export default function MyProfileScreen() {
             })}
           </View>
 
-        {/* Clear filters */}
-          <View style={{ alignItems: 'flex-end' }}>
-            <Pressable onPress={clearFilters} style={({ pressed }) => [{ paddingVertical: 8, paddingHorizontal: 12, opacity: pressed ? 0.8 : 1 }]}>
+          {/* Clear filters (centered) */}
+          <View style={{ alignItems: 'center' }}>
+            <Pressable
+              onPress={clearFilters}
+              style={({ pressed }) => [{ paddingVertical: 8, paddingHorizontal: 12, opacity: pressed ? 0.8 : 1 }]}
+            >
               <Text style={{ color: MUTED }}>Clear filters</Text>
             </Pressable>
           </View>
 
-       {/* Table */}
+          {/* Unified single table (header row + player rows) */}
           <View style={styles.table}>
-            <View style={styles.headRow}>
-              {renderHeaderCell('Name', 'name')}
-              {renderHeaderCell('Nationality', 'nationality')}
-              {renderHeaderCell('Age', 'age')}
-              {renderHeaderCell('Roles', 'roles')}
-              {renderHeaderCell('Potential', 'potential')}
-              {/* extra blank head for delete column */}
-              <View style={[styles.th, { flex: 0.5 }]} />
-            </View>
+            {/* Outer top border */}
+            <View style={styles.tableTopBorder} />
 
             {loading ? (
               <View style={{ paddingVertical: 16 }}>
                 <Text style={{ color: MUTED }}>Loading favorites…</Text>
               </View>
             ) : (
-              <ScrollView style={{ maxHeight: ROW_HEIGHT * 3 + 2 }} nestedScrollEnabled bounces={false} showsVerticalScrollIndicator>
-                {filtered.map((item, idx) => (
-                  <React.Fragment key={item.id}>
-                    {idx > 0 && <View style={styles.sep} />}
-                    {renderRow(item)}
-                  </React.Fragment>
-                ))}
+              <ScrollView
+                style={{ maxHeight: ROW_HEIGHT * 3 + 2 }}
+                nestedScrollEnabled
+                bounces={false}
+                showsVerticalScrollIndicator
+              >
+                {/* First row: headers */}
+                {renderUnifiedRow('HEADER', 0)}
+                {/* Rest: player rows */}
+                {filtered.map((item, idx) => renderUnifiedRow(item, idx + 1))}
               </ScrollView>
             )}
+
+            {/* Outer bottom border */}
+            <View style={styles.tableBottomBorder} />
           </View>
         </View>
-    </ScrollView>
-  </SafeAreaView>
-);
+      </ScrollView>
 
+      {/* PlayerCard overlay modal with close button positioned inside top-right of the card */}
+      {previewPlayer && (
+        <Modal
+          transparent
+          visible
+          animationType="fade"
+          onRequestClose={() => setPreviewPlayer(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCardWrap}>
+              <PlayerCard player={previewPlayer} />
 
-
+              {/* absolutely-positioned close, anchored to this wrapper (not modifying PlayerCard) */}
+              <Pressable
+                onPress={() => setPreviewPlayer(null)}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                style={({ pressed }) => [
+                  styles.closeInsideCard,
+                  { opacity: pressed ? 0.9 : 1 },
+                ]}
+                accessibilityLabel="Close player card"
+              >
+                {({ pressed }) => (
+                  <X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
-  header: { paddingTop: 14, paddingHorizontal: 16, paddingBottom: 6 },
-  title: { color: TEXT, fontSize: 22, fontWeight: '800' },
 
   card: {
     backgroundColor: PANEL,
@@ -450,19 +543,16 @@ const styles = StyleSheet.create({
   },
   outlineBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
 
-  // Subtle delete link
-  logoutLinkWrap: { 
+  // Subtle logout link
+  logoutLinkWrap: {
     alignSelf: 'center',
-    marginTop: 10, 
-    paddingBottom: 2, 
+    marginTop: 10,
+    paddingBottom: 2,
     borderBottomWidth: 2,
-    borderBottomColor: ACCENT},
-  logoutText: {
-    color: TEXT,
-    fontWeight: '800',
-    fontSize: 15,
-    textAlign: 'center',
+    borderBottomColor: ACCENT,
   },
+  logoutText: { color: TEXT, fontWeight: '800', fontSize: 15, textAlign: 'center' },
+
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   filterCol: { flexBasis: '48%', flexGrow: 1, gap: 6 },
   filterLabel: { color: MUTED, fontSize: 12 },
@@ -484,19 +574,65 @@ const styles = StyleSheet.create({
   chipTextActive: { color: TEXT, fontWeight: '700' },
   chipTextInactive: { color: MUTED, fontWeight: '600' },
 
+  // ---- Unified table styles
   table: { marginTop: 10 },
-  headRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: LINE },
-  th: { flex: 1, paddingVertical: 10, paddingHorizontal: 6 },
+  tableTopBorder: { height: 1, backgroundColor: LINE },
+  tableBottomBorder: { height: 1, backgroundColor: LINE },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    // cell padding is in .cell to keep header/body identical
+  },
+
+  // thicker, unified horizontal dividers between EVERY row
+  hsepThick: {
+    height: 2,
+    backgroundColor: LINE,
+  },
+
+  // cells (shared by header & body so verticals align)
+  cell: { paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },
-
-  row: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 6 },
-  sep: { height: 1, backgroundColor: LINE },
-
-  // cells
   td: { color: TEXT, flex: 1 },
-  name: { flex: 1.4 },
-  nat: { flex: 1.2 },
+
+  // vertical separators (shared across header and rows)
+  vsep: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: LINE,
+    opacity: 0.9,
+  },
+
+  // legacy named widths (kept for reference; flexes are enforced inline)
+  name: { flex: 1.6 },
+  nat: { flex: 0.8 },
   age: { flex: 0.6, textAlign: 'right' as const },
-  roles: { flex: 1.4 },
-  pot: { flex: 0.9, textAlign: 'right' as const },
+  roles: { flex: 1.2 },
+  pot: { flex: 0.8, textAlign: 'right' as const },
+
+  // Modal overlay
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCardWrap: {
+    width: '100%',
+    maxWidth: 560,
+    borderRadius: 16,
+    overflow: 'visible',   // allow the close button to render within bounds
+    padding: 2,
+    position: 'relative',  // anchor for the absolute close button
+  },
+  closeInsideCard: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    zIndex: 10,
+    padding: 6,
+  },
 });
