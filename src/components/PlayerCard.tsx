@@ -1,22 +1,84 @@
 import * as React from 'react';
-import { View, Text } from 'react-native';
-import { CARD, TEXT, MUTED, ACCENT } from '@/theme';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { CARD, TEXT, MUTED, ACCENT, LINE } from '@/theme';
 import type { PlayerData } from '@/types';
 
-type Props = { player: PlayerData };
+type Props = {
+  player: PlayerData;
+  /**
+   * Should resolve to true on success, false on handled failure (optional).
+   * If it throws, we'll re-enable the button.
+   */
+  onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
+};
 
 function isValidPotential(x: unknown): x is number {
   return typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 100;
 }
 
-export default function PlayerCard({ player }: Props) {
+export default function PlayerCard({ player, onAddFavorite }: Props) {
   const { name, meta } = player;
   const roles = meta?.roles ?? [];
   const potential = meta?.potential;
 
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [isAdded, setIsAdded] = React.useState(false);
+
+  const handleAdd = async () => {
+    if (!onAddFavorite || isAdding || isAdded) return;
+    try {
+      setIsAdding(true);
+      const maybePromise = onAddFavorite(player);
+      let ok = true;
+      if (maybePromise && typeof (maybePromise as Promise<boolean>)?.then === 'function') {
+        ok = await (maybePromise as Promise<boolean>);
+      }
+      if (ok !== false) setIsAdded(true);
+      else setIsAdding(false); // handled failure => re-enable
+    } catch {
+      // unexpected error => re-enable
+      setIsAdding(false);
+    }
+  };
+
+  const disabled = !onAddFavorite || isAdding || isAdded;
+
   return (
     <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 14, gap: 8 }}>
-      <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800' }}>{name}</Text>
+      {/* header row: name + add button */}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', flex: 1 }}>{name}</Text>
+        {onAddFavorite && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={handleAdd}
+            // still non-clickable after success
+            disabled={!onAddFavorite || isAdding || isAdded}
+            style={{
+              borderWidth: 1,
+              // ✅ keep ACCENT when added; only gray out when there's no handler
+              borderColor: isAdded ? ACCENT : (!onAddFavorite ? LINE : ACCENT),
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 2,
+              // ✅ don't dim when added; dim only while adding or when there's no handler
+              opacity: (isAdding || !onAddFavorite) ? 0.5 : 1,
+            }}
+          >
+            <Text
+              style={{
+                // ✅ keep ACCENT green for ✓ (and +). Only mute if no handler.
+                color: isAdded ? ACCENT : (!onAddFavorite ? MUTED : ACCENT),
+                fontWeight: '800',
+                fontSize: 14,
+              }}
+            >
+              {isAdded ? '✓' : isAdding ? '…' : '＋'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
 
       <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
         {meta?.nationality ? (
@@ -32,7 +94,6 @@ export default function PlayerCard({ player }: Props) {
         ) : null}
       </View>
 
-      {/* Potential (0–100) */}
       {isValidPotential(potential) && (
         <View style={{ marginTop: 4, gap: 6 }}>
           <Text style={{ color: MUTED }}>

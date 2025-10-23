@@ -16,6 +16,7 @@ import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
 import PlayerCard from '@/components/PlayerCard';
 import SpiderChart from '@/components/SpiderChart';
+import { addFavoritePlayer } from '@/services/api';
 import { GK_METRICS, IN_POS_METRICS, OUT_POS_METRICS, toSpiderPoints } from '@/components/spiderRanges';
 import { ACCENT, BG } from '@/theme';
 import { healthcheck, sendChat, resetSession } from '@/services/api';
@@ -159,7 +160,24 @@ export default function ChatScreen() {
 
             return (
               <View key={p.name} style={{ gap: 10 }}>
-                <PlayerCard player={p} />
+                <PlayerCard
+                player={p}
+                onAddFavorite={async (player) => {
+                  try {
+                    await addFavoritePlayer({
+                      name: player.name,
+                      nationality: player.meta?.nationality,
+                      age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
+                      potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
+                      roles: player.meta?.roles ?? [], // short codes; API converts to LONG
+                    });
+                    return true;   // ✅ tell PlayerCard to keep the button disabled (✓)
+                  } catch (e: any) {
+                    Alert.alert('Add failed', String(e?.message || e));
+                    return false;  // ✅ let PlayerCard re-enable the button
+                  }
+                }}
+              />
                 {hasAny && (
                   <View style={{ gap: 10 }}>
                     {gk.length > 0 && <SpiderChart title="Goalkeeper" points={gk} />}

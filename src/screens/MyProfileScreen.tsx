@@ -12,35 +12,32 @@ import {
   ActivityIndicator,
   FlatList
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect  } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList, MainTabsParamList } from '@/types';
-import { getMe, logout, type FavoritePlayer, type Profile } from '@/services/api';
+import { deleteFavoritePlayer, getFavoritePlayers, ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG, getMe, logout, type FavoritePlayer, type Profile } from '@/services/api';
 
 type ProfileTabNav = BottomTabNavigationProp<MainTabsParamList, 'Profile'>;
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
-type Player = {
+type PlayerRow = {
   id: string;
   name: string;
-  nationality: string;
-  age: number;
-  roles: string[];
-  potential: number; // 0–100
+  nationality?: string;
+  age?: number;
+  rolesShort: string[];  // SHORT for display/filter
+  potential?: number;
 };
 
-const SAMPLE_PLAYERS: Player[] = [
-  { id: '1', name: 'J. Alvarez', nationality: 'Argentina', age: 24, roles: ['ST', 'RW'], potential: 90 },
-  { id: '2', name: 'A. Yıldız', nationality: 'Türkiye', age: 21, roles: ['AM', 'LW'], potential: 86 },
-  { id: '3', name: 'M. Diop', nationality: 'Senegal', age: 19, roles: ['DM', 'CB'], potential: 88 },
-  { id: '4', name: 'T. Ito', nationality: 'Japan', age: 22, roles: ['RW'], potential: 84 },
-  { id: '5', name: 'L. Costa', nationality: 'Portugal', age: 26, roles: ['CM'], potential: 82 },
-];
+const ALL_ROLE_SHORTS = [
+  'GK','LB','LCB','CB','RCB','RB',
+  'LWB','LCM','CDM','CM','RCM','RWB', 
+  'LW', 'LCF','CF','RCF','RW'
+] as const;
 
-const ALL_ROLES = ['GK','CB','LB','RB','DM','CM','AM','LW','RW','ST'];
 const ROW_HEIGHT = 48; // for max-3-rows viewport
 
 type SortKey = 'name' | 'nationality' | 'age' | 'roles' | 'potential';
@@ -51,19 +48,61 @@ export default function MyProfileScreen() {
   // const tabNav  = useNavigation<ProfileTabNav>();
   const rootNav = useNavigation<RootNav>();
 
-  const resetToWelcome = () => {
-   rootNav.reset({
-     index: 0,
-     routes: [{ name: 'Welcome' }],
-   });
- };
+  const fetchFavorites = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const favs = await getFavoritePlayers();
+      const mapped = favs.map((f: FavoritePlayer) => ({
+        id: f.id,
+        name: f.name,
+        nationality: f.nationality || '',
+        age: typeof f.age === 'number' ? f.age : undefined,
+        potential: typeof f.potential === 'number' ? f.potential : undefined,
+        rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long),
+      }));
+      setRows(mapped);
+    } catch (e: any) {
+      Alert.alert('Favorites error', String(e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
+
+  useFocusEffect(React.useCallback(() => {
+    fetchFavorites();
+  }, [fetchFavorites]));
 
   // ----- account (replace with real data from storage/services) -----
   const [email] = useState('you@club.com');
   const [plan] = useState<'Free' | 'Pro' | 'Elite'>('Pro');
 
   // ----- favorites state -----
-  const [players] = useState<Player[]>(SAMPLE_PLAYERS);
+  const [rows, setRows] = useState<PlayerRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const favs = await getFavoritePlayers(); // LONG roles
+        const mapped: PlayerRow[] = favs.map((f: FavoritePlayer) => ({
+          id: f.id,
+          name: f.name,
+          nationality: f.nationality || '',
+          age: typeof f.age === 'number' ? f.age : undefined,
+          potential: typeof f.potential === 'number' ? f.potential : undefined,
+          rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long), // convert to SHORT
+        }));
+        setRows(mapped);
+      } catch (e: any) {
+        Alert.alert('Favorites error', String(e?.message || e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   // per-column filters
   const [qName, setQName] = useState('');
@@ -83,12 +122,8 @@ export default function MyProfileScreen() {
   };
 
   const cycleSort = (key: SortKey) => {
-    if (key !== sortKey) {
-      setSortKey(key);
-      setSortDir('asc');
-    } else {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    }
+    if (key !== sortKey) { setSortKey(key); setSortDir('asc'); }
+    else { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }
   };
 
   const filtered = useMemo(() => {
@@ -97,49 +132,77 @@ export default function MyProfileScreen() {
     const minP = minPot ? Math.min(100, parseInt(minPot, 10)) : undefined;
     const maxP = maxPot ? Math.min(100, parseInt(maxPot, 10)) : undefined;
 
-    const ageMaxOk = maxA !== undefined && (minA === undefined || maxA >= minA) ? maxA : undefined;
-    const potMaxOk = maxP !== undefined && (minP === undefined || maxP >= minP) ? maxP : undefined;
-
-    let list = players.filter(p => {
+    let list = rows.filter(p => {
       if (qName && !p.name.toLowerCase().includes(qName.toLowerCase())) return false;
-      if (qNat && !p.nationality.toLowerCase().includes(qNat.toLowerCase())) return false;
-      if (minA !== undefined && p.age < minA) return false;
-      if (maxA !== undefined && p.age > maxA) return false;
-      if (ageMaxOk !== undefined && p.age > ageMaxOk) return false;
-      if (minP !== undefined && p.potential < minP) return false;
-      if (maxP !== undefined && p.potential > maxP) return false;
-      if (potMaxOk !== undefined && p.potential > potMaxOk) return false;
-      if (selectedRoles.length > 0 && !selectedRoles.some(r => p.roles.includes(r))) return false;
+      if (qNat && !(p.nationality || '').toLowerCase().includes(qNat.toLowerCase())) return false;
+      if (minA !== undefined && (p.age ?? -Infinity) < minA) return false;
+      if (maxA !== undefined && (p.age ?? Infinity) > maxA) return false;
+      if (minP !== undefined && (p.potential ?? -Infinity) < minP) return false;
+      if (maxP !== undefined && (p.potential ?? Infinity) > maxP) return false;
+      // role filter must consider ALL roles of player (match if any selected matches any player role)
+      if (selectedRoles.length > 0 && !selectedRoles.some(r => p.rolesShort.includes(r))) return false;
       return true;
     });
-
+    
     list.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
       switch (sortKey) {
         case 'name': return a.name.localeCompare(b.name) * dir;
-        case 'nationality': return a.nationality.localeCompare(b.nationality) * dir;
-        case 'age': return (a.age - b.age) * dir;
-        case 'potential': return (a.potential - b.potential) * dir;
+        case 'nationality': return (a.nationality || '').localeCompare(b.nationality || '') * dir;
+        case 'age': return ((a.age ?? 0) - (b.age ?? 0)) * dir;
+        case 'potential': return ((a.potential ?? 0) - (b.potential ?? 0)) * dir;
         case 'roles': {
-          const ar = a.roles[0] ?? '';
-          const br = b.roles[0] ?? '';
+          const ar = a.rolesShort[0] ?? '';
+          const br = b.rolesShort[0] ?? '';
           return ar.localeCompare(br) * dir;
         }
       }
     });
 
     return list;
-  }, [players, qName, qNat, minAge, maxAge, minPot, maxPot, selectedRoles, sortKey, sortDir]);
+  }, [rows, qName, qNat, minAge, maxAge, minPot, maxPot, selectedRoles, sortKey, sortDir]);
 
   const clearFilters = () => {
-    setQName('');
-    setQNat('');
-    setMinAge('');
-    setMaxAge('');
-    setSelectedRoles([]);
-    setMinPot('');
-    setMaxPot('');
+    setQName(''); setQNat(''); setMinAge(''); setMaxAge(''); setMinPot(''); setMaxPot(''); setSelectedRoles([]);
   };
+
+  const handleDelete = async (id: string, name: string) => {
+    try {
+      await deleteFavoritePlayer(id);
+      setRows(s => s.filter(x => x.id !== id));
+    } catch (e: any) {
+      Alert.alert('Delete failed', String(e?.message || e));
+    }
+  };
+
+  const renderHeaderCell = (label: string, key: SortKey) => {
+    const active = sortKey === key;
+    return (
+      <Pressable onPress={() => cycleSort(key)} style={[styles.th, active && { backgroundColor: CARD }]}>
+        <Text style={styles.thText}>
+          {label} {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+        </Text>
+      </Pressable>
+    );
+  };
+
+  const renderRow = (item: PlayerRow) => (
+    <View style={[styles.row, { minHeight: ROW_HEIGHT, alignItems: 'center' }]}>
+      <Text numberOfLines={1} style={[styles.td, styles.name]}>{item.name}</Text>
+      <Text numberOfLines={1} style={[styles.td, styles.nat]}>{item.nationality}</Text>
+      <Text style={[styles.td, styles.age]}>{item.age ?? '—'}</Text>
+      <Text numberOfLines={1} style={[styles.td, styles.roles]}>{item.rolesShort.join(', ')}</Text>
+      <Text style={[styles.td, styles.pot]}>{item.potential ?? '—'}</Text>
+
+      {/* ✖️ delete */}
+      <Pressable
+        onPress={() => handleDelete(item.id, item.name)}
+        style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1, borderColor: LINE, marginLeft: 6 }}
+      >
+        <Text style={{ color: MUTED, fontWeight: '800' }}>✖️</Text>
+      </Pressable>
+    </View>
+  );
 
   const openPlans = () => Linking.openURL('https://example.com/plans');       // TODO replace
   const openHelp  = () => rootNav.navigate('HelpCenter');
@@ -158,30 +221,6 @@ export default function MyProfileScreen() {
     }
   };
   
-  const renderHeaderCell = (label: string, key: SortKey) => {
-    const active = sortKey === key;
-    return (
-      <Pressable
-        onPress={() => cycleSort(key)}
-        style={[styles.th, active && { backgroundColor: CARD }]}
-      >
-        <Text style={styles.thText}>
-          {label} {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
-        </Text>
-      </Pressable>
-    );
-  };
-
-  const renderRow = ({ item }: { item: Player }) => (
-    <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
-      <Text numberOfLines={1} style={[styles.td, styles.name]}>{item.name}</Text>
-      <Text numberOfLines={1} style={[styles.td, styles.nat]}>{item.nationality}</Text>
-      <Text style={[styles.td, styles.age]}>{item.age}</Text>
-      <Text numberOfLines={1} style={[styles.td, styles.roles]}>{item.roles.join(', ')}</Text>
-      <Text style={[styles.td, styles.pot]}>{item.potential}</Text>
-    </View>
-  );
-
   return (
   <SafeAreaView
     edges={['top']}
@@ -235,9 +274,17 @@ export default function MyProfileScreen() {
         </Pressable>
       </View>
 
-      {/* Favorites */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Favorite players</Text>
+      {/* Favorite players */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Favorite players</Text>
+
+          {/* Filters */}
+          <View style={styles.filters}>
+            {/* name, nationality, age, potential inputs — same as before */}
+            {/* ... (reuse your existing filter inputs unchanged) ... */}
+          </View>
+
+          
 
         {/* Filters */}
         <View style={styles.filters}>
@@ -309,58 +356,57 @@ export default function MyProfileScreen() {
           </View>
         </View>
 
-        {/* Role chips */}
-        <View style={styles.rolesWrap}>
-          {ALL_ROLES.map((r) => {
-            const active = selectedRoles.includes(r);
-            return (
-              <Pressable
-                key={r}
-                onPress={() => toggleRole(r)}
-                style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
-              >
-                <Text style={active ? styles.chipTextActive : styles.chipTextInactive}>{r}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* Role chips — EXACT set requested */}
+          <View style={styles.rolesWrap}>
+            {ALL_ROLE_SHORTS.map((r) => {
+              const active = selectedRoles.includes(r);
+              return (
+                <Pressable
+                  key={r}
+                  onPress={() => toggleRole(r)}
+                  style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
+                >
+                  <Text style={active ? styles.chipTextActive : styles.chipTextInactive}>{r}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
         {/* Clear filters */}
-        <View style={{ alignItems: 'flex-end' }}>
-          <Pressable
-            onPress={clearFilters}
-            style={({ pressed }) => [
-              { paddingVertical: 8, paddingHorizontal: 12, opacity: pressed ? 0.8 : 1 },
-            ]}
-          >
-            <Text style={{ color: MUTED }}>Clear filters</Text>
-          </Pressable>
-        </View>
-
-        {/* Table (max 3 visible, scroll if >3) */}
-        <View style={styles.table}>
-          <View style={styles.headRow}>
-            {renderHeaderCell('Name', 'name')}
-            {renderHeaderCell('Nationality', 'nationality')}
-            {renderHeaderCell('Age', 'age')}
-            {renderHeaderCell('Roles', 'roles')}
-            {renderHeaderCell('Potential', 'potential')}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Pressable onPress={clearFilters} style={({ pressed }) => [{ paddingVertical: 8, paddingHorizontal: 12, opacity: pressed ? 0.8 : 1 }]}>
+              <Text style={{ color: MUTED }}>Clear filters</Text>
+            </Pressable>
           </View>
-          <ScrollView
-              style={{ maxHeight: ROW_HEIGHT * 3 + 2 }}
-              nestedScrollEnabled
-              bounces={false}
-              showsVerticalScrollIndicator
-            >
-              {filtered.map((item, idx) => (
-                <React.Fragment key={item.id}>
-                  {idx > 0 && <View style={styles.sep} />}
-                  {renderRow({ item })}
-                </React.Fragment>
-              ))}
-            </ScrollView>
+
+       {/* Table */}
+          <View style={styles.table}>
+            <View style={styles.headRow}>
+              {renderHeaderCell('Name', 'name')}
+              {renderHeaderCell('Nationality', 'nationality')}
+              {renderHeaderCell('Age', 'age')}
+              {renderHeaderCell('Roles', 'roles')}
+              {renderHeaderCell('Potential', 'potential')}
+              {/* extra blank head for delete column */}
+              <View style={[styles.th, { flex: 0.5 }]} />
+            </View>
+
+            {loading ? (
+              <View style={{ paddingVertical: 16 }}>
+                <Text style={{ color: MUTED }}>Loading favorites…</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: ROW_HEIGHT * 3 + 2 }} nestedScrollEnabled bounces={false} showsVerticalScrollIndicator>
+                {filtered.map((item, idx) => (
+                  <React.Fragment key={item.id}>
+                    {idx > 0 && <View style={styles.sep} />}
+                    {renderRow(item)}
+                  </React.Fragment>
+                ))}
+              </ScrollView>
+            )}
+          </View>
         </View>
-      </View>
     </ScrollView>
   </SafeAreaView>
 );

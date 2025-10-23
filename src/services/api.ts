@@ -15,31 +15,6 @@ export async function healthcheck(): Promise<boolean> {
   }
 }
 
-/**
- * Backend contract (updated):
- * POST /chat
- * Body:
- * {
- *   message: string,              // <- primary field (new)
- *   question?: string | null,     // <- kept for backward-compat during rollout
- *   strategy?: string | null,
- *   session_id: string
- * }
- *
- * Response:
- * {
- *   response: string,             // narrative text only (no server-rendered visuals)
- *   data?: {
- *     players: Array<{
- *       name: string;
- *       meta?: { nationality?: string; age?: number; roles?: string[] };
- *       stats: Array<{ metric: string; value: number }>;
- *     }>;
- *   },
- *   response_parts?: Array<{ type: 'text' | 'html' | 'image'; html?: string; src?: string; }>
- * }
- */
-
 // Build the "message" from the last user message.
 function extractMessage(messages: Array<Pick<ChatMessage, 'role' | 'content'>>): string {
   const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -132,23 +107,73 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (text ? JSON.parse(text) : {}) as T;
 }
 
+export const ROLE_SHORT_TO_LONG: Record<string, string> = {
+  GK: 'Goal Keeper',
+  LWB: 'Left Wing Back',
+  LB: 'Left Back',
+  LCB: 'Left Center Back',
+  CB: 'Center Back',
+  RCB: 'Right Center Back',
+  RB: 'Right Back',
+  RWB: 'Right Wing Back',
+  LCM: 'Left Center Midfield',
+  CM: 'Center Midfield',
+  CDM: 'Center Defensive Midfield',
+  RCM: 'Right Center Midfield',
+  CF: 'Center Forward',
+  RCF: 'Right Center Forward',
+  LCF: 'Left Center Forward',
+  LW: 'Left Wing',
+  RW: 'Right Wing',
+};
+
+export const ROLE_LONG_TO_SHORT: Record<string, string> = Object.fromEntries(
+  Object.entries(ROLE_SHORT_TO_LONG).map(([s, l]) => [l, s]),
+);
+
 export type FavoritePlayer = {
   id: string;
   name: string;
   nationality?: string;
   age?: number;
-  roles?: string[];
   potential?: number;
+  roles: string[];      // LONG strings from backend (e.g., "Center Back")
 };
+
+export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
+  return request<FavoritePlayer[]>('/me/favorites');
+}
+
+type AddFavoriteIn = {
+  name: string;
+  nationality?: string;
+  age?: number;
+  potential?: number;
+  // can be SHORT or LONG – we’ll normalize to LONG before sending
+  roles: string[];
+};
+
+export async function addFavoritePlayer(input: AddFavoriteIn): Promise<FavoritePlayer> {
+  const longRoles = (input.roles || []).map(r => ROLE_SHORT_TO_LONG[r] ?? r);
+  return request<FavoritePlayer>('/me/favorites', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, roles: longRoles }),
+  });
+}
+
+export async function deleteFavoritePlayer(id: string): Promise<void> {
+  return request<void>(`/me/favorites/${id}`, { method: 'DELETE' });
+}
 
 export type Profile = {
   id: number;
   email: string;
-  dob?: string;
-  country?: string;
-  plan: 'Free' | 'Pro' | 'Elite' | string;
-  favorite_players: FavoritePlayer[];
+  dob?: string | null;
+  country?: string | null;
+  plan: string;
+  favorite_players: any[];
 };
+
 
 export async function health(): Promise<boolean> {
   try {
