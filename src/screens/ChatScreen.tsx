@@ -1,3 +1,4 @@
+// src/screens/ChatScreen.tsx
 import * as React from 'react';
 import {
   View,
@@ -16,12 +17,12 @@ import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
 import PlayerCard from '@/components/PlayerCard';
 import SpiderChart from '@/components/SpiderChart';
-import { addFavoritePlayer } from '@/services/api';
+import { addFavoritePlayer, healthcheck, sendChat, resetSession } from '@/services/api';
 import { GK_METRICS, IN_POS_METRICS, OUT_POS_METRICS, toSpiderPoints } from '@/components/spiderRanges';
 import { ACCENT, BG } from '@/theme';
-import { healthcheck, sendChat, resetSession } from '@/services/api';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
+import { useTranslation } from 'react-i18next';
 
 const { useState, useEffect, useRef } = React;
 
@@ -29,10 +30,12 @@ const { useState, useEffect, useRef } = React;
 type ChatMessageExt = ChatMessage & {
   kind?: 'text' | 'visuals';
   players?: PlayerData[];
-  pending?: boolean; 
+  pending?: boolean;
 };
 
 export default function ChatScreen() {
+  const { t } = useTranslation();
+
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
@@ -51,21 +54,21 @@ export default function ChatScreen() {
       setStrategy(strat);
 
       const ok = await healthcheck();
-      if (!ok) Alert.alert('Backend Unreachable', 'Check API_BASE_URL in src/config.ts');
+      if (!ok) Alert.alert(t('backendUnreachable', 'Backend Unreachable'), t('checkApiBaseUrl', 'Check your connection'));
 
       // If no local history, clear server memory so "seen players" is empty
       if ((hist || []).length === 0) {
         try { await resetSession(sid); } catch {}
       }
     })();
-  }, []);
+  }, [t]);
 
   // persist chat locally
   useEffect(() => { saveHistory(messages as ChatMessage[]); }, [messages]);
 
   const pendingIdRef = React.useRef<string | null>(null);
 
-  function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'>& { id?: string }) {
+  function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'> & { id?: string }) {
     const id = msg.id || Math.random().toString(36).slice(2);
     const withMeta: ChatMessageExt = {
       id: Math.random().toString(36).slice(2),
@@ -73,7 +76,6 @@ export default function ChatScreen() {
       ...msg,
     };
     setMessages(m => [...m, withMeta]);
-    // no auto-scroll → user keeps control
     return id;
   }
 
@@ -91,7 +93,7 @@ export default function ChatScreen() {
     // 2) Add a temporary assistant bubble (pending)
     const pendingId = append({
       role: 'assistant',
-      content: '',         // content ignored while pending
+      content: '',
       kind: 'text',
       pending: true,
       id: 'pending-' + Math.random().toString(36).slice(2),
@@ -133,7 +135,7 @@ export default function ChatScreen() {
         setMessages(m => m.filter(x => x.id !== pendingIdRef.current));
         pendingIdRef.current = null;
       }
-      Alert.alert('Chat failed', String(err?.message || err));
+      Alert.alert(t('chatFailedTitle', 'Chat failed'), String(err?.message || err));
     } finally {
       setSending(false);
     }
@@ -161,28 +163,28 @@ export default function ChatScreen() {
             return (
               <View key={p.name} style={{ gap: 10 }}>
                 <PlayerCard
-                player={p}
-                onAddFavorite={async (player) => {
-                  try {
-                    await addFavoritePlayer({
-                      name: player.name,
-                      nationality: player.meta?.nationality,
-                      age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-                      potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
-                      roles: player.meta?.roles ?? [], // short codes; API converts to LONG
-                    });
-                    return true;   // ✅ tell PlayerCard to keep the button disabled (✓)
-                  } catch (e: any) {
-                    Alert.alert('Add failed', String(e?.message || e));
-                    return false;  // ✅ let PlayerCard re-enable the button
-                  }
-                }}
-              />
+                  player={p}
+                  onAddFavorite={async (player) => {
+                    try {
+                      await addFavoritePlayer({
+                        name: player.name,
+                        nationality: player.meta?.nationality,
+                        age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
+                        potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
+                        roles: player.meta?.roles ?? [], // short codes; API converts to LONG
+                      });
+                      return true;   // keep the button disabled (✓)
+                    } catch (e: any) {
+                      Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
+                      return false;  // let PlayerCard re-enable the button
+                    }
+                  }}
+                />
                 {hasAny && (
                   <View style={{ gap: 10 }}>
-                    {gk.length > 0 && <SpiderChart title="Goalkeeper" points={gk} />}
-                    {inpos.length > 0 && <SpiderChart title="In Possession" points={inpos} />}
-                    {outpos.length > 0 && <SpiderChart title="Out of Possession" points={outpos} />}
+                    {gk.length > 0 && <SpiderChart title={t('chartGK', 'Goalkeeper')} points={gk} />}
+                    {inpos.length > 0 && <SpiderChart title={t('chartInPos', 'In Possession')} points={inpos} />}
+                    {outpos.length > 0 && <SpiderChart title={t('chartOutPos', 'Out of Possession')} points={outpos} />}
                   </View>
                 )}
               </View>
@@ -198,7 +200,7 @@ export default function ChatScreen() {
         role={item.role === 'user' ? 'user' : 'assistant'}
         content={item.content}
         createdAt={item.createdAt}
-        pending={item.pending}   // ✅ pass through
+        pending={item.pending}
       />
     );
   }
@@ -213,8 +215,8 @@ export default function ChatScreen() {
 
       {/* Toolbar */}
       <View style={styles.toolbar}>
-        <TouchableOpacity onPress={startNewChat} style={styles.newChatBtn}>
-          <Text style={styles.newChatText}>New Chat</Text>
+        <TouchableOpacity onPress={startNewChat} style={styles.newChatBtn} accessibilityRole="button" accessibilityLabel={t('newChat', 'New Chat')}>
+          <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -251,18 +253,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   newChatBtn: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderRadius: 20,          // pill shape
-  borderWidth: 1,
-  borderColor: ACCENT,       // outline instead of full solid
-  backgroundColor: 'transparent',
-},
-newChatText: {
-  color: ACCENT,
-  fontWeight: '500',
-  fontSize: 14,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'transparent',
+  },
+  newChatText: {
+    color: ACCENT,
+    fontWeight: '500',
+    fontSize: 14,
+  },
 });

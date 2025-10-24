@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3, BookmarkPlus} from 'lucide-react-native';
+import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3, BookmarkPlus } from 'lucide-react-native';
 import { ACCENT, PANEL, MUTED, TEXT, LINE } from '@/theme';
+import { useTranslation } from 'react-i18next';
 
 function Row({
   Icon,
@@ -19,19 +20,21 @@ function Row({
 }
 
 export default function WelcomeCard() {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.card}>
-      <Text style={styles.titleWelcome}>Kick Off!</Text>
-      <Text style={styles.subtitle}>Your intelligent football scouting companion</Text>
+      <Text style={styles.titleWelcome}>{t('kickOff', 'Kick Off!')}</Text>
+      <Text style={styles.subtitle}>{t('welcomeSubtitle', 'Your intelligent football scouting companion')}</Text>
 
       <View style={styles.divider} />
-      <Row Icon={Users} text="Find and compare players based on your needs." />
-      <Row Icon={SlidersHorizontal} text="Filter your search by age, nationality, role, stats, or tactical fit." />
-      <Row Icon={SquareChevronUp} text="Discover the quantified potential of players." />
-      <Row Icon={Database} text="Get instant, data-driven answers." />
-      <Row Icon={BarChart3} text="Visualize key stats with charts and summaries." />
-      <Row Icon={Compass} text="Adapt recommendations to your team’s identity and plans." />
-      <Row Icon={BookmarkPlus} text="Curate your dream squad in your portfolio." />
+      <Row Icon={Users} text={t('wcFindCompare', 'Find and compare players based on your needs.')} />
+      <Row Icon={SlidersHorizontal} text={t('wcFilter', 'Filter your search by age, nationality, role, stats, or tactical fit.')} />
+      <Row Icon={SquareChevronUp} text={t('wcPotential', 'Discover the quantified potential of players.')} />
+      <Row Icon={Database} text={t('wcAnswers', 'Get instant, data-driven answers.')} />
+      <Row Icon={BarChart3} text={t('wcVisualize', 'Visualize key stats with charts and summaries.')} />
+      <Row Icon={Compass} text={t('wcAdapt', 'Adapt recommendations to your team’s identity and plans.')} />
+      <Row Icon={BookmarkPlus} text={t('wcCurate', 'Curate your dream squad in your portfolio.')} />
     </View>
   );
 }
@@ -74,13 +77,13 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 20,
     fontWeight: '800',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   subtitle: {
     color: MUTED,
     fontSize: 14,
     marginTop: 6,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   divider: {
     height: 1,
