@@ -1,11 +1,14 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { BrainCog } from 'lucide-react-native'; 
+import { BrainCog } from 'lucide-react-native';
 import { ACCENT, BG, MUTED, TEXT, LINE } from '@/theme';
+import { useTranslation } from 'react-i18next';
 
 export default function Header() {
+  const { t } = useTranslation();
+
   return (
-    <View style={styles.wrap}>
+    <View style={styles.wrap} accessible accessibilityRole="header" accessibilityLabel={t('appName', 'ScoutIQ')}>
       {/* Logo row */}
       <View style={styles.logoRow}>
         <BrainCog size={22} color={ACCENT} />
@@ -18,9 +21,9 @@ export default function Header() {
       {/* Divider line */}
       <View style={styles.divider} />
 
-      {/* Subtitle */}
+      {/* Subtitle (localized) */}
       <Text style={styles.subtitle}>
-        AI-Powered Scouting & Recruitment Intelligence
+        {t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
       </Text>
     </View>
   );
@@ -57,7 +60,7 @@ const styles = StyleSheet.create({
     backgroundColor: LINE,
     marginVertical: 10,
   },
-  dim:   { color: TEXT, opacity: 0.9 }, 
+  dim:   { color: TEXT, opacity: 0.9 },
   main:  { color: TEXT, opacity: 0.9 },
   accent:{ color: ACCENT },
 });

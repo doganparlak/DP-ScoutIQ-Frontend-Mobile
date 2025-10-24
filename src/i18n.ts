@@ -54,6 +54,15 @@ export const resources = {
       passwordsNoMatch: 'Passwords do not match.',
       savePassword: 'Save password',
       setNewPwFailed: 'Could not set your new password. Please try again.',
+      tagline: 'AI-Powered Scouting & Recruitment Intelligence',
+      startChatting: 'Start Chatting',
+      updateStrategyHint: 'You can update your strategy anytime.',
+      strategyTitle: 'Team Strategy / Scouting Philosophy',
+      strategyHint: 'Add principles, roster notes, playstyle, constraints, or scouting goals. The assistant will use it as context.',
+      strategyInitialPlaceholder: 'We play in a 4-3-3 formation with...',
+      strategyEmptyPlaceholder: 'No strategy is set.',
+      resetStrategy: 'Reset Strategy',
+      setStrategy: 'Set Strategy',
     }
   },
   tr: {
@@ -107,6 +116,15 @@ export const resources = {
       passwordsNoMatch: 'Şifreler eşleşmiyor.',
       savePassword: 'Şifreyi kaydet',
       setNewPwFailed: 'Yeni şifren ayarlanamadı. Lütfen tekrar dene.',
+      tagline: 'Yapay zekâ destekli oyuncu keşfi ve transfer analitiği',
+      startChatting: 'Sohbete Başla',
+      updateStrategyHint: 'Stratejini istediğin zaman güncelleyebilirsin.',
+      strategyTitle: 'Takım Stratejisi / Oyuncu Keşfi Felsefesi',
+      strategyHint: 'İlkelerini, kadro mühendisliği notlarını, oyun stilini, formasyonunu, sınırlarını veya oyuncu keşfi mentaliteni ekle. ScoutIQ, seninle konuşurken bunları göz önünde bulundursun.',
+      strategyInitialPlaceholder: '4-3-3 formasyonunda oynuyoruz...',
+      strategyEmptyPlaceholder: 'Henüz bir strateji belirlenmedi.',
+      resetStrategy: 'Stratejiyi Sıfırla',
+      setStrategy: 'Stratejiyi Kaydet',
     }
   },
 } as const;

@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
 import { Save, RotateCcw } from 'lucide-react-native';
 import { ACCENT, BG, MUTED, PANEL, LINE, shadows } from '@/theme';
 import { loadStrategy, saveStrategy } from '@/storage';
-
-const INITIAL_PLACEHOLDER =
-  'We play in a 4-3-3 formation with...';
-const EMPTY_PLACEHOLDER = 'No strategy is set.';
+import { useTranslation } from 'react-i18next';
 
 const MIN_HEIGHT = 240;
 const MAX_HEIGHT = 560;
@@ -14,12 +11,13 @@ const MAX_HEIGHT = 560;
 interface Props { onSaved?: (value: string) => void }
 
 export default function StrategyCard({ onSaved }: Props) {
+  const { t } = useTranslation();
+
   const [text, setText] = useState('');                 // empty => show placeholder
-  const [placeholder, setPlaceholder] = useState(INITIAL_PLACEHOLDER);
   const [inputHeight, setInputHeight] = useState(MIN_HEIGHT);
   const [showSetButton, setShowSetButton] = useState(true); // when false => locked (read-only)
+  const [phMode, setPhMode] = useState<'initial' | 'empty'>('initial');
 
-  // locked == strategy area not editable
   const locked = !showSetButton;
 
   useEffect(() => {
@@ -27,53 +25,58 @@ export default function StrategyCard({ onSaved }: Props) {
       const existing = (await loadStrategy()) ?? '';
       if (existing.trim().length) {
         setText(existing);
-        setPlaceholder(INITIAL_PLACEHOLDER);
         setShowSetButton(false); // already set previously -> keep locked
+        setPhMode('initial');
       } else {
         setText('');
-        setPlaceholder(INITIAL_PLACEHOLDER);
-        setShowSetButton(true); // enable editing
+        setShowSetButton(true);  // enable editing
+        setPhMode('initial');    // default initial placeholder
       }
     })();
   }, []);
 
+  const placeholder =
+    phMode === 'initial'
+      ? t('strategyInitialPlaceholder', 'We play in a 4-3-3 formation with...')
+      : t('strategyEmptyPlaceholder', 'No strategy is set.');
+
   async function handleSet() {
     const value = text.trim();
     if (!value) {
-      // user left it empty (placeholder visible) -> save empty & show "No strategy is set."
       await saveStrategy('');
       setText('');
-      setPlaceholder(EMPTY_PLACEHOLDER);
+      setPhMode('empty');          // show “empty” placeholder after saving blank
       onSaved?.('');
     } else {
       await saveStrategy(value);
       onSaved?.(value);
-      setPlaceholder(INITIAL_PLACEHOLDER);
+      setPhMode('initial');
     }
-    setShowSetButton(false); // lock editing, show only Reset
+    setShowSetButton(false);       // lock editing, show only Reset
   }
 
   async function handleReset() {
-    // unlock editing and restore initial placeholder; clear saved value
     setText('');
-    setPlaceholder(INITIAL_PLACEHOLDER);
+    setPhMode('initial');          // back to initial placeholder
     await saveStrategy('');
     onSaved?.('');
-    setShowSetButton(true); // unlock + restore two-button layout
+    setShowSetButton(true);        // unlock + restore two-button layout
   }
 
   return (
     <View style={[styles.card, shadows.card]}>
-      <Text style={styles.title}>Team Strategy / Scouting Philosophy</Text>
+      <Text style={styles.title}>
+        {t('strategyTitle', 'Team Strategy / Scouting Philosophy')}
+      </Text>
       <Text style={styles.hint}>
-        Add principles, roster notes, playstyle, constraints, or scouting goals. The assistant will use it as context.
+        {t('strategyHint', 'Add principles, roster notes, playstyle, constraints, or scouting goals. The assistant will use it as context.')}
       </Text>
 
       <TextInput
         style={[styles.input, locked && styles.inputDisabled, { height: inputHeight }]}
         value={text}
         onChangeText={setText}
-        editable={!locked}                // 🔒 lock after Set; unlock after Reset
+        editable={!locked}
         selectTextOnFocus={!locked}
         placeholder={placeholder}
         placeholderTextColor={MUTED}
@@ -91,17 +94,21 @@ export default function StrategyCard({ onSaved }: Props) {
           <Pressable
             onPress={handleReset}
             style={({ pressed }) => [styles.btnHalf, styles.btnOutline, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('resetStrategy', 'Reset Strategy')}
           >
             <RotateCcw size={18} color="white" />
-            <Text style={styles.btnText}>Reset Strategy</Text>
+            <Text style={styles.btnText}>{t('resetStrategy', 'Reset Strategy')}</Text>
           </Pressable>
 
           <Pressable
             onPress={handleSet}
             style={({ pressed }) => [styles.btnHalf, styles.btnPrimary, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('setStrategy', 'Set Strategy')}
           >
             <Save size={18} color="white" />
-            <Text style={styles.btnText}>Set Strategy</Text>
+            <Text style={styles.btnText}>{t('setStrategy', 'Set Strategy')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -110,9 +117,11 @@ export default function StrategyCard({ onSaved }: Props) {
           <Pressable
             onPress={handleReset}
             style={({ pressed }) => [styles.singleBtn, styles.btnOutline, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('resetStrategy', 'Reset Strategy')}
           >
             <RotateCcw size={18} color="white" />
-            <Text style={styles.btnText}>Reset Strategy</Text>
+            <Text style={styles.btnText}>{t('resetStrategy', 'Reset Strategy')}</Text>
           </Pressable>
         </View>
       )}
@@ -143,11 +152,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
-  inputDisabled: {
-    opacity: 0.7,         // subtle “read-only” look
-  },
+  inputDisabled: { opacity: 0.7 },
 
-  // Two equal-width buttons
   actionsRow: {
     marginTop: 14,
     flexDirection: 'row',
@@ -163,7 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Single centered Reset button (locked)
   singleWrap: { marginTop: 14, alignItems: 'center' },
   singleBtn: {
     width: '100%',

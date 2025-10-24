@@ -112,7 +112,7 @@ export default function SignUpScreen() {
 
         <View style={styles.card}>
           <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>
-          <Text style={styles.subtitle}>{t('signupSubtitle', 'Join the scouting revolution.')}</Text>
+          <Text style={styles.subtitle}>{t('signupSubtitle', 'Join the data-driven scouting revolution.')}</Text>
 
           {/* Email */}
           <View style={styles.fieldBlock}>

@@ -7,11 +7,14 @@ import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
 import { BG, ACCENT, ACCENT_DARK, MUTED } from '@/theme';
 import type { MainTabsParamList } from '@/types';
+import { useTranslation } from 'react-i18next';
 
 type Nav = BottomTabNavigationProp<MainTabsParamList, 'Strategy'>;
 
-export default function StrategyScreen(){
+export default function StrategyScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
+
   const handleStart = () => navigation.navigate('Chat');
 
   return (
@@ -22,6 +25,8 @@ export default function StrategyScreen(){
         <View style={{ paddingHorizontal: 16 }}>
           <Pressable
             onPress={handleStart}
+            accessibilityRole="button"
+            accessibilityLabel={t('startChatting', 'Start Chatting')}
             style={({ pressed }) => ({
               backgroundColor: pressed ? ACCENT_DARK : ACCENT,
               borderRadius: 12,
@@ -29,11 +34,12 @@ export default function StrategyScreen(){
             })}
           >
             <Text style={{ color: 'white', fontWeight: '700', textAlign: 'center' }}>
-              Start Chatting
+              {t('startChatting', 'Start Chatting')}
             </Text>
           </Pressable>
+
           <Text style={{ color: MUTED, marginTop: 8, textAlign: 'center' }}>
-            You can update your strategy anytime.
+            {t('updateStrategyHint', 'You can update your strategy anytime.')}
           </Text>
         </View>
       </ScrollView>
