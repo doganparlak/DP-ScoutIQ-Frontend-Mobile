@@ -63,6 +63,9 @@ export const resources = {
       strategyEmptyPlaceholder: 'No strategy is set.',
       resetStrategy: 'Reset Strategy',
       setStrategy: 'Set Strategy',
+      chatPlaceholder: 'Type your message…',
+      send: 'Send',
+      chatInputAL: 'Message input',
     }
   },
   tr: {
@@ -125,6 +128,9 @@ export const resources = {
       strategyEmptyPlaceholder: 'Henüz bir strateji belirlenmedi.',
       resetStrategy: 'Stratejiyi Sıfırla',
       setStrategy: 'Stratejiyi Kaydet',
+      chatPlaceholder: 'Mesajını yaz…',
+      send: 'Gönder',
+      chatInputAL: 'Mesaj giriş alanı',
     }
   },
 } as const;
