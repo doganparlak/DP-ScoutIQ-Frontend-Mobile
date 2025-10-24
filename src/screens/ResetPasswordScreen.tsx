@@ -1,4 +1,3 @@
-// src/screens/ResetPasswordScreen.tsx
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { requestPasswordReset } from '@/services/api';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ResetPassword'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +23,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +55,7 @@ export default function ResetPasswordScreen() {
       setSent(true);
       navigation.replace('Verification', { email, context: 'reset' });
     } catch {
-      setError('We couldn’t start the reset process. Please try again.');
+      setError(t('resetFailed', 'We couldn’t start the reset process. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -74,10 +75,10 @@ export default function ResetPasswordScreen() {
           hitSlop={14}
           style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel="Back to Login"
+          accessibilityLabel={t('backToLogin', 'Back to Login')}
         >
           <Text style={styles.backIcon}>←</Text>
-          <Text style={styles.backText}>Login</Text>
+          <Text style={styles.backText}>{t('login', 'Log in')}</Text>
         </Pressable>
       </View>
 
@@ -85,20 +86,23 @@ export default function ResetPasswordScreen() {
         style={styles.wrap}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
-        <Text style={styles.appName}>ScoutIQ</Text>
+        <Text style={styles.appName}>{t('appName', 'ScoutIQ')}</Text>
 
         <View style={styles.card}>
-          <Text style={styles.title}>Reset your password</Text>
+          <Text style={styles.title}>{t('resetTitle', 'Reset your password')}</Text>
           <Text style={styles.subtitle}>
-            Enter your email address. We’ll send a verification code to your inbox to reset your password.
+            {t(
+              'resetSubtitle',
+              "Enter your email address. We’ll send a verification code to your inbox to reset your password."
+            )}
           </Text>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>E-mail</Text>
+            <Text style={styles.label}>{t('email', 'E-mail')}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="you@club.com"
+              placeholder={t('placeholderEmail', 'you@club.com')}
               placeholderTextColor={MUTED}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -125,16 +129,19 @@ export default function ResetPasswordScreen() {
               {submitting ? (
                 <ActivityIndicator />
               ) : (
-                <Text style={styles.primaryBtnText}>Send reset code</Text>
+                <Text style={styles.primaryBtnText}>{t('sendResetCode', 'Send reset code')}</Text>
               )}
             </Pressable>
           ) : (
             <>
               <View style={styles.successBox}>
-                <Text style={styles.successTitle}>Code sent</Text>
+                <Text style={styles.successTitle}>{t('codeSent', 'Code sent')}</Text>
                 <Text style={styles.successText}>
-                  If an account exists for <Text style={{ fontWeight: '700' }}>{email}</Text>, a verification code has been sent.
-                  Please check your inbox and spam folder.
+                  {t(
+                    'codeSentDesc',
+                    'If an account exists for {{email}}, a verification code has been sent. Please check your inbox and spam folder.',
+                    { email }
+                  )}
                 </Text>
               </View>
 
@@ -145,7 +152,7 @@ export default function ResetPasswordScreen() {
                   { opacity: pressed ? 0.85 : 1 },
                 ]}
               >
-                <Text style={styles.secondaryBtnText}>Back to Login</Text>
+                <Text style={styles.secondaryBtnText}>{t('backToLogin', 'Back to Login')}</Text>
               </Pressable>
             </>
           )}
