@@ -1,4 +1,4 @@
-// spiderchart.tsx
+// src/components/SpiderChart.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ShieldCheck, TrendingUp, BrickWall } from 'lucide-react-native';
@@ -10,9 +10,10 @@ import {
   VictoryLabel,
 } from 'victory-native';
 import { ACCENT, TEXT, CARD, MUTED } from '@/theme';
+import { useTranslation } from 'react-i18next';
 
 export type SpiderPoint = {
-  label: string;
+  label: string;        // canonical label from spiderRanges
   value: number | string;
   min: number;
   max: number;
@@ -30,9 +31,8 @@ function splitAfterFirstWord(label: string) {
   return { first: parts[0], rest: parts.slice(1).join(' ') };
 }
 
-type Cleaned = { x: number; y: number; show: string; lineCount: number; label: string };
+type Cleaned = { x: number; y: number; value: number; label: string };
 
-// NEW: evenly spread items around a circle by stepping with a coprime stride
 function spreadByStride<T>(arr: T[]): T[] {
   const n = arr.length;
   if (n <= 1) return arr.slice();
@@ -51,7 +51,6 @@ function spreadByStride<T>(arr: T[]): T[] {
     used[i] = true;
     let next = (i + step) % n;
     if (used[next]) {
-      // fall back to next unvisited (should rarely happen except small n)
       next = used.indexOf(false);
       if (next === -1) break;
     }
@@ -60,6 +59,8 @@ function spreadByStride<T>(arr: T[]): T[] {
   return out;
 }
 
+// 1) Normalize numerically; keep original value and canonical label.
+//    (We will translate labels later for display.)
 function normalize(points: SpiderPoint[]): Cleaned[] {
   const seen = new Set<string>();
   const prelim = (points || [])
@@ -77,23 +78,22 @@ function normalize(points: SpiderPoint[]): Cleaned[] {
       if (!Number.isFinite(vNum)) return null;
 
       const y = Math.max(0, Math.min(1, (vNum - min) / (max - min)));
-
-      const { first, rest } = splitAfterFirstWord(p.label);
-      const lines = rest ? [first, rest, String(vNum)] : [first, String(vNum)];
-      return { y, show: lines.join('\n'), lineCount: lines.length, label: p.label };
+      return { y, value: vNum, label: p.label };
     })
-    .filter(Boolean) as Array<{ y: number; show: string; lineCount: number; label: string }>;
+    .filter(Boolean) as Array<{ y: number; value: number; label: string }>;
 
   if (prelim.length < 3) return [];
-  // assign provisional x (we’ll reassign after optional spreading)
   return prelim.map((p, i) => ({ x: i + 1, ...p }));
 }
 
 const AVATAR = 34;
 
 export default function SpiderChart({ title, points, Icon }: Props) {
-  const isInPossession = (title || '').toLowerCase().includes('in possession') ||
-                         (title || '').toLowerCase().includes('in-possession');
+  const { t } = useTranslation();
+
+  const isInPossession =
+    (title || '').toLowerCase().includes('in possession') ||
+    (title || '').toLowerCase().includes('in-possession');
 
   // 1) clean
   let cleaned = normalize(points);
@@ -104,28 +104,32 @@ export default function SpiderChart({ title, points, Icon }: Props) {
     cleaned = spread.map((p, i) => ({ ...p, x: i + 1 }));
   }
 
-  if (cleaned.length <= 4) return null; // hide entirely if ≤4 stats
+  if (cleaned.length <= 4) return null;
 
-  const indices = cleaned.map((p) => p.x);
-  const threeLine = cleaned.filter((p) => p.lineCount === 3).sort((a, b) => a.x - b.x);
-  const twoLine = cleaned.filter((p) => p.lineCount === 2).sort((a, b) => a.x - b.x);
-  const data = cleaned.map((p) => ({ x: p.x, y: p.y }));
+  // Build display lines with translations
+  const withDisplay = cleaned.map((p) => {
+    const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
+    const parts = (labelTr ?? '').trim().split(/\s+/);
+    const first = parts[0] || '';
+    const rest = parts.slice(1).join(' ');
+    const lines = rest ? [first, rest, String(p.value)] : [first, String(p.value)];
+    return { ...p, show: lines.join('\n'), lineCount: lines.length };
+  });
+
+  const threeLine = withDisplay.filter((p) => p.lineCount === 3).sort((a, b) => a.x - b.x);
+  const twoLine = withDisplay.filter((p) => p.lineCount === 2).sort((a, b) => a.x - b.x);
   const ticks = [0.2, 0.4, 0.6, 0.8, 1];
 
   // Auto-pick icon if not provided
   let AutoIcon = Icon;
-  const t = (title || '').toLowerCase();
+  const tTitle = (title || '').toLowerCase();
   if (!AutoIcon) {
-    if (t.includes('goalkeeper') || t.includes('gk')) AutoIcon = ShieldCheck;
-    else if (t.includes('in possession') || t.includes('in-possession')) AutoIcon = TrendingUp;
-    else if (t.includes('out of possession') || t.includes('out-of-possession')) AutoIcon = BrickWall;
+    if (tTitle.includes('goalkeeper') || tTitle.includes('gk')) AutoIcon = ShieldCheck;
+    else if (tTitle.includes('in possession') || tTitle.includes('in-possession')) AutoIcon = TrendingUp;
+    else if (tTitle.includes('out of possession') || tTitle.includes('out-of-possession')) AutoIcon = BrickWall;
   }
 
-  const n = cleaned.length;
-  // Build string spoke ids so categories typing is happy and everything shares one angular scale
-  const spokes = cleaned.map((_, i) => String(i + 1));
-
-  // Helpers to map numeric x -> string spoke id
+  const spokes = withDisplay.map((_, i) => String(i + 1));
   const toSpoke = (x: number) => String(x);
 
   return (
@@ -149,7 +153,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
       >
         <VictoryPolarAxis
           dependentAxis
-          tickValues={[0.2, 0.4, 0.6, 0.8, 1]}
+          tickValues={ticks}
           style={{
             axis: { stroke: 'transparent' },
             grid: { stroke: MUTED, opacity: 0.3 },
@@ -159,7 +163,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
         {/* base spokes */}
         <VictoryPolarAxis
-          tickValues={spokes}              // ✅ strings
+          tickValues={spokes}
           tickFormat={() => ''}
           style={{
             axis: { stroke: MUTED, opacity: 0.25 },
@@ -169,7 +173,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
         {/* 3-line labels */}
         <VictoryPolarAxis
-          tickValues={threeLine.map((p) => toSpoke(p.x))}  // ✅ strings
+          tickValues={threeLine.map((p) => toSpoke(p.x))}
           tickFormat={(_, i) => threeLine[i]?.show ?? ''}
           tickLabelComponent={
             <VictoryLabel
@@ -189,7 +193,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
         {/* 2-line labels */}
         <VictoryPolarAxis
-          tickValues={twoLine.map((p) => toSpoke(p.x))}    // ✅ strings
+          tickValues={twoLine.map((p) => toSpoke(p.x))}
           tickFormat={(_, i) => twoLine[i]?.show ?? ''}
           tickLabelComponent={
             <VictoryLabel
@@ -208,7 +212,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
         <VictoryGroup>
           <VictoryArea
-            data={cleaned.map((p) => ({ x: toSpoke(p.x), y: p.y }))} // ✅ strings
+            data={withDisplay.map((p) => ({ x: toSpoke(p.x), y: p.y }))}
             style={{
               data: {
                 fill: ACCENT,
@@ -222,7 +226,6 @@ export default function SpiderChart({ title, points, Icon }: Props) {
       </VictoryChart>
     </View>
   );
-
 }
 
 const styles = StyleSheet.create({
@@ -235,7 +238,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: { color: TEXT, fontWeight: '700', fontSize: 16 },
-  // bubble styling for title
   titleBubble: {
     backgroundColor: ACCENT,
     borderRadius: 999,
@@ -249,6 +251,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    gap: 8, // space between icon and text
+    gap: 8,
   },
 });
