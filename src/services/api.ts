@@ -84,7 +84,7 @@ export async function resetSession(sessionId: string): Promise<boolean> {
 }
 
 export const ROLE_SHORT_TO_LONG: Record<string, string> = {
-  GK: 'Goal Keeper',
+  GK: 'Goalkeeper',
   LWB: 'Left Wing Back',
   LB: 'Left Back',
   LCB: 'Left Center Back',
