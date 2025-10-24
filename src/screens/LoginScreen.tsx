@@ -16,12 +16,19 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { login } from '@/services/api';
+import { useLanguage } from '@/context/LanguageProvider';
+import { useTranslation } from 'react-i18next';
+// Optional: if you added this earlier to persist per-person:
+// import { syncLanguageAfterLogin } from '@/api/syncLanguage';
+// import { apiClient } from '@/services/api'; // adjust to your client if needed
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
   const navigation = useNavigation<Nav>();
+  const { lang, setLang } = useLanguage();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -41,11 +48,19 @@ export default function LoginScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      await login({ email, password });
+
+      // Send uiLanguage to backend as part of the login payload (safe to add—ignored if server doesn't use it).
+      const { user } = await login({ email, password, uiLanguage: lang });
+
+      if (user?.uiLanguage && user.uiLanguage !== lang) {
+        await setLang(user.uiLanguage); // updates i18n + AsyncStorage('app.lang')
+      }
+
+      // housekeeping you already had
       await AsyncStorage.removeItem('reachout_sent_this_login').catch(() => {});
       goToMainTabs();
     } catch {
-      setError('Log in failed. Please check your credentials.');
+      setError(t('loginFailed', 'Log in failed. Please check your credentials.'));
     } finally {
       setSubmitting(false);
     }
@@ -58,22 +73,23 @@ export default function LoginScreen() {
     >
       <View style={styles.wrap}>
         {/* App name above the frame */}
-        <Text style={styles.appName}>ScoutIQ</Text>
+        <Text style={styles.appName}>{t('appName', 'ScoutIQ')}</Text>
 
         {/* Login frame/card */}
         <View style={styles.card}>
-          <Text style={styles.title}>Login</Text>
+          <Text style={styles.title}>{t('login', 'Log in')}</Text>
+
           {/* Scouting-context greeting (centered) */}
           <Text style={styles.greeting}>
-            Spot the next star before anyone else.
+            {t('greeting', 'Spot the next star before anyone else.')}
           </Text>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>E-mail</Text>
+            <Text style={styles.label}>{t('email', 'E-mail')}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="you@club.com"
+              placeholder={t('placeholderEmail', 'you@club.com')}
               placeholderTextColor={MUTED}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -83,11 +99,11 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('password', 'Password')}</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder={t('placeholderPassword', '••••••••')}
               placeholderTextColor={MUTED}
               secureTextEntry
               style={styles.input}
@@ -97,8 +113,13 @@ export default function LoginScreen() {
           </View>
 
           {/* Forgot password link */}
-          <Pressable onPress={handleForgotPassword} style={({ pressed }) => [{ alignSelf: 'flex-end', opacity: pressed ? 0.8 : 1 }]}>
-            <Text style={styles.forgotLink}>Did you forget your password?</Text>
+          <Pressable
+            onPress={handleForgotPassword}
+            style={({ pressed }) => [{ alignSelf: 'flex-end', opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Text style={styles.forgotLink}>
+              {t('forgotPassword', 'Did you forget your password?')}
+            </Text>
           </Pressable>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -118,7 +139,7 @@ export default function LoginScreen() {
             {submitting ? (
               <ActivityIndicator />
             ) : (
-              <Text style={styles.primaryBtnText}>Log in</Text>
+              <Text style={styles.primaryBtnText}>{t('login', 'Log in')}</Text>
             )}
           </Pressable>
 
@@ -131,7 +152,10 @@ export default function LoginScreen() {
             ]}
           >
             <Text style={styles.secondaryBtnText}>
-              Don’t have an account yet? <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>Sign up</Text>
+              {t('noAccount', 'Don’t have an account yet?')}{' '}
+              <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>
+                {t('signup', 'Sign up')}
+              </Text>
             </Text>
           </Pressable>
         </View>
@@ -168,7 +192,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 12,
-    marginTop: 6
+    marginTop: 6,
   },
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },
@@ -203,5 +227,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   secondaryBtnText: { color: MUTED, fontSize: 14 },
-  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center', },
+  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
 });

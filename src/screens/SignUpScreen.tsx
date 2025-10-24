@@ -1,4 +1,3 @@
-// src/screens/SignUpScreen.tsx
 import React, { useMemo, useState, useMemo as useRNMemo } from 'react';
 import {
   View,
@@ -19,6 +18,7 @@ import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme
 import { RootStackParamList } from '@/types';
 import { signUp, requestSignupCode } from '@/services/api';
 import { COUNTRIES } from '@/constants/countries';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -35,10 +35,11 @@ function formatDob(input: string): string {
 
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const hasMin = password.length >= 8;
   const hasLetter = /[A-Za-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -80,11 +81,12 @@ export default function SignUpScreen() {
       setError(null);
       setSubmitting(true);
 
+      // No backend language logic here (by your request)
       await signUp({ email, password, dob, country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
       navigation.replace('Verification', { email, context: 'signup' });
     } catch {
-      setError('Sign up failed. Please try again.');
+      setError(t('signupFailed', 'Sign up failed. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -106,19 +108,19 @@ export default function SignUpScreen() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
       <View style={styles.wrap}>
-        <Text style={styles.appName}>ScoutIQ</Text>
+        <Text style={styles.appName}>{t('appName', 'ScoutIQ')}</Text>
 
         <View style={styles.card}>
-          <Text style={styles.title}>Create your account</Text>
-          <Text style={styles.subtitle}>Join the scouting revolution.</Text>
+          <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>
+          <Text style={styles.subtitle}>{t('signupSubtitle', 'Join the scouting revolution.')}</Text>
 
           {/* Email */}
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>E-mail</Text>
+            <Text style={styles.label}>{t('email', 'E-mail')}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="you@club.com"
+              placeholder={t('placeholderEmail', 'you@club.com')}
               placeholderTextColor={MUTED}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -129,33 +131,32 @@ export default function SignUpScreen() {
 
           {/* Password */}
           <View style={styles.fieldBlock}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('password', 'Password')}</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder={t('placeholderPassword', '••••••••')}
               placeholderTextColor={MUTED}
               secureTextEntry
               style={styles.input}
               returnKeyType="next"
             />
-            
+
             <View style={styles.pwChecklist}>
-              <PwRule ok={hasMin} text="At least 8 characters" />
-              <PwRule ok={hasLetter} text="Contains a letter (A–Z or a–z)" />
-              <PwRule ok={hasNumber} text="Contains a number (0–9)" />
+              <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
+              <PwRule ok={hasLetter} text={t('pwLetter', 'Contains a letter (A–Z or a–z)')} />
+              <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
             </View>
-            
           </View>
 
           {/* DOB + Country */}
           <View style={styles.row2}>
             <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
-              <Text style={styles.label}>Date of birth</Text>
+              <Text style={styles.label}>{t('dob', 'Date of birth')}</Text>
               <TextInput
                 value={dob}
-                onChangeText={(t) => setDob(formatDob(t))}
-                placeholder="YYYY-MM-DD"
+                onChangeText={(t_) => setDob(formatDob(t_))}
+                placeholder={t('placeholderDob', 'YYYY-MM-DD')}
                 placeholderTextColor={MUTED}
                 style={styles.input}
                 keyboardType="number-pad"
@@ -169,13 +170,13 @@ export default function SignUpScreen() {
             </View>
 
             <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
-              <Text style={styles.label}>Country</Text>
+              <Text style={styles.label}>{t('country', 'Country')}</Text>
 
               {/* Country "input" behaves like a select */}
               <Pressable onPress={openCountryPicker}>
                 <View style={[styles.input, { justifyContent: 'center' }]}>
                   <Text style={{ color: country ? TEXT : MUTED }}>
-                    {country || 'Select your country'}
+                    {country || t('selectCountry', 'Select your country')}
                   </Text>
                 </View>
               </Pressable>
@@ -184,12 +185,12 @@ export default function SignUpScreen() {
 
           {/* Newsletter + Terms */}
           <View style={[styles.switchRow, { marginTop: 12 }]}>
-            <Text style={styles.switchLabel}>Subscribe to newsletter</Text>
+            <Text style={styles.switchLabel}>{t('newsletter', 'Subscribe to newsletter')}</Text>
             <Switch value={newsletter} onValueChange={setNewsletter} />
           </View>
 
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>I agree to the Terms & Privacy</Text>
+            <Text style={styles.switchLabel}>{t('agreeTerms', 'I agree to the Terms & Privacy')}</Text>
             <Switch value={agree} onValueChange={setAgree} />
           </View>
 
@@ -210,7 +211,7 @@ export default function SignUpScreen() {
             {submitting ? (
               <ActivityIndicator />
             ) : (
-              <Text style={styles.primaryBtnText}>Sign up</Text>
+              <Text style={styles.primaryBtnText}>{t('signup', 'Sign up')}</Text>
             )}
           </Pressable>
 
@@ -223,7 +224,10 @@ export default function SignUpScreen() {
             ]}
           >
             <Text style={styles.secondaryBtnText}>
-              Already have an account? <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>Log in</Text>
+              {t('haveAccount', 'Already have an account?')}{' '}
+              <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>
+                {t('login', 'Log in')}
+              </Text>
             </Text>
           </Pressable>
         </View>
@@ -238,12 +242,12 @@ export default function SignUpScreen() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select your country</Text>
+            <Text style={styles.modalTitle}>{t('selectCountry', 'Select your country')}</Text>
 
             <TextInput
               value={countryQuery}
               onChangeText={setCountryQuery}
-              placeholder="Search country..."
+              placeholder={t('searchCountry', 'Search country...')}
               placeholderTextColor={MUTED}
               style={[styles.input, { marginTop: 10 }]}
             />
@@ -269,7 +273,7 @@ export default function SignUpScreen() {
                 { marginTop: 12, opacity: pressed ? 0.85 : 1 },
               ]}
             >
-              <Text style={styles.secondaryBtnText}>Close</Text>
+              <Text style={styles.secondaryBtnText}>{t('close', 'Close')}</Text>
             </Pressable>
           </View>
         </View>
@@ -292,13 +296,12 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
   );
 }
 
-
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   appName: { color: ACCENT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
   card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
-  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center', },
-  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center', },
+  title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
 
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },

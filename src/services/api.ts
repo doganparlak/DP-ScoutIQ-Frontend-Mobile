@@ -83,30 +83,6 @@ export async function resetSession(sessionId: string): Promise<boolean> {
   return res.ok;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await AsyncStorage.getItem('auth_token');
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(init?.headers as Record<string, string> | undefined),
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try {
-      const data = await res.json();
-      if (data?.detail) msg = data.detail;
-    } catch {
-      const text = await res.text();
-      if (text) msg = text;
-    }
-    throw new Error(msg);
-  }
-  // 204 / empty body guard
-  const text = await res.text();
-  return (text ? JSON.parse(text) : {}) as T;
-}
-
 export const ROLE_SHORT_TO_LONG: Record<string, string> = {
   GK: 'Goal Keeper',
   LWB: 'Left Wing Back',
@@ -165,6 +141,9 @@ export async function deleteFavoritePlayer(id: string): Promise<void> {
   return request<void>(`/me/favorites/${id}`, { method: 'DELETE' });
 }
 
+export type UILang = 'en' | 'tr';
+
+
 export type Profile = {
   id: number;
   email: string;
@@ -172,8 +151,36 @@ export type Profile = {
   country?: string | null;
   plan: string;
   favorite_players: any[];
+  uiLanguage?: UILang;
 };
 
+// --- Teach request() to forward language on every call ---
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await AsyncStorage.getItem('auth_token');
+  const lang = (await AsyncStorage.getItem('app.lang')) as UILang | null; // 'en' | 'tr' | null
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (lang)  headers['Accept-Language'] = lang;      // <--- forward user’s language to backend
+
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.detail) msg = data.detail;
+    } catch {
+      const text = await res.text();
+      if (text) msg = text;
+    }
+    throw new Error(msg);
+  }
+  const text = await res.text();
+  return (text ? JSON.parse(text) : {}) as T;
+}
 
 export async function health(): Promise<boolean> {
   try {
@@ -204,6 +211,7 @@ export async function signUp(input: {
 export async function login(input: {
   email: string;
   password: string;
+  uiLanguage?: UILang;
 }): Promise<{ token: string; user: Profile }> {
   const data = await request<{ token: string; user: Profile }>('/auth/login', {
     method: 'POST',
@@ -227,7 +235,7 @@ export async function getMe(): Promise<Profile> {
   return request<Profile>('/me');
 }
 
-export async function updateMe(patch: Partial<Pick<Profile, 'dob' | 'country' | 'plan' | 'favorite_players'>>): Promise<Profile> {
+export async function updateMe(patch: Partial<Pick<Profile, 'dob' | 'country' | 'plan' | 'favorite_players' | 'uiLanguage'>>): Promise<Profile> {
   return request<Profile>('/me', {
     method: 'PATCH',
     body: JSON.stringify(patch),

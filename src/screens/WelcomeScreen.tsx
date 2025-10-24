@@ -4,15 +4,44 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, LINE, PANEL } from '@/theme';
 import { RootStackParamList } from '@/types';
+import { useLanguage } from '@/context/LanguageProvider';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function WelcomeScreen() {
   const navigation = useNavigation<Nav>();
+  const { lang, setLang } = useLanguage();
+  const { t } = useTranslation();
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.appName}>ScoutIQ</Text>
+      <Text style={styles.appName}>{t('appName')}</Text>
+
+      {/* Language picker */}
+      <View style={styles.langRow}>
+        <Pressable
+          onPress={() => setLang('en')}
+          style={({ pressed }) => [
+            styles.langBtn,
+            lang === 'en' ? styles.langBtnActive : styles.langBtnIdle,
+            pressed && { opacity: 0.9 },
+          ]}
+        >
+          <Text style={[styles.langText, lang === 'en' && styles.langTextActive]}>English</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setLang('tr')}
+          style={({ pressed }) => [
+            styles.langBtn,
+            lang === 'tr' ? styles.langBtnActive : styles.langBtnIdle,
+            pressed && { opacity: 0.9 },
+          ]}
+        >
+          <Text style={[styles.langText, lang === 'tr' && styles.langTextActive]}>Türkçe</Text>
+        </Pressable>
+      </View>
 
       <Pressable
         onPress={() => navigation.navigate('Login')}
@@ -21,7 +50,7 @@ export default function WelcomeScreen() {
           { backgroundColor: pressed ? ACCENT_DARK : ACCENT },
         ]}
       >
-        <Text style={styles.primaryBtnText}>Log in</Text>
+        <Text style={styles.primaryBtnText}>{t('login')}</Text>
       </Pressable>
 
       <Pressable
@@ -31,7 +60,7 @@ export default function WelcomeScreen() {
           { opacity: pressed ? 0.85 : 1 },
         ]}
       >
-        <Text style={styles.secondaryBtnText}>Sign up</Text>
+        <Text style={styles.secondaryBtnText}>{t('signup')}</Text>
       </Pressable>
     </View>
   );
@@ -49,7 +78,33 @@ const styles = StyleSheet.create({
     color: TEXT,
     fontSize: 32,
     fontWeight: '800',
-    marginBottom: 40,
+    marginBottom: 28,
+  },
+  langRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  langBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  langBtnIdle: {
+    backgroundColor: PANEL,
+    borderColor: LINE,
+  },
+  langBtnActive: {
+    backgroundColor: ACCENT,
+    borderColor: ACCENT,
+  },
+  langText: {
+    color: TEXT,
+    fontWeight: '700',
+  },
+  langTextActive: {
+    color: TEXT, // keeps contrast in Dark theme
   },
   primaryBtn: {
     width: '80%',
@@ -68,5 +123,5 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     backgroundColor: PANEL,
   },
-  secondaryBtnText: { color: TEXT, fontWeight: '600', fontSize: 15 },
+  secondaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 16 },
 });
