@@ -1,7 +1,8 @@
-import * as React from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { User, HatGlasses } from 'lucide-react-native';
 import { ACCENT, PANEL, MUTED, CARD } from '@/theme';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   role: 'user' | 'assistant';
@@ -10,8 +11,12 @@ type Props = {
   pending?: boolean;
 };
 
+const AVATAR = 34;
+const GAP = 8;
+
 export default function MessageBubble({ role, content, pending }: Props) {
   const isUser = role === 'user';
+  const { t } = useTranslation();
 
   // Animate dots for pending
   const [dots, setDots] = React.useState('.');
@@ -24,15 +29,10 @@ export default function MessageBubble({ role, content, pending }: Props) {
   }, [pending]);
 
   return (
-    <View
-      style={[
-        styles.row,
-        isUser ? styles.rowEnd : styles.rowStart,
-      ]}
-    >
+    <View style={[styles.row, isUser ? styles.rowEnd : styles.rowStart]}>
       {/* Assistant icon (left) */}
       {!isUser && (
-        <View style={[styles.avatar, { backgroundColor: CARD }]}>
+        <View style={[styles.avatar, { backgroundColor: CARD }]} accessibilityLabel={t('assistantAL', 'Assistant')}>
           <HatGlasses size={18} color={ACCENT} />
         </View>
       )}
@@ -41,7 +41,10 @@ export default function MessageBubble({ role, content, pending }: Props) {
       <View style={[styles.bubble, isUser ? styles.user : styles.assistant]}>
         {pending && !isUser ? (
           <View style={styles.pendingRow}>
-            <Text style={styles.pendingText}>Unveiling insights{dots}</Text>
+            <Text style={styles.pendingText}>
+              {t('assistantPending', 'Unveiling insights')}
+              {dots}
+            </Text>
           </View>
         ) : (
           <Text style={styles.text}>{content}</Text>
@@ -50,16 +53,13 @@ export default function MessageBubble({ role, content, pending }: Props) {
 
       {/* User icon (right) */}
       {isUser && (
-        <View style={[styles.avatar, { backgroundColor: ACCENT }]}>
+        <View style={[styles.avatar, { backgroundColor: ACCENT }]} accessibilityLabel={t('youAL', 'You')}>
           <User size={18} color="white" />
         </View>
       )}
     </View>
   );
 }
-
-const AVATAR = 34;
-const GAP = 8;
 
 const styles = StyleSheet.create({
   row: {
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 4,
   },
   user: {
-    backgroundColor: ACCENT, 
+    backgroundColor: ACCENT,
     borderTopRightRadius: 4,
   },
 
