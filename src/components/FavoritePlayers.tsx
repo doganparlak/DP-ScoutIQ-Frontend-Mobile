@@ -1,16 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  TextInput,
-  Alert,
-  Modal,
+  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { X, UserX } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
 import type { PlayerData } from '../types';
@@ -25,21 +19,18 @@ import PlayerCard from '../components/PlayerCard';
 
 type PlayerRow = {
   id: string;
-  name: string;                // full name
-  nationality?: string;        // full country name
+  name: string;
+  nationality?: string;
   age?: number;
-  rolesShort: string[];        // SHORT for display/filter
+  rolesShort: string[];
   potential?: number;
 };
 
 const ALL_ROLE_SHORTS = [
-  'GK', 'LB', 'LCB', 'CB', 'RCB', 'RB',
-  'LWB', 'LCM', 'CDM', 'CM', 'RCM', 'RWB',
-  'LW', 'LCF', 'CF', 'RCF', 'RW',
+  'GK','LB','RB','LCB','RCB','CB','LWB','RWB','LM','RM','LCM','RCM','CDM','CM','CAM','LW','RW','LCF','RCF','CF'
 ] as const;
 
 const ROW_HEIGHT = 48;
-// keep identical flexes for header & rows to align separators
 const COL = { name: 1.0, nat: 0.8, age: 0.7, roles: 1.2, pot: 0.8, del: 0.6 } as const;
 
 type SortKey = 'name' | 'nationality' | 'age' | 'roles' | 'potential';
@@ -52,6 +43,8 @@ function firstWord(full: string): string {
 }
 
 export default function FavoritePlayers() {
+  const { t } = useTranslation();
+
   // ----- favorites state -----
   const [rows, setRows] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,43 +52,34 @@ export default function FavoritePlayers() {
   const fetchFavorites = React.useCallback(async () => {
     try {
       setLoading(true);
-      const favs = await getFavoritePlayers(); // LONG roles from backend
+      const favs = await getFavoritePlayers();
       const mapped: PlayerRow[] = favs.map((f: FavoritePlayer) => ({
         id: f.id,
         name: f.name,
         nationality: f.nationality || '',
         age: typeof f.age === 'number' ? f.age : undefined,
         potential: typeof f.potential === 'number' ? f.potential : undefined,
-        rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long), // convert to SHORT
+        rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long),
       }));
       setRows(mapped);
     } catch (e: any) {
-      Alert.alert('Favorites error', String(e?.message || e));
+      Alert.alert(t('favoritesError', 'Favorites error'), String(e?.message || e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // preview overlay
   const [previewPlayer, setPreviewPlayer] = useState<PlayerData | null>(null);
   const toPlayerData = (p: PlayerRow): PlayerData => ({
     name: p.name,
-    meta: {
-      nationality: p.nationality,
-      age: p.age,
-      roles: p.rolesShort,
-      potential: p.potential,
-    },
-    stats: [], // populate when you have stats
+    meta: { nationality: p.nationality, age: p.age, roles: p.rolesShort, potential: p.potential },
+    stats: [],
   });
 
-  // initial fetch
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
 
-  // refetch whenever Profile tab gains focus
-  useFocusEffect(React.useCallback(() => {
-    fetchFavorites();
-  }, [fetchFavorites]));
+  useFocusEffect(React.useCallback(() => { fetchFavorites(); }, [fetchFavorites]));
 
   // ----- filters -----
   const [qName, setQName] = useState('');
@@ -155,13 +139,7 @@ export default function FavoritePlayers() {
   }, [rows, qName, qNat, minAge, maxAge, minPot, maxPot, selectedRoles, sortKey, sortDir]);
 
   const clearFilters = () => {
-    setQName('');
-    setQNat('');
-    setMinAge('');
-    setMaxAge('');
-    setMinPot('');
-    setMaxPot('');
-    setSelectedRoles([]);
+    setQName(''); setQNat(''); setMinAge(''); setMaxAge(''); setMinPot(''); setMaxPot(''); setSelectedRoles([]);
   };
 
   const handleDelete = async (id: string) => {
@@ -169,7 +147,7 @@ export default function FavoritePlayers() {
       await deleteFavoritePlayer(id);
       setRows(s => s.filter(x => x.id !== id));
     } catch (e: any) {
-      Alert.alert('Delete failed', String(e?.message || e));
+      Alert.alert(t('deleteFailed', 'Delete failed'), String(e?.message || e));
     }
   };
 
@@ -177,13 +155,15 @@ export default function FavoritePlayers() {
   const renderUnifiedRow = (item: PlayerRow | 'HEADER') => {
     const isHeader = item === 'HEADER';
     const pressedStyle = { opacity: 0.9 };
+    const chevron = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '');
 
     const RowInner = (
       <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
         {/* Name */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('name')} style={({ pressed }) => [styles.cell, { flex: COL.name }, pressed && pressedStyle, sortKey === 'name' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>Name {sortKey === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          <Pressable onPress={() => cycleSort('name')}
+            style={({ pressed }) => [styles.cell, { flex: COL.name }, pressed && pressedStyle, sortKey === 'name' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}{chevron('name')}</Text>
           </Pressable>
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
@@ -194,8 +174,9 @@ export default function FavoritePlayers() {
 
         {/* Nat */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('nationality')} style={({ pressed }) => [styles.cell, { flex: COL.nat }, pressed && pressedStyle, sortKey === 'nationality' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>Nat. {sortKey === 'nationality' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          <Pressable onPress={() => cycleSort('nationality')}
+            style={({ pressed }) => [styles.cell, { flex: COL.nat }, pressed && pressedStyle, sortKey === 'nationality' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}{chevron('nationality')}</Text>
           </Pressable>
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
@@ -206,8 +187,9 @@ export default function FavoritePlayers() {
 
         {/* Age */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('age')} style={({ pressed }) => [styles.cell, { flex: COL.age }, pressed && pressedStyle, sortKey === 'age' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>Age {sortKey === 'age' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          <Pressable onPress={() => cycleSort('age')}
+            style={({ pressed }) => [styles.cell, { flex: COL.age }, pressed && pressedStyle, sortKey === 'age' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}{chevron('age')}</Text>
           </Pressable>
         ) : (
           <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
@@ -218,8 +200,9 @@ export default function FavoritePlayers() {
 
         {/* Roles */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('roles')} style={({ pressed }) => [styles.cell, { flex: COL.roles }, pressed && pressedStyle, sortKey === 'roles' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>Roles {sortKey === 'roles' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          <Pressable onPress={() => cycleSort('roles')}
+            style={({ pressed }) => [styles.cell, { flex: COL.roles }, pressed && pressedStyle, sortKey === 'roles' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Roles')}{chevron('roles')}</Text>
           </Pressable>
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
@@ -230,8 +213,9 @@ export default function FavoritePlayers() {
 
         {/* Potential */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('potential')} style={({ pressed }) => [styles.cell, { flex: COL.pot }, pressed && pressedStyle, sortKey === 'potential' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>Pot. {sortKey === 'potential' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</Text>
+          <Pressable onPress={() => cycleSort('potential')}
+            style={({ pressed }) => [styles.cell, { flex: COL.pot }, pressed && pressedStyle, sortKey === 'potential' && { backgroundColor: CARD }]}>
+            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblPot', 'Pot.')}{chevron('potential')}</Text>
           </Pressable>
         ) : (
           <Text style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}>
@@ -248,6 +232,7 @@ export default function FavoritePlayers() {
             <Pressable
               onPress={() => handleDelete((item as PlayerRow).id)}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              accessibilityLabel={t('removeFromFavorites', 'Remove from favorites')}
             >
               {({ pressed }) => (
                 <UserX size={20} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
@@ -255,7 +240,6 @@ export default function FavoritePlayers() {
             </Pressable>
           </View>
         )}
-
       </View>
     );
 
@@ -268,7 +252,6 @@ export default function FavoritePlayers() {
             {RowInner}
           </Pressable>
         )}
-        {/* unified, thicker horizontal row divider */}
         <View style={styles.hsepThick} />
       </View>
     );
@@ -276,49 +259,49 @@ export default function FavoritePlayers() {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.sectionTitle}>Squad Portfolio</Text>
+      <Text style={styles.sectionTitle}>{t('squadPortfolio', 'Squad Portfolio')}</Text>
 
       {/* Filters */}
       <View style={{ height: 8 }} />
       <View style={styles.filters}>
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>Name</Text>
+          <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
           <TextInput
             value={qName}
             onChangeText={setQName}
-            placeholder="Search name"
+            placeholder={t('phSearchName', 'Search name')}
             placeholderTextColor={MUTED}
             style={styles.input}
           />
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>Nationality</Text>
+          <Text style={styles.filterLabel}>{t('fltNationality', 'Nationality')}</Text>
           <TextInput
             value={qNat}
             onChangeText={setQNat}
-            placeholder="Search nationality"
+            placeholder={t('phSearchNationality', 'Search nationality')}
             placeholderTextColor={MUTED}
             style={styles.input}
           />
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>Age (min / max)</Text>
+          <Text style={styles.filterLabel}>{t('fltAge', 'Age (min / max)')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
               value={minAge}
-              onChangeText={(t) => setMinAge(t.replace(/[^\d]/g, ''))}
+              onChangeText={(t_) => setMinAge(t_.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
-              placeholder="min"
+              placeholder={t('phMin', 'min')}
               placeholderTextColor={MUTED}
               style={[styles.input, { flex: 1 }]}
             />
             <TextInput
               value={maxAge}
-              onChangeText={(t) => setMaxAge(t.replace(/[^\d]/g, ''))}
+              onChangeText={(t_) => setMaxAge(t_.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
-              placeholder="max"
+              placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}
               style={[styles.input, { flex: 1 }]}
             />
@@ -326,21 +309,21 @@ export default function FavoritePlayers() {
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>Potential (min / max)</Text>
+          <Text style={styles.filterLabel}>{t('fltPotential', 'Potential (min / max)')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
               value={minPot}
-              onChangeText={(t) => setMinPot(t.replace(/[^\d]/g, '').slice(0, 3))}
+              onChangeText={(t_) => setMinPot(t_.replace(/[^\d]/g, '').slice(0, 3))}
               keyboardType="numeric"
-              placeholder="min"
+              placeholder={t('phMin', 'min')}
               placeholderTextColor={MUTED}
               style={[styles.input, { flex: 1 }]}
             />
             <TextInput
               value={maxPot}
-              onChangeText={(t) => setMaxPot(t.replace(/[^\d]/g, '').slice(0, 3))}
+              onChangeText={(t_) => setMaxPot(t_.replace(/[^\d]/g, '').slice(0, 3))}
               keyboardType="numeric"
-              placeholder="max"
+              placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}
               style={[styles.input, { flex: 1 }]}
             />
@@ -357,6 +340,7 @@ export default function FavoritePlayers() {
               key={r}
               onPress={() => toggleRole(r)}
               style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
+              accessibilityLabel={`${t('role', 'Role')} ${r}`}
             >
               <Text style={active ? styles.chipTextActive : styles.chipTextInactive}>{r}</Text>
             </Pressable>
@@ -364,24 +348,24 @@ export default function FavoritePlayers() {
         })}
       </View>
 
-      {/* Clear filters (centered) */}
+      {/* Clear filters */}
       <View style={{ alignItems: 'center' }}>
         <Pressable
           onPress={clearFilters}
           style={({ pressed }) => [{ paddingVertical: 8, paddingHorizontal: 12, opacity: pressed ? 0.8 : 1 }]}
+          accessibilityLabel={t('clearFilters', 'Clear filters')}
         >
-          <Text style={{ color: DANGER_DARK }}>Clear filters</Text>
+          <Text style={{ color: DANGER_DARK }}>{t('clearFilters', 'Clear filters')}</Text>
         </Pressable>
       </View>
 
-      {/* Unified single table (header row + player rows) */}
+      {/* Unified table */}
       <View style={styles.table}>
-        {/* Outer top border */}
         <View style={styles.tableTopBorder} />
 
         {loading ? (
           <View style={{ paddingVertical: 16 }}>
-            <Text style={{ color: MUTED }}>Loading favorites…</Text>
+            <Text style={{ color: MUTED }}>{t('loadingFavorites', 'Loading favorites…')}</Text>
           </View>
         ) : (
           <ScrollView
@@ -390,46 +374,37 @@ export default function FavoritePlayers() {
             bounces={false}
             showsVerticalScrollIndicator
           >
-            {/* First row: headers */}
             {renderUnifiedRow('HEADER')}
-            {/* Rest: player rows */}
             {filtered.map((item) => renderUnifiedRow(item))}
           </ScrollView>
         )}
 
-        {/* Outer bottom border */}
         <View style={styles.tableBottomBorder} />
       </View>
 
-    {/* PlayerCard overlay modal with close button positioned inside top-right of the card */}
-    {previewPlayer && (
-    <Modal transparent visible animationType="fade" onRequestClose={() => setPreviewPlayer(null)}>
-        <View style={styles.modalBackdrop}>
-        <View style={styles.modalCardWrap}>
-            {/* Center the name only here */}
-            <PlayerCard player={previewPlayer} titleAlign="center" />
-
-            <Pressable
-            onPress={() => setPreviewPlayer(null)}
-            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-            style={({ pressed }) => [styles.closeInsideCard, { opacity: pressed ? 0.9 : 1 }]}
-            accessibilityLabel="Close player card"
-            >
-            {({ pressed }) => (
-                <X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-            )}
-            </Pressable>
-        </View>
-        </View>
-    </Modal>
-    )}
-
+      {/* Player modal */}
+      {previewPlayer && (
+        <Modal transparent visible animationType="fade" onRequestClose={() => setPreviewPlayer(null)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCardWrap}>
+              <PlayerCard player={previewPlayer} titleAlign="center" />
+              <Pressable
+                onPress={() => setPreviewPlayer(null)}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                style={({ pressed }) => [styles.closeInsideCard, { opacity: pressed ? 0.9 : 1 }]}
+                accessibilityLabel={t('closePlayerCard', 'Close player card')}
+              >
+                {({ pressed }) => (<X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />)}
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // match card visual with screen cards
   card: {
     backgroundColor: PANEL,
     borderRadius: 20,
@@ -439,21 +414,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
   },
-
   sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
 
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   filterCol: { flexBasis: '48%', flexGrow: 1, gap: 6 },
   filterLabel: { color: MUTED, fontSize: 12 },
   input: {
-    color: TEXT,
-    backgroundColor: CARD,
-    borderColor: LINE,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    color: TEXT, backgroundColor: CARD, borderColor: LINE, borderWidth: 1.5,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
   },
 
   rolesWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
@@ -463,57 +431,22 @@ const styles = StyleSheet.create({
   chipTextActive: { color: TEXT, fontWeight: '700' },
   chipTextInactive: { color: MUTED, fontWeight: '600' },
 
-  // ---- Unified table styles
   table: { marginTop: 10 },
   tableTopBorder: { height: 1, backgroundColor: LINE },
   tableBottomBorder: { height: 1, backgroundColor: LINE },
 
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
+  hsepThick: { height: 2, backgroundColor: LINE },
 
-  // thicker, unified horizontal dividers
-  hsepThick: {
-    height: 2,
-    backgroundColor: LINE,
-  },
-
-  // cells (shared by header & body so verticals align)
   cell: { paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },
   td: { color: TEXT, flex: 1 },
 
-  // vertical separators (shared across header and rows)
-  vsep: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: LINE,
-    opacity: 0.9,
-  },
+  vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
 
-  // modal overlay for PlayerCard
   modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 16,
   },
-  modalCardWrap: {
-    width: '100%',
-    maxWidth: 560,
-    borderRadius: 16,
-    overflow: 'visible',
-    padding: 2,
-    position: 'relative',  // anchor the close button
-  },
-  closeInsideCard: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    zIndex: 10,
-    padding: 6,
-  },
+  modalCardWrap: { width: '100%', maxWidth: 560, borderRadius: 16, overflow: 'visible', padding: 2, position: 'relative' },
+  closeInsideCard: { position: 'absolute', top: 6, right: 6, zIndex: 10, padding: 6 },
 });

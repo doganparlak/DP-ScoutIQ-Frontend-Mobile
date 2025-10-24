@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { PANEL, LINE, TEXT, MUTED, ACCENT, ACCENT_DARK, CARD } from '../theme';
 import { getMe, type Profile } from '../services/api';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   plan: 'Free' | 'Pro' | 'Elite';
@@ -12,6 +13,7 @@ type Props = {
 
 export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Props) {
   const [email, setEmail] = React.useState<string>('—');
+  const { t } = useTranslation();
 
   React.useEffect(() => {
     let alive = true;
@@ -26,33 +28,40 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
     return () => { alive = false; };
   }, []);
 
+  // Map plan code to localized label, e.g. plan_Pro
+  const planLabel = t(`plan_${plan}`, plan);
+
   return (
-    <View style={styles.card}>
-      <Text style={styles.sectionTitle}>Account</Text>
+    <View style={styles.card} accessibilityLabel={t('accountTitle', 'Account')}>
+      <Text style={styles.sectionTitle}>{t('accountTitle', 'Account')}</Text>
 
       <View style={styles.kv}>
-        <Text style={styles.k}>E-mail</Text>
+        <Text style={styles.k}>{t('email', 'E-mail')}</Text>
         <Text style={styles.v}>{email}</Text>
       </View>
 
       <View style={styles.kv}>
-        <Text style={styles.k}>Current plan</Text>
-        <Text style={styles.v}>{plan}</Text>
+        <Text style={styles.k}>{t('currentPlan', 'Current plan')}</Text>
+        <Text style={styles.v}>{planLabel}</Text>
       </View>
 
       <View style={styles.btnRow}>
         <Pressable
           onPress={onOpenPlans}
+          accessibilityRole="button"
+          accessibilityLabel={t('managePlan', 'Manage plan')}
           style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed ? ACCENT_DARK : ACCENT }]}
         >
-          <Text style={styles.primaryBtnText}> Subscription plans</Text>
+          <Text style={styles.primaryBtnText}>{t('managePlan', 'Manage plan')}</Text>
         </Pressable>
 
         <Pressable
           onPress={onOpenHelp}
+          accessibilityRole="button"
+          accessibilityLabel={t('helpCenter', 'Help Center')}
           style={({ pressed }) => [styles.outlineBtn, { opacity: pressed ? 0.85 : 1 }]}
         >
-          <Text style={styles.outlineBtnText}>Help center</Text>
+          <Text style={styles.outlineBtnText}>{t('helpCenter', 'Help Center')}</Text>
         </Pressable>
       </View>
 
@@ -60,10 +69,11 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
       <Pressable
         onPress={onLogout}
         accessibilityRole="button"
+        accessibilityLabel={t('logout', 'Log out')}
         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
         style={({ pressed }) => [styles.logoutLinkWrap, pressed && { opacity: 0.7 }]}
       >
-        <Text style={styles.logoutText}>Log out</Text>
+        <Text style={styles.logoutText}>{t('logout', 'Log out')}</Text>
       </Pressable>
     </View>
   );
@@ -107,5 +117,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: ACCENT,
   },
-  logoutText: { color: TEXT, fontWeight: '800', fontSize: 15, textAlign: 'center' },
+  logoutText: { color: TEXT, fontWeight: '700', fontSize: 15, textAlign: 'center' },
 });

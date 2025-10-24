@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -16,18 +14,19 @@ import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '../them
 import type { RootStackParamList, MainTabsParamList } from '../types';
 import { logout } from '../services/api';
 
-// ⬇️ new component import (relative)
+// Components
 import FavoritePlayers from '@/components/FavoritePlayers';
 import Account from '@/components/Account';
-
+import { useTranslation } from 'react-i18next';
 
 type ProfileTabNav = BottomTabNavigationProp<MainTabsParamList, 'Profile'>;
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function MyProfileScreen() {
   const rootNav = useNavigation<RootNav>();
+  const { t } = useTranslation();
 
-  // ----- account (placeholder; wire to /me if you want here) -----
+  // Account plan code (display can be localized in Account)
   const [plan] = useState<'Free' | 'Pro' | 'Elite'>('Pro');
 
   const openPlans = () => Linking.openURL('https://example.com/plans'); // TODO: replace
@@ -39,9 +38,16 @@ export default function MyProfileScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, { paddingTop: 0 }]}>
-      <ScrollView contentContainerStyle={{ paddingTop: -10, paddingBottom: 50 }}>
-        {/* Account card */}
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safe, { paddingTop: 0 }]}
+      // localized a11y description for the screen container
+      accessibilityLabel={t('profileScreenAL', 'Profile screen')}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingTop: -10, paddingBottom: 50 }}
+        accessibilityLabel={t('profileScrollAL', 'Profile content')}
+      >
         <Account
           plan={plan}
           onOpenPlans={openPlans}
@@ -49,7 +55,6 @@ export default function MyProfileScreen() {
           onLogout={handleLogout}
         />
 
-        {/* Favorite players section moved to component */}
         <FavoritePlayers />
       </ScrollView>
     </SafeAreaView>
@@ -59,6 +64,7 @@ export default function MyProfileScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
 
+  // (Unused styles kept for future UI; safe to remove if not needed)
   card: {
     backgroundColor: PANEL,
     borderRadius: 20,
@@ -68,7 +74,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
   },
-
   sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
 
   kv: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
@@ -89,7 +94,6 @@ const styles = StyleSheet.create({
   },
   outlineBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
 
-  // Subtle logout link
   logoutLinkWrap: {
     alignSelf: 'center',
     marginTop: 10,
