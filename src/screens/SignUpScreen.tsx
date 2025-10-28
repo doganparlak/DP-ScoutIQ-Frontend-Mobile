@@ -23,15 +23,23 @@ import { useTranslation } from 'react-i18next';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
 // Format "YYYY-MM-DD" as the user types
 function formatDob(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 8); // keep up to 8 digits
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+  if (digits.length <= 2) return digits;                                // D, DD
+  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`; // DD-MM
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;   // DD-MM-YYYY
 }
+
+// helper
+function toIsoDob(dmy: string): string {
+  // expects DD-MM-YYYY, returns YYYY-MM-DD
+  const [dd, mm, yyyy] = dmy.split('-');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
@@ -80,9 +88,9 @@ export default function SignUpScreen() {
     try {
       setError(null);
       setSubmitting(true);
-
+      const dobIso = toIsoDob(dob);
       // No backend language logic here (by your request)
-      await signUp({ email, password, dob, country, plan: 'Free', favorite_players: [], newsletter });
+      await signUp({ email, password, dob: dobIso, country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
       navigation.replace('Verification', { email, context: 'signup' });
     } catch {
@@ -156,7 +164,7 @@ export default function SignUpScreen() {
               <TextInput
                 value={dob}
                 onChangeText={(t_) => setDob(formatDob(t_))}
-                placeholder={t('placeholderDob', 'YYYY-MM-DD')}
+                placeholder={t('placeholderDob', 'DD-MM-YYYY')}
                 placeholderTextColor={MUTED}
                 style={styles.input}
                 keyboardType="number-pad"

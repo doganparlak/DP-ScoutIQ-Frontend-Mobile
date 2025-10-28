@@ -25,12 +25,6 @@ type Props = {
   Icon?: React.ComponentType<{ size?: number; color?: string }>;
 };
 
-function splitAfterFirstWord(label: string) {
-  const parts = (label ?? '').trim().split(/\s+/);
-  if (parts.length <= 1) return { first: parts[0] || '', rest: '' };
-  return { first: parts[0], rest: parts.slice(1).join(' ') };
-}
-
 type Cleaned = { x: number; y: number; value: number; label: string };
 
 function spreadByStride<T>(arr: T[]): T[] {
@@ -118,7 +112,6 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
   const threeLine = withDisplay.filter((p) => p.lineCount === 3).sort((a, b) => a.x - b.x);
   const twoLine = withDisplay.filter((p) => p.lineCount === 2).sort((a, b) => a.x - b.x);
-  const ticks = [0.2, 0.4, 0.6, 0.8, 1];
 
   // Auto-pick icon if not provided
   let AutoIcon = Icon;
@@ -153,7 +146,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
       >
         <VictoryPolarAxis
           dependentAxis
-          tickValues={ticks}
+          tickFormat={() => ''}   
           style={{
             axis: { stroke: 'transparent' },
             grid: { stroke: MUTED, opacity: 0.3 },

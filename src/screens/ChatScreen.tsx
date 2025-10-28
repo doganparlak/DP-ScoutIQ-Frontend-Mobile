@@ -35,7 +35,7 @@ type ChatMessageExt = ChatMessage & {
 
 export default function ChatScreen() {
   const { t } = useTranslation();
-
+  const [inputText, setInputText] = useState(''); 
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
@@ -83,6 +83,7 @@ export default function ChatScreen() {
     if (!text.trim()) return;
 
     // 1) Append the user's message
+    setInputText('');
     const userMsg: Omit<ChatMessageExt, 'id' | 'createdAt'> = {
       role: 'user',
       content: text.trim(),
@@ -238,7 +239,12 @@ export default function ChatScreen() {
         scrollIndicatorInsets={{ bottom: 140 }}
       />
 
-      <ChatInput onSend={send} disabled={sending} />
+      <ChatInput
+        value={inputText}
+        onChangeText={setInputText}
+        onSend={send}
+        disabled={sending}
+      />
     </KeyboardAvoidingView>
   );
 }

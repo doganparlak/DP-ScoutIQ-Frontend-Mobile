@@ -1,34 +1,45 @@
 // src/components/ChatInput.tsx
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
 import { ACCENT, BG, PANEL, MUTED, LINE } from '@/theme';
 import { useTranslation } from 'react-i18next';
 
-export default function ChatInput({
-  onSend,
-  disabled,
-}: { onSend: (text: string) => void; disabled?: boolean }) {
+type Props = {
+  value: string;
+  onChangeText: (t: string) => void;
+  onSend: (text: string) => void;
+  disabled?: boolean;
+};
+
+export default function ChatInput({ value, onChangeText, onSend, disabled }: Props) {
   const { t } = useTranslation();
-  const [text, setText] = useState('');
-  const canSend = text.trim().length > 0 && !disabled;
+  const inputRef = useRef<TextInput>(null);
+  const canSend = value.trim().length > 0 && !disabled;
 
   function handleSend() {
-    if (!canSend) return;
-    onSend(text.trim());
-    setText('');
+    const msg = value.trim();
+    if (!msg || disabled) return;
+    // Parent will clear value; we just call onSend
+    onSend(msg);
+    // Safety: clear native buffer & blur in case IME lags
+    inputRef.current?.clear();
+    inputRef.current?.blur();
   }
 
   return (
     <View style={styles.wrap}>
       <TextInput
-        value={text}
-        onChangeText={setText}
+        ref={inputRef}
+        value={value}
+        onChangeText={onChangeText}
         placeholder={t('chatPlaceholder', 'Type your message…')}
         placeholderTextColor={MUTED}
         style={styles.input}
         multiline
         editable={!disabled}
         accessibilityLabel={t('chatInputAL', 'Message input')}
+        onSubmitEditing={handleSend}
+        blurOnSubmit={false}
       />
       <Pressable
         onPress={handleSend}

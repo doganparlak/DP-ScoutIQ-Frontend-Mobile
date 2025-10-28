@@ -84,25 +84,25 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Shot Accuracy (%)': { min: 0, max: 100.0 },
   'Goals': { min: 0, max: 2.0 },
   'Assists': { min: 0, max: 2.0 },
-  'xG': { min: 0, max: 1.34 },
-  'Passes Attempted': { min: 0, max: 115.0 },
+  'xG': { min: 0, max: 1.5 },
+  'Passes Attempted': { min: 0, max: 100.0 },
   'Pass Accuracy (%)': { min: 0, max: 100.0 },
-  'Crosses Attempted': { min: 0, max: 17.0 },
+  'Crosses Attempted': { min: 0, max: 15.0 },
   'Cross Accuracy (%)': { min: 0, max: 100.0 },
-  'Carries': { min: 0, max: 97.0 },
-  'Dribbles': { min: 0, max: 13.0 },
+  'Carries': { min: 0, max: 60 },
+  'Dribbles': { min: 0, max: 15.0 },
   'Dribble Accuracy (%)': { min: 0, max: 100.0 },
 
   // Out of possession
-  'Pressures': { min: 0, max: 55.0 },
-  'Counterpressures': { min: 0, max: 17.0 },
-  'Interceptions': { min: 0, max: 4.0 },
+  'Pressures': { min: 0, max: 40.0 },
+  'Counterpressures': { min: 0, max: 15.0 },
+  'Interceptions': { min: 0, max: 5.0 },
   'Fouls': { min: 0, max: 8.0 },
-  'Blocks': { min: 0, max: 7.0 },
-  'Duels Attempted': { min: 0, max: 17.0 },
+  'Blocks': { min: 0, max: 8.0 },
+  'Duels Attempted': { min: 0, max: 15.0 },
   'Duel Won Accuracy (%)': { min: 0, max: 100.0 },
-  'Ball Recoveries': { min: 0, max: 16.0 },
-  'Clearances': { min: 0, max: 16.0 }
+  'Ball Recoveries': { min: 0, max: 15.0 },
+  'Clearances': { min: 0, max: 15.0 }
 };
 
 /** Build a case/space–insensitive lookup of canonical keys */

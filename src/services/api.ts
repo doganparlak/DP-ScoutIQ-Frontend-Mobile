@@ -45,26 +45,17 @@ export async function sendChat(
 ): Promise<ChatBackendResponse> {
   const message = extractMessage(messages);
 
-  const res = await fetch(url(ENDPOINTS.chat), {
+  const json = await request<ChatBackendResponse>(ENDPOINTS.chat, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // Send both "message" (new) and "question" (legacy) to ease migration.
     body: JSON.stringify({
       message,
-      question: message,
+      question: message,          // legacy, fine to keep
       strategy: strategy || null,
       session_id: sessionId,
     }),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Chat error ${res.status}: ${text}`);
-  }
-
-  const json = (await res.json()) as ChatBackendResponse;
-
-  // Normalize shape defensively
+  // Normalize
   return {
     response: (json.response ?? '').toString(),
     data: json.data ?? { players: [] },
@@ -77,10 +68,11 @@ export async function sendChat(
  * POST /reset?session_id=abc   (FastAPI parses query param)
  */
 export async function resetSession(sessionId: string): Promise<boolean> {
-  const res = await fetch(url(`${ENDPOINTS.reset}?session_id=${encodeURIComponent(sessionId)}`), {
-    method: 'POST',
-  });
-  return res.ok;
+  const res = await request<{ ok: boolean }>(
+    `${ENDPOINTS.reset}?session_id=${encodeURIComponent(sessionId)}`,
+    { method: 'POST' }
+  );
+  return !!res?.ok;
 }
 
 export const ROLE_SHORT_TO_LONG: Record<string, string> = {

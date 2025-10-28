@@ -54,7 +54,7 @@ export default function HelpCenter() {
               Alert.alert(
                 t('accountDeletedTitle', 'Account deleted'),
                 t('accountDeletedDesc', 'We lost a valuable scout and a tactician.'),
-                [{ text: t('ok', 'OK'), onPress: () => nav.reset({ index: 0, routes: [{ name: 'Login' }] }) }],
+                [{ text: t('ok', 'OK'), onPress: () => nav.reset({ index: 0, routes: [{ name: 'Welcome' }] }) }],
               );
             } catch (e: any) {
               Alert.alert(t('deleteFailed', 'Delete failed'), e?.message || t('tryAgain', 'Please try again.'));
