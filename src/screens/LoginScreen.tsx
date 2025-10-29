@@ -18,9 +18,6 @@ import { RootStackParamList } from '@/types';
 import { login } from '@/services/api';
 import { useLanguage } from '@/context/LanguageProvider';
 import { useTranslation } from 'react-i18next';
-// Optional: if you added this earlier to persist per-person:
-// import { syncLanguageAfterLogin } from '@/api/syncLanguage';
-// import { apiClient } from '@/services/api'; // adjust to your client if needed
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
