@@ -86,7 +86,7 @@ export default function ResetPasswordScreen() {
         style={styles.wrap}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
-        <Text style={styles.appName}>{t('appName', 'ScoutIQ')}</Text>
+        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
 
         <View style={styles.card}>
           <Text style={styles.title}>{t('resetTitle', 'Reset your password')}</Text>

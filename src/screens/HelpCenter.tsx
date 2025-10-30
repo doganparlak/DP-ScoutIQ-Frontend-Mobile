@@ -14,9 +14,11 @@ import {
 } from '@/theme';
 import type { RootStackParamList } from '@/types';
 import { deleteAccount as apiDeleteAccount } from '@/services/api';
+import { sendReachOut } from '@/services/api';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
+
 
 export default function HelpCenter() {
   const nav = useNavigation<RootNav>();
@@ -67,22 +69,27 @@ export default function HelpCenter() {
     );
   };
 
-  const onSendMessage = () => {
+  const onSendMessage = async () => {
     if (hasSentThisLogin) {
       Alert.alert(t('limitReached', 'Limit reached'), t('oneMsgPerLogin', 'You can send one message per login.'));
       return;
     }
-    if (!message.trim()) {
+    const clean = message.trim();
+    if (!clean) {
       Alert.alert(t('messageRequired', 'Message required'), t('pleaseWriteMessage', 'Please write a brief message so we can help.'));
       return;
     }
-    // TODO: send via your API
-    Alert.alert(t('messageSent', 'Message sent'), t('weWillFollowUp', 'We will get back to you shortly.'));
-    setSentMessage(message);
-    setMessage('');
-    inputRef.current?.blur();
-    setHasSentThisLogin(true);
-    AsyncStorage.setItem('reachout_sent_this_login', '1').catch(() => {});
+    try {
+      await sendReachOut(clean);
+      Alert.alert(t('messageSent', 'Message sent'), t('weWillFollowUp', 'We will get back to you shortly.'));
+      setSentMessage(clean);
+      setMessage('');
+      inputRef.current?.blur();
+      setHasSentThisLogin(true);
+      await AsyncStorage.setItem('reachout_sent_this_login', '1');
+    } catch (e: any) {
+      Alert.alert(t('sendFailed', 'Send failed'), String(e?.message || t('tryAgain', 'Please try again.')));
+    }
   };
 
   const tabs = useMemo(
@@ -140,7 +147,7 @@ export default function HelpCenter() {
               <Text style={styles.h3}>{t('howStrategyTitle', 'Team strategy & scouting philosophy')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy1', 'Start with an optional strategy screen to define your tactical approach and the idea behind your scouting philosophy.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy2', 'ScoutIQ uses this information to align its suggestions and interpretations.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy2', 'ScoutWise uses this information to align its suggestions and interpretations.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy3', 'You can skip this step and return to it anytime.')}
               </Text>
             </View>
@@ -150,11 +157,11 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howChatTitle', 'Chat')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat1', 'Chat with ScoutIQ to discover the best-fit players for your needs—just as you would with a regular chatbot.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat1', 'Chat with ScoutWise to discover the best-fit players for your needs—just as you would with a regular chatbot.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat2', 'All responses are data-driven and interpreted through your defined preferences.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat3', 'Ask for filters on the fly (age, role, nationality, stats, tactical fit, etc.), compare players, and add favorites to your ')}
                 <Text style={styles.bold}>{t('playerPortfolio', 'Player Portfolio')}</Text>.{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat4', 'When requested, ScoutIQ will introduce a player. Each introduction includes a ')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat4', 'When requested, ScoutWise will introduce a player. Each introduction includes a ')}
                 <Text style={styles.bold}>{t('playerCard', 'Player Card')}</Text>, <Text style={styles.bold}>{t('radarCharts', 'Radar Charts')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('interpretation', 'Interpretation')}</Text> {t('ofPerformanceAndFit', 'of the player’s performance and fit.') }
               </Text>
             </View>
@@ -173,7 +180,7 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howPotentialTitle', 'Potential')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPotential1', 'ScoutIQ assigns a Potential score (0–100) based on metadata and historical stats—representing projected ceiling and development outlook.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPotential1', 'ScoutWise assigns a Potential score (0–100) based on metadata and historical stats—representing projected ceiling and development outlook.')}
               </Text>
             </View>
 
@@ -182,7 +189,7 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howRadarTitle', 'Radar Charts')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutIQ visualizes metrics via Radar Chart for a clear statistical profile.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart for a clear statistical profile.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('inPossession', 'In-possession')}</Text>, <Text style={styles.bold}>{t('outOfPossession', 'Out-of-possession')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text> {t('forGKs', '(for GKs).')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}
               </Text>
@@ -193,7 +200,7 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howInterpTitle', 'Interpretations')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp1', 'ScoutIQ analyzes performance within role context and your criteria, highlighting the most relevant stats.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp1', 'ScoutWise analyzes performance within role context and your criteria, highlighting the most relevant stats.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp2', 'Each interpretation concisely explains past performances and tactical fit across systems.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp3', 'If no custom strategy is defined, a balanced, general scouting perspective is applied.')}
               </Text>

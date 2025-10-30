@@ -70,7 +70,7 @@ export default function LoginScreen() {
     >
       <View style={styles.wrap}>
         {/* App name above the frame */}
-        <Text style={styles.appName}>{t('appName', 'ScoutIQ')}</Text>
+        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
 
         {/* Login frame/card */}
         <View style={styles.card}>

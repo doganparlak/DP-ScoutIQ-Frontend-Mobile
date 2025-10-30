@@ -116,7 +116,7 @@ export default function SignUpScreen() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
       <View style={styles.wrap}>
-        <Text style={styles.appName}>{t('appName', 'ScoutIQ')}</Text>
+        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
 
         <View style={styles.card}>
           <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>

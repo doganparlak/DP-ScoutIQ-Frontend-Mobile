@@ -63,6 +63,13 @@ export async function sendChat(
   };
 }
 
+export async function sendReachOut(message: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(ENDPOINTS.reachOut, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
 /**
  * Optional reset endpoint
  * POST /reset?session_id=abc   (FastAPI parses query param)

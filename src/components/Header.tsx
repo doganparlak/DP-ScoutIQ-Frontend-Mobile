@@ -8,13 +8,13 @@ export default function Header() {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.wrap} accessible accessibilityRole="header" accessibilityLabel={t('appName', 'ScoutIQ')}>
+    <View style={styles.wrap} accessible accessibilityRole="header" accessibilityLabel={t('appName', 'ScoutWise')}>
       {/* Logo row */}
       <View style={styles.logoRow}>
         <BrainCog size={22} color={ACCENT} />
         <Text style={styles.title}>
           <Text style={styles.main}>SCOUT</Text>
-          <Text style={styles.accent}>IQ</Text>
+          <Text style={styles.accent}>WISE</Text>
         </Text>
       </View>
 

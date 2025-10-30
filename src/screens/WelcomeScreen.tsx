@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   appName: {
-    color: TEXT,
+    color: ACCENT,
     fontSize: 32,
     fontWeight: '800',
     marginBottom: 28,

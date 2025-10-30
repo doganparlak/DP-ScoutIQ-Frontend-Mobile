@@ -22,4 +22,5 @@ export const ENDPOINTS = {
   verifyReset: '/auth/verify_reset',
   setNewPassword: '/auth/set_new_password',
   verifySignup: '/auth/verify_signup',
+  reachOut: '/help/reach_out',
 };
