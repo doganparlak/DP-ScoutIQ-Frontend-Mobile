@@ -41,27 +41,28 @@ export default function LoginScreen() {
   const goToSignUp = () => navigation.navigate('SignUp');
 
   const handleLogin = async () => {
-    if (!isValid || submitting) return;
-    try {
-      setError(null);
-      setSubmitting(true);
+  if (!isValid || submitting) return;
+  try {
+    setError(null);
+    setSubmitting(true);
 
-      // Send uiLanguage to backend as part of the login payload (safe to add—ignored if server doesn't use it).
-      const { user } = await login({ email, password, uiLanguage: lang });
+    const { user } = await login({ email, password, uiLanguage: lang });
 
-      if (user?.uiLanguage && user.uiLanguage !== lang) {
-        await setLang(user.uiLanguage); // updates i18n + AsyncStorage('app.lang')
-      }
-
-      // housekeeping you already had
-      await AsyncStorage.removeItem('reachout_sent_this_login').catch(() => {});
-      goToMainTabs();
-    } catch {
-      setError(t('loginFailed', 'Log in failed. Please check your credentials.'));
-    } finally {
-      setSubmitting(false);
+    if (user?.uiLanguage && user.uiLanguage !== lang) {
+      await setLang(user.uiLanguage);
     }
-  };
+
+    await AsyncStorage.removeItem('reachout_sent_this_login').catch(() => {});
+
+    // ⬇️ reset to the top-level "App" route (always mounted)
+    navigation.reset({ index: 0, routes: [{ name: 'App' }] });
+  } catch {
+    setError(t('loginFailed', 'Log in failed. Please check your credentials.'));
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   return (
     <KeyboardAvoidingView

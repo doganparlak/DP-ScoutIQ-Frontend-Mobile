@@ -34,7 +34,7 @@ export default function MyProfileScreen() {
 
   const handleLogout = async () => {
     try { await logout(); } catch {}
-    rootNav.reset({ index: 0, routes: [{ name: 'Login' }] });
+    rootNav.reset({ index: 0, routes: [{ name: 'Auth' }] });
   };
 
   return (

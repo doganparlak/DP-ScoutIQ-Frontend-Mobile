@@ -16,6 +16,8 @@ export type MainTabsParamList = {
 };
 
 export type RootStackParamList = {
+  Auth: undefined;
+  App: undefined;
   Welcome: undefined;
   Login: undefined;
   MyProfile: undefined;
