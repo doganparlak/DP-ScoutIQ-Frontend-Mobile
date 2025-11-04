@@ -22,6 +22,7 @@ export type RootStackParamList = {
   Login: undefined;
   MyProfile: undefined;
   HelpCenter: undefined;
+  ManagePlan: undefined;
   SignUp: undefined;
   NewPassword: { email: string };
   Verification: { email: string; context: 'signup' | 'reset' };

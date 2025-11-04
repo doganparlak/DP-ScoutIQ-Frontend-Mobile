@@ -38,6 +38,17 @@ export type ChatBackendResponse = {
   response_parts?: ResponsePart[]; // optional: if you still split narrative into chunks
 };
 
+// --- add under other exported types ---
+export type Plan = 'Free' | 'Pro' | 'Elite';
+
+// --- add this function near the other Account/Profile helpers ---
+export async function setPlan(plan: Plan): Promise<{ ok: boolean; plan: Plan }> {
+  return request<{ ok: boolean; plan: Plan }>(ENDPOINTS.mePlan, {
+    method: 'POST',
+    body: JSON.stringify({ plan }),
+  });
+}
+
 export async function sendChat(
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>,
   sessionId: string,

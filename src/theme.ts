@@ -1,11 +1,3 @@
-// Theme constants (from your provided palette)
-// export const ACCENT = '#B22222'; // DP crimson
-// export const BG = '#0f0f10';     // near-black
-// export const PANEL = '#171719';
-// export const MUTED = '#9ca3af';
-// export const CARD = '#1e1e20';   // slightly lighter than BG/PANEL for cards
-// export const TEXT = '#f9fafb';   // near-white for text
-
 export const BG    = '#111315';   // darkest background
 export const PANEL = '#1A1D1A';   // slightly lighter for panels
 export const CARD  = '#1F2220';   // lightest dark for cards/blocks

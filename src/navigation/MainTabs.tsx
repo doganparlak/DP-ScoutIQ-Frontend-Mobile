@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import StrategyScreen from '@/screens/StrategyScreen';
 import ChatScreen from '@/screens/ChatScreen';
 import MyProfileScreen from '@/screens/MyProfileScreen';
+import ManagePlanScreen from '@/screens/ManagePlanScreen';
 import HelpCenter from '@/screens/HelpCenter';
 import { ACCENT, MUTED, PANEL, LINE } from '@/theme';
 import type { MainTabsParamList, RootStackParamList } from '@/types';
@@ -16,6 +17,7 @@ function ProfileStackScreen() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="MyProfile" component={MyProfileScreen} />
+      <ProfileStack.Screen name="ManagePlan" component={ManagePlanScreen} />
       <ProfileStack.Screen name="HelpCenter" component={HelpCenter} />
     </ProfileStack.Navigator>
   );

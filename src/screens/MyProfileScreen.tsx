@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   Linking,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '../theme';
 import type { RootStackParamList, MainTabsParamList } from '../types';
-import { logout } from '../services/api';
+import { logout, getMe } from '../services/api';
+import type { Plan } from '@/services/api';
 
 // Components
 import FavoritePlayers from '@/components/FavoritePlayers';
@@ -26,10 +27,31 @@ export default function MyProfileScreen() {
   const rootNav = useNavigation<RootNav>();
   const { t } = useTranslation();
 
-  // Account plan code (display can be localized in Account)
-  const [plan] = useState<'Free' | 'Pro' | 'Elite'>('Pro');
+  const [plan, setPlan] = useState<Plan>('Free');
 
-  const openPlans = () => Linking.openURL('https://example.com/plans'); // TODO: replace
+  // 1) a reusable loader for /me
+  const loadMe = useCallback(async () => {
+    try {
+      const me = await getMe();
+      if (me?.plan) setPlan(me.plan as Plan);
+    } catch {
+      // no-op
+    }
+  }, []);
+
+  // 2) load once on mount (same as before)
+  React.useEffect(() => {
+    loadMe();
+  }, [loadMe]);
+
+  // 3) and ALSO whenever this screen regains focus (after ManagePlan -> goBack)
+  useFocusEffect(
+    useCallback(() => {
+      loadMe();
+    }, [loadMe])
+  );
+
+  const openPlans = () => rootNav.navigate('ManagePlan');
   const openHelp  = () => rootNav.navigate('HelpCenter');
 
   const handleLogout = async () => {
@@ -41,7 +63,6 @@ export default function MyProfileScreen() {
     <SafeAreaView
       edges={['top']}
       style={[styles.safe, { paddingTop: 0 }]}
-      // localized a11y description for the screen container
       accessibilityLabel={t('profileScreenAL', 'Profile screen')}
     >
       <ScrollView
