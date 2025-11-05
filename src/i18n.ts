@@ -186,7 +186,18 @@ export const resources = {
       accountDeletedTitle: 'Account deleted',
       accountDeletedDesc: 'We lost a valuable scout and a tactician.',
       tryAgain: 'Please try again.',
-
+      planUpdated: 'Plan updated',
+      planNow: 'Your plan is now {{plan}}.',
+      error: 'Error',
+      couldNotUpdatePlan: 'Could not update plan. Please try again.',
+      planOptions: 'Plan options',
+      plan: 'Plan',
+      questionsQuota: 'Questions',
+      price: 'Price',
+      selectPlan: 'Select plan',
+      choose: 'Choose',
+      saving: 'Saving',
+      setPlan: 'Set plan',
       metric: {
         // GK
         'Diving': 'Diving',
@@ -423,6 +434,18 @@ export const resources = {
       accountDeletedTitle: 'Hesap silindi',
       accountDeletedDesc: 'Değerli bir scout ve taktisyen kaybettik.',
       tryAgain: 'Lütfen tekrar dene.',
+      planUpdated: 'Plan güncellendi',
+      planNow: 'Mevcut plan {{plan}}.',
+      error: 'Hata',
+      couldNotUpdatePlan: 'Plan güncellenemedi. Lütfen tekrar deneyin.',
+      planOptions: 'Plan seçenekleri',
+      plan: 'Plan',
+      questionsQuota: 'Soru miktarı',
+      price: 'Fiyat',
+      selectPlan: 'Plan seç',
+      choose: 'Seç',
+      saving: 'Kaydediliyor',
+      setPlan: 'Plan belirle',
       metric: {
         // Kaleci / GK
         'Diving': 'Atlayarak Kurtarış',

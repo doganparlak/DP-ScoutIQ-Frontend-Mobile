@@ -104,7 +104,7 @@ export default function ManagePlan() {
         <View style={styles.table}>
           <View style={[styles.row, styles.headerRow]}>
             <Text style={[styles.cell, styles.headerCell, styles.name]}>{t('plan', 'Plan')}</Text>
-            <Text style={[styles.cell, styles.headerCell]}>{t('questionsPerMonth', 'Questions')}</Text>
+            <Text style={[styles.cell, styles.headerCell]}>{t('questionsQuota', 'Questions')}</Text>
             <Text style={[styles.cell, styles.headerCell]}>{t('price', 'Price')}</Text>
           </View>
           {PLANS.map(p => <Row key={p.name} p={p} />)}

@@ -5,7 +5,7 @@ import StrategyScreen from '@/screens/StrategyScreen';
 import ChatScreen from '@/screens/ChatScreen';
 import MyProfileScreen from '@/screens/MyProfileScreen';
 import ManagePlanScreen from '@/screens/ManagePlanScreen';
-import HelpCenter from '@/screens/HelpCenter';
+import HelpCenter from '@/screens/HelpCenterScreen';
 import { ACCENT, MUTED, PANEL, LINE } from '@/theme';
 import type { MainTabsParamList, RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
