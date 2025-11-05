@@ -1,7 +1,13 @@
 // App.tsx
 import React from 'react';
 import RootNavigator from '@/navigation/RootNavigator';
+import '@/i18n'; 
+import { LanguageProvider } from '@/context/LanguageProvider';
 
 export default function App() {
-  return <RootNavigator />;
+  return (
+    <LanguageProvider>
+      <RootNavigator />
+    </LanguageProvider>
+  );
 }
