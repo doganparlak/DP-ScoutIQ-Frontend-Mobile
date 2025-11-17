@@ -93,12 +93,12 @@ export default function SpiderChart({ title, points, Icon }: Props) {
   let cleaned = normalize(points);
 
   // 2) spread angles for In Possession so stats are equally located
-  if (isInPossession && cleaned.length > 4) {
+  if (isInPossession && cleaned.length > 1) {
     const spread = spreadByStride(cleaned);
     cleaned = spread.map((p, i) => ({ ...p, x: i + 1 }));
   }
 
-  if (cleaned.length <= 4) return null;
+  if (cleaned.length <= 1) return null;
 
   // Build display lines with translations
   const withDisplay = cleaned.map((p) => {
