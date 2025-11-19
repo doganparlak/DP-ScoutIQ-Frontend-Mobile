@@ -110,7 +110,8 @@ export default function ChatScreen() {
 
     try {
       setSending(true);
-      const res = await sendChat(payload, sessionId, strategy);
+      const currentStrategy = await loadStrategy();
+      const res = await sendChat(payload, sessionId, currentStrategy);
 
       // Remove pending bubble BEFORE appending real content
       if (pendingIdRef.current) {

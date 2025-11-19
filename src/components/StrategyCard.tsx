@@ -35,6 +35,8 @@ export default function StrategyCard({ onSaved }: Props) {
     })();
   }, []);
 
+
+
   const placeholder =
     phMode === 'initial'
       ? t('strategyInitialPlaceholder', 'We play in a 4-3-3 formation with...')

@@ -85,6 +85,7 @@ export async function sendReachOut(message: string): Promise<{ ok: boolean }> {
  * Optional reset endpoint
  * POST /reset?session_id=abc   (FastAPI parses query param)
  */
+
 export async function resetSession(sessionId: string): Promise<boolean> {
   const res = await request<{ ok: boolean }>(
     `${ENDPOINTS.reset}?session_id=${encodeURIComponent(sessionId)}`,
