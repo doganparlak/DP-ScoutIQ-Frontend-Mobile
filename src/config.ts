@@ -3,7 +3,7 @@
 
 // iOS Simulator (Expo):
 
-export const API_BASE_URL = 'http://localhost:8000';
+export const API_BASE_URL = 'https://dp-scoutiq-backend-mobile.onrender.com';
 
 // Android Emulator (Expo):
 // export const API_BASE_URL = 'http://10.0.2.2:8000';
