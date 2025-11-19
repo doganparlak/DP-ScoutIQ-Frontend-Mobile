@@ -13,6 +13,11 @@
     "android": {},
     "web": {
       "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ff45af19-a14f-462f-94f2-3efd08d55f4f"
+      }
     }
   }
 }
