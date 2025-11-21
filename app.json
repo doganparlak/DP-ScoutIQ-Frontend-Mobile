@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DP-ScoutIQ",
+    "name": "ScoutWise",
     "slug": "dp-scoutiq",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.dp-scoutiq",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "ScoutWise"
       }
     },
     "android": {
