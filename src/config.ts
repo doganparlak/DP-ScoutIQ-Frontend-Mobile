@@ -1,10 +1,15 @@
 // src/config.ts
-// Choose ONE of these depending on how you run the app:
+import { Platform } from 'react-native';
 
-// iOS Simulator (Expo):
+// Change this IP to your Mac's local IP:
+const LOCAL_DEV_API = 'http://192.168.1.114:8000';
 
-export const API_BASE_URL = 'https://dp-scoutiq-backend-mobile.onrender.com';
+const PROD_API = 'https://dp-scoutiq-backend-mobile.onrender.com';
 
+export const API_BASE_URL =
+  __DEV__
+    ? LOCAL_DEV_API   // when running in development (Expo Go, metro)
+    : PROD_API;       // when building production
 // Android Emulator (Expo):
 // export const API_BASE_URL = 'http://10.0.2.2:8000';
 

@@ -89,19 +89,19 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Pass Accuracy (%)': { min: 0, max: 100.0 },
   'Crosses Attempted': { min: 0, max: 15.0 },
   'Cross Accuracy (%)': { min: 0, max: 100.0 },
-  'Carries': { min: 0, max: 60 },
-  'Dribbles': { min: 0, max: 15.0 },
+  'Carries': { min: 0, max: 80 },
+  'Dribbles': { min: 0, max: 10.0 },
   'Dribble Accuracy (%)': { min: 0, max: 100.0 },
 
   // Out of possession
-  'Pressures': { min: 0, max: 40.0 },
-  'Counterpressures': { min: 0, max: 15.0 },
+  'Pressures': { min: 0, max: 25.0 },
+  'Counterpressures': { min: 0, max: 10.0 },
   'Interceptions': { min: 0, max: 5.0 },
   'Fouls': { min: 0, max: 8.0 },
   'Blocks': { min: 0, max: 8.0 },
   'Duels Attempted': { min: 0, max: 15.0 },
   'Duel Won Accuracy (%)': { min: 0, max: 100.0 },
-  'Ball Recoveries': { min: 0, max: 15.0 },
+  'Ball Recoveries': { min: 0, max: 10.0 },
   'Clearances': { min: 0, max: 15.0 }
 };
 
