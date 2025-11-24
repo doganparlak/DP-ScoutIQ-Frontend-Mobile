@@ -9,48 +9,22 @@ export const GK_METRICS = [
 ] as const;
 
 export const IN_POS_METRICS = [
-  'Shots', 'Shot Accuracy (%)', 'Shot Accuracy %', 'Goals', 'Assists', 'xG', 'Key Passes',
-  'Passes Attempted', 'Pass Accuracy (%)', 'Pass Accuracy %', 'Crosses Attempted', 'Cross Accuracy (%)',
-  'Cross Accuracy %', 'Carries', 'Dribbles', 'Dribble Accuracy (%)', 'Dribble Accuracy %'
+  'Shots', 'Shot Accuracy (%)', 'Goals', 'Assists', 'xG', 'Key Passes',
+  'Passes Attempted', 'Pass Accuracy (%)', 'Crosses Attempted', 'Cross Accuracy (%)',
+  'Carries', 'Dribbles', 'Dribble Accuracy (%)'
 ] as const;
 
 export const OUT_POS_METRICS = [
   'Pressures', 'Counterpressures', 'Interceptions', 'Fouls', 'Blocks', 'Duels Attempted',
-  'Duel Won Accuracy (%)', 'Duel Won Accuracy %', 'Ball Recoveries', 'Clearances',
+  'Duel Won Accuracy (%)', 'Ball Recoveries', 'Clearances',
 ] as const;
 
-/** === Canonicalization for alternate labels/spellings ===
- * Left side: possible incoming value
- * Right side: canonical key we keep in RANGES and on the chart
- */
-const ALIAS_RAW: Record<string, string> = {
-  // Percent label variants
-  'Shot Accuracy %': 'Shot Accuracy (%)',
-  'Pass Accuracy %': 'Pass Accuracy (%)',
-  'Cross Accuracy %': 'Cross Accuracy (%)',
-  'Duel Won Accuracy %': 'Duel Won Accuracy (%)',
-
-  // GK label variants
-  'Shots Faced': 'Shot Faced',
-  'Shots Saved': 'Shot Saved',
-  'Sweeper Keeper': 'Keeper Sweeper',
-  'Balls Collected': 'Collected',
-
-  // Minor spacing/case variants that sometimes appear
-  'In-Play Safe': 'In Play Safe',
-  'In-Play Danger': 'In Play Danger',
-
-  // Just in case some feeds include colons/extra spaces
-  'Shot: Faced': 'Shot Faced',
-  'Shot: Saved': 'Shot Saved',
-};
 
 /** Normalized-key map for case/whitespace-insensitive matching */
 function mkKey(s: string) {
   return s.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 const ALIAS: Record<string, string> = {};
-Object.entries(ALIAS_RAW).forEach(([k, v]) => (ALIAS[mkKey(k)] = v));
 
 /** === Static ranges per canonical metric (tweak to your data scale) === */
 const RANGES: Record<string, { min: number; max: number }> = {
