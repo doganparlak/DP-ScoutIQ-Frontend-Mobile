@@ -27,7 +27,7 @@ type PlayerRow = {
 };
 
 const ALL_ROLE_SHORTS = [
-  'GK','LB','RB','LCB','RCB','CB','LWB','RWB','LM','RM','LDM','RDM','LCM','RCM','CDM','CM','CAM','LW','RW','LCF','RCF','CF'
+  'GK','LB','RB','LCB','RCB','CB','LWB','RWB','LM','RM','LDM','RDM','LCM','RCM','LAM','RAM','CDM','CM','CAM','LW','RW','LCF','RCF','CF'
 ] as const;
 
 const ROW_HEIGHT = 48;
