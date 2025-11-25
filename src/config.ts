@@ -13,7 +13,6 @@ export const API_BASE_URL =
 // Android Emulator (Expo):
 // export const API_BASE_URL = 'http://10.0.2.2:8000';
 
-
 // Endpoints (adjust to match your backend; see notes in README)
 export const ENDPOINTS = {
   chat: '/chat',

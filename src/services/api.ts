@@ -39,7 +39,7 @@ export type ChatBackendResponse = {
 };
 
 // --- add under other exported types ---
-export type Plan = 'Free' | 'Pro' | 'Elite';
+export type Plan = 'Free' | 'Pro';
 
 // --- add this function near the other Account/Profile helpers ---
 export async function setPlan(plan: Plan): Promise<{ ok: boolean; plan: Plan }> {

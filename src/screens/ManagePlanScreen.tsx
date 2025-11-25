@@ -15,10 +15,9 @@ import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme
 import type { Plan } from '@/services/api';
 import { setPlan, getMe } from '@/services/api';
 
-const PLANS: Array<{ name: Plan; questions: number; price: string }> = [
-  { name: 'Free',  questions: 10,  price: 'FREE' },
-  { name: 'Pro',   questions: 50,  price: '$2.99' },
-  { name: 'Elite', questions: 100, price: '$4.99' },
+const PLANS: Array<{ name: Plan; price: string }> = [
+  { name: 'Free', price: 'FREE' },
+  { name: 'Pro', price: '$2.99' },
 ];
 
 export default function ManagePlan() {
@@ -77,7 +76,6 @@ export default function ManagePlan() {
         accessibilityLabel={`${p.name} plan row`}
       >
         <Text style={[styles.cell, styles.name, active && styles.cellActive]}>{p.name}</Text>
-        <Text style={[styles.cell, active && styles.cellActive]}>{p.questions}</Text>
         <Text style={[styles.cell, active && styles.cellActive]}>{p.price}</Text>
       </Pressable>
     );
@@ -104,8 +102,7 @@ export default function ManagePlan() {
         <View style={styles.table}>
           <View style={[styles.row, styles.headerRow]}>
             <Text style={[styles.cell, styles.headerCell, styles.name]}>{t('plan', 'Plan')}</Text>
-            <Text style={[styles.cell, styles.headerCell]}>{t('questionsQuota', 'Questions')}</Text>
-            <Text style={[styles.cell, styles.headerCell]}>{t('price', 'Price')}</Text>
+            <Text style={[styles.cell, styles.headerCell]}>{t('price', 'Price/Month')}</Text>
           </View>
           {PLANS.map(p => <Row key={p.name} p={p} />)}
         </View>
