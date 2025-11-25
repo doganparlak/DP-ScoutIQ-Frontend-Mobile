@@ -28,4 +28,5 @@ export const ENDPOINTS = {
   verifySignup: '/auth/verify_signup',
   reachOut: '/help/reach_out',
   mePlan: '/me/plan',
+  subscription: '/me/subscription/iap',
 };

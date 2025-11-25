@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ScoutWise",
-    "slug": "dp-scoutiq",
+    "slug": "scoutwise",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "package": "com.dpformance.dpscoutiq"
+      "package": "com.anonymous.dp-scoutiq"
     },
     "web": {
       "bundler": "metro"

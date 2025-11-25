@@ -41,6 +41,33 @@ export type ChatBackendResponse = {
 // --- add under other exported types ---
 export type Plan = 'Free' | 'Pro';
 
+export type ActivateIAPSubscriptionIn = {
+  platform: 'ios' | 'android';
+  productId: string;
+  transactionId?: string | null;
+  externalId: string;
+  receipt?: string | null;
+};
+
+export async function activateIAPSubscription(
+  input: ActivateIAPSubscriptionIn,
+): Promise<{ ok: boolean; plan: Plan; subscriptionEndAt?: string }> {
+  // Map camelCase to snake_case expected by backend (if you followed previous backend code)
+  return request<{ ok: boolean; plan: Plan; subscriptionEndAt?: string }>(
+    ENDPOINTS.subscription,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        platform: input.platform,
+        product_id: input.productId,
+        transaction_id: input.transactionId,
+        external_id: input.externalId,
+        receipt: input.receipt,
+      }),
+    },
+  );
+}
+
 // --- add this function near the other Account/Profile helpers ---
 export async function setPlan(plan: Plan): Promise<{ ok: boolean; plan: Plan }> {
   return request<{ ok: boolean; plan: Plan }>(ENDPOINTS.mePlan, {
@@ -161,7 +188,6 @@ export async function deleteFavoritePlayer(id: string): Promise<void> {
 
 export type UILang = 'en' | 'tr';
 
-
 export type Profile = {
   id: number;
   email: string;
@@ -170,6 +196,7 @@ export type Profile = {
   plan: string;
   favorite_players: any[];
   uiLanguage?: UILang;
+  subscriptionEndAt?: string | null;
 };
 
 // --- Teach request() to forward language on every call ---

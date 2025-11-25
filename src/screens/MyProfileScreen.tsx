@@ -1,21 +1,16 @@
+// MyProfileScreen.tsx
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Linking,
-} from 'react-native';
+import { StyleSheet, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
-import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '../theme';
+import { BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE } from '../theme';
 import type { RootStackParamList, MainTabsParamList } from '../types';
 import { logout, getMe } from '../services/api';
 import type { Plan } from '@/services/api';
 
-// Components
 import FavoritePlayers from '@/components/FavoritePlayers';
 import Account from '@/components/Account';
 import { useTranslation } from 'react-i18next';
@@ -29,33 +24,32 @@ export default function MyProfileScreen() {
 
   const [plan, setPlan] = useState<Plan>('Free');
 
-  // 1) a reusable loader for /me
   const loadMe = useCallback(async () => {
     try {
       const me = await getMe();
       if (me?.plan) setPlan(me.plan as Plan);
     } catch {
-      // no-op
+      // ignore
     }
   }, []);
 
-  // 2) load once on mount (same as before)
   React.useEffect(() => {
     loadMe();
   }, [loadMe]);
 
-  // 3) and ALSO whenever this screen regains focus (after ManagePlan -> goBack)
   useFocusEffect(
     useCallback(() => {
       loadMe();
-    }, [loadMe])
+    }, [loadMe]),
   );
 
   const openPlans = () => rootNav.navigate('ManagePlan');
-  const openHelp  = () => rootNav.navigate('HelpCenter');
+  const openHelp = () => rootNav.navigate('HelpCenter');
 
   const handleLogout = async () => {
-    try { await logout(); } catch {}
+    try {
+      await logout();
+    } catch {}
     rootNav.reset({ index: 0, routes: [{ name: 'Auth' }] });
   };
 
@@ -85,7 +79,6 @@ export default function MyProfileScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
 
-  // (Unused styles kept for future UI; safe to remove if not needed)
   card: {
     backgroundColor: PANEL,
     borderRadius: 20,
