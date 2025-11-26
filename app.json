@@ -15,7 +15,7 @@
       }
     },
     "android": {
-      "package": "com.anonymous.dp-scoutiq"
+      "package": "com.dpformance.dpscoutiq"
     },
     "web": {
       "bundler": "metro"

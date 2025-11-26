@@ -245,8 +245,17 @@ export default function ManagePlan() {
 
     try {
       setSaving(true);
-      await (requestPurchase as unknown as (productId: string) => Promise<any>)(SUBS_SKU);
-      // SUCCESS / FAILURE will be handled in the listeners
+      await requestPurchase({
+        type: 'subs',       
+        request: {
+          ios: {
+            sku: SUBS_SKU,
+          },
+          android: {
+            skus: [SUBS_SKU],
+          },
+        },
+      });
     } catch (e: any) {
       console.warn('[IAP] requestPurchase error', e);
       setSaving(false);
