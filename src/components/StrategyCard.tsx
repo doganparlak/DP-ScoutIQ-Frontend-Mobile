@@ -71,7 +71,7 @@ export default function StrategyCard({ onSaved }: Props) {
         {t('strategyTitle', 'Team Strategy / Scouting Philosophy')}
       </Text>
       <Text style={styles.hint}>
-        {t('strategyHint', 'Add principles, roster notes, playstyle, constraints, or scouting goals. The assistant will use it as context.')}
+        {t('strategyHint', 'Add principles, roster notes, playstyle or scouting goals. ScoutWise will use it as context.')}
       </Text>
 
       <TextInput
