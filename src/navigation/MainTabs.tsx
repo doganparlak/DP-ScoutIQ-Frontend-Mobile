@@ -35,7 +35,7 @@ export default function MainTabs() {
           backgroundColor: PANEL,
           borderTopColor: LINE,
           borderTopWidth: 1,
-          height: 58,
+          height: 70,
         },
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,

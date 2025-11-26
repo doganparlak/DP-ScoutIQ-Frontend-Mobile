@@ -76,9 +76,9 @@ const styles = StyleSheet.create({
   },
   appName: {
     color: ACCENT,
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '800',
-    marginBottom: 28,
+    marginBottom: 60,
   },
   langRow: {
     flexDirection: 'row',
@@ -102,9 +102,11 @@ const styles = StyleSheet.create({
   langText: {
     color: TEXT,
     fontWeight: '700',
+    fontSize: 17
   },
   langTextActive: {
     color: TEXT, // keeps contrast in Dark theme
+    fontSize: 17
   },
   primaryBtn: {
     width: '80%',
@@ -113,7 +115,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 14,
   },
-  primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 16 },
+  primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 17 },
   secondaryBtn: {
     width: '80%',
     borderRadius: 14,
@@ -123,5 +125,5 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     backgroundColor: PANEL,
   },
-  secondaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 16 },
+  secondaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 17 },
 });

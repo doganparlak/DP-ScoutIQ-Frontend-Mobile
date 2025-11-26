@@ -201,7 +201,7 @@ export default function HelpCenter() {
               <Text style={styles.h3}>{t('howRadarTitle', 'Radar Charts')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart for a clear statistical profile.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('inPossession', 'In-possession')}</Text>, <Text style={styles.bold}>{t('outOfPossession', 'Out-of-possession')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text> {t('forGKs', '(for GKs).')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('inPossession', 'In-possession')}</Text>, <Text style={styles.bold}>{t('outOfPossession', 'Out-of-possession')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>{t('forGKs', '(for GKs).')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}
               </Text>
             </View>

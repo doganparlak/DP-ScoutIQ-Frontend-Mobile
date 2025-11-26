@@ -11,6 +11,7 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
@@ -27,6 +28,7 @@ export default function LoginScreen() {
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,19 +98,32 @@ export default function LoginScreen() {
             />
           </View>
 
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('password', 'Password')}</Text>
+         <View style={styles.fieldBlock}>
+          <Text style={styles.label}>{t('password', 'Password')}</Text>
+          <View style={styles.passwordRow}>
             <TextInput
               value={password}
               onChangeText={setPassword}
               placeholder={t('placeholderPassword', '••••••••')}
               placeholderTextColor={MUTED}
-              secureTextEntry
-              style={styles.input}
+              secureTextEntry={!showPassword}
+              style={styles.passwordInput}
               returnKeyType="done"
               onSubmitEditing={handleLogin}
             />
+            <Pressable
+              onPress={() => setShowPassword(prev => !prev)}
+              hitSlop={8}
+              style={styles.eyeButton}
+            >
+              {showPassword ? (
+                <EyeOff size={20} color={MUTED} />
+              ) : (
+                <Eye size={20} color={MUTED} />
+              )}
+            </Pressable>
           </View>
+        </View>
 
           {/* Forgot password link */}
           <Pressable
@@ -226,4 +241,27 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: MUTED, fontSize: 14 },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD,
+    borderColor: LINE,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingRight: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    color: TEXT,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingLeft: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+
 });

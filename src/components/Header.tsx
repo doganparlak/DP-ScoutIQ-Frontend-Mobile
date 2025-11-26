@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     color: ACCENT,
     marginTop: 8,
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 16,
   },
   divider: {
     width: '70%',

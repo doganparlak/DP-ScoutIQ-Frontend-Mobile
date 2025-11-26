@@ -33,12 +33,12 @@ export default function StrategyScreen() {
               padding: 14,
             })}
           >
-            <Text style={{ color: 'white', fontWeight: '700', textAlign: 'center' }}>
+            <Text style={{ color: 'white', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
               {t('startChatting', 'Start Chatting')}
             </Text>
           </Pressable>
 
-          <Text style={{ color: MUTED, marginTop: 8, textAlign: 'center' }}>
+          <Text style={{ color: MUTED, marginTop: 8, fontSize: 14, textAlign: 'center' }}>
             {t('updateStrategyHint', 'You can update your strategy anytime.')}
           </Text>
         </View>
