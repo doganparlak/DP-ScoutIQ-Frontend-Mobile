@@ -116,9 +116,11 @@ export default function ManagePlan() {
           } else {
             const pIOS = purchase as PurchaseIOS;
             externalId = pIOS.transactionId ?? '';
+            
             try {
               receipt = (await getReceiptIOS()) ?? null;
-            } catch {
+            } catch (err) {
+              console.warn('[IAP] getReceiptIOS failed', err);
               receipt = null;
             }
           }
@@ -129,9 +131,8 @@ export default function ManagePlan() {
 
           const payload: ActivateIAPSubscriptionIn = {
             platform,
-            productId: commonProductId,
-            transactionId: commonTransactionId,
-            externalId,
+            product_id: SUBS_SKU,
+            external_id: externalId,
             receipt,
           };
 

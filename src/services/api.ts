@@ -41,13 +41,13 @@ export type ChatBackendResponse = {
 // --- add under other exported types ---
 export type Plan = 'Free' | 'Pro';
 
-export type ActivateIAPSubscriptionIn = {
+export interface ActivateIAPSubscriptionIn {
   platform: 'ios' | 'android';
-  productId: string;
-  transactionId?: string | null;
-  externalId: string;
+  product_id: string;
+  external_id: string;
   receipt?: string | null;
-};
+}
+
 
 export async function activateIAPSubscription(
   input: ActivateIAPSubscriptionIn,
@@ -59,9 +59,8 @@ export async function activateIAPSubscription(
       method: 'POST',
       body: JSON.stringify({
         platform: input.platform,
-        product_id: input.productId,
-        transaction_id: input.transactionId,
-        external_id: input.externalId,
+        product_id: input.product_id,
+        external_id: input.external_id,
         receipt: input.receipt,
       }),
     },
