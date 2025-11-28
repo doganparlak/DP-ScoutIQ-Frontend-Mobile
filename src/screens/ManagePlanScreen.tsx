@@ -8,6 +8,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  NativeModules
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -55,6 +56,17 @@ export default function ManagePlan() {
   const [saving, setSaving] = React.useState(false);
   const [subscriptionEndAt, setSubscriptionEndAt] = React.useState<string | null>(null);
   const [iapReady, setIapReady] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const bundleId = NativeModules.RNDeviceInfo?.bundleId;
+      console.log("### Device bundleId:", bundleId);
+      console.log("### SUBS_SKU:", SUBS_SKU);
+    } catch (e) {
+      console.log("Bundle ID check error:", e);
+    }
+  }, []);
+
 
   // ---- Load /me once ----
   React.useEffect(() => {
