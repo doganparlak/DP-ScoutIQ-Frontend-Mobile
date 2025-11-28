@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "dpscoutiq",
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.dp-scoutiq",
@@ -14,12 +15,19 @@
         "CFBundleDisplayName": "ScoutWise"
       }
     },
+
     "android": {
       "package": "com.dpformance.dpscoutiq"
     },
+
     "web": {
       "bundler": "metro"
     },
+
+    "plugins": [
+      "react-native-iap"
+    ],
+
     "extra": {
       "eas": {
         "projectId": "ff45af19-a14f-462f-94f2-3efd08d55f4f"
