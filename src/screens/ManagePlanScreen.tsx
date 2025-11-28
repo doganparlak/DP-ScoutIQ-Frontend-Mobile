@@ -167,14 +167,14 @@ export default function ManagePlan() {
           } else {
             Alert.alert(
               t('error', 'Error'),
-              t('couldNotUpdatePlan', 'Could not update plan. Please try again. 1'),
+              'Could not update plan. Please try again. 1',
             );
           }
         } catch (err) {
           console.warn('[IAP] purchaseUpdatedListener error', err);
           Alert.alert(
             t('error', 'Error'),
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again. 2'),
+            'Could not update plan. Please try again. 2',
           );
         } finally {
           setSaving(false);
@@ -224,14 +224,14 @@ export default function ManagePlan() {
         } else {
           Alert.alert(
             t('error', 'Error'),
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again. 3'),
+            'Could not update plan. Please try again. 3',
           );
         }
       } catch (e: any) {
         Alert.alert(
           t('error', 'Error'),
           e?.message ||
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again. 4'),
+            'Could not update plan. Please try again. 4',
         );
       } finally {
         setSaving(false);
@@ -278,7 +278,7 @@ export default function ManagePlan() {
       Alert.alert(
         t('error', 'Error'),
         e?.message ||
-          t('couldNotUpdatePlan', 'Could not update plan. Please try again. 5'),
+          'Could not update plan. Please try again. 5',
       );
     }
   };
