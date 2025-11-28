@@ -100,7 +100,7 @@ export default function ManagePlan() {
         try {
           // Platform discriminant
           const platform: 'ios' | 'android' =
-            purchase.platform === 'ios' ? 'ios' : 'android';
+            Platform.OS === 'ios' ? 'ios' : 'android';
 
           let externalId = '';
           let receipt: string | null = null;
