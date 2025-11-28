@@ -102,9 +102,6 @@ export default function ManagePlan() {
           const platform: 'ios' | 'android' =
             purchase.platform === 'ios' ? 'ios' : 'android';
 
-          const commonProductId = purchase.productId;
-          const commonTransactionId = purchase.transactionId ?? null;
-
           let externalId = '';
           let receipt: string | null = null;
 
@@ -118,7 +115,14 @@ export default function ManagePlan() {
             externalId = pIOS.transactionId ?? '';
             
             try {
-              receipt = (await getReceiptIOS()) ?? null;
+              const raw = await getReceiptIOS();
+              Alert.alert(
+                'getReceiptIOS result',
+                raw
+                  ? `Length: ${raw.length}\n\nFirst 300 chars:\n${raw.slice(0, 300)}`
+                  : 'Result is null or empty'
+              );
+              receipt = raw ?? null;
             } catch (err) {
               console.warn('[IAP] getReceiptIOS failed', err);
               receipt = null;
@@ -191,12 +195,6 @@ export default function ManagePlan() {
       endConnection();
     };
   }, [nav, t]);
-
-  const hasActivePro = React.useMemo(() => {
-    if (!subscriptionEndAt) return false;
-    const end = new Date(subscriptionEndAt).getTime();
-    return !Number.isNaN(end) && end > Date.now();
-  }, [subscriptionEndAt]);
 
   const formattedEndDate = React.useMemo(() => {
     if (!subscriptionEndAt) return null;
