@@ -100,11 +100,16 @@ export default function ManagePlan() {
         try {
           // Platform discriminant
           const platform: 'ios' | 'android' =
-            Platform.OS === 'ios' ? 'ios' : 'android';
+            purchase.platform === 'ios' ? 'ios' : 'android';
+
+          Alert.alert(
+            'purchaseUpdatedListener',
+            `Platform.OS: ${Platform.OS}\nplatform: ${platform}\nproductId: ${purchase.productId}\ntransactionId: ${purchase.transactionId ?? 'null'}`
+          );
 
           let externalId = '';
           let receipt: string | null = null;
-
+          
           if (platform === 'android') {
             const pAndroid = purchase as PurchaseAndroid;
             externalId =
@@ -162,14 +167,14 @@ export default function ManagePlan() {
           } else {
             Alert.alert(
               t('error', 'Error'),
-              t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
+              t('couldNotUpdatePlan', 'Could not update plan. Please try again. 1'),
             );
           }
         } catch (err) {
           console.warn('[IAP] purchaseUpdatedListener error', err);
           Alert.alert(
             t('error', 'Error'),
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
+            t('couldNotUpdatePlan', 'Could not update plan. Please try again. 2'),
           );
         } finally {
           setSaving(false);
@@ -219,14 +224,14 @@ export default function ManagePlan() {
         } else {
           Alert.alert(
             t('error', 'Error'),
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
+            t('couldNotUpdatePlan', 'Could not update plan. Please try again. 3'),
           );
         }
       } catch (e: any) {
         Alert.alert(
           t('error', 'Error'),
           e?.message ||
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
+            t('couldNotUpdatePlan', 'Could not update plan. Please try again. 4'),
         );
       } finally {
         setSaving(false);
@@ -273,7 +278,7 @@ export default function ManagePlan() {
       Alert.alert(
         t('error', 'Error'),
         e?.message ||
-          t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
+          t('couldNotUpdatePlan', 'Could not update plan. Please try again. 5'),
       );
     }
   };
