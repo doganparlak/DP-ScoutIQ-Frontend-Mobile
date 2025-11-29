@@ -30,7 +30,6 @@ import {
   purchaseUpdatedListener,
   purchaseErrorListener,
   finishTransaction,
-  getReceiptIOS,
   ErrorCode,
   type EventSubscription,
   type Purchase,
@@ -98,7 +97,6 @@ export default function ManagePlan() {
 
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
         try {
-          // Platform discriminant
           const platform: 'ios' | 'android' =
             purchase.platform === 'ios' ? 'ios' : 'android';
 
@@ -108,42 +106,58 @@ export default function ManagePlan() {
           );
 
           let externalId = '';
-          let receipt: string | null = null;
-          
+
           if (platform === 'android') {
             const pAndroid = purchase as PurchaseAndroid;
-            externalId =
-              pAndroid.purchaseToken ?? pAndroid.transactionId ?? '';
-            receipt = pAndroid.dataAndroid ?? null;
+            // For server-side Google Play validation you need purchaseToken
+            externalId = pAndroid.purchaseToken ?? pAndroid.transactionId ?? '';
           } else {
             const pIOS = purchase as PurchaseIOS;
-            externalId = pIOS.transactionId ?? '';
-            
-            try {
-              const raw = await getReceiptIOS();
+
+            // For App Store Server API we want the *original* transaction id
+            // so we can use it with Get Transaction Info / Get All Subscription Statuses.
+            const originalTxId =
+              pIOS.originalTransactionIdentifierIOS ?? pIOS.transactionId;
+
+            externalId = originalTxId ?? '';
+
+            Alert.alert(
+              'iOS IAP debug',
+              [
+                `originalTransactionIdentifierIOS: ${pIOS.originalTransactionIdentifierIOS ?? 'null'}`,
+                `transactionId: ${pIOS.transactionId ?? 'null'}`,
+                `externalId (sent to backend): ${originalTxId ?? 'null'}`,
+              ].join('\n'),
+            );
+
+            if (!originalTxId) {
+              console.warn('[IAP] Missing originalTransactionIdentifierIOS AND transactionId on iOS purchase');
               Alert.alert(
-                'getReceiptIOS result',
-                raw
-                  ? `Length: ${raw.length}\n\nFirst 300 chars:\n${raw.slice(0, 300)}`
-                  : 'Result is null or empty'
+                'iOS transaction error',
+                'Could not find original transaction identifier for this purchase.',
               );
-              receipt = raw ?? null;
-            } catch (err) {
-              console.warn('[IAP] getReceiptIOS failed', err);
-              receipt = null;
             }
           }
 
           if (!externalId) {
-            console.warn('[IAP] missing externalId');
+            console.warn('[IAP] missing externalId, aborting server validation');
+            Alert.alert(
+              t('error', 'Error'),
+              'Purchase completed on the store, but we could not identify the transaction. Please contact support.',
+            );
+            // Still finish the transaction to avoid it being re-delivered forever
+            await finishTransaction({ purchase, isConsumable: false });
+            setSaving(false);
+            return;
           }
 
           const payload: ActivateIAPSubscriptionIn = {
             platform,
-            product_id: SUBS_SKU,
-            external_id: externalId,
-            receipt,
+            product_id: purchase.productId, // e.g. "scoutwise_pro_monthly_ios"
+            external_id: externalId,        // iOS: originalTxId, Android: purchaseToken
           };
+
+          console.log('[IAP] activateIAPSubscription payload', payload);
 
           const res = await activateIAPSubscription(payload);
 
@@ -170,16 +184,18 @@ export default function ManagePlan() {
               'Could not update plan. Please try again. 1',
             );
           }
-        } catch (err) {
+        } catch (err: any) {
           console.warn('[IAP] purchaseUpdatedListener error', err);
           Alert.alert(
-            t('error', 'Error'),
-            'Could not update plan. Please try again. 2',
+            'purchaseUpdatedListener error',
+            err?.message || 'Could not update plan. Please try again. 2',
           );
         } finally {
           setSaving(false);
         }
       });
+
+
 
       errorSub = purchaseErrorListener(err => {
         if (err.code === ErrorCode.UserCancelled) {

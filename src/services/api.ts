@@ -45,24 +45,18 @@ export interface ActivateIAPSubscriptionIn {
   platform: 'ios' | 'android';
   product_id: string;
   external_id: string;
-  receipt?: string | null;
+  //receipt?: string | null;
 }
 
 
 export async function activateIAPSubscription(
   input: ActivateIAPSubscriptionIn,
 ): Promise<{ ok: boolean; plan: Plan; subscriptionEndAt?: string }> {
-  // Map camelCase to snake_case expected by backend (if you followed previous backend code)
   return request<{ ok: boolean; plan: Plan; subscriptionEndAt?: string }>(
     ENDPOINTS.subscription,
     {
       method: 'POST',
-      body: JSON.stringify({
-        platform: input.platform,
-        product_id: input.product_id,
-        external_id: input.external_id,
-        receipt: input.receipt,
-      }),
+      body: JSON.stringify(input),  // field names are already correct
     },
   );
 }
