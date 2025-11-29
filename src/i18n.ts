@@ -198,6 +198,8 @@ export const resources = {
       choose: 'Choose',
       saving: 'Saving',
       setPlan: 'Set plan',
+      cancelNote: 'To cancel your subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
+      subscriptionEndsAt: 'Pro subscription end date',
       metric: {
         // GK
         'Diving': 'Diving',
@@ -446,6 +448,8 @@ export const resources = {
       choose: 'Seç',
       saving: 'Kaydediliyor',
       setPlan: 'Plan belirle',
+      cancelNote: 'Pro Aboneliğini iptal etmek için, planını Free olarak belirle. Pro ayrıcalıklarına erişimin, son abonelik tarihine kadar aktif kalacaktır.',
+      subscriptionEndsAt: 'Pro abonelik bitiş tarihi',
       metric: {
         // Kaleci / GK
         'Diving': 'Atlayarak Kurtarış',

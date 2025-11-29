@@ -218,11 +218,16 @@ export default function ManagePlan() {
   }, [nav, t]);
 
   const formattedEndDate = React.useMemo(() => {
-    if (!subscriptionEndAt) return null;
-    const d = new Date(subscriptionEndAt);
-    if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleDateString();
-  }, [subscriptionEndAt]);
+  if (!subscriptionEndAt) return null;
+  const d = new Date(subscriptionEndAt);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  return `${day}.${month}.${year}`;
+}, [subscriptionEndAt]);
 
   const onSave = async () => {
     // 1) User chooses Free -> cancel/stop renewing on backend
@@ -355,7 +360,7 @@ export default function ManagePlan() {
         {currentPlan === 'Pro' && formattedEndDate && (
           <View style={styles.subscriptionRow}>
             <Text style={styles.subscriptionLabel}>
-              {t('subscriptionEndsAt', 'Subscription ends at')}
+              {t('subscriptionEndsAt', 'Pro subscription end date')}
             </Text>
             <Text style={styles.subscriptionValue}>{formattedEndDate}</Text>
           </View>
@@ -416,7 +421,7 @@ export default function ManagePlan() {
         <Text style={styles.cancelNote}>
           {t(
             'cancelNote',
-            'To cancel your subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
+            'To cancel your Pro subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
           )}
         </Text>
       </View>
