@@ -27,6 +27,5 @@ export const ENDPOINTS = {
   setNewPassword: '/auth/set_new_password',
   verifySignup: '/auth/verify_signup',
   reachOut: '/help/reach_out',
-  mePlan: '/me/plan',
   subscription: '/me/subscription/iap',
 };

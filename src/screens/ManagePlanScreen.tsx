@@ -18,7 +18,6 @@ import { BG, TEXT, PANEL, CARD, MUTED, LINE, ACCENT } from '@/theme';
 import type { Plan } from '@/services/api';
 import {
   getMe,
-  setPlan,
   activateIAPSubscription,
   type ActivateIAPSubscriptionIn,
 } from '@/services/api';
@@ -92,11 +91,6 @@ export default function ManagePlan() {
           const platform: 'ios' | 'android' =
             purchase.platform === 'ios' ? 'ios' : 'android';
 
-          //Alert.alert(
-          //  'purchaseUpdatedListener',
-          //  `Platform.OS: ${Platform.OS}\nplatform: ${platform}\nproductId: ${purchase.productId}\ntransactionId: ${purchase.transactionId ?? 'null'}`
-          //);
-
           let externalId = '';
 
           if (platform === 'android') {
@@ -107,34 +101,13 @@ export default function ManagePlan() {
             const pIOS = purchase as PurchaseIOS;
 
             // For App Store Server API we want the *original* transaction id
-            // so we can use it with Get Transaction Info / Get All Subscription Statuses.
             const originalTxId =
               pIOS.originalTransactionIdentifierIOS ?? pIOS.transactionId;
 
             externalId = originalTxId ?? '';
-
-            //Alert.alert(
-            //  'iOS IAP debug',
-            //  [
-            //    `originalTransactionIdentifierIOS: ${pIOS.originalTransactionIdentifierIOS ?? 'null'}`,
-            //    `transactionId: ${pIOS.transactionId ?? 'null'}`,
-            //    `externalId (sent to backend): ${originalTxId ?? 'null'}`,
-            //  ].join('\n'),
-            //);
-
-            // if (!originalTxId) {
-            //  Alert.alert(
-            //    'iOS transaction error',
-            //    'Could not find original transaction identifier for this purchase.',
-            //  );
-            // }
           }
 
           if (!externalId) {
-          //  Alert.alert(
-          //    t('error', 'Error'),
-          //    'Purchase completed on the store, but we could not identify the transaction. Please contact support.',
-          //  );
             // Still finish the transaction to avoid it being re-delivered forever
             await finishTransaction({ purchase, isConsumable: false });
             setSaving(false);
@@ -231,61 +204,37 @@ export default function ManagePlan() {
         }
         return;
       }
-    // small helper for confirmation before downgrade to free
-     const downgradeToFree = async () => {
-      try {
-        setSaving(true);
-        const res = await setPlan('Free');
-        if (res?.ok) {
-          Alert.alert(
-            t('planUpdated', 'Plan updated'),
-            t('planNow', 'Your plan is now {{plan}}.', { plan: res.plan }),
-          );
-          // @ts-ignore
-          nav.goBack();
-        } else {
-          Alert.alert(
-            t('error', 'Error'),
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
-          );
-        }
-      } catch (e: any) {
-        Alert.alert(
-          t('error', 'Error'),
-          t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
-        );
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    // 1) Pro -> Free downgrade
+   
+    // 1) Pro -> Free downgrade just inform stores handle those
     if (selected === 'Free') {
-      // If they are currently Pro, show a confirmation dialog first
       if (currentPlan === 'Pro') {
+        const endDateText =
+          formattedEndDate ??
+          t('currentPeriodEnd', 'the end of your current billing period');
+        const message =
+          Platform.OS === 'ios'
+            ? t(
+                'downgradeInfoIOS',
+                'To change or cancel your Pro plan, please manage it in your Apple subscription settings. You will keep Pro access until {{date}}.',
+                { date: endDateText },
+              )
+            : t(
+                'downgradeInfoAndroid',
+                'To change or cancel your Pro plan, please manage it in your Google Play subscription settings. You will keep Pro access until {{date}}.',
+                { date: endDateText },
+              );
         Alert.alert(
-          t('downgradeTitle', 'Switch to Free plan'),
-          t(
-            'downgradeConfirm',
-            'Are you sure you want to switch from Pro to Free? Your Pro access will stay active until your current period ends.',
-          ),
-          [
-            { text: t('no', 'No'), style: 'cancel' },
-            {
-              text: t('yes', 'Yes'),
-              style: 'destructive',
-              onPress: () => {
-                if (saving) return; // same idea as deleteAccount guard
-                void downgradeToFree();
-              },
-            },
-          ],
+          t('manageSubscriptionTitle', 'Manage subscription'),
+          message,
+          [{ text: t('ok', 'OK') }],
         );
         return;
       }
-
-      // fallback (other plan then pro but still going to free)
-      await downgradeToFree();
+            // If somehow not Pro but switching to Free, just explain nothing to do
+      Alert.alert(
+        t('alreadyFreeTitle', 'Already on Free'),
+        t('alreadyFreeBody', 'Your plan is already Free.'),
+      );
       return;
     }
 

@@ -61,14 +61,6 @@ export async function activateIAPSubscription(
   );
 }
 
-// --- add this function near the other Account/Profile helpers ---
-export async function setPlan(plan: Plan): Promise<{ ok: boolean; plan: Plan }> {
-  return request<{ ok: boolean; plan: Plan }>(ENDPOINTS.mePlan, {
-    method: 'POST',
-    body: JSON.stringify({ plan }),
-  });
-}
-
 export async function sendChat(
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>,
   sessionId: string,
