@@ -56,17 +56,6 @@ export default function ManagePlan() {
   const [subscriptionEndAt, setSubscriptionEndAt] = React.useState<string | null>(null);
   const [iapReady, setIapReady] = React.useState(false);
 
-  React.useEffect(() => {
-    try {
-      const bundleId = NativeModules.RNDeviceInfo?.bundleId;
-      console.log("### Device bundleId:", bundleId);
-      console.log("### SUBS_SKU:", SUBS_SKU);
-    } catch (e) {
-      console.log("Bundle ID check error:", e);
-    }
-  }, []);
-
-
   // ---- Load /me once ----
   React.useEffect(() => {
     (async () => {
@@ -78,6 +67,9 @@ export default function ManagePlan() {
         setSubscriptionEndAt(me.subscriptionEndAt ?? null);
       } catch {
         // ignore
+        Alert.alert(
+              t('error', 'Error'),
+        );
       }
     })();
   }, []);
@@ -92,7 +84,7 @@ export default function ManagePlan() {
         await initConnection({});
         setIapReady(true);
       } catch (err) {
-        console.warn('[IAP] initConnection error', err);
+
       }
 
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
@@ -100,10 +92,10 @@ export default function ManagePlan() {
           const platform: 'ios' | 'android' =
             purchase.platform === 'ios' ? 'ios' : 'android';
 
-          Alert.alert(
-            'purchaseUpdatedListener',
-            `Platform.OS: ${Platform.OS}\nplatform: ${platform}\nproductId: ${purchase.productId}\ntransactionId: ${purchase.transactionId ?? 'null'}`
-          );
+          //Alert.alert(
+          //  'purchaseUpdatedListener',
+          //  `Platform.OS: ${Platform.OS}\nplatform: ${platform}\nproductId: ${purchase.productId}\ntransactionId: ${purchase.transactionId ?? 'null'}`
+          //);
 
           let externalId = '';
 
@@ -121,30 +113,28 @@ export default function ManagePlan() {
 
             externalId = originalTxId ?? '';
 
-            Alert.alert(
-              'iOS IAP debug',
-              [
-                `originalTransactionIdentifierIOS: ${pIOS.originalTransactionIdentifierIOS ?? 'null'}`,
-                `transactionId: ${pIOS.transactionId ?? 'null'}`,
-                `externalId (sent to backend): ${originalTxId ?? 'null'}`,
-              ].join('\n'),
-            );
+            //Alert.alert(
+            //  'iOS IAP debug',
+            //  [
+            //    `originalTransactionIdentifierIOS: ${pIOS.originalTransactionIdentifierIOS ?? 'null'}`,
+            //    `transactionId: ${pIOS.transactionId ?? 'null'}`,
+            //    `externalId (sent to backend): ${originalTxId ?? 'null'}`,
+            //  ].join('\n'),
+            //);
 
-            if (!originalTxId) {
-              console.warn('[IAP] Missing originalTransactionIdentifierIOS AND transactionId on iOS purchase');
-              Alert.alert(
-                'iOS transaction error',
-                'Could not find original transaction identifier for this purchase.',
-              );
-            }
+            // if (!originalTxId) {
+            //  Alert.alert(
+            //    'iOS transaction error',
+            //    'Could not find original transaction identifier for this purchase.',
+            //  );
+            // }
           }
 
           if (!externalId) {
-            console.warn('[IAP] missing externalId, aborting server validation');
-            Alert.alert(
-              t('error', 'Error'),
-              'Purchase completed on the store, but we could not identify the transaction. Please contact support.',
-            );
+          //  Alert.alert(
+          //    t('error', 'Error'),
+          //    'Purchase completed on the store, but we could not identify the transaction. Please contact support.',
+          //  );
             // Still finish the transaction to avoid it being re-delivered forever
             await finishTransaction({ purchase, isConsumable: false });
             setSaving(false);
@@ -156,8 +146,6 @@ export default function ManagePlan() {
             product_id: purchase.productId, // e.g. "scoutwise_pro_monthly_ios"
             external_id: externalId,        // iOS: originalTxId, Android: purchaseToken
           };
-
-          console.log('[IAP] activateIAPSubscription payload', payload);
 
           const res = await activateIAPSubscription(payload);
 
@@ -181,14 +169,13 @@ export default function ManagePlan() {
           } else {
             Alert.alert(
               t('error', 'Error'),
-              'Could not update plan. Please try again. 1',
+              t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
             );
           }
         } catch (err: any) {
-          console.warn('[IAP] purchaseUpdatedListener error', err);
           Alert.alert(
             'purchaseUpdatedListener error',
-            err?.message || 'Could not update plan. Please try again. 2',
+            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
           );
         } finally {
           setSaving(false);
@@ -202,7 +189,6 @@ export default function ManagePlan() {
           setSaving(false);
           return;
         }
-        console.warn('[IAP] purchaseErrorListener', err);
         setSaving(false);
         Alert.alert(t('error', 'Error'), err.message || 'Payment failed.');
       });
@@ -245,14 +231,13 @@ export default function ManagePlan() {
         } else {
           Alert.alert(
             t('error', 'Error'),
-            'Could not update plan. Please try again. 3',
+            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
           );
         }
       } catch (e: any) {
         Alert.alert(
           t('error', 'Error'),
-          e?.message ||
-            'Could not update plan. Please try again. 4',
+          t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
         );
       } finally {
         setSaving(false);
@@ -294,7 +279,6 @@ export default function ManagePlan() {
         },
       });
     } catch (e: any) {
-      console.warn('[IAP] requestPurchase error', e);
       setSaving(false);
       Alert.alert(
         t('error', 'Error'),

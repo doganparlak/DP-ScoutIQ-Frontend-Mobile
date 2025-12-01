@@ -145,7 +145,7 @@ export default function ChatScreen() {
 
   // Fresh conversation: clears server memory + local state (user action)
   async function startNewChat() {
-    try { await resetSession(sessionId); } catch (e) { console.warn('resetSession failed', e); }
+    try { await resetSession(sessionId); } catch (e) {  }
     setMessages([]);
   }
 
