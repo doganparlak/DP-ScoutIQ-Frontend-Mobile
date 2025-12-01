@@ -216,6 +216,21 @@ export default function ManagePlan() {
 }, [subscriptionEndAt]);
 
   const onSave = async () => {
+    // 0) If user selected the same plan they already have, block and warn
+      if (selected === currentPlan) {
+        if (currentPlan === 'Pro') {
+          Alert.alert(
+            t('alreadyProTitle', 'Already on Pro'),
+            t('alreadyProBody', 'You already have Pro access.'),
+          );
+        } else {
+          Alert.alert(
+            t('alreadyFreeTitle', 'Already on Free'),
+            t('alreadyFreeBody', 'Your plan is already Free.'),
+          );
+        }
+        return;
+      }
     // small helper for confirmation before downgrade to free
      const downgradeToFree = async () => {
       try {
@@ -244,7 +259,7 @@ export default function ManagePlan() {
       }
     };
 
-    // 1) User chooses Free -> maybe confirm downgrade
+    // 1) Pro -> Free downgrade
     if (selected === 'Free') {
       // If they are currently Pro, show a confirmation dialog first
       if (currentPlan === 'Pro') {
@@ -269,12 +284,12 @@ export default function ManagePlan() {
         return;
       }
 
-      // If they’re not currently Pro (e.g. already Free), just run the downgrade logic directly
+      // fallback (other plan then pro but still going to free)
       await downgradeToFree();
       return;
     }
 
-    // 2) User chooses Pro -> start store payment
+    // 2) Free -> Pro upgrade
     if (!iapReady) {
       Alert.alert(
         t('error', 'Error'),

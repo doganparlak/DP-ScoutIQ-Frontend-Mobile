@@ -204,6 +204,10 @@ export const resources = {
       noProductConfigured: 'Subscription product is not configured for this platform.',
       downgradeTitle: 'Switch to Free plan',
       downgradeConfirm: 'Are you sure you want to switch from Pro to Free? Your Pro access will stay active until your current period ends.',
+      alreadyProTitle : 'Already on Pro plan',
+      alreadyProBody : 'You already have Pro access.',
+      alreadyFreeTitle : 'Already on Free',
+      alreadyFreeBody : 'Your plan is already Free.',
       metric: {
         // GK
         'Diving': 'Diving',
@@ -458,6 +462,10 @@ export const resources = {
       noProductConfigured: 'Pro Abonelik ürünü bu platform için yapılandırılmamış.',
       downgradeTitle: 'Free plana geç',
       downgradeConfirm: 'Pro’dan Free plana geçmek istediğine emin misin? Pro ayrıcalıklarına erişimin, son abonelik tarihine kadar aktif kalacaktır.',
+      alreadyProTitle : 'Pro planında aktifsin',
+      alreadyProBody : 'Pro ayrıcalıklarına erişimin aktif.',
+      alreadyFreeTitle : 'Free planında aktifsin',
+      alreadyFreeBody : 'Free ayrıcalıklarına erişimin aktif.',
       metric: {
         // Kaleci / GK
         'Diving': 'Atlayarak Kurtarış',
