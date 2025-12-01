@@ -210,8 +210,8 @@ export const resources = {
       alreadyFreeBody : 'Your plan is already Free.',
       planNextFree : 'Your next plan will be Free. Your Pro access will stay active until your current period ends.',
       currentPeriodEnd : 'the end of your current billing period',
-      downgradeInfoIOS : 'To change or cancel your Pro plan, please manage it in your Apple subscription settings. You will keep Pro access until {{date}}.',
-      downgradeInfoAndroid : 'To change or cancel your Pro plan, please manage it in your Google Play subscription settings. You will keep Pro access until {{date}}.',
+      downgradeInfoIOS : 'To cancel your Pro plan, please manage it in your Apple subscription settings. You will keep Pro access until {{date}}.',
+      downgradeInfoAndroid : 'To cancel your Pro plan, please manage it in your Google Play subscription settings. You will keep Pro access until {{date}}.',
       manageSubscriptionTitle : 'Manage subscription',
       metric: {
         // GK
