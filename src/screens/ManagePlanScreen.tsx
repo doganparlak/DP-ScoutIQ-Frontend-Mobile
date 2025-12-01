@@ -216,8 +216,8 @@ export default function ManagePlan() {
 }, [subscriptionEndAt]);
 
   const onSave = async () => {
-    // 1) User chooses Free -> cancel/stop renewing on backend
-    if (selected === 'Free') {
+    // small helper for confirmation before downgrade to free
+     const downgradeToFree = async () => {
       try {
         setSaving(true);
         const res = await setPlan('Free');
@@ -242,6 +242,35 @@ export default function ManagePlan() {
       } finally {
         setSaving(false);
       }
+    };
+
+    // 1) User chooses Free -> maybe confirm downgrade
+    if (selected === 'Free') {
+      // If they are currently Pro, show a confirmation dialog first
+      if (currentPlan === 'Pro') {
+        Alert.alert(
+          t('downgradeTitle', 'Switch to Free plan'),
+          t(
+            'downgradeConfirm',
+            'Are you sure you want to switch from Pro to Free? Your Pro access will stay active until your current period ends.',
+          ),
+          [
+            { text: t('no', 'No'), style: 'cancel' },
+            {
+              text: t('yes', 'Yes'),
+              style: 'destructive',
+              onPress: () => {
+                if (saving) return; // same idea as deleteAccount guard
+                void downgradeToFree();
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      // If they’re not currently Pro (e.g. already Free), just run the downgrade logic directly
+      await downgradeToFree();
       return;
     }
 
@@ -282,8 +311,7 @@ export default function ManagePlan() {
       setSaving(false);
       Alert.alert(
         t('error', 'Error'),
-        e?.message ||
-          'Could not update plan. Please try again. 5',
+        t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
       );
     }
   };

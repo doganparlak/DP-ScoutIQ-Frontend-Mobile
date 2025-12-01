@@ -200,6 +200,10 @@ export const resources = {
       setPlan: 'Set plan',
       cancelNote: 'To cancel your subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
       subscriptionEndsAt: 'Pro subscription end date',
+      storeNotReady: 'Store connection is not ready yet. Please try again.',
+      noProductConfigured: 'Subscription product is not configured for this platform.',
+      downgradeTitle: 'Switch to Free plan',
+      downgradeConfirm: 'Are you sure you want to switch from Pro to Free? Your Pro access will stay active until your current period ends.',
       metric: {
         // GK
         'Diving': 'Diving',
@@ -450,6 +454,10 @@ export const resources = {
       setPlan: 'Plan belirle',
       cancelNote: 'Pro Aboneliğini iptal etmek için, planını Free olarak belirle. Pro ayrıcalıklarına erişimin, son abonelik tarihine kadar aktif kalacaktır.',
       subscriptionEndsAt: 'Pro abonelik bitiş tarihi',
+      storeNotReady: 'Store bağlantın hazır degil. Lütfen tekrar dene.',
+      noProductConfigured: 'Pro Abonelik ürünü bu platform için yapılandırılmamış.',
+      downgradeTitle: 'Free plana geç',
+      downgradeConfirm: 'Pro’dan Free plana geçmek istediğine emin misin? Pro ayrıcalıklarına erişimin, son abonelik tarihine kadar aktif kalacaktır.',
       metric: {
         // Kaleci / GK
         'Diving': 'Atlayarak Kurtarış',
