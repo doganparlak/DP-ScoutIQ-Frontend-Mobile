@@ -2,21 +2,96 @@
 import type { SpiderPoint } from './SpiderChart';
 
 /** === Category metric whitelists (what we try to plot, in this order) === */
+
+// GK-specific metrics
 export const GK_METRICS = [
-  'Diving', 'Standing', 'Head', 'Both Hands', 'Right Hand', 'Left Hand', 'Right Foot', 'Left Foot',
-  'Shot Faced', 'Shot Saved', 'Penalty Conceded', 'Collected', 'Punch', 'Smother', 'Keeper Sweeper',
-  'Success', 'Lost in Play', 'Clear', 'No Touch', 'In Play Safe', 'In Play Danger', 'Touched Out', 'Touched In',
+  'Saves',
+  'Saves Insidebox',
+  'Penalties Saved',
+  'Punches',
+  'Good High Claim',
 ] as const;
 
-export const IN_POS_METRICS = [
-  'Shots', 'Shot Accuracy (%)', 'Goals', 'Assists', 'xG', 'Key Passes',
-  'Passes Attempted', 'Pass Accuracy (%)', 'Crosses Attempted', 'Cross Accuracy (%)',
-  'Carries', 'Dribbles', 'Dribble Accuracy (%)'
+// Shooting / finishing metrics
+export const SHOOTING_METRICS = [
+  'Goals',
+  'Shots Total',
+  'Penalties Scored',
+  'Shots On Target',
+  'Shots Off Target',
+  'Hit Woodwork',
 ] as const;
 
-export const OUT_POS_METRICS = [
-  'Pressures', 'Counterpressures', 'Interceptions', 'Fouls', 'Blocks', 'Duels Attempted',
-  'Duel Won Accuracy (%)', 'Ball Recoveries', 'Clearances',
+// Passing / delivery metrics
+export const PASSING_METRICS = [
+  'Assists',
+  'Long Balls',
+  'Long Balls Won',
+  'Long Balls Won (%)',
+  'Accurate Passes',
+  'Accurate Passes (%)',
+  'Backward Passes',
+  'Total Crosses',
+  'Accurate Crosses',
+  'Successful Crosses (%)',
+  'Key Passes',
+  'Passes In Final Third',
+  'Through Balls',
+  'Through Balls Won',
+] as const;
+
+// Contribution & Impact (formerly "other positive")
+export const CONTRIBUTION_IMPACT_METRICS = [
+  'Penalties Won',
+  'Touches',
+  'Big Chances Created',
+  'Dribble Attempts',
+  'Successful Dribbles',
+  'Man Of Match',
+  'Rating',
+  'Captain',
+  'Fouls Drawn',
+] as const;
+
+// Errors & Discipline (formerly "other negative")
+export const ERRORS_DISCIPLINE_METRICS = [
+  'Goals Conceded',
+  'Penalties Committed',
+  'Penalties Missed',
+  'Big Chances Missed',
+  'Aeriels Lost',
+  'Fouls',
+  'Dispossessed',
+  'Dribbled Past',
+  'Turn Over',
+  'Possession Lost',
+  'Offsides',
+  'Offsides Provoked',
+  'Own Goals',
+  'Error Lead To Goal',
+  'Error Lead To Shot',
+  'Yellow Cards',
+  'Yellow & Red Cards',
+  'Redcards',
+] as const;
+
+// Defending metrics
+export const DEFENDING_METRICS = [
+  'Interceptions',
+  'Tackles',
+  'Tackles Won',
+  'Tackles Won (%)',
+  'Last Man Tackle',
+  'Blocked Shots',
+  'Clearances',
+  'Clearance Offline',
+  'Ball Recovery',
+  'Aerials',
+  'Aerials Won (%)',
+  'Aeriels Won',
+  'Duels Won',
+  'Duels Won (%)',
+  'Total Duels',
 ] as const;
 
 
@@ -26,57 +101,83 @@ function mkKey(s: string) {
 }
 const ALIAS: Record<string, string> = {};
 
-/** === Static ranges per canonical metric (tweak to your data scale) === */
+/** === Static ranges per canonical metric (min: 0, max: from your data) === */
 const RANGES: Record<string, { min: number; max: number }> = {
-  // GK
-  'Diving': { min: 0, max: 9.0 },
-  'Standing': { min: 0, max: 13.0 },
-  'Head': { min: 0, max: 1.0 },
-  'Both Hands': { min: 0, max: 9.0 },
-  'Right Hand': { min: 0, max: 2.0 },
-  'Left Hand': { min: 0, max: 2.0 },
-  'Right Foot': { min: 0, max: 3.0 },
-  'Left Foot': { min: 0, max: 2.0 },
-  'Shot Faced': { min: 0, max: 23.0 },
-  'Shot Saved': { min: 0, max: 10.0 },
-  'Penalty Conceded': { min: 0, max: 2.5 },
-  'Collected': { min: 0, max: 6.0 },
-  'Punch': { min: 0, max: 5.0 },
-  'Smother': { min: 0, max: 1.0 },
-  'Keeper Sweeper': { min: 0, max: 5.0 },
-  'Success': { min: 0, max: 11.0 },
-  'Lost in Play': { min: 0, max: 10.0 },
-  'Clear': { min: 0, max: 3.0 },
-  'No Touch': { min: 0, max: 11.0 },
-  'In Play Safe': { min: 0, max: 5.0 },
-  'In Play Danger': { min: 0, max: 4.5 },
-  'Touched Out': { min: 0, max: 5.0 },
-  'Touched In': { min: 0, max: 3.0 },
-
-  // In possession
-  'Shots': { min: 0, max: 10.0 },
-  'Shot Accuracy (%)': { min: 0, max: 100.0 },
-  'Goals': { min: 0, max: 2.0 },
-  'Assists': { min: 0, max: 2.0 },
-  'xG': { min: 0, max: 1.5 },
-  'Passes Attempted': { min: 0, max: 100.0 },
-  'Pass Accuracy (%)': { min: 0, max: 100.0 },
-  'Crosses Attempted': { min: 0, max: 15.0 },
-  'Cross Accuracy (%)': { min: 0, max: 100.0 },
-  'Carries': { min: 0, max: 80 },
-  'Dribbles': { min: 0, max: 10.0 },
-  'Dribble Accuracy (%)': { min: 0, max: 100.0 },
-
-  // Out of possession
-  'Pressures': { min: 0, max: 25.0 },
-  'Counterpressures': { min: 0, max: 10.0 },
-  'Interceptions': { min: 0, max: 5.0 },
-  'Fouls': { min: 0, max: 8.0 },
-  'Blocks': { min: 0, max: 8.0 },
-  'Duels Attempted': { min: 0, max: 15.0 },
-  'Duel Won Accuracy (%)': { min: 0, max: 100.0 },
-  'Ball Recoveries': { min: 0, max: 10.0 },
-  'Clearances': { min: 0, max: 15.0 }
+  'Blocked Shots': { min: 0, max: 5.0 },
+  'Tackles Won': { min: 0, max: 8.0 },
+  'Big Chances Missed': { min: 0, max: 3.0 },
+  'Chances Created': { min: 0, max: 7.0 },
+  'Goals Conceded': { min: 0, max: 8.0 },
+  'Long Balls Won': { min: 0, max: 17.0 },
+  'Successful Crosses (%)': { min: 0, max: 100.0 },
+  'Last Man Tackle': { min: 0, max: 1.0 },
+  'Accurate Passes (%)': { min: 0, max: 100.0 },
+  'Aerials Won (%)': { min: 0, max: 89.0 },
+  'Fouls': { min: 0, max: 6.0 },
+  'Hit Woodwork': { min: 0, max: 1.0 },
+  'goals_from_events': { min: 0, max: 3.0 },
+  'Total Duels': { min: 0, max: 28.0 },
+  'Accurate Passes': { min: 0, max: 131.5 },
+  'Error Lead To Goal': { min: 0, max: 2.0 },
+  'Error Lead To Shot': { min: 0, max: 2.0 },
+  'Key Passes': { min: 0, max: 7.0 },
+  'Penalties Missed': { min: 0, max: 1.0 },
+  'Yellow Cards': { min: 0, max: 1.0 },
+  'Duels Won': { min: 0, max: 16.0 },
+  'Rating': { min: 0, max: 10.0 },
+  'Shots Total': { min: 0, max: 8.0 },
+  'Total Crosses': { min: 0, max: 18.0 },
+  'Passes': { min: 0, max: 138.0 },
+  'Offsides': { min: 0, max: 3.0 },
+  'Aeriels Lost': { min: 0, max: 14.0 },
+  'Penalties Committed': { min: 0, max: 1.0 },
+  'Possession Lost': { min: 0, max: 33.0 },
+  'Long Balls': { min: 0, max: 41.0 },
+  'Aeriels Won': { min: 0, max: 14.0 },
+  'Clearances': { min: 0, max: 20.0 },
+  'Man Of Match': { min: 0, max: 1.0 },
+  'Ball Recovery': { min: 0, max: 22.0 },
+  'Redcards': { min: 0, max: 1.0 },
+  'Accurate Crosses': { min: 0, max: 6.0 },
+  'Goals': { min: 0, max: 3.0 },
+  'Offsides Provoked': { min: 0, max: 1.0 },
+  'Aerials': { min: 0, max: 19.0 },
+  'Saves': { min: 0, max: 9.0 },
+  'Touches': { min: 0, max: 149.5 },
+  'Assists': { min: 0, max: 3.0 },
+  'Minutes Played': { min: 0, max: 120.0 },
+  'Dribble Attempts': { min: 0, max: 8.0 },
+  'Shots Blocked': { min: 0, max: 4.0 },
+  'Goalkeeper Goals Conceded': { min: 0, max: 8.0 },
+  'Tackles': { min: 0, max: 8.0 },
+  'Turn Over': { min: 0, max: 4.0 },
+  'Fouls Drawn': { min: 0, max: 7.0 },
+  'Big Chances Created': { min: 0, max: 2.0 },
+  'Long Balls Won (%)': { min: 0, max: 100.0 },
+  'Penalties Scored': { min: 0, max: 1.0 },
+  'Penalties Won': { min: 0, max: 1.0 },
+  'Duels Lost': { min: 0, max: 16.0 },
+  'Penalties Saved': { min: 0, max: 1.0 },
+  'Saves Insidebox': { min: 0, max: 6.0 },
+  'Shots Off Target': { min: 0, max: 5.0 },
+  'Good High Claim': { min: 0, max: 5.0 },
+  'Dispossessed': { min: 0, max: 6.0 },
+  'Shots On Target': { min: 0, max: 4.0 },
+  'Through Balls Won': { min: 0, max: 0.0 },
+  'assists_from_events': { min: 0, max: 3.0 },
+  'Duels Won (%)': { min: 0, max: 100.0 },
+  'Punches': { min: 0, max: 3.0 },
+  'Successful Dribbles': { min: 0, max: 4.0 },
+  'Tackles Won (%)': { min: 0, max: 100.0 },
+  'Interceptions': { min: 0, max: 8.0 },
+  'Yellow & Red Cards': { min: 0, max: 1.0 },
+  'Backward Passes': { min: 0, max: 22.0 },
+  'Captain': { min: 0, max: 1.0 },
+  'Own Goals': { min: 0, max: 1.0 },
+  'Dribbled Past': { min: 0, max: 4.0 },
+  'Clearance Offline': { min: 0, max: 1.0 },
+  'Through Balls': { min: 0, max: 1.0 },
+  'Passes In Final Third': { min: 0, max: 32.0 },
 };
 
 /** Build a case/space–insensitive lookup of canonical keys */
@@ -131,4 +232,3 @@ export function toSpiderPoints(
   }
   return points;
 }
-
