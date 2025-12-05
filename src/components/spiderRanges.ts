@@ -88,7 +88,7 @@ export const DEFENDING_METRICS = [
   'Ball Recovery',
   'Aerials',
   'Aerials Won (%)',
-  'Aeriels Won',
+  'Aerials Won',
   'Duels Won',
   'Duels Won (%)',
   'Total Duels',
