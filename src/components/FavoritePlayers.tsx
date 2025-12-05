@@ -36,7 +36,7 @@ const ALL_ROLE_SHORTS = [
 
 const ROW_HEIGHT = 48;
 // name, gender, nat, team, age, roles, pot, delete
-const COL = { name: 1.0, gen: 0.7, nat: 0.8, team: 1.0, age: 0.6, roles: 1.2, pot: 0.6, del: 0.6 } as const;
+const COL = { name: 1.0, gen: 0.8, nat: 0.8, team: 1.0, age: 0.8, roles: 0.8, pot: 0.8, del: 0.6 } as const;
 
 type SortKey = 'name' | 'gender' | 'nationality' | 'team' | 'age' | 'roles' | 'potential';
 type SortDir = 'asc' | 'desc';
@@ -398,10 +398,14 @@ export default function FavoritePlayers() {
             numberOfLines={1}
             style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}
           >
-            {(item as PlayerRow).rolesShort.join(', ')}
+            {(() => {
+              const roles = (item as PlayerRow).rolesShort || [];
+              return roles[0] ?? '—';
+            })()}
           </Text>
         )}
         <View style={styles.vsep} />
+
 
         {/* Potential */}
         {isHeader ? (
@@ -490,11 +494,17 @@ export default function FavoritePlayers() {
             ]}
             accessibilityLabel={t('fltGender', 'Gender')}
           >
-            <Text style={{ color: TEXT, fontSize: 14 }}>
+            <Text
+              style={{
+                color: genderFilter ? TEXT : MUTED,
+                fontSize: 14,
+              }}
+            >
               {renderGenderFilterLabel()}
             </Text>
           </Pressable>
         </View>
+
 
         {/* Row 2: Nationality / Team */}
         <View style={styles.filterCol}>

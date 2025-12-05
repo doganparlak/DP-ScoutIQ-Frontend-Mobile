@@ -43,11 +43,29 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
   const disabled = !onAddFavorite || isAdding || isAdded;
   const potentialInt = Math.round(isValidPotential(potential) ? potential : 0);
 
+  // gender label (localized if 'male'/'female')
+  const genderLabel = React.useMemo(() => {
+    const g = meta?.gender;
+    if (!g || typeof g !== 'string') return undefined;
+    const lower = g.toLowerCase();
+    if (lower === 'male') return t('genderMale', 'Male');
+    if (lower === 'female') return t('genderFemale', 'Female');
+    return g;
+  }, [meta?.gender, t]);
+
   return (
     <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 14, gap: 8 }}>
       {/* header row: name + add button */}
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ color: TEXT, fontSize: 18, fontWeight: '800', flex: 1, textAlign: titleAlign }}>
+        <Text
+          style={{
+            color: TEXT,
+            fontSize: 18,
+            fontWeight: '800',
+            flex: 1,
+            textAlign: titleAlign,
+          }}
+        >
           {name}
         </Text>
 
@@ -83,20 +101,63 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
         )}
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
-        {meta?.nationality ? (
-          <Text style={{ color: MUTED }}>
-            {t('nationality', 'Nationality')}: <Text style={{ color: TEXT }}>{meta.nationality}</Text>
-          </Text>
-        ) : null}
+      {/* meta block: 
+          row 1 -> gender, age
+          row 2 -> nationality, team
+          row 3 -> height, weight
+      */}
+      <View style={{ gap: 4, marginTop: 4 }}>
+        {/* Row 1: Gender, Age */}
+        {(genderLabel || typeof meta?.age === 'number') && (
+          <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+            {genderLabel && (
+              <Text style={{ color: MUTED }}>
+                {t('gender', 'Gender')}: <Text style={{ color: TEXT }}>{genderLabel}</Text>
+              </Text>
+            )}
+            {typeof meta?.age === 'number' && (
+              <Text style={{ color: MUTED }}>
+                {t('age', 'Age')}: <Text style={{ color: TEXT }}>{meta.age}</Text>
+              </Text>
+            )}
+          </View>
+        )}
 
-        {typeof meta?.age === 'number' ? (
-          <Text style={{ color: MUTED }}>
-            {t('age', 'Age')}: <Text style={{ color: TEXT }}>{meta.age}</Text>
-          </Text>
-        ) : null}
+        {/* Row 2: Nationality, Team */}
+        {(meta?.nationality || meta?.team) && (
+          <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+            {meta?.nationality && (
+              <Text style={{ color: MUTED }}>
+                {t('nationality', 'Nationality')}:{' '}
+                <Text style={{ color: TEXT }}>{meta.nationality}</Text>
+              </Text>
+            )}
+            {meta?.team && (
+              <Text style={{ color: MUTED }}>
+                {t('team', 'Team')}: <Text style={{ color: TEXT }}>{meta.team}</Text>
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Row 3: Height, Weight */}
+        {(typeof meta?.height === 'number' || typeof meta?.weight === 'number') && (
+          <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+            {typeof meta?.height === 'number' && (
+              <Text style={{ color: MUTED }}>
+                {t('height', 'Height')}: <Text style={{ color: TEXT }}>{meta.height}</Text>
+              </Text>
+            )}
+            {typeof meta?.weight === 'number' && (
+              <Text style={{ color: MUTED }}>
+                {t('weight', 'Weight')}: <Text style={{ color: TEXT }}>{meta.weight}</Text>
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
+      {/* Potential (unchanged) */}
       {isValidPotential(potential) && (
         <View style={{ marginTop: 4, gap: 6 }}>
           <Text style={{ color: MUTED }}>
@@ -111,7 +172,9 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
               backgroundColor: 'rgba(255,255,255,0.15)',
               overflow: 'hidden',
             }}
-            accessibilityLabel={t('potentialA11y', 'Potential {{val}} out of 100', { val: potentialInt })}
+            accessibilityLabel={t('potentialA11y', 'Potential {{val}} out of 100', {
+              val: potentialInt,
+            })}
           >
             <View
               style={{
@@ -129,7 +192,12 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
           {roles.map((r) => (
             <View
               key={r}
-              style={{ backgroundColor: ACCENT, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999 }}
+              style={{
+                backgroundColor: ACCENT,
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                borderRadius: 999,
+              }}
             >
               <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>{r}</Text>
             </View>
