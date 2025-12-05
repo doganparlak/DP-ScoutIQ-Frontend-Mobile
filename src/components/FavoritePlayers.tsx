@@ -24,6 +24,10 @@ type PlayerRow = {
   age?: number;
   rolesShort: string[];
   potential?: number;
+  gender?: string;
+  team?: string;
+  height?: number;
+  weight?: number;
 };
 
 const ALL_ROLE_SHORTS = [
@@ -31,9 +35,10 @@ const ALL_ROLE_SHORTS = [
 ] as const;
 
 const ROW_HEIGHT = 48;
-const COL = { name: 1.0, nat: 0.8, age: 0.7, roles: 1.2, pot: 0.8, del: 0.6 } as const;
+// name, gender, nat, team, age, roles, pot, delete
+const COL = { name: 1.0, gen: 0.7, nat: 0.8, team: 1.0, age: 0.6, roles: 1.2, pot: 0.6, del: 0.6 } as const;
 
-type SortKey = 'name' | 'nationality' | 'age' | 'roles' | 'potential';
+type SortKey = 'name' | 'gender' | 'nationality' | 'team' | 'age' | 'roles' | 'potential';
 type SortDir = 'asc' | 'desc';
 
 // 'Lionel Andres Messi Cuccittini' -> 'Lionel'
@@ -60,6 +65,10 @@ export default function FavoritePlayers() {
         age: typeof f.age === 'number' ? f.age : undefined,
         potential: typeof f.potential === 'number' ? f.potential : undefined,
         rolesShort: (f.roles || []).map(long => ROLE_LONG_TO_SHORT[long] ?? long),
+        gender: f.gender || undefined,
+        team: f.team || undefined,
+        height: typeof (f as any).height === 'number' ? (f as any).height : undefined,
+        weight: typeof (f as any).weight === 'number' ? (f as any).weight : undefined,
       }));
       setRows(mapped);
     } catch (e: any) {
@@ -73,22 +82,48 @@ export default function FavoritePlayers() {
   const [previewPlayer, setPreviewPlayer] = useState<PlayerData | null>(null);
   const toPlayerData = (p: PlayerRow): PlayerData => ({
     name: p.name,
-    meta: { nationality: p.nationality, age: p.age, roles: p.rolesShort, potential: p.potential },
+    meta: {
+      nationality: p.nationality,
+      age: p.age,
+      roles: p.rolesShort,
+      potential: p.potential,
+      gender: p.gender,
+      team: p.team,
+      height: p.height,
+      weight: p.weight,
+    },
     stats: [],
   });
 
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
-
   useFocusEffect(React.useCallback(() => { fetchFavorites(); }, [fetchFavorites]));
 
   // ----- filters -----
   const [qName, setQName] = useState('');
+  const [genderFilter, setGenderFilter] = useState<'' | 'male' | 'female'>('');
   const [qNat, setQNat] = useState('');
+  const [qTeam, setQTeam] = useState('');
   const [minAge, setMinAge] = useState<string>('');
   const [maxAge, setMaxAge] = useState<string>('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [minPot, setMinPot] = useState<string>('');
   const [maxPot, setMaxPot] = useState<string>('');
+  const [minHeight, setMinHeight] = useState<string>('');
+  const [maxHeight, setMaxHeight] = useState<string>('');
+  const [minWeight, setMinWeight] = useState<string>('');
+  const [maxWeight, setMaxWeight] = useState<string>('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+
+  const cycleGender = () => {
+    setGenderFilter(prev =>
+      prev === '' ? 'male' : prev === 'male' ? 'female' : ''
+    );
+  };
+
+  const renderGenderFilterLabel = () => {
+    if (genderFilter === 'male') return t('genderMale', 'Male');
+    if (genderFilter === 'female') return t('genderFemale', 'Female');
+    return t('phGenderAny', 'Any');
+  };
 
   // sorting
   const [sortKey, setSortKey] = useState<SortKey>('potential');
@@ -108,14 +143,33 @@ export default function FavoritePlayers() {
     const maxA = maxAge ? parseInt(maxAge, 10) : undefined;
     const minP = minPot ? Math.min(100, parseInt(minPot, 10)) : undefined;
     const maxP = maxPot ? Math.min(100, parseInt(maxPot, 10)) : undefined;
+    const minH = minHeight ? parseFloat(minHeight) : undefined;
+    const maxH = maxHeight ? parseFloat(maxHeight) : undefined;
+    const minW = minWeight ? parseFloat(minWeight) : undefined;
+    const maxW = maxWeight ? parseFloat(maxWeight) : undefined;
 
     let list = rows.filter(p => {
       if (qName && !p.name.toLowerCase().includes(qName.toLowerCase())) return false;
       if (qNat && !(p.nationality || '').toLowerCase().includes(qNat.toLowerCase())) return false;
+      if (qTeam && !(p.team || '').toLowerCase().includes(qTeam.toLowerCase())) return false;
+
+      if (genderFilter) {
+        const g = (p.gender || '').toLowerCase();
+        if (g !== genderFilter) return false;
+      }
+
       if (minA !== undefined && (p.age ?? -Infinity) < minA) return false;
       if (maxA !== undefined && (p.age ?? Infinity) > maxA) return false;
+
       if (minP !== undefined && (p.potential ?? -Infinity) < minP) return false;
       if (maxP !== undefined && (p.potential ?? Infinity) > maxP) return false;
+
+      if (minH !== undefined && (p.height ?? -Infinity) < minH) return false;
+      if (maxH !== undefined && (p.height ?? Infinity) > maxH) return false;
+
+      if (minW !== undefined && (p.weight ?? -Infinity) < minW) return false;
+      if (maxW !== undefined && (p.weight ?? Infinity) > maxW) return false;
+
       if (selectedRoles.length > 0 && !selectedRoles.some(r => p.rolesShort.includes(r))) return false;
       return true;
     });
@@ -124,7 +178,13 @@ export default function FavoritePlayers() {
       const dir = sortDir === 'asc' ? 1 : -1;
       switch (sortKey) {
         case 'name': return a.name.localeCompare(b.name) * dir;
+        case 'gender': {
+          const ag = (a.gender || '').toLowerCase();
+          const bg = (b.gender || '').toLowerCase();
+          return ag.localeCompare(bg) * dir;
+        }
         case 'nationality': return (a.nationality || '').localeCompare(b.nationality || '') * dir;
+        case 'team': return (a.team || '').localeCompare(b.team || '') * dir;
         case 'age': return ((a.age ?? 0) - (b.age ?? 0)) * dir;
         case 'potential': return ((a.potential ?? 0) - (b.potential ?? 0)) * dir;
         case 'roles': {
@@ -136,10 +196,39 @@ export default function FavoritePlayers() {
     });
 
     return list;
-  }, [rows, qName, qNat, minAge, maxAge, minPot, maxPot, selectedRoles, sortKey, sortDir]);
+  }, [
+    rows,
+    qName,
+    qNat,
+    qTeam,
+    minAge,
+    maxAge,
+    minPot,
+    maxPot,
+    minHeight,
+    maxHeight,
+    minWeight,
+    maxWeight,
+    selectedRoles,
+    genderFilter,
+    sortKey,
+    sortDir,
+  ]);
 
   const clearFilters = () => {
-    setQName(''); setQNat(''); setMinAge(''); setMaxAge(''); setMinPot(''); setMaxPot(''); setSelectedRoles([]);
+    setQName('');
+    setGenderFilter('');
+    setQNat('');
+    setQTeam('');
+    setMinAge('');
+    setMaxAge('');
+    setMinPot('');
+    setMaxPot('');
+    setMinHeight('');
+    setMaxHeight('');
+    setMinWeight('');
+    setMaxWeight('');
+    setSelectedRoles([]);
   };
 
   const handleDelete = async (id: string) => {
@@ -161,38 +250,129 @@ export default function FavoritePlayers() {
       <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
         {/* Name */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('name')}
-            style={({ pressed }) => [styles.cell, { flex: COL.name }, pressed && pressedStyle, sortKey === 'name' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}{chevron('name')}</Text>
+          <Pressable
+            onPress={() => cycleSort('name')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.name },
+              pressed && pressedStyle,
+              sortKey === 'name' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblName', 'Name')}{chevron('name')}
+            </Text>
           </Pressable>
         ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}
+          >
             {firstWord((item as PlayerRow).name)}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+        {/* Gender */}
+        {isHeader ? (
+          <Pressable
+            onPress={() => cycleSort('gender')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.gen },
+              pressed && pressedStyle,
+              sortKey === 'gender' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblGender', 'Gen.')}{chevron('gender')}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text
+            numberOfLines={1}
+            style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}
+          >
+            {(() => {
+              const g = (item as PlayerRow).gender?.toLowerCase();
+              if (g === 'male') return t('genderMaleShort', 'M');
+              if (g === 'female') return t('genderFemaleShort', 'F');
+              return '—';
+            })()}
           </Text>
         )}
         <View style={styles.vsep} />
 
         {/* Nat */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('nationality')}
-            style={({ pressed }) => [styles.cell, { flex: COL.nat }, pressed && pressedStyle, sortKey === 'nationality' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}{chevron('nationality')}</Text>
+          <Pressable
+            onPress={() => cycleSort('nationality')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.nat },
+              pressed && pressedStyle,
+              sortKey === 'nationality' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblNat', 'Nat.')}{chevron('nationality')}
+            </Text>
           </Pressable>
         ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}
+          >
             {countryToCode2((item as PlayerRow).nationality)}
           </Text>
         )}
         <View style={styles.vsep} />
 
-        {/* Age */}
+        {/* Team */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('age')}
-            style={({ pressed }) => [styles.cell, { flex: COL.age }, pressed && pressedStyle, sortKey === 'age' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}{chevron('age')}</Text>
+          <Pressable
+            onPress={() => cycleSort('team')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.team },
+              pressed && pressedStyle,
+              sortKey === 'team' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblTeam', 'Team')}{chevron('team')}
+            </Text>
           </Pressable>
         ) : (
-          <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}
+          >
+            {firstWord((item as PlayerRow).team || '') || '—'}
+          </Text>
+        )}
+        <View style={styles.vsep} />
+
+
+        {/* Age */}
+        {isHeader ? (
+          <Pressable
+            onPress={() => cycleSort('age')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.age },
+              pressed && pressedStyle,
+              sortKey === 'age' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblAge', 'Age')}{chevron('age')}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text
+            style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}
+          >
             {(item as PlayerRow).age ?? '—'}
           </Text>
         )}
@@ -200,12 +380,24 @@ export default function FavoritePlayers() {
 
         {/* Roles */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('roles')}
-            style={({ pressed }) => [styles.cell, { flex: COL.roles }, pressed && pressedStyle, sortKey === 'roles' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Roles')}{chevron('roles')}</Text>
+          <Pressable
+            onPress={() => cycleSort('roles')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.roles },
+              pressed && pressedStyle,
+              sortKey === 'roles' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblRoles', 'Role')}{chevron('roles')}
+            </Text>
           </Pressable>
         ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}
+          >
             {(item as PlayerRow).rolesShort.join(', ')}
           </Text>
         )}
@@ -213,12 +405,23 @@ export default function FavoritePlayers() {
 
         {/* Potential */}
         {isHeader ? (
-          <Pressable onPress={() => cycleSort('potential')}
-            style={({ pressed }) => [styles.cell, { flex: COL.pot }, pressed && pressedStyle, sortKey === 'potential' && { backgroundColor: CARD }]}>
-            <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblPot', 'Pot.')}{chevron('potential')}</Text>
+          <Pressable
+            onPress={() => cycleSort('potential')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.pot },
+              pressed && pressedStyle,
+              sortKey === 'potential' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblPot', 'Pot.')}{chevron('potential')}
+            </Text>
           </Pressable>
         ) : (
-          <Text style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}>
+          <Text
+            style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}
+          >
             {(item as PlayerRow).potential ?? '—'}
           </Text>
         )}
@@ -264,6 +467,7 @@ export default function FavoritePlayers() {
       {/* Filters */}
       <View style={{ height: 8 }} />
       <View style={styles.filters}>
+        {/* Row 1: Name / Gender */}
         <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
           <TextInput
@@ -276,6 +480,24 @@ export default function FavoritePlayers() {
         </View>
 
         <View style={styles.filterCol}>
+          <Text style={styles.filterLabel}>{t('fltGender', 'Gender')}</Text>
+          <Pressable
+            onPress={cycleGender}
+            style={({ pressed }) => [
+              styles.input,
+              { justifyContent: 'center' },
+              pressed && { opacity: 0.9 },
+            ]}
+            accessibilityLabel={t('fltGender', 'Gender')}
+          >
+            <Text style={{ color: TEXT, fontSize: 14 }}>
+              {renderGenderFilterLabel()}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Row 2: Nationality / Team */}
+        <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltNationality', 'Nationality')}</Text>
           <TextInput
             value={qNat}
@@ -286,6 +508,18 @@ export default function FavoritePlayers() {
           />
         </View>
 
+        <View style={styles.filterCol}>
+          <Text style={styles.filterLabel}>{t('fltTeam', 'Team')}</Text>
+          <TextInput
+            value={qTeam}
+            onChangeText={setQTeam}
+            placeholder={t('phSearchTeam', 'Search team')}
+            placeholderTextColor={MUTED}
+            style={styles.input}
+          />
+        </View>
+
+        {/* Row 3: Age / Potential */}
         <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltAge', 'Age (min / max)')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -322,6 +556,51 @@ export default function FavoritePlayers() {
             <TextInput
               value={maxPot}
               onChangeText={(t_) => setMaxPot(t_.replace(/[^\d]/g, '').slice(0, 3))}
+              keyboardType="numeric"
+              placeholder={t('phMax', 'max')}
+              placeholderTextColor={MUTED}
+              style={[styles.input, { flex: 1 }]}
+            />
+          </View>
+        </View>
+
+        {/* Row 4: Height / Weight */}
+        <View style={styles.filterCol}>
+          <Text style={styles.filterLabel}>{t('fltHeight', 'Height (min / max)')}</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              value={minHeight}
+              onChangeText={(t_) => setMinHeight(t_.replace(/[^\d.]/g, ''))}
+              keyboardType="numeric"
+              placeholder={t('phMin', 'min')}
+              placeholderTextColor={MUTED}
+              style={[styles.input, { flex: 1 }]}
+            />
+            <TextInput
+              value={maxHeight}
+              onChangeText={(t_) => setMaxHeight(t_.replace(/[^\d.]/g, ''))}
+              keyboardType="numeric"
+              placeholder={t('phMax', 'max')}
+              placeholderTextColor={MUTED}
+              style={[styles.input, { flex: 1 }]}
+            />
+          </View>
+        </View>
+
+        <View style={styles.filterCol}>
+          <Text style={styles.filterLabel}>{t('fltWeight', 'Weight (min / max)')}</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              value={minWeight}
+              onChangeText={(t_) => setMinWeight(t_.replace(/[^\d.]/g, ''))}
+              keyboardType="numeric"
+              placeholder={t('phMin', 'min')}
+              placeholderTextColor={MUTED}
+              style={[styles.input, { flex: 1 }]}
+            />
+            <TextInput
+              value={maxWeight}
+              onChangeText={(t_) => setMaxWeight(t_.replace(/[^\d.]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}

@@ -1,7 +1,14 @@
 // src/components/SpiderChart.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { ShieldCheck, TrendingUp, BrickWall } from 'lucide-react-native';
+import {
+  ShieldCheck,
+  BrickWall,
+  LogIn,
+  DraftingCompass,
+  Star,
+  Bug,
+} from 'lucide-react-native';
 import {
   VictoryChart,
   VictoryPolarAxis,
@@ -117,9 +124,28 @@ export default function SpiderChart({ title, points, Icon }: Props) {
   let AutoIcon = Icon;
   const tTitle = (title || '').toLowerCase();
   if (!AutoIcon) {
-    if (tTitle.includes('goalkeeper') || tTitle.includes('gk')) AutoIcon = ShieldCheck;
-    else if (tTitle.includes('in possession') || tTitle.includes('in-possession')) AutoIcon = TrendingUp;
-    else if (tTitle.includes('out of possession') || tTitle.includes('out-of-possession')) AutoIcon = BrickWall;
+    if (tTitle.includes('goalkeeper') || tTitle.includes('gk')) {
+      AutoIcon = ShieldCheck;
+    } else if (tTitle.includes('shoot') || tTitle.includes('finish')) {
+      // Shooting / finishing
+      AutoIcon = LogIn;
+    } else if (tTitle.includes('pass') || tTitle.includes('delivery')) {
+      // Passing / delivery
+      AutoIcon = DraftingCompass;
+    } else if (tTitle.includes('contribution') || tTitle.includes('impact')) {
+      // Contribution & impact
+      AutoIcon = Star;
+    } else if (tTitle.includes('error') || tTitle.includes('discipline')) {
+      // Errors & discipline
+      AutoIcon = Bug;
+    } else if (
+      tTitle.includes('defend') ||
+      tTitle.includes('out of possession') ||
+      tTitle.includes('out-of-possession')
+    ) {
+      // Defending / out of possession
+      AutoIcon = BrickWall;
+    }
   }
 
   const spokes = withDisplay.map((_, i) => String(i + 1));

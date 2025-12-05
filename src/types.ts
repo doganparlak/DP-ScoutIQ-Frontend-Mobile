@@ -35,8 +35,18 @@ export interface ChatResponse {
 }
 
 export type PlayerStat = { metric: string; value: number | string };
-export type PlayerMeta = { nationality?: string; age?: number; roles?: string[]; potential?: number;};
+export type PlayerMeta = {
+  nationality?: string;
+  age?: number;
+  roles?: string[];
+  potential?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  team?: string;
+};
 export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
+
 
 export type ChatData = { players: PlayerData[] };
 

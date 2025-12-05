@@ -18,7 +18,15 @@ import WelcomeCard from '@/components/WelcomeCard';
 import PlayerCard from '@/components/PlayerCard';
 import SpiderChart from '@/components/SpiderChart';
 import { addFavoritePlayer, healthcheck, sendChat, resetSession } from '@/services/api';
-import { GK_METRICS, IN_POS_METRICS, OUT_POS_METRICS, toSpiderPoints } from '@/components/spiderRanges';
+import {
+  GK_METRICS,
+  SHOOTING_METRICS,
+  PASSING_METRICS,
+  CONTRIBUTION_IMPACT_METRICS,
+  ERRORS_DISCIPLINE_METRICS,
+  DEFENDING_METRICS,
+  toSpiderPoints,
+} from '@/components/spiderRanges';
 import { ACCENT, BG } from '@/theme';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
@@ -158,9 +166,19 @@ export default function ChatScreen() {
         <View style={{ paddingHorizontal: 12, marginBottom: 12, gap: 10 }}>
           {item.players.map(p => {
             const gk = toSpiderPoints(p.stats, GK_METRICS);
-            const inpos = toSpiderPoints(p.stats, IN_POS_METRICS);
-            const outpos = toSpiderPoints(p.stats, OUT_POS_METRICS);
-            const hasAny = gk.length || inpos.length || outpos.length;
+            const shooting = toSpiderPoints(p.stats, SHOOTING_METRICS);
+            const passing = toSpiderPoints(p.stats, PASSING_METRICS);
+            const contrib = toSpiderPoints(p.stats, CONTRIBUTION_IMPACT_METRICS);
+            const errors = toSpiderPoints(p.stats, ERRORS_DISCIPLINE_METRICS);
+            const defending = toSpiderPoints(p.stats, DEFENDING_METRICS);
+
+            const hasAny =
+              gk.length ||
+              shooting.length ||
+              passing.length ||
+              contrib.length ||
+              errors.length ||
+              defending.length;
 
             return (
               <View key={p.name} style={{ gap: 10 }}>
@@ -172,23 +190,66 @@ export default function ChatScreen() {
                         name: player.name,
                         nationality: player.meta?.nationality,
                         age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-                        potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
+                        potential:
+                          typeof player.meta?.potential === 'number'
+                            ? Math.round(player.meta.potential)
+                            : undefined,
+                        gender: player.meta?.gender,
+                        height:
+                          typeof player.meta?.height === 'number'
+                            ? player.meta.height
+                            : undefined,
+                        weight:
+                          typeof player.meta?.weight === 'number'
+                            ? player.meta.weight
+                            : undefined,
+                        team: player.meta?.team,
                         roles: player.meta?.roles ?? [], // short codes; API converts to LONG
                       });
-                      return true;   // keep the button disabled (✓)
+                      return true;
                     } catch (e: any) {
                       Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
-                      return false;  // let PlayerCard re-enable the button
+                      return false;
                     }
                   }}
-                />
-                {hasAny && (
+              />
+                 {hasAny && (
                   <View style={{ gap: 10 }}>
-                    {gk.length > 0 && <SpiderChart title={t('chartGK', 'Goalkeeper')} points={gk} />}
-                    {inpos.length > 0 && <SpiderChart title={t('chartInPos', 'In Possession')} points={inpos} />}
-                    {outpos.length > 0 && <SpiderChart title={t('chartOutPos', 'Out of Possession')} points={outpos} />}
-                  </View>
-                )}
+                    {gk.length > 0 && (
+                      <SpiderChart title={t('chartGK', 'Goalkeeping')} points={gk} />
+                    )}
+                    {shooting.length > 0 && (
+                      <SpiderChart
+                        title={t('chartShooting', 'Shooting & Finishing')}
+                        points={shooting}
+                      />
+                    )}
+                    {passing.length > 0 && (
+                      <SpiderChart
+                        title={t('chartPassing', 'Passing & Delivery')}
+                        points={passing}
+                      />
+                    )}
+                    {contrib.length > 0 && (
+                      <SpiderChart
+                        title={t('chartContribution', 'Contribution & Impact')}
+                        points={contrib}
+                      />
+                    )}
+                    {errors.length > 0 && (
+                      <SpiderChart
+                        title={t('chartErrors', 'Errors & Discipline')}
+                        points={errors}
+                      />
+                    )}
+                    {defending.length > 0 && (
+                      <SpiderChart
+                        title={t('chartDefending', 'Defending')}
+                        points={defending}
+                      />
+                    )}
+                </View>
+              )}
               </View>
             );
           })}

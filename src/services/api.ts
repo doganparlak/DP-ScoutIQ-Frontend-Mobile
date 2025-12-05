@@ -23,9 +23,19 @@ function extractMessage(messages: Array<Pick<ChatMessage, 'role' | 'content'>>):
 
 /** --- Frontend-facing data types (you can move these to @/types later) --- */
 export type PlayerStat = { metric: string; value: number };
-export type PlayerMeta = { nationality?: string; age?: number; roles?: string[]; potential?: number;};
+export type PlayerMeta = {
+  nationality?: string;
+  age?: number;
+  roles?: string[];
+  potential?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  team?: string;
+};
 export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 export type ChatData = { players: PlayerData[] };
+
 
 export type ResponsePart =
   | { type: 'text'; html?: never; src?: never }
@@ -133,9 +143,20 @@ export const ROLE_SHORT_TO_LONG: Record<string, string> = {
   RW: 'Right Wing',
 };
 
-export const ROLE_LONG_TO_SHORT: Record<string, string> = Object.fromEntries(
-  Object.entries(ROLE_SHORT_TO_LONG).map(([s, l]) => [l, s]),
-);
+export const ROLE_LONG_TO_SHORT: Record<string, string> = {
+  // 1) canonical long -> short
+  ...Object.fromEntries(
+    Object.entries(ROLE_SHORT_TO_LONG).map(([short, long]) => [long, short]),
+  ),
+  // 2) extra allowed variants / aliases
+  'Goal Keeper': 'GK',
+  'Centre Back': 'CB',
+  'Attacking Midfield': 'CAM',
+  'Defensive Midfield': 'CDM',
+  'Centre Forward': 'CF',
+  'Attacker': 'CF',
+};
+
 
 export type FavoritePlayer = {
   id: string;
@@ -143,6 +164,10 @@ export type FavoritePlayer = {
   nationality?: string;
   age?: number;
   potential?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  team?: string;
   roles: string[];      // LONG strings from backend (e.g., "Center Back")
 };
 
@@ -155,6 +180,10 @@ type AddFavoriteIn = {
   nationality?: string;
   age?: number;
   potential?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  team?: string;
   // can be SHORT or LONG – we’ll normalize to LONG before sending
   roles: string[];
 };
