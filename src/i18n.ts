@@ -265,6 +265,7 @@ export const resources = {
         // === Radar metrics: Shooting / Finishing ===
         'Goals': 'Goals',
         'Shots Total': 'Shots Attempted',
+        'Shots On Target (%)': 'Shots On Target (%)',
         'Penalties Scored': 'Penalties Scored',
         'Shots On Target': 'Shots On Target',
         'Shots Off Target': 'Shots Off Target',
@@ -613,6 +614,7 @@ export const resources = {
         // === Radar metrikleri: Şut / Bitiricilik ===
         'Goals': 'Gol',
         'Shots Total': 'Toplam Şut Denemesi',
+        'Shots On Target (%)': 'İsabetli Şut (%)',
         'Penalties Scored': 'Atılan Penaltılar',
         'Shots On Target': 'İsabetli Şutlar',
         'Shots Off Target': 'İsabetsiz Şutlar',

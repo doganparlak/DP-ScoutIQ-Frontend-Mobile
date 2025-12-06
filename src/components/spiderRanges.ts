@@ -19,6 +19,7 @@ export const SHOOTING_METRICS = [
   'Shots Total',
   'Penalties Scored',
   'Shots On Target',
+  'Shots On Target (%)',
   'Hit Woodwork',
 ] as const;
 
@@ -130,6 +131,7 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Duels Won': { min: 0, max: 16.0 },
   'Rating': { min: 0, max: 10.0 },
   'Shots Total': { min: 0, max: 8.0 },
+  'Shots On Target (%)': { min: 0, max: 100.0 },
   'Total Crosses': { min: 0, max: 18.0 },
   'Passes': { min: 0, max: 138.0 },
   'Offsides': { min: 0, max: 3.0 },
