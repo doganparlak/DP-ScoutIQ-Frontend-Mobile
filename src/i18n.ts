@@ -271,6 +271,7 @@ export const resources = {
         'Hit Woodwork': 'Hit Woodwork',
 
         // === Radar metrics: Passing / Delivery ===
+        'Passes': 'Passes Attempted',
         'Assists': 'Assists',
         'Long Balls': 'Long Balls Attempted',
         'Long Balls Won': 'Successful Long Balls',
@@ -288,10 +289,12 @@ export const resources = {
 
          // === Radar metrics: Errors & Discipline ===
         'Goals Conceded': 'Goals Conceded',
+        'Goalkeeper Goals Conceded': 'Goals Conceded',
         'Penalties Committed': 'Penalties Committed',
         'Penalties Missed': 'Penalties Missed',
         'Big Chances Missed': 'Big Chances Missed',
         'Aeriels Lost': 'Aerials Lost',
+        'Aerials Lost': 'Aerials Lost',
         'Dispossessed': 'Dispossessed',
         'Dribbled Past': 'Dribbled Past',
         'Turn Over': 'Turnovers',
@@ -323,6 +326,7 @@ export const resources = {
         'Total Duels': 'Total Duels',
         'Clearances': 'Clearances',
         'Interceptions': 'Interceptions',
+        'Shots Blocked': 'Shots Blocked',
 
         // In possession
         'Shots': 'Shots Attempted',
@@ -615,6 +619,7 @@ export const resources = {
         'Hit Woodwork': 'Direkten Dönen Toplar',
 
         // === Radar metrikleri: Pas / Oyun kurma ===
+        'Passes': 'Pass Denemesi',
         'Assists': 'Asist',
         'Long Balls': 'Uzun Top Denemesi',
         'Long Balls Won': 'İsabetli Uzun Toplar',
@@ -654,9 +659,11 @@ export const resources = {
 
          // === Radar metrikleri: Hata & Disiplin ===
         'Goals Conceded': 'Yenilen Goller',
+        'Goalkeeper Goals Conceded': 'Yenilen Goller',
         'Penalties Committed': 'Yapılan Penaltılar',
         'Penalties Missed': 'Kaçan Penaltılar',
         'Big Chances Missed': 'Kaçırılan Net Pozisyonlar',
+        'Aerials Lost': 'Kaybedilen hava Topları',
         'Aeriels Lost': 'Kaybedilen hava Topları',
         'Dispossessed': 'Baskı ile Top Kaybı',
         'Dribbled Past': 'Dripling ile geçilme',
@@ -687,6 +694,7 @@ export const resources = {
         'Duels Won': 'Kazanılan İkili Mücadeleler',
         'Duels Won (%)': 'İkili Mücadele Kazanma (%)',
         'Total Duels': 'Toplam İkili Mücadeleler',
+        'Shots Blocked': 'Bloklanan şutlar',
 
 
         // Topsuz (Out of possession)

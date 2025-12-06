@@ -10,6 +10,7 @@ export const GK_METRICS = [
   'Penalties Saved',
   'Punches',
   'Good High Claim',
+  'Goalkeeper Goals Conceded',
 ] as const;
 
 // Shooting / finishing metrics
@@ -18,7 +19,6 @@ export const SHOOTING_METRICS = [
   'Shots Total',
   'Penalties Scored',
   'Shots On Target',
-  'Shots Off Target',
   'Hit Woodwork',
 ] as const;
 
@@ -34,6 +34,7 @@ export const PASSING_METRICS = [
   'Total Crosses',
   'Accurate Crosses',
   'Successful Crosses (%)',
+  'Passes',
   'Key Passes',
   'Passes In Final Third',
   'Through Balls',
@@ -58,8 +59,10 @@ export const ERRORS_DISCIPLINE_METRICS = [
   'Goals Conceded',
   'Penalties Committed',
   'Penalties Missed',
+  'Shots Off Target',
   'Big Chances Missed',
-  'Aeriels Lost',
+  'Aerials Lost',
+  'Duels Lost',
   'Fouls',
   'Dispossessed',
   'Dribbled Past',
@@ -72,7 +75,7 @@ export const ERRORS_DISCIPLINE_METRICS = [
   'Error Lead To Shot',
   'Yellow Cards',
   'Yellow & Red Cards',
-  'Redcards',
+  'Red Cards',
 ] as const;
 
 // Defending metrics
@@ -83,6 +86,7 @@ export const DEFENDING_METRICS = [
   'Tackles Won (%)',
   'Last Man Tackle',
   'Blocked Shots',
+  'Shots Blocked',
   'Clearances',
   'Clearance Offline',
   'Ball Recovery',
@@ -129,15 +133,15 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Total Crosses': { min: 0, max: 18.0 },
   'Passes': { min: 0, max: 138.0 },
   'Offsides': { min: 0, max: 3.0 },
-  'Aeriels Lost': { min: 0, max: 14.0 },
+  'Aerials Lost': { min: 0, max: 14.0 },
   'Penalties Committed': { min: 0, max: 1.0 },
   'Possession Lost': { min: 0, max: 33.0 },
   'Long Balls': { min: 0, max: 41.0 },
-  'Aeriels Won': { min: 0, max: 14.0 },
+  'Aerials Won': { min: 0, max: 14.0 },
   'Clearances': { min: 0, max: 20.0 },
   'Man Of Match': { min: 0, max: 1.0 },
   'Ball Recovery': { min: 0, max: 22.0 },
-  'Redcards': { min: 0, max: 1.0 },
+  'Red Cards': { min: 0, max: 1.0 },
   'Accurate Crosses': { min: 0, max: 6.0 },
   'Goals': { min: 0, max: 3.0 },
   'Offsides Provoked': { min: 0, max: 1.0 },
