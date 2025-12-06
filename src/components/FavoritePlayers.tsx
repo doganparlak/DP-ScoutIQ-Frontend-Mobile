@@ -348,7 +348,7 @@ export default function FavoritePlayers() {
             numberOfLines={1}
             style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}
           >
-            {firstWord((item as PlayerRow).team || '') || '—'}
+            {(item as PlayerRow).team || '' || '—'}
           </Text>
         )}
         <View style={styles.vsep} />
