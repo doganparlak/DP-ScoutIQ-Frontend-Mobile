@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     padding: 18,
+    paddingTop: 24,
   },
   greeting: {
     color: MUTED,

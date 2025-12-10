@@ -214,6 +214,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     padding: 18,
+    paddingTop: 24,
   },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
