@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   langRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 40,
   },
   langBtn: {
     paddingVertical: 10,
