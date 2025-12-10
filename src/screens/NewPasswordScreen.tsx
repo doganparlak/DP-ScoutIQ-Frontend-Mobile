@@ -1,7 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, KeyboardAvoidingView,
-  Platform, StyleSheet, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  ActivityIndicator,
+  Image, // 👈 added
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +18,8 @@ import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme
 import { RootStackParamList } from '@/types';
 import { setNewPassword } from '@/services/api';
 import { useTranslation } from 'react-i18next';
+
+import scoutwiseLogo from '../../assets/scoutwise_logo.png'; // 👈 added
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'NewPassword'>;
 type Route = RouteProp<RootStackParamList, 'NewPassword'>;
@@ -55,7 +64,9 @@ export default function NewPasswordScreen() {
       await setNewPassword({ email, new_password: password });
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e: any) {
-      setError(e?.message || t('setNewPwFailed', 'Could not set your new password. Please try again.'));
+      setError(
+        e?.message || t('setNewPwFailed', 'Could not set your new password. Please try again.')
+      );
     } finally {
       setSubmitting(false);
     }
@@ -84,7 +95,18 @@ export default function NewPasswordScreen() {
         style={styles.wrap}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
-        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
+        {/* Logo above app name */}
+        <Image
+          source={scoutwiseLogo}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        {/* App name: SCOUT white, WISE green */}
+        <Text style={styles.appName}>
+          <Text style={styles.appNameScout}>SCOUT</Text>
+          <Text style={styles.appNameWise}>WISE</Text>
+        </Text>
 
         <View style={styles.card}>
           <Text style={styles.title}>{t('newPwTitle', 'Create a new password')}</Text>
@@ -128,7 +150,9 @@ export default function NewPasswordScreen() {
           </View>
 
           {password && again && !match ? (
-            <Text style={styles.error}>{t('passwordsNoMatch', 'Passwords do not match.')}</Text>
+            <Text style={styles.error}>
+              {t('passwordsNoMatch', 'Passwords do not match.')}
+            </Text>
           ) : null}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -138,10 +162,19 @@ export default function NewPasswordScreen() {
             disabled={!isValid || submitting}
             style={({ pressed }) => [
               styles.primaryBtn,
-              { backgroundColor: pressed ? ACCENT_DARK : ACCENT, opacity: !isValid || submitting ? 0.6 : 1 },
+              {
+                backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                opacity: !isValid || submitting ? 0.6 : 1,
+              },
             ]}
           >
-            {submitting ? <ActivityIndicator /> : <Text style={styles.primaryBtnText}>{t('savePassword', 'Save password')}</Text>}
+            {submitting ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {t('savePassword', 'Save password')}
+              </Text>
+            )}
           </Pressable>
         </View>
       </View>
@@ -168,17 +201,48 @@ const styles = StyleSheet.create({
   backText: { color: TEXT, fontWeight: '700', fontSize: 18 },
 
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  appName: { color: ACCENT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
 
-  card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 26, // space between logo and title
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 14, // space between title and card
+    letterSpacing: 0.5,
+  },
+  appNameScout: {
+    color: '#FFFFFF',
+  },
+  appNameWise: {
+    color: ACCENT,
+  },
+
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: PANEL,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: LINE,
+    padding: 18,
+  },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
 
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },
   input: {
-    color: TEXT, backgroundColor: CARD, borderColor: LINE, borderWidth: 1.5,
-    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
+    color: TEXT,
+    backgroundColor: CARD,
+    borderColor: LINE,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
   },
 
   // Checklist styles
@@ -189,6 +253,11 @@ const styles = StyleSheet.create({
 
   error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
 
-  primaryBtn: { marginTop: 16, borderRadius: 14, alignItems: 'center', paddingVertical: 14 },
+  primaryBtn: {
+    marginTop: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
   primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 16 },
 });

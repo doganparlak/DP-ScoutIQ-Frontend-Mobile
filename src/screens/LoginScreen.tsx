@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Image,              // 👈 added
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +20,8 @@ import { RootStackParamList } from '@/types';
 import { login } from '@/services/api';
 import { useLanguage } from '@/context/LanguageProvider';
 import { useTranslation } from 'react-i18next';
+
+import scoutwiseLogo from '../../assets/scoutwise_logo.png'; // 👈 logo
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -43,28 +46,26 @@ export default function LoginScreen() {
   const goToSignUp = () => navigation.navigate('SignUp');
 
   const handleLogin = async () => {
-  if (!isValid || submitting) return;
-  try {
-    setError(null);
-    setSubmitting(true);
+    if (!isValid || submitting) return;
+    try {
+      setError(null);
+      setSubmitting(true);
 
-    const { user } = await login({ email, password, uiLanguage: lang });
+      const { user } = await login({ email, password, uiLanguage: lang });
 
-    if (user?.uiLanguage && user.uiLanguage !== lang) {
-      await setLang(user.uiLanguage);
+      if (user?.uiLanguage && user.uiLanguage !== lang) {
+        await setLang(user.uiLanguage);
+      }
+
+      await AsyncStorage.removeItem('reachout_sent_this_login').catch(() => {});
+
+      navigation.reset({ index: 0, routes: [{ name: 'App' }] });
+    } catch {
+      setError(t('loginFailed', 'Log in failed. Please check your credentials.'));
+    } finally {
+      setSubmitting(false);
     }
-
-    await AsyncStorage.removeItem('reachout_sent_this_login').catch(() => {});
-
-    // ⬇️ reset to the top-level "App" route (always mounted)
-    navigation.reset({ index: 0, routes: [{ name: 'App' }] });
-  } catch {
-    setError(t('loginFailed', 'Log in failed. Please check your credentials.'));
-  } finally {
-    setSubmitting(false);
-  }
-};
-
+  };
 
   return (
     <KeyboardAvoidingView
@@ -72,8 +73,18 @@ export default function LoginScreen() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
       <View style={styles.wrap}>
-        {/* App name above the frame */}
-        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
+        {/* Logo above app name */}
+        <Image
+          source={scoutwiseLogo}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        {/* App name: SCOUT white, WISE green */}
+        <Text style={styles.appName}>
+          <Text style={styles.appNameScout}>SCOUT</Text>
+          <Text style={styles.appNameWise}>WISE</Text>
+        </Text>
 
         {/* Login frame/card */}
         <View style={styles.card}>
@@ -98,32 +109,32 @@ export default function LoginScreen() {
             />
           </View>
 
-         <View style={styles.fieldBlock}>
-          <Text style={styles.label}>{t('password', 'Password')}</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t('placeholderPassword', '••••••••')}
-              placeholderTextColor={MUTED}
-              secureTextEntry={!showPassword}
-              style={styles.passwordInput}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-            <Pressable
-              onPress={() => setShowPassword(prev => !prev)}
-              hitSlop={8}
-              style={styles.eyeButton}
-            >
-              {showPassword ? (
-                <EyeOff size={20} color={MUTED} />
-              ) : (
-                <Eye size={20} color={MUTED} />
-              )}
-            </Pressable>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>{t('password', 'Password')}</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t('placeholderPassword', '••••••••')}
+                placeholderTextColor={MUTED}
+                secureTextEntry={!showPassword}
+                style={styles.passwordInput}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+              <Pressable
+                onPress={() => setShowPassword(prev => !prev)}
+                hitSlop={8}
+                style={styles.eyeButton}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color={MUTED} />
+                ) : (
+                  <Eye size={20} color={MUTED} />
+                )}
+              </Pressable>
+            </View>
           </View>
-        </View>
 
           {/* Forgot password link */}
           <Pressable
@@ -184,12 +195,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 18,
   },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 26,   // space between logo and title
+  },
   appName: {
-    color: ACCENT,
     fontSize: 28,
     fontWeight: '800',
-    marginBottom: 14, // sits on top of the frame
+    marginBottom: 14,  // space between title and card
     letterSpacing: 0.5,
+  },
+  appNameScout: {
+    color: '#FFFFFF',
+  },
+  appNameWise: {
+    color: ACCENT,
   },
   card: {
     width: '100%',
@@ -262,6 +283,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-
 });

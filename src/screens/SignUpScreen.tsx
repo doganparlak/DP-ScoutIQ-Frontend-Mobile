@@ -11,6 +11,7 @@ import {
   Switch,
   Modal,
   FlatList,
+  Image, // 👈 added
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +20,8 @@ import { RootStackParamList } from '@/types';
 import { signUp, requestSignupCode } from '@/services/api';
 import { COUNTRIES } from '@/constants/countries';
 import { useTranslation } from 'react-i18next';
+
+import scoutwiseLogo from '../../assets/scoutwise_logo.png'; // 👈 added
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -40,7 +43,6 @@ function toIsoDob(dmy: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
@@ -53,7 +55,7 @@ export default function SignUpScreen() {
   const hasNumber = /[0-9]/.test(password);
   const pwValid = hasMin && hasLetter && hasNumber;
 
-  const [dob, setDob] = useState('');       // auto-formatted as YYYY-MM-DD
+  const [dob, setDob] = useState('');
   const [country, setCountry] = useState('');
   const [agree, setAgree] = useState(false);
   const [newsletter, setNewsletter] = useState(false);
@@ -89,7 +91,6 @@ export default function SignUpScreen() {
       setError(null);
       setSubmitting(true);
       const dobIso = toIsoDob(dob);
-      // No backend language logic here (by your request)
       await signUp({ email, password, dob: dobIso, country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
       navigation.replace('Verification', { email, context: 'signup' });
@@ -116,11 +117,24 @@ export default function SignUpScreen() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
       <View style={styles.wrap}>
-        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
+        {/* Logo above app name */}
+        <Image
+          source={scoutwiseLogo}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        {/* App name: SCOUT white, WISE green */}
+        <Text style={styles.appName}>
+          <Text style={styles.appNameScout}>SCOUT</Text>
+          <Text style={styles.appNameWise}>WISE</Text>
+        </Text>
 
         <View style={styles.card}>
           <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>
-          <Text style={styles.subtitle}>{t('signupSubtitle', 'Join the data-driven scouting revolution.')}</Text>
+          <Text style={styles.subtitle}>
+            {t('signupSubtitle', 'Join the data-driven scouting revolution.')}
+          </Text>
 
           {/* Email */}
           <View style={styles.fieldBlock}>
@@ -306,8 +320,34 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  appName: { color: ACCENT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
-  card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
+
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 26, // space between logo and title
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 14, // space between title and card
+    letterSpacing: 0.5,
+  },
+  appNameScout: {
+    color: '#FFFFFF',
+  },
+  appNameWise: {
+    color: ACCENT,
+  },
+
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: PANEL,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: LINE,
+    padding: 18,
+  },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
 

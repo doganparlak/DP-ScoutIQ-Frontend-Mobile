@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, LINE, PANEL } from '@/theme';
@@ -7,6 +7,8 @@ import { RootStackParamList } from '@/types';
 import { useLanguage } from '@/context/LanguageProvider';
 import { useTranslation } from 'react-i18next';
 
+// 👇 adjust this path if your logo is somewhere else
+import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function WelcomeScreen() {
@@ -16,7 +18,18 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.appName}>{t('appName')}</Text>
+      {/* Logo */}
+      <Image
+        source={scoutwiseLogo}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+
+      {/* App name: "scout" white, "wise" green */}
+      <Text style={styles.appName}>
+        <Text style={styles.appNameScout}>SCOUT</Text>
+        <Text style={styles.appNameWise}>WISE</Text>
+      </Text>
 
       {/* Language picker */}
       <View style={styles.langRow}>
@@ -28,7 +41,9 @@ export default function WelcomeScreen() {
             pressed && { opacity: 0.9 },
           ]}
         >
-          <Text style={[styles.langText, lang === 'en' && styles.langTextActive]}>English</Text>
+          <Text style={[styles.langText, lang === 'en' && styles.langTextActive]}>
+            English
+          </Text>
         </Pressable>
 
         <Pressable
@@ -39,7 +54,9 @@ export default function WelcomeScreen() {
             pressed && { opacity: 0.9 },
           ]}
         >
-          <Text style={[styles.langText, lang === 'tr' && styles.langTextActive]}>Türkçe</Text>
+          <Text style={[styles.langText, lang === 'tr' && styles.langTextActive]}>
+            Türkçe
+          </Text>
         </Pressable>
       </View>
 
@@ -74,11 +91,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
+  logo: {
+    width: 140,
+    height: 140,
+    marginBottom: 26,
+  },
   appName: {
-    color: ACCENT,
     fontSize: 36,
     fontWeight: '800',
-    marginBottom: 60,
+    marginBottom: 40,
+  },
+  appNameScout: {
+    color: '#FFFFFF',
+  },
+  appNameWise: {
+    color: ACCENT,
   },
   langRow: {
     flexDirection: 'row',
@@ -102,11 +129,11 @@ const styles = StyleSheet.create({
   langText: {
     color: TEXT,
     fontWeight: '700',
-    fontSize: 17
+    fontSize: 17,
   },
   langTextActive: {
-    color: TEXT, // keeps contrast in Dark theme
-    fontSize: 17
+    color: TEXT,
+    fontSize: 17,
   },
   primaryBtn: {
     width: '80%',

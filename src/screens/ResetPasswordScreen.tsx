@@ -8,6 +8,7 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
+  Image, // 👈 added
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +17,8 @@ import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme
 import { RootStackParamList } from '@/types';
 import { requestPasswordReset } from '@/services/api';
 import { useTranslation } from 'react-i18next';
+
+import scoutwiseLogo from '../../assets/scoutwise_logo.png'; // 👈 added
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ResetPassword'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,7 +33,6 @@ export default function ResetPasswordScreen() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔧 these hooks must be inside the component
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
 
   const cardWidth = useMemo(() => {
@@ -86,7 +88,18 @@ export default function ResetPasswordScreen() {
         style={styles.wrap}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
-        <Text style={styles.appName}>{t('appName', 'ScoutWise')}</Text>
+        {/* Logo above app name */}
+        <Image
+          source={scoutwiseLogo}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        {/* App name: SCOUT white, WISE green */}
+        <Text style={styles.appName}>
+          <Text style={styles.appNameScout}>SCOUT</Text>
+          <Text style={styles.appNameWise}>WISE</Text>
+        </Text>
 
         <View style={styles.card}>
           <Text style={styles.title}>{t('resetTitle', 'Reset your password')}</Text>
@@ -129,7 +142,9 @@ export default function ResetPasswordScreen() {
               {submitting ? (
                 <ActivityIndicator />
               ) : (
-                <Text style={styles.primaryBtnText}>{t('sendResetCode', 'Send reset code')}</Text>
+                <Text style={styles.primaryBtnText}>
+                  {t('sendResetCode', 'Send reset code')}
+                </Text>
               )}
             </Pressable>
           ) : (
@@ -152,7 +167,9 @@ export default function ResetPasswordScreen() {
                   { opacity: pressed ? 0.85 : 1 },
                 ]}
               >
-                <Text style={styles.secondaryBtnText}>{t('backToLogin', 'Back to Login')}</Text>
+                <Text style={styles.secondaryBtnText}>
+                  {t('backToLogin', 'Back to Login')}
+                </Text>
               </Pressable>
             </>
           )}
@@ -170,9 +187,34 @@ const styles = StyleSheet.create({
   backText: { color: TEXT, fontWeight: '700', fontSize: 18 },
 
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  appName: { color: ACCENT, fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
 
-  card: { width: '100%', maxWidth: 560, backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE, padding: 18 },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 26, // space between logo and title
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 14, // space between title and card
+    letterSpacing: 0.5,
+  },
+  appNameScout: {
+    color: '#FFFFFF',
+  },
+  appNameWise: {
+    color: ACCENT,
+  },
+
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: PANEL,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: LINE,
+    padding: 18,
+  },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
   subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
 

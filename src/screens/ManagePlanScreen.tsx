@@ -21,6 +21,7 @@ import {
   activateIAPSubscription,
   type ActivateIAPSubscriptionIn,
 } from '@/services/api';
+/**
 
 import {
   initConnection,
@@ -36,6 +37,7 @@ import {
   type PurchaseIOS,
 } from 'react-native-iap';
 
+ */
 const IOS_SKU = 'scoutwise_pro_monthly_ios'; // <- your App Store product id
 const ANDROID_SKU = 'scoutwise_pro_monthly_android'; // <- your Play Store product id
 const SUBS_SKU = Platform.select({ ios: IOS_SKU, android: ANDROID_SKU })!;
@@ -73,6 +75,7 @@ export default function ManagePlan() {
     })();
   }, []);
 
+  /**
   // ---- IAP init + listeners ----
   React.useEffect(() => {
     let purchaseSub: EventSubscription | null = null;
@@ -175,7 +178,7 @@ export default function ManagePlan() {
       endConnection();
     };
   }, [nav, t]);
-
+ */
   const formattedEndDate = React.useMemo(() => {
   if (!subscriptionEndAt) return null;
   const d = new Date(subscriptionEndAt);
@@ -260,6 +263,7 @@ export default function ManagePlan() {
 
     try {
       setSaving(true);
+      /**
       await requestPurchase({
         type: 'subs',       
         request: {
@@ -271,6 +275,7 @@ export default function ManagePlan() {
           },
         },
       });
+      */
     } catch (e: any) {
       setSaving(false);
       Alert.alert(
