@@ -83,9 +83,17 @@ function normalize(points: SpiderPoint[]): Cleaned[] {
     })
     .filter(Boolean) as Array<{ y: number; value: number; label: string }>;
 
-  if (prelim.length < 3) return [];
+  if (prelim.length < 4) return [];
   return prelim.map((p, i) => ({ x: i + 1, ...p }));
 }
+// Add a simple normalized type for the list
+type NormalizedPoint = {
+  label: string;
+  value: number;
+  y: number;      // 0–1
+  min: number;
+  max: number;
+};
 
 const AVATAR = 34;
 
@@ -95,30 +103,6 @@ export default function SpiderChart({ title, points, Icon }: Props) {
   const isInPossession =
     (title || '').toLowerCase().includes('in possession') ||
     (title || '').toLowerCase().includes('in-possession');
-
-  // 1) clean
-  let cleaned = normalize(points);
-
-  // 2) spread angles for In Possession so stats are equally located
-  if (isInPossession && cleaned.length > 1) {
-    const spread = spreadByStride(cleaned);
-    cleaned = spread.map((p, i) => ({ ...p, x: i + 1 }));
-  }
-
-  if (cleaned.length <= 1) return null;
-
-  // Build display lines with translations
-  const withDisplay = cleaned.map((p) => {
-    const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
-    const parts = (labelTr ?? '').trim().split(/\s+/);
-    const first = parts[0] || '';
-    const rest = parts.slice(1).join(' ');
-    const lines = rest ? [first, rest, String(p.value)] : [first, String(p.value)];
-    return { ...p, show: lines.join('\n'), lineCount: lines.length };
-  });
-
-  const threeLine = withDisplay.filter((p) => p.lineCount === 3).sort((a, b) => a.x - b.x);
-  const twoLine = withDisplay.filter((p) => p.lineCount === 2).sort((a, b) => a.x - b.x);
 
   // Auto-pick icon if not provided
   let AutoIcon = Icon;
@@ -148,6 +132,118 @@ export default function SpiderChart({ title, points, Icon }: Props) {
     }
   }
 
+  // ---- Fallback list normalization (works for 1–2 metrics) ----
+  type ListMetric = { label: string; value: number; y: number };
+
+  const listMetrics: ListMetric[] = (() => {
+    const seen = new Set<string>();
+
+    return (points || [])
+      .map((p) => {
+        if (!p || !p.label || seen.has(p.label)) return null;
+        seen.add(p.label);
+
+        const min = Number(p.min);
+        const max = Number(p.max);
+        const vNum =
+          typeof p.value === 'number'
+            ? p.value
+            : Number(String(p.value ?? '').replace('%', '').trim());
+
+        if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return null;
+        if (!Number.isFinite(vNum)) return null;
+
+        const y = Math.max(0, Math.min(1, (vNum - min) / (max - min)));
+        return { label: p.label, value: vNum, y };
+      })
+      .filter(Boolean) as ListMetric[];
+  })();
+
+  // No valid stats at all → nothing
+  if (listMetrics.length === 0) return null;
+
+  // ---- Radar normalization (only used if we have 3+ metrics) ----
+  let cleaned = normalize(points);
+
+  // spread angles for In Possession so stats are equally located
+  if (isInPossession && cleaned.length > 1) {
+    const spread = spreadByStride(cleaned);
+    cleaned = spread.map((p, i) => ({ ...p, x: i + 1 }));
+  }
+
+  // If fewer than 3 valid metrics, show list fallback instead of radar
+  if (cleaned.length < 3) {
+    return (
+      <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8 }}>
+        {/* header bubble with icon + title */}
+        <View style={styles.headerRow}>
+          <View style={styles.titleFrame}>
+            {AutoIcon ? <AutoIcon size={18} color="white" /> : null}
+            <Text style={styles.title}>{title}</Text>
+          </View>
+        </View>
+
+        {listMetrics.map((p) => {
+          const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
+          return (
+            <View key={p.label} style={{ marginTop: 8 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 4,
+                }}
+              >
+                <Text style={{ color: MUTED, fontSize: 13 }}>{labelTr}</Text>
+                <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
+                  {p.value}
+                </Text>
+              </View>
+
+              {/* progress bar */}
+              <View
+                style={{
+                  height: 6,
+                  borderRadius: 999,
+                  backgroundColor: '#272a2a',
+                  overflow: 'hidden',
+                }}
+              >
+                <View
+                  style={{
+                    width: `${p.y * 100}%`,
+                    height: '100%',
+                    backgroundColor: ACCENT,
+                  }}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
+  // ---- Radar path (3+ metrics) ----
+
+  // Build display lines with translations
+  const withDisplay = cleaned.map((p) => {
+    const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
+    const parts = (labelTr ?? '').trim().split(/\s+/);
+    const first = parts[0] || '';
+    const rest = parts.slice(1).join(' ');
+    const lines = rest ? [first, rest, String(p.value)] : [first, String(p.value)];
+    return { ...p, show: lines.join('\n'), lineCount: lines.length };
+  });
+
+  const threeLine = withDisplay
+    .filter((p) => p.lineCount === 3)
+    .sort((a, b) => a.x - b.x);
+  const twoLine = withDisplay
+    .filter((p) => p.lineCount === 2)
+    .sort((a, b) => a.x - b.x);
+
   const spokes = withDisplay.map((_, i) => String(i + 1));
   const toSpoke = (x: number) => String(x);
 
@@ -172,7 +268,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
       >
         <VictoryPolarAxis
           dependentAxis
-          tickFormat={() => ''}   
+          tickFormat={() => ''}
           style={{
             axis: { stroke: 'transparent' },
             grid: { stroke: MUTED, opacity: 0.3 },
@@ -203,7 +299,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
               style={[
                 { fill: MUTED, fontSize: 12, fontWeight: '600' },
                 { fill: MUTED, fontSize: 12, fontWeight: '600' },
-                { fill: TEXT,  fontSize: 13, fontWeight: '700' },
+                { fill: TEXT, fontSize: 13, fontWeight: '700' },
               ]}
             />
           }
@@ -222,7 +318,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
               dy={4}
               style={[
                 { fill: MUTED, fontSize: 12, fontWeight: '600' },
-                { fill: TEXT,  fontSize: 13, fontWeight: '700' },
+                { fill: TEXT, fontSize: 13, fontWeight: '700' },
               ]}
             />
           }
@@ -246,6 +342,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

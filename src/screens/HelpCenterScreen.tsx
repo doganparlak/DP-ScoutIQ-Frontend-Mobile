@@ -202,7 +202,8 @@ export default function HelpCenter() {
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart for a clear statistical profile.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>, <Text style={styles.bold}>{t('shooting', 'Shooting')}</Text>, <Text style={styles.bold}>{t('passing', 'Passing')}</Text>, <Text style={styles.bold}>{t('defending', 'Defending')}</Text>, <Text style={styles.bold}>{t('contribution_impact', 'Contribution & Impact')}</Text>, <Text style={styles.bold}>{t('errors_discipline', 'Errors & Discipline')}</Text>,{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar4', 'Shown metrics are the per game averages based on available data.')}
               </Text>
             </View>
 

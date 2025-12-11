@@ -44,6 +44,7 @@ export const PASSING_METRICS = [
 
 // Contribution & Impact (formerly "other positive")
 export const CONTRIBUTION_IMPACT_METRICS = [
+  'Minutes Played',
   'Penalties Won',
   'Touches',
   'Big Chances Created',
