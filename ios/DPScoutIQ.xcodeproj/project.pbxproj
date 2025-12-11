@@ -30,6 +30,7 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = DPScoutIQ/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* DPScoutIQ-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "DPScoutIQ-Bridging-Header.h"; path = "DPScoutIQ/DPScoutIQ-Bridging-Header.h"; sourceTree = "<group>"; };
+		A66C986C7DC94887900CB77E /* SplashScreen.storyboard */ = {isa = PBXFileReference; name = "SplashScreen.storyboard"; path = "ScoutWise/SplashScreen.storyboard"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +92,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				E9305E4556D0A54AC1609338 /* Pods */,
 				C7DCAB689985D0A9431636AC /* ExpoModulesProviders */,
+				A66C986C7DC94887900CB77E /* SplashScreen.storyboard */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -197,6 +199,7 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				6825F5F5FFCC02A1D8EB3479 /* PrivacyInfo.xcprivacy in Resources */,
+				B3188F2844A9429EA7FCA8F9 /* SplashScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -377,7 +380,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = DPScoutIQ/DPScoutIQ.entitlements;
+				CODE_SIGN_ENTITLEMENTS = ScoutWise/ScoutWise.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -398,7 +401,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.anonymous.dp-scoutiq";
-				PRODUCT_NAME = DPScoutIQ;
+				PRODUCT_NAME = "ScoutWise";
 				SWIFT_OBJC_BRIDGING_HEADER = "DPScoutIQ/DPScoutIQ-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -413,7 +416,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = DPScoutIQ/DPScoutIQ.entitlements;
+				CODE_SIGN_ENTITLEMENTS = ScoutWise/ScoutWise.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = DPScoutIQ/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -429,7 +432,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.anonymous.dp-scoutiq";
-				PRODUCT_NAME = DPScoutIQ;
+				PRODUCT_NAME = "ScoutWise";
 				SWIFT_OBJC_BRIDGING_HEADER = "DPScoutIQ/DPScoutIQ-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
