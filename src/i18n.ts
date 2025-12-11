@@ -635,7 +635,7 @@ export const resources = {
         'In Play Danger': 'Tehlikeli Oyunda',
         'Touched Out': 'Saha Dışına Çeliş',
         'Touched In': 'Saha İçine Çeliş',
-
+ 
         // === Radar metrikleri: Şut / Bitiricilik ===
         'Goals': 'Gol',
         'Shots Total': 'Toplam Şut Denemesi',
