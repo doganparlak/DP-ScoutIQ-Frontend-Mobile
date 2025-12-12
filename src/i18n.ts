@@ -235,6 +235,8 @@ export const resources = {
       tblTeam: 'Team',
       genderMaleShort: 'M',
       genderFemaleShort: 'F',
+      upgradeToPro: 'Upgrade to Pro',
+      scoutingReportProUpsell: 'To access the scouting report of the players on portfolio, upgrade to Pro now.',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -599,10 +601,12 @@ export const resources = {
       gender: 'Cinsiyet',
       team: 'Takım',
       fltWeight: 'Kilo (min / maks)',
-      tblGender: 'Cins.',
+      tblGender: 'Cin.',
       tblTeam: 'Tak.',
       genderMaleShort: 'E',
       genderFemaleShort: 'K',
+      upgradeToPro: 'Pro Plana Yükselt',
+      scoutingReportProUpsell: 'Portföydeki oyuncuların scouting raporlarına erişmek için şimdi Pro plana yükseltin.',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',

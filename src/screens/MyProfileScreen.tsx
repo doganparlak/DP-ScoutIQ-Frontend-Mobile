@@ -70,7 +70,7 @@ export default function MyProfileScreen() {
           onLogout={handleLogout}
         />
 
-        <FavoritePlayers />
+        <FavoritePlayers plan={plan} />
       </ScrollView>
     </SafeAreaView>
   );

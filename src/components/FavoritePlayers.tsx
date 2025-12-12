@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { X, UserX } from 'lucide-react-native';
+import { X, UserX, FileText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
@@ -12,6 +12,7 @@ import {
   deleteFavoritePlayer,
   getFavoritePlayers,
   ROLE_LONG_TO_SHORT,
+  type Plan, 
   type FavoritePlayer,
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
@@ -36,7 +37,7 @@ const ALL_ROLE_SHORTS = [
 
 const ROW_HEIGHT = 48;
 // name, gender, nat, team, age, roles, pot, delete
-const COL = { name: 1.0, gen: 0.8, nat: 0.8, team: 1.0, age: 0.8, roles: 0.8, pot: 0.8, del: 0.6 } as const;
+const COL = { rep: 0.55, name: 0.93, gen: 0.9, nat: 0.93, team: 1.0, age: 0.8, roles: 0.8, pot: 0.83, del: 0.55 } as const;
 
 type SortKey = 'name' | 'gender' | 'nationality' | 'team' | 'age' | 'roles' | 'potential';
 type SortDir = 'asc' | 'desc';
@@ -47,7 +48,7 @@ function firstWord(full: string): string {
   return parts[0] ?? '';
 }
 
-export default function FavoritePlayers() {
+export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   const { t } = useTranslation();
 
   // ----- favorites state -----
@@ -231,6 +232,23 @@ export default function FavoritePlayers() {
     setSelectedRoles([]);
   };
 
+  const handleReportPress = (player: PlayerRow) => {
+    if (plan === 'Free') {
+      Alert.alert(
+        t('upgradeToPro', 'Upgrade to Pro'),
+        t(
+          'scoutingReportProUpsell',
+          'To access the scouting report of the players on portfolio, upgrade to Pro now.',
+        ),
+      );
+      return;
+    }
+
+    // TODO (Pro): call backend to fetch/open scouting report
+    // e.g. await getScoutingReport(player.id)
+  };
+
+
   const handleDelete = async (id: string) => {
     try {
       await deleteFavoritePlayer(id);
@@ -248,6 +266,27 @@ export default function FavoritePlayers() {
 
     const RowInner = (
       <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
+        {/* Report (left-most) */}
+        {isHeader ? (
+          <View style={[styles.cell, { flex: COL.rep, alignItems: 'center' }]} />
+        ) : (
+          <View style={[styles.cell, { flex: COL.rep }, styles.iconCellLeft]}>
+            <Pressable
+              onPress={() => handleReportPress(item as PlayerRow)}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              accessibilityLabel={t('openScoutingReport', 'Open scouting report')}
+            >
+              {({ pressed }) => (
+                <FileText
+                  size={20}
+                  color={pressed ? ACCENT_DARK : ACCENT}
+                  strokeWidth={2.2}
+                />
+              )}
+            </Pressable>
+          </View>
+        )}
+        <View style={styles.vsep} />
         {/* Name */}
         {isHeader ? (
           <Pressable
@@ -435,7 +474,7 @@ export default function FavoritePlayers() {
         {isHeader ? (
           <View style={[styles.cell, { flex: COL.del }]} />
         ) : (
-          <View style={[styles.cell, { flex: COL.del, alignItems: 'center' }]}>
+          <View style={[styles.cell, { flex: COL.del }, styles.iconCellRight]}>
             <Pressable
               onPress={() => handleDelete((item as PlayerRow).id)}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -658,7 +697,7 @@ export default function FavoritePlayers() {
           </View>
         ) : (
           <ScrollView
-            style={{ maxHeight: ROW_HEIGHT * 3 + 2 }}
+            style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
             nestedScrollEnabled
             bounces={false}
             showsVerticalScrollIndicator
@@ -694,6 +733,8 @@ export default function FavoritePlayers() {
 }
 
 const styles = StyleSheet.create({
+  iconCellLeft: { alignItems: 'flex-start', paddingLeft: 0 },
+  iconCellRight: { alignItems: 'flex-end', paddingRight: 0 },
   card: {
     backgroundColor: PANEL,
     borderRadius: 20,
@@ -724,7 +765,7 @@ const styles = StyleSheet.create({
   tableTopBorder: { height: 1, backgroundColor: LINE },
   tableBottomBorder: { height: 1, backgroundColor: LINE },
 
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
   hsepThick: { height: 2, backgroundColor: LINE },
 
   cell: { paddingVertical: 10, justifyContent: 'center' },
