@@ -73,7 +73,7 @@ export default function ManagePlan() {
     })();
   }, []);
 
-  // /**
+   /**
   // ---- IAP init + listeners ----
   React.useEffect(() => {
     let purchaseSub: EventSubscription | null = null;
@@ -176,7 +176,7 @@ export default function ManagePlan() {
       endConnection();
     };
   }, [nav, t]);
- // */
+  */
   const formattedEndDate = React.useMemo(() => {
   if (!subscriptionEndAt) return null;
   const d = new Date(subscriptionEndAt);
@@ -261,7 +261,7 @@ export default function ManagePlan() {
 
     try {
       setSaving(true);
-      // /**
+       /**
       await requestPurchase({
         type: 'subs',       
         request: {
@@ -273,7 +273,7 @@ export default function ManagePlan() {
           },
         },
       });
-      // */
+       */
     } catch (e: any) {
       setSaving(false);
       Alert.alert(
