@@ -259,8 +259,22 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         return;
       }
 
-      Alert.alert(t('reportFailed', 'Report failed'), t('reportFailedBody', 'Could not generate the report. Please try again later.'));
+      if (res.status === 'error' || res.status === 'failed') {
+        Alert.alert(
+          t('reportFailed', 'Report failed'),
+          t('reportFailedBody', 'Could not generate the report. Please try again later.')
+        );
+        return;
+      }
     } catch (e: any) {
+      const status = e?.status ?? e?.response?.status;
+      if (status === 403) {
+        Alert.alert(
+          t('upgradeToPro', 'Upgrade to Pro'),
+          t('scoutingReportProUpsell', 'To access the scouting report of the players on portfolio, upgrade to Pro now.')
+        );
+        return;
+      }
       Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
     }
   };

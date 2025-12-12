@@ -28,5 +28,5 @@ export const ENDPOINTS = {
   verifySignup: '/auth/verify_signup',
   reachOut: '/help/reach_out',
   subscription: '/me/subscription/iap',
-  favoriteReport: (favoriteId: string) => '/me/favorites/${favoriteId}/report',
+  favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
 };

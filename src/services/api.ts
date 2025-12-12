@@ -331,7 +331,7 @@ export async function deleteAccount(): Promise<void> {
 }
 
 // ---------- Scouting Report
-export type ScoutingReportStatus = 'ready' | 'processing' | 'failed';
+export type ScoutingReportStatus = 'ready' | 'processing' | 'error' | 'failed';
 
 export type ScoutingReportResponse = {
   favorite_player_id: string;
