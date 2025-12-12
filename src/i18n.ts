@@ -237,6 +237,11 @@ export const resources = {
       genderFemaleShort: 'F',
       upgradeToPro: 'Upgrade to Pro',
       scoutingReportProUpsell: 'To access the scouting report of the players on portfolio, upgrade to Pro now.',
+      reportGenerating: 'Report generating',
+      reportGeneratingBody: 'We are generating the scouting report. Please check again soon.',
+      reportFailed: 'Report failed',
+      reportFailedBody: 'Could not generate the report. Please try again later.',
+      reportError: 'Report error',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -607,6 +612,11 @@ export const resources = {
       genderFemaleShort: 'K',
       upgradeToPro: 'Pro Plana Yükselt',
       scoutingReportProUpsell: 'Portföydeki oyuncuların scouting raporlarına erişmek için şimdi Pro plana yükseltin.',
+      reportGenerating: 'Rapor oluşturuluyor',
+      reportGeneratingBody: 'Raporunuz oluşturuluyor. Lütfen kısa bir süre sonra tekrar kontrol edin.',
+      reportFailed: 'Rapor oluşturulamadı',
+      reportFailedBody: 'Rapor oluşturulamadı. Lütfen daha sonra tekrar deneyin.',
+      reportError: 'Rapor hatası',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',

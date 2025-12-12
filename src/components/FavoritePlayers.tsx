@@ -11,6 +11,7 @@ import type { PlayerData } from '../types';
 import {
   deleteFavoritePlayer,
   getFavoritePlayers,
+  getScoutingReport,
   ROLE_LONG_TO_SHORT,
   type Plan, 
   type FavoritePlayer,
@@ -232,20 +233,36 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     setSelectedRoles([]);
   };
 
-  const handleReportPress = (player: PlayerRow) => {
+  const [reportModal, setReportModal] = useState<{ open: boolean; title: string; content: string }>({
+    open: false, title: '', content: '',
+  });
+
+  const handleReportPress = async (player: PlayerRow) => {
     if (plan === 'Free') {
       Alert.alert(
         t('upgradeToPro', 'Upgrade to Pro'),
-        t(
-          'scoutingReportProUpsell',
-          'To access the scouting report of the players on portfolio, upgrade to Pro now.',
-        ),
+        t('scoutingReportProUpsell', 'To access the scouting report of the players on portfolio, upgrade to Pro now.'),
       );
       return;
     }
 
-    // TODO (Pro): call backend to fetch/open scouting report
-    // e.g. await getScoutingReport(player.id)
+    try {
+      const res = await getScoutingReport(player.id);
+
+      if (res.status === 'ready' && res.content) {
+        setReportModal({ open: true, title: player.name, content: res.content });
+        return;
+      }
+
+      if (res.status === 'processing') {
+        Alert.alert(t('reportGenerating', 'Report generating'), t('reportGeneratingBody', 'We are generating the scouting report. Please check again soon.'));
+        return;
+      }
+
+      Alert.alert(t('reportFailed', 'Report failed'), t('reportFailedBody', 'Could not generate the report. Please try again later.'));
+    } catch (e: any) {
+      Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
+    }
   };
 
 

@@ -329,3 +329,19 @@ export async function deleteAccount(): Promise<void> {
   // Uses the same auth header setup inside request()
   await request<void>(ENDPOINTS.me, { method: 'DELETE' });
 }
+
+// ---------- Scouting Report
+export type ScoutingReportStatus = 'ready' | 'processing' | 'failed';
+
+export type ScoutingReportResponse = {
+  favorite_player_id: string;
+  status: ScoutingReportStatus;
+  content?: string | null;
+  content_json?: any;
+  language?: string;
+  version?: number;
+};
+
+export async function getScoutingReport(favoriteId: string): Promise<ScoutingReportResponse> {
+  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report`);
+}
