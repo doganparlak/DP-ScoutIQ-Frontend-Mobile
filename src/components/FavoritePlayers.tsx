@@ -238,7 +238,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   });
 
   const handleReportPress = async (player: PlayerRow) => {
-    if (plan === 'Free') {
+    if (plan === 'Pro') {
       Alert.alert(
         t('upgradeToPro', 'Upgrade to Pro'),
         t('scoutingReportProUpsell', 'To access the scouting report of the players on portfolio, upgrade to Pro now.'),
@@ -270,8 +270,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       const status = e?.status ?? e?.response?.status;
       if (status === 403) {
         Alert.alert(
-          t('upgradeToPro', 'Upgrade to Pro'),
-          t('scoutingReportProUpsell', 'To access the scouting report of the players on portfolio, upgrade to Pro now.')
+          e
         );
         return;
       }
