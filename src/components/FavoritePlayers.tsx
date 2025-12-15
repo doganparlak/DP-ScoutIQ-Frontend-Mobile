@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal,
+  ActivityIndicator
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { X, UserX, FileText } from 'lucide-react-native';
@@ -8,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
 import type { PlayerData } from '../types';
+import ScoutingReport from './ScoutingReport';
 import {
   deleteFavoritePlayer,
   getFavoritePlayers,
@@ -15,6 +17,7 @@ import {
   ROLE_LONG_TO_SHORT,
   type Plan, 
   type FavoritePlayer,
+  type  ScoutingReportResponse,
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
@@ -233,9 +236,69 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     setSelectedRoles([]);
   };
 
-  const [reportModal, setReportModal] = useState<{ open: boolean; title: string; content: string }>({
-    open: false, title: '', content: '',
-  });
+  const [scoutOpen, setScoutOpen] = useState(false);
+  const [scoutPlayer, setScoutPlayer] = useState<PlayerData | null>(null);
+  const [scoutReport, setScoutReport] = useState<ScoutingReportResponse | null>(null);
+  const [processingReports, setProcessingReports] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (processingReports.size === 0) return;
+
+    let cancelled = false;
+
+    const interval = setInterval(async () => {
+      if (cancelled) return;
+
+      for (const playerId of Array.from(processingReports)) {
+        try {
+          const row = rows.find(r => r.id === playerId);
+          if (!row) continue;
+
+          const payload = {
+            name: row.name,
+            gender: row.gender,
+            nationality: row.nationality,
+            team: row.team,
+            age: row.age,
+            height: row.height,
+            weight: row.weight,
+          };
+
+          const res = await getScoutingReport(playerId, payload);
+
+          if (res.status === 'ready' && res.content) {
+            if (cancelled) return;
+
+            setScoutPlayer(toPlayerData(row));
+            setScoutReport(res);
+            setScoutOpen(true);
+
+            setProcessingReports(prev => {
+              const next = new Set(prev);
+              next.delete(playerId);
+              return next;
+            });
+          }
+
+          if (res.status === 'error' || res.status === 'failed') {
+            setProcessingReports(prev => {
+              const next = new Set(prev);
+              next.delete(playerId);
+              return next;
+            });
+          }
+        } catch {
+          // keep polling (temporary network errors)
+        }
+      }
+    }, 1200);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [processingReports, rows]);
+
 
   const handleReportPress = async (player: PlayerRow) => {
     if (plan === 'Pro') {
@@ -246,6 +309,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       return;
     }
 
+    if (processingReports.has(player.id)) return;
+    setProcessingReports(prev => new Set(prev).add(player.id));
     try {
       const payload = {
         name: player.name,
@@ -257,32 +322,47 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         weight: player.weight,
       };
       const res = await getScoutingReport(player.id, payload);
-
       if (res.status === 'ready' && res.content) {
-        setReportModal({ open: true, title: player.name, content: res.content });
+        setScoutPlayer(toPlayerData(player));
+        setScoutReport(res);
+        setScoutOpen(true);
+
+        setProcessingReports(prev => {
+          const next = new Set(prev);
+          next.delete(player.id);
+          return next;
+        });
         return;
       }
 
       if (res.status === 'processing') {
-        Alert.alert(t('reportGenerating', 'Report generating'), t('reportGeneratingBody', 'We are generating the scouting report. Please check again soon.'));
         return;
       }
 
       if (res.status === 'error' || res.status === 'failed') {
+        setProcessingReports(prev => {
+          const next = new Set(prev);
+          next.delete(player.id);
+          return next;
+        });
         Alert.alert(
           t('reportFailed', 'Report failed'),
           t('reportFailedBody', 'Could not generate the report. Please try again later.')
         );
         return;
       }
+      // unknown status: clear processing
+      setProcessingReports(prev => {
+        const next = new Set(prev);
+        next.delete(player.id);
+        return next;
+      });
     } catch (e: any) {
-      const status = e?.status ?? e?.response?.status;
-      if (status === 403) {
-        Alert.alert(
-          e
-        );
-        return;
-      }
+      setProcessingReports(prev => {
+        const next = new Set(prev);
+        next.delete(player.id);
+        return next;
+      });
       Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
     }
   };
@@ -312,16 +392,41 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <View style={[styles.cell, { flex: COL.rep }, styles.iconCellLeft]}>
             <Pressable
               onPress={() => handleReportPress(item as PlayerRow)}
+              disabled={processingReports.has((item as PlayerRow).id)}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              accessibilityLabel={t('openScoutingReport', 'Open scouting report')}
+              accessibilityLabel={
+                processingReports.has((item as PlayerRow).id)
+                  ? t('reportGenerating', 'Report generating')
+                  : t('openScoutingReport', 'Open scouting report')
+              }
+              style={({ pressed }) => [
+                pressed && !processingReports.has((item as PlayerRow).id) && { opacity: 0.85 },
+              ]}
             >
-              {({ pressed }) => (
-                <FileText
-                  size={20}
-                  color={pressed ? ACCENT_DARK : ACCENT}
-                  strokeWidth={2.2}
-                />
-              )}
+              {() => {
+                const rowId = (item as PlayerRow).id;
+                const isProcessing = processingReports.has(rowId);
+
+                if (isProcessing) {
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <ActivityIndicator size="small" color={MUTED} />
+                      {/* optional but very clear */}
+                      <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700' }}>
+                        {t('generating', 'Generating')}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <FileText
+                    size={20}
+                    color={ACCENT}
+                    strokeWidth={2.2}
+                  />
+                );
+              }}
             </Pressable>
           </View>
         )}
@@ -766,6 +871,18 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             </View>
           </View>
         </Modal>
+      )}
+      {scoutOpen && scoutPlayer && scoutReport && (
+        <ScoutingReport
+          visible={scoutOpen}
+          onClose={() => {
+            setScoutOpen(false);
+            setScoutPlayer(null);
+            setScoutReport(null);
+          }}
+          player={scoutPlayer}
+          report={scoutReport}
+        />
       )}
     </View>
   );
