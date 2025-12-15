@@ -15,9 +15,9 @@ import {
   getFavoritePlayers,
   getScoutingReport,
   ROLE_LONG_TO_SHORT,
-  type Plan, 
+  type Plan,
   type FavoritePlayer,
-  type  ScoutingReportResponse,
+  type ScoutingReportResponse,
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
@@ -239,8 +239,14 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   const [scoutOpen, setScoutOpen] = useState(false);
   const [scoutPlayer, setScoutPlayer] = useState<PlayerData | null>(null);
   const [scoutReport, setScoutReport] = useState<ScoutingReportResponse | null>(null);
+
+  // show "…" while report is being processed for that player id
   const [processingReports, setProcessingReports] = useState<Set<string>>(new Set());
 
+  // one-shot trigger that kicks off the first request AFTER the UI renders
+  const [queuedReportPlayer, setQueuedReportPlayer] = useState<PlayerRow | null>(null);
+
+  // --- Polling effect (your existing logic) ---
   useEffect(() => {
     if (processingReports.size === 0) return;
 
@@ -299,8 +305,81 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     };
   }, [processingReports, rows]);
 
+  // --- Initial request effect (single call, after UI shows “…”) ---
+  useEffect(() => {
+    if (!queuedReportPlayer) return;
 
-  const handleReportPress = async (player: PlayerRow) => {
+    let cancelled = false;
+
+    (async () => {
+      const p = queuedReportPlayer;
+
+      try {
+        const payload = {
+          name: p.name,
+          gender: p.gender,
+          nationality: p.nationality,
+          team: p.team,
+          age: p.age,
+          height: p.height,
+          weight: p.weight,
+        };
+
+        const res = await getScoutingReport(p.id, payload);
+        if (cancelled) return;
+
+        if (res.status === 'ready' && res.content) {
+          setScoutPlayer(toPlayerData(p));
+          setScoutReport(res);
+          setScoutOpen(true);
+
+          setProcessingReports(prev => {
+            const next = new Set(prev);
+            next.delete(p.id);
+            return next;
+          });
+          return;
+        }
+
+        if (res.status === 'processing') {
+          // keep processingReports; polling will continue
+          return;
+        }
+
+        // error/failed/unknown -> clear processing and inform
+        setProcessingReports(prev => {
+          const next = new Set(prev);
+          next.delete(p.id);
+          return next;
+        });
+
+        if (res.status === 'error' || res.status === 'failed') {
+          Alert.alert(
+            t('reportFailed', 'Report failed'),
+            t('reportFailedBody', 'Could not generate the report. Please try again later.')
+          );
+        }
+      } catch (e: any) {
+        if (cancelled) return;
+
+        setProcessingReports(prev => {
+          const next = new Set(prev);
+          next.delete(p.id);
+          return next;
+        });
+
+        Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
+      } finally {
+        if (!cancelled) setQueuedReportPlayer(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queuedReportPlayer, t]);
+
+  const handleReportPress = (player: PlayerRow) => {
     if (plan === 'Pro') {
       Alert.alert(
         t('upgradeToPro', 'Upgrade to Pro'),
@@ -309,64 +388,18 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       return;
     }
 
-    if (processingReports.has(player.id)) return;
-    setProcessingReports(prev => new Set(prev).add(player.id));
-    try {
-      const payload = {
-        name: player.name,
-        gender: player.gender,
-        nationality: player.nationality,
-        team: player.team,
-        age: player.age,
-        height: player.height,
-        weight: player.weight,
-      };
-      const res = await getScoutingReport(player.id, payload);
-      if (res.status === 'ready' && res.content) {
-        setScoutPlayer(toPlayerData(player));
-        setScoutReport(res);
-        setScoutOpen(true);
+    // prevent duplicate taps/queues
+    if (processingReports.has(player.id) || queuedReportPlayer?.id === player.id) return;
 
-        setProcessingReports(prev => {
-          const next = new Set(prev);
-          next.delete(player.id);
-          return next;
-        });
-        return;
-      }
+    setProcessingReports(prev => {
+      const next = new Set(prev);
+      next.add(player.id);
+      return next;
+    });
 
-      if (res.status === 'processing') {
-        return;
-      }
-
-      if (res.status === 'error' || res.status === 'failed') {
-        setProcessingReports(prev => {
-          const next = new Set(prev);
-          next.delete(player.id);
-          return next;
-        });
-        Alert.alert(
-          t('reportFailed', 'Report failed'),
-          t('reportFailedBody', 'Could not generate the report. Please try again later.')
-        );
-        return;
-      }
-      // unknown status: clear processing
-      setProcessingReports(prev => {
-        const next = new Set(prev);
-        next.delete(player.id);
-        return next;
-      });
-    } catch (e: any) {
-      setProcessingReports(prev => {
-        const next = new Set(prev);
-        next.delete(player.id);
-        return next;
-      });
-      Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
-    }
+    // enqueue -> effect runs after render, so "…" shows immediately
+    setQueuedReportPlayer(player);
   };
-
 
   const handleDelete = async (id: string) => {
     try {
@@ -391,7 +424,11 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         ) : (
           <View style={[styles.cell, { flex: COL.rep }, styles.iconCellLeft]}>
             <Pressable
-              onPress={() => handleReportPress(item as PlayerRow)}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                handleReportPress(item as PlayerRow);
+              }}
+              onPressIn={(e) => { e?.stopPropagation?.(); }}
               disabled={processingReports.has((item as PlayerRow).id)}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
               accessibilityLabel={
@@ -409,28 +446,20 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 
                 if (isProcessing) {
                   return (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <ActivityIndicator size="small" color={MUTED} />
-                      {/* optional but very clear */}
-                      <Text style={{ color: MUTED, fontSize: 11, fontWeight: '700' }}>
-                        {t('generating', 'Generating')}
-                      </Text>
-                    </View>
+                    <Text style={{ color: MUTED, fontSize: 16, fontWeight: '900' }}>
+                      …
+                    </Text>
                   );
                 }
 
-                return (
-                  <FileText
-                    size={20}
-                    color={ACCENT}
-                    strokeWidth={2.2}
-                  />
-                );
+                return <FileText size={20} color={ACCENT} strokeWidth={2.2} />;
               }}
             </Pressable>
           </View>
         )}
+
         <View style={styles.vsep} />
+
         {/* Name */}
         {isHeader ? (
           <Pressable
@@ -454,6 +483,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             {firstWord((item as PlayerRow).name)}
           </Text>
         )}
+
         <View style={styles.vsep} />
 
         {/* Gender */}
@@ -484,6 +514,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             })()}
           </Text>
         )}
+
         <View style={styles.vsep} />
 
         {/* Nat */}
@@ -509,6 +540,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             {countryToCode2((item as PlayerRow).nationality)}
           </Text>
         )}
+
         <View style={styles.vsep} />
 
         {/* Team */}
@@ -534,8 +566,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             {(item as PlayerRow).team || '' || '—'}
           </Text>
         )}
-        <View style={styles.vsep} />
 
+        <View style={styles.vsep} />
 
         {/* Age */}
         {isHeader ? (
@@ -553,12 +585,11 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             </Text>
           </Pressable>
         ) : (
-          <Text
-            style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}
-          >
+          <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
             {(item as PlayerRow).age ?? '—'}
           </Text>
         )}
+
         <View style={styles.vsep} />
 
         {/* Roles */}
@@ -587,8 +618,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             })()}
           </Text>
         )}
-        <View style={styles.vsep} />
 
+        <View style={styles.vsep} />
 
         {/* Potential */}
         {isHeader ? (
@@ -606,15 +637,14 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             </Text>
           </Pressable>
         ) : (
-          <Text
-            style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}
-          >
+          <Text style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}>
             {(item as PlayerRow).potential ?? '—'}
           </Text>
         )}
+
         <View style={styles.vsep} />
 
-        {/* Delete (no header label) */}
+        {/* Delete */}
         {isHeader ? (
           <View style={[styles.cell, { flex: COL.del }]} />
         ) : (
@@ -677,17 +707,11 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             ]}
             accessibilityLabel={t('fltGender', 'Gender')}
           >
-            <Text
-              style={{
-                color: genderFilter ? TEXT : MUTED,
-                fontSize: 14,
-              }}
-            >
+            <Text style={{ color: genderFilter ? TEXT : MUTED, fontSize: 14 }}>
               {renderGenderFilterLabel()}
             </Text>
           </Pressable>
         </View>
-
 
         {/* Row 2: Nationality / Team */}
         <View style={styles.filterCol}>
@@ -872,6 +896,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           </View>
         </Modal>
       )}
+
       {scoutOpen && scoutPlayer && scoutReport && (
         <ScoutingReport
           visible={scoutOpen}

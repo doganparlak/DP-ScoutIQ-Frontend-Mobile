@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -142,6 +142,7 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
   return groups;
 }
 
+
 export default function ScoutingReport({ visible, onClose, player, report }: Props) {
   const [page, setPage] = useState(0);
   const { t } = useTranslation();
@@ -149,52 +150,47 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
   const parsed = useMemo(() => parseReportText(report?.content || ''), [report?.content]);
   const spiderGroups = useMemo(() => buildSpiderGroupsFromReport(report), [report]);
 
+  useEffect(() => {
+    if (visible) setPage(0);
+  }, [visible, spiderGroups.length]);
+
+
   const pages = useMemo(() => {
-    const out: Array<{ key: string; title: string; node: React.ReactNode }> = [];
+    const playerPage = {
+    key: 'player',
+    title: t('player', 'Player'),
+    node: (
+      <View style={{ gap: 12 }}>
+        <PlayerCard player={player} titleAlign="center" />
+        <Text style={{ color: MUTED, lineHeight: 18 }}>
+          {t('tapArrowsToNavigate', 'Tap arrows to navigate the report.')}
+        </Text>
+      </View>
+    ),
+  };
 
-    out.push({
-      key: 'player',
-      title: t('player', 'Player'),
-      node: (
-        <View style={{ gap: 12 }}>
-          <PlayerCard player={player} titleAlign="center" />
-          <Text style={{ color: MUTED, lineHeight: 18 }}>
-            {t('tapArrowsToNavigate', 'Tap arrows to navigate the report.')}
-          </Text>
-        </View>
-      ),
-    });
+    if (spiderGroups.length === 0) return [playerPage];
 
-    if (spiderGroups.length === 0) {
-      out.push({
-        key: 'metrics-empty',
-        title: t('metrics', 'Metrics'),
-        node: (
-          <Text style={{ color: MUTED }}>
-            {t('noMetricChartsYet', 'No metric charts available for this player.')}
-          </Text>
-        ),
-      });
-    } else {
-      spiderGroups.forEach((g, idx) => {
+    const out: Array<{ key: string; title: string; node: React.ReactNode }> = [playerPage];
+
+    spiderGroups.forEach((g, idx) => {
         const title = t(g.titleKey, g.fallbackTitle);
         const isRadar = (g.points?.length ?? 0) >= 4;
 
         out.push({
-          key: `metrics-${idx}`,
-          title,
-          node: isRadar ? (
-            <View style={{ marginLeft: 30, paddingRight: -30, alignItems: 'center' }}>
-              <View style={{ transform: [{ scale: 0.92 }] }}>
+        key: `metrics-${idx}`,
+        title,
+        node: isRadar ? (
+            <View style={{ marginLeft: 28, paddingRight: -28, alignItems: 'center' }}>
+            <View style={{ transform: [{ scale: 0.90 }] }}>
                 <SpiderChart title={title} points={g.points} />
-              </View>
             </View>
-          ) : (
+            </View>
+        ) : (
             <SpiderChart title={title} points={g.points} />
-          ),
+        ),
         });
-      });
-    }
+    });
 
     out.push({
       key: 'strengths',

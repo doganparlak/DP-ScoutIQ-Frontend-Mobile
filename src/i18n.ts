@@ -254,6 +254,8 @@ export const resources = {
       closeScoutingReport: 'Closing scouting report',
       nextSection: 'Next section',
       previousSection: 'Previous section',
+      player: 'Player',
+      metrics: 'Metrics',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -641,6 +643,8 @@ export const resources = {
       closeScoutingReport: 'Oyuncu keşfi raporu kapatılıyor.',
       nextSection: 'Sıradaki kategori',
       previousSection: 'Önceki kategori',
+      player: 'Oyuncu',
+      metrics: 'Metrikler',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',
