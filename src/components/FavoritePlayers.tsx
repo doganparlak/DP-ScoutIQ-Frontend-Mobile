@@ -247,7 +247,16 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     }
 
     try {
-      const res = await getScoutingReport(player.id);
+      const payload = {
+        name: player.name,
+        gender: player.gender,
+        nationality: player.nationality,
+        team: player.team,
+        age: player.age,
+        height: player.height,
+        weight: player.weight,
+      };
+      const res = await getScoutingReport(player.id, payload);
 
       if (res.status === 'ready' && res.content) {
         setReportModal({ open: true, title: player.name, content: res.content });

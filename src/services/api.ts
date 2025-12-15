@@ -342,6 +342,23 @@ export type ScoutingReportResponse = {
   version?: number;
 };
 
-export async function getScoutingReport(favoriteId: string): Promise<ScoutingReportResponse> {
-  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report`);
+export type PlayerIdentityPayload = {
+  name?: string;
+  gender?: string;
+  nationality?: string;
+  team?: string;
+  age?: number;
+  height?: number;
+  weight?: number;
+};
+
+export async function getScoutingReport(
+  favoriteId: string,
+  player?: PlayerIdentityPayload
+): Promise<ScoutingReportResponse> {
+  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report`, {
+    method: 'POST',
+    body: JSON.stringify(player ?? {}),
+  });
 }
+
