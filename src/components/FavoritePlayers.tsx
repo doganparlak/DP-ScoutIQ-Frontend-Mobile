@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal,
-  ActivityIndicator
+  Platform
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { X, UserX, FileText } from 'lucide-react-native';
@@ -864,17 +864,23 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <Text style={{ color: MUTED }}>{t('loadingFavorites', 'Loading favorites…')}</Text>
           </View>
         ) : (
-          <ScrollView
-            style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
-            nestedScrollEnabled
-            bounces={false}
-            showsVerticalScrollIndicator
-          >
-            {renderUnifiedRow('HEADER')}
-            {filtered.map((item) => renderUnifiedRow(item))}
-          </ScrollView>
-        )}
+          <View style={styles.tableScrollWrap}>
+            <ScrollView
+              style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
+              contentContainerStyle={{ paddingRight: 5 }} // keeps content away from the bar
+              scrollIndicatorInsets={
+                Platform.OS === 'ios' ? { right: -5 } : undefined
+              }
+              nestedScrollEnabled
+              bounces={false}
+              showsVerticalScrollIndicator
+            >
+              {renderUnifiedRow('HEADER')}
+              {filtered.map((item) => renderUnifiedRow(item))}
+            </ScrollView>
 
+          </View>
+        )}
         <View style={styles.tableBottomBorder} />
       </View>
 
@@ -914,6 +920,12 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 }
 
 const styles = StyleSheet.create({
+  tableScrollWrap: {
+    paddingRight: 1,  // <-- increase this to push the indicator more to the right
+  },
+  tableScroll: {
+    marginRight: -1,  // <-- must match paddingRight above
+  },
   iconCellLeft: { alignItems: 'flex-start', paddingLeft: 0 },
   iconCellRight: { alignItems: 'flex-end', paddingRight: 0 },
   card: {
