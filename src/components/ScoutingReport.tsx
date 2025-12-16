@@ -44,7 +44,7 @@ type Props = {
 type ParsedReport = {
   strengths: string[];
   weaknesses: string[];
-  conclusion: string;
+  conclusion: string[];
 };
 
 function stripBullet(s: string) {
@@ -78,7 +78,7 @@ function parseReportText(text: string): ParsedReport {
   return {
     strengths: strengthsBlock ? splitBullets(strengthsBlock) : [],
     weaknesses: weaknessesBlock ? splitBullets(weaknessesBlock) : [],
-    conclusion: conclusionBlock || '',
+    conclusion: conclusionBlock ? splitBullets(conclusionBlock) : [],
   };
 }
 
@@ -235,14 +235,26 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
     });
 
     out.push({
-      key: 'conclusion',
-      title: t('conclusion', 'Conclusion'),
-      node: (
-        <Text style={{ color: TEXT, lineHeight: 20 }}>
-          {parsed.conclusion || t('noConclusionFound', 'No conclusion found.')}
-        </Text>
-      ),
+        key: 'conclusion',
+        title: t('conclusion', 'Conclusion'),
+        node: (
+            <View style={{ gap: 10 }}>
+            {parsed.conclusion.length === 0 ? (
+                <Text style={{ color: MUTED }}>
+                {t('noConclusionFound', 'No conclusion found.')}
+                </Text>
+            ) : (
+                parsed.conclusion.map((s, i) => (
+                <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
+                    <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
+                    <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
+                </View>
+                ))
+            )}
+        </View>
+        ),
     });
+
 
     return out;
   }, [player, parsed, spiderGroups, t]);
