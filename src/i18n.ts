@@ -337,6 +337,7 @@ export const resources = {
         'Red Cards': 'Red Cards',
         'Redcards' : 'Red Cards',
         'Fouls': 'Fouls',
+        'Duels Lost': 'Duels Lost',
 
         // === Radar metrics: Defending ===
         'Tackles': 'Tackles',
@@ -748,6 +749,7 @@ export const resources = {
         'Yellow & Red Cards': 'Sarı / Kırmızı Kart',
         'Redcards': 'Kırmızı Kart',
         'Red Cards': 'Kırmızı Kart',
+        'Duels Lost': 'Kaybedilen İkili Mücadeleler',
 
         // === Radar metrikleri: Savunma ===
         'Interceptions': 'Araya Girme',
