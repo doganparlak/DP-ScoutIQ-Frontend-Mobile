@@ -195,16 +195,10 @@ export default function ChatScreen() {
                             ? Math.round(player.meta.potential)
                             : undefined,
                         gender: player.meta?.gender,
-                        height:
-                          typeof player.meta?.height === 'number'
-                            ? player.meta.height
-                            : undefined,
-                        weight:
-                          typeof player.meta?.weight === 'number'
-                            ? player.meta.weight
-                            : undefined,
+                        height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
+                        weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
                         team: player.meta?.team,
-                        roles: player.meta?.roles ?? [], // short codes; API converts to LONG
+                        roles: player.meta?.roles ?? [],
                       });
                       return true;
                     } catch (e: any) {
@@ -212,46 +206,31 @@ export default function ChatScreen() {
                       return false;
                     }
                   }}
-              />
-                 {hasAny && (
+                />
+
+                {hasAny ? (
                   <View style={{ gap: 10 }}>
-                    {gk.length > 0 && (
-                      <SpiderChart title={t('chartGK', 'Goalkeeping')} points={gk} />
-                    )}
-                    {shooting.length > 0 && (
-                      <SpiderChart
-                        title={t('chartShooting', 'Shooting & Finishing')}
-                        points={shooting}
-                      />
-                    )}
-                    {passing.length > 0 && (
-                      <SpiderChart
-                        title={t('chartPassing', 'Passing & Delivery')}
-                        points={passing}
-                      />
-                    )}
-                    {contrib.length > 0 && (
-                      <SpiderChart
-                        title={t('chartContribution', 'Contribution & Impact')}
-                        points={contrib}
-                      />
-                    )}
-                    {errors.length > 0 && (
-                      <SpiderChart
-                        title={t('chartErrors', 'Errors & Discipline')}
-                        points={errors}
-                      />
-                    )}
-                    {defending.length > 0 && (
-                      <SpiderChart
-                        title={t('chartDefending', 'Defending')}
-                        points={defending}
-                      />
-                    )}
-                </View>
-              )}
+                    {gk.length > 0 ? <SpiderChart title={t('chartGK', 'Goalkeeping')} points={gk} /> : null}
+                    {shooting.length > 0 ? (
+                      <SpiderChart title={t('chartShooting', 'Shooting & Finishing')} points={shooting} />
+                    ) : null}
+                    {passing.length > 0 ? (
+                      <SpiderChart title={t('chartPassing', 'Passing & Delivery')} points={passing} />
+                    ) : null}
+                    {contrib.length > 0 ? (
+                      <SpiderChart title={t('chartContribution', 'Contribution & Impact')} points={contrib} />
+                    ) : null}
+                    {errors.length > 0 ? (
+                      <SpiderChart title={t('chartErrors', 'Errors & Discipline')} points={errors} />
+                    ) : null}
+                    {defending.length > 0 ? (
+                      <SpiderChart title={t('chartDefending', 'Defending')} points={defending} />
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             );
+
           })}
         </View>
       );
