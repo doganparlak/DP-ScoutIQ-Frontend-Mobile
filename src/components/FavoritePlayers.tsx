@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { X, UserX, FileText } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
-import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
+import { TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
 import type { PlayerData } from '../types';
 import ScoutingReport from './ScoutingReport';
 import {

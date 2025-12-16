@@ -15,7 +15,6 @@ import FavoritePlayers from '@/components/FavoritePlayers';
 import Account from '@/components/Account';
 import { useTranslation } from 'react-i18next';
 
-type ProfileTabNav = BottomTabNavigationProp<MainTabsParamList, 'Profile'>;
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function MyProfileScreen() {

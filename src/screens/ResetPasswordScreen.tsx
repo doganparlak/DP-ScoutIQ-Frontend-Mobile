@@ -8,7 +8,7 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
-  Image, // 👈 added
+  Image, 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,7 +18,7 @@ import { RootStackParamList } from '@/types';
 import { requestPasswordReset } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 
-import scoutwiseLogo from '../../assets/scoutwise_logo.png'; // 👈 added
+import scoutwiseLogo from '../../assets/scoutwise_logo.png'; 
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ResetPassword'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

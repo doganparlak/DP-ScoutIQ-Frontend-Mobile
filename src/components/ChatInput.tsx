@@ -1,5 +1,5 @@
 // src/components/ChatInput.tsx
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
 import { ACCENT, BG, PANEL, MUTED, LINE } from '@/theme';
 import { useTranslation } from 'react-i18next';

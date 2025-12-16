@@ -4,7 +4,6 @@ import {
   View,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   Alert,
   TouchableOpacity,
   Text,

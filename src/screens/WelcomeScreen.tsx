@@ -7,7 +7,6 @@ import { RootStackParamList } from '@/types';
 import { useLanguage } from '@/context/LanguageProvider';
 import { useTranslation } from 'react-i18next';
 
-// 👇 adjust this path if your logo is somewhere else
 import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
