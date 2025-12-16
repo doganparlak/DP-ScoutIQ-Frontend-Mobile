@@ -227,15 +227,28 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
   // ---- Radar path (3+ metrics) ----
 
+  function labelToLines(label: string): string[] {
+    const parts = (label ?? '').trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length <= 1) return parts;                 // 1 word
+    if (parts.length === 2) return [parts[0], parts[1]]; // 2 words → each on its own line
+    if (parts.length === 3) return [parts[0], parts[1], parts[2]]; // 3 words → each on its own line
+
+    // 4+ words → first line = first word, second line = second word, third line = rest
+    return [parts[0], parts[1], parts.slice(2).join(' ')];
+  }
+
   // Build display lines with translations
   const withDisplay = cleaned.map((p) => {
     const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
-    const parts = (labelTr ?? '').trim().split(/\s+/);
-    const first = parts[0] || '';
-    const rest = parts.slice(1).join(' ');
-    const lines = rest ? [first, rest, String(p.value)] : [first, String(p.value)];
+    const labelLines = labelToLines(labelTr);
+    const lines = [...labelLines, String(p.value)];
     return { ...p, show: lines.join('\n'), lineCount: lines.length };
   });
+
+  const fourLine = withDisplay
+  .filter((p) => p.lineCount === 4)
+  .sort((a, b) => a.x - b.x);
 
   const threeLine = withDisplay
     .filter((p) => p.lineCount === 3)
@@ -284,6 +297,27 @@ export default function SpiderChart({ title, points, Icon }: Props) {
             axis: { stroke: MUTED, opacity: 0.25 },
             grid: { stroke: MUTED, opacity: 0.25 },
           }}
+        />
+
+        {/* 4-line labels */}
+        <VictoryPolarAxis
+          tickValues={fourLine.map((p) => toSpoke(p.x))}
+          tickFormat={(_, i) => fourLine[i]?.show ?? ''}
+          tickLabelComponent={
+            <VictoryLabel
+              angle={0}
+              textAnchor="middle"
+              verticalAnchor="middle"
+              dy={4}
+              style={[
+                { fill: MUTED, fontSize: 12, fontWeight: '600' }, // label line 1
+                { fill: MUTED, fontSize: 12, fontWeight: '600' }, // label line 2
+                { fill: MUTED, fontSize: 12, fontWeight: '600' }, // label line 3 (rest)
+                { fill: TEXT,  fontSize: 13, fontWeight: '700' }, // value line
+              ]}
+            />
+          }
+          style={{ axis: { stroke: 'transparent' }, grid: { stroke: 'transparent' } }}
         />
 
         {/* 3-line labels */}
