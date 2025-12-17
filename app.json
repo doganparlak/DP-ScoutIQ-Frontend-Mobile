@@ -6,8 +6,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "dpscoutiq",
+    "icon": "./assets/scoutwise_logo_green.png",
 
     "ios": {
+      "icon": "./assets/scoutwise_logo_green.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.dp-scoutiq",
       "infoPlist": {
