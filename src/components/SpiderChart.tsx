@@ -60,6 +60,14 @@ function spreadByStride<T>(arr: T[]): T[] {
   return out;
 }
 
+function formatValue(v: number, label: string) {
+  // example rules
+  if (label.includes('(%)')) return `${v.toFixed(1)}%`;
+  if (Math.abs(v) >= 100) return v.toFixed(0);
+  return v.toFixed(1);
+}
+
+
 // 1) Normalize numerically; keep original value and canonical label.
 //    (We will translate labels later for display.)
 function normalize(points: SpiderPoint[]): Cleaned[] {
@@ -197,7 +205,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
               >
                 <Text style={{ color: MUTED, fontSize: 13 }}>{labelTr}</Text>
                 <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
-                  {p.value}
+                  {formatValue(p.value, p.label)}
                 </Text>
               </View>
 
@@ -242,7 +250,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
   const withDisplay = cleaned.map((p) => {
     const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
     const labelLines = labelToLines(labelTr);
-    const lines = [...labelLines, String(p.value)];
+    const lines = [...labelLines, formatValue(p.value, p.label)];
     return { ...p, show: lines.join('\n'), lineCount: lines.length };
   });
 
