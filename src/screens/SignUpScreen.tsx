@@ -11,7 +11,9 @@ import {
   Switch,
   Modal,
   FlatList,
-  Image, // 👈 added
+  Image, 
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -94,7 +96,8 @@ export default function SignUpScreen() {
       await signUp({ email, password, dob: dobIso, country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
       navigation.replace('Verification', { email, context: 'signup' });
-    } catch {
+    } catch (e: any) {
+      alert(e?.response?.status)
       setError(t('signupFailed', 'Sign up failed. Please try again.'));
     } finally {
       setSubmitting(false);
@@ -116,192 +119,214 @@ export default function SignUpScreen() {
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
-      <View style={styles.wrap}>
-        {/* Logo above app name */}
-        <Image
-          source={scoutwiseLogo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        {/* App name: SCOUT white, WISE green */}
-        <Text style={styles.appName}>
-          <Text style={styles.appNameScout}>SCOUT</Text>
-          <Text style={styles.appNameWise}>WISE</Text>
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>
-          <Text style={styles.subtitle}>
-            {t('signupSubtitle', 'Join the data-driven scouting revolution.')}
-          </Text>
-
-          {/* Email */}
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('email', 'E-mail')}</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t('placeholderEmail', 'you@club.com')}
-              placeholderTextColor={MUTED}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              returnKeyType="next"
-            />
-          </View>
-
-          {/* Password */}
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('password', 'Password')}</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t('placeholderPassword', '••••••••')}
-              placeholderTextColor={MUTED}
-              secureTextEntry
-              style={styles.input}
-              returnKeyType="next"
+      {/* Dismiss keyboard when tapping outside */}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.wrap}>
+            {/* Logo */}
+            <Image
+              source={scoutwiseLogo}
+              style={styles.logo}
+              resizeMode="contain"
             />
 
-            <View style={styles.pwChecklist}>
-              <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
-              <PwRule ok={hasLetter} text={t('pwLetter', 'Contains a letter (A–Z or a–z)')} />
-              <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
-            </View>
-          </View>
+            {/* App name */}
+            <Text style={styles.appName}>
+              <Text style={styles.appNameScout}>SCOUT</Text>
+              <Text style={styles.appNameWise}>WISE</Text>
+            </Text>
 
-          {/* DOB + Country */}
-          <View style={styles.row2}>
-            <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
-              <Text style={styles.label}>{t('dob', 'Date of birth')}</Text>
-              <TextInput
-                value={dob}
-                onChangeText={(t_) => setDob(formatDob(t_))}
-                placeholder={t('placeholderDob', 'DD-MM-YYYY')}
-                placeholderTextColor={MUTED}
-                style={styles.input}
-                keyboardType="number-pad"
-                inputMode="numeric"
-                autoCorrect={false}
-                autoComplete="off"
-                importantForAutofill="no"
-                maxLength={10}
-                blurOnSubmit
-              />
-            </View>
+            <View style={styles.card}>
+              <Text style={styles.title}>
+                {t('createAccount', 'Create your account')}
+              </Text>
+              <Text style={styles.subtitle}>
+                {t('signupSubtitle', 'Join the data-driven scouting revolution.')}
+              </Text>
 
-            <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
-              <Text style={styles.label}>{t('country', 'Country')}</Text>
+              {/* Email */}
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('email', 'E-mail')}</Text>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t('placeholderEmail', 'you@club.com')}
+                  placeholderTextColor={MUTED}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                  returnKeyType="next"
+                />
+              </View>
 
-              {/* Country "input" behaves like a select */}
-              <Pressable onPress={openCountryPicker}>
-                <View style={[styles.input, { justifyContent: 'center' }]}>
-                  <Text style={{ color: country ? TEXT : MUTED }}>
-                    {country || t('selectCountry', 'Select your country')}
-                  </Text>
+              {/* Password */}
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('password', 'Password')}</Text>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder={t('placeholderPassword', '••••••••')}
+                  placeholderTextColor={MUTED}
+                  secureTextEntry
+                  style={styles.input}
+                  returnKeyType="next"
+                />
+
+                <View style={styles.pwChecklist}>
+                  <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
+                  <PwRule ok={hasLetter} text={t('pwLetter', 'Contains a letter (A–Z or a–z)')} />
+                  <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
                 </View>
+              </View>
+
+              {/* DOB + Country */}
+              <View style={styles.row2}>
+                <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
+                  <Text style={styles.label}>{t('dob', 'Date of birth')}</Text>
+                  <TextInput
+                    value={dob}
+                    onChangeText={(t_) => setDob(formatDob(t_))}
+                    placeholder={t('placeholderDob', 'DD-MM-YYYY')}
+                    placeholderTextColor={MUTED}
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    inputMode="numeric"
+                    autoCorrect={false}
+                    autoComplete="off"
+                    importantForAutofill="no"
+                    maxLength={10}
+                  />
+                </View>
+
+                <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
+                  <Text style={styles.label}>{t('country', 'Country')}</Text>
+                  <Pressable onPress={openCountryPicker}>
+                    <View style={[styles.input, { justifyContent: 'center' }]}>
+                      <Text style={{ color: country ? TEXT : MUTED }}>
+                        {country || t('selectCountry', 'Select your country')}
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Newsletter */}
+              <View style={[styles.switchRow, { marginTop: 12 }]}>
+                <Text style={styles.switchLabel}>
+                  {t('newsletter', 'Subscribe to newsletter')}
+                </Text>
+                <Switch value={newsletter} onValueChange={setNewsletter} />
+              </View>
+
+              {/* Terms */}
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>
+                  {t('agreeTerms', 'I agree to the Terms & Privacy')}
+                </Text>
+                <Switch value={agree} onValueChange={setAgree} />
+              </View>
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              {/* Submit */}
+              <Pressable
+                onPress={handleSubmit}
+                disabled={!isValid || submitting}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  {
+                    backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                    opacity: !isValid || submitting ? 0.6 : 1,
+                  },
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.primaryBtnText}>
+                    {t('signup', 'Sign up')}
+                  </Text>
+                )}
+              </Pressable>
+
+              {/* Go to Login */}
+              <Pressable
+                onPress={goToLogin}
+                style={({ pressed }) => [
+                  styles.secondaryBtn,
+                  { opacity: pressed ? 0.85 : 1 },
+                ]}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  {t('haveAccount', 'Already have an account?')}{' '}
+                  <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>
+                    {t('login', 'Log in')}
+                  </Text>
+                </Text>
               </Pressable>
             </View>
           </View>
 
-          {/* Newsletter + Terms */}
-          <View style={[styles.switchRow, { marginTop: 12 }]}>
-            <Text style={styles.switchLabel}>{t('newsletter', 'Subscribe to newsletter')}</Text>
-            <Switch value={newsletter} onValueChange={setNewsletter} />
-          </View>
-
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>{t('agreeTerms', 'I agree to the Terms & Privacy')}</Text>
-            <Switch value={agree} onValueChange={setAgree} />
-          </View>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Submit */}
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!isValid || submitting}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              {
-                backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                opacity: !isValid || submitting ? 0.6 : 1,
-              },
-            ]}
+          {/* Country Picker Modal */}
+          <Modal
+            visible={countryOpen}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setCountryOpen(false)}
           >
-            {submitting ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.primaryBtnText}>{t('signup', 'Sign up')}</Text>
-            )}
-          </Pressable>
+            {/* backdrop dismiss */}
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <View style={styles.modalBackdrop}>
+                {/* modal content */}
+                <TouchableWithoutFeedback accessible={false}>
+                  <View style={styles.modalCard}>
+                    <Text style={styles.modalTitle}>
+                      {t('selectCountry', 'Select your country')}
+                    </Text>
 
-          {/* Go to Login */}
-          <Pressable
-            onPress={goToLogin}
-            style={({ pressed }) => [
-              styles.secondaryBtn,
-              { opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={styles.secondaryBtnText}>
-              {t('haveAccount', 'Already have an account?')}{' '}
-              <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>
-                {t('login', 'Log in')}
-              </Text>
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+                    <TextInput
+                      value={countryQuery}
+                      onChangeText={setCountryQuery}
+                      placeholder={t('searchCountry', 'Search country...')}
+                      placeholderTextColor={MUTED}
+                      style={[styles.input, { marginTop: 10 }]}
+                    />
 
-      {/* Country Picker Modal */}
-      <Modal
-        visible={countryOpen}
-        animationType="slide"
-        onRequestClose={() => setCountryOpen(false)}
-        transparent
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t('selectCountry', 'Select your country')}</Text>
+                    <FlatList
+                      data={filteredCountries}
+                      keyExtractor={(item) => item}
+                      keyboardShouldPersistTaps="handled"
+                      style={{ marginTop: 10, maxHeight: 360 }}
+                      renderItem={({ item }) => (
+                        <Pressable onPress={() => pickCountry(item)}>
+                          <View style={styles.countryRow}>
+                            <Text style={{ color: TEXT }}>{item}</Text>
+                          </View>
+                        </Pressable>
+                      )}
+                    />
 
-            <TextInput
-              value={countryQuery}
-              onChangeText={setCountryQuery}
-              placeholder={t('searchCountry', 'Search country...')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, { marginTop: 10 }]}
-            />
-
-            <FlatList
-              data={filteredCountries}
-              keyExtractor={(item) => item}
-              keyboardShouldPersistTaps="handled"
-              style={{ marginTop: 10, maxHeight: 360 }}
-              renderItem={({ item }) => (
-                <Pressable onPress={() => pickCountry(item)}>
-                  <View style={styles.countryRow}>
-                    <Text style={{ color: TEXT }}>{item}</Text>
+                    <Pressable
+                      onPress={() => setCountryOpen(false)}
+                      style={({ pressed }) => [
+                        styles.secondaryBtn,
+                        { marginTop: 12, opacity: pressed ? 0.85 : 1 },
+                      ]}
+                    >
+                      <Text style={styles.secondaryBtnText}>
+                        {t('close', 'Close')}
+                      </Text>
+                    </Pressable>
                   </View>
-                </Pressable>
-              )}
-            />
-
-            <Pressable
-              onPress={() => setCountryOpen(false)}
-              style={({ pressed }) => [
-                styles.secondaryBtn,
-                { marginTop: 12, opacity: pressed ? 0.85 : 1 },
-              ]}
-            >
-              <Text style={styles.secondaryBtnText}>{t('close', 'Close')}</Text>
-            </Pressable>
-          </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
         </View>
-      </Modal>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
+
 }
 
 function PwRule({ ok, text }: { ok: boolean; text: string }) {

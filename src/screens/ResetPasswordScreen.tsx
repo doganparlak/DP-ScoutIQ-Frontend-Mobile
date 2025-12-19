@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image, 
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -70,113 +72,118 @@ export default function ResetPasswordScreen() {
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
-      {/* Top-left back button aligned to the card's left edge */}
-      <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          hitSlop={14}
-          style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
-          accessibilityRole="button"
-          accessibilityLabel={t('backToLogin', 'Back to Login')}
-        >
-          <Text style={styles.backIcon}>←</Text>
-          <Text style={styles.backText}>{t('login', 'Log in')}</Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={styles.wrap}
-        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-      >
-        {/* Logo above app name */}
-        <Image
-          source={scoutwiseLogo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        {/* App name: SCOUT white, WISE green */}
-        <Text style={styles.appName}>
-          <Text style={styles.appNameScout}>SCOUT</Text>
-          <Text style={styles.appNameWise}>WISE</Text>
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.title}>{t('resetTitle', 'Reset your password')}</Text>
-          <Text style={styles.subtitle}>
-            {t(
-              'resetSubtitle',
-              "Enter your email address. We’ll send a verification code to your inbox to reset your password."
-            )}
-          </Text>
-
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('email', 'E-mail')}</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t('placeholderEmail', 'you@club.com')}
-              placeholderTextColor={MUTED}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              returnKeyType="done"
-              onSubmitEditing={handleSend}
-            />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          {/* Top-left back button aligned to the card's left edge */}
+          <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              hitSlop={14}
+              style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('backToLogin', 'Back to Login')}
+            >
+              <Text style={styles.backIcon}>←</Text>
+              <Text style={styles.backText}>{t('login', 'Log in')}</Text>
+            </Pressable>
           </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View
+            style={styles.wrap}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+          >
+            {/* Logo above app name */}
+            <Image
+              source={scoutwiseLogo}
+              style={styles.logo}
+              resizeMode="contain"
+            />
 
-          {!sent ? (
-            <Pressable
-              onPress={handleSend}
-              disabled={!isValid || submitting}
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                {
-                  backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                  opacity: !isValid || submitting ? 0.6 : 1,
-                },
-              ]}
-            >
-              {submitting ? (
-                <ActivityIndicator />
-              ) : (
-                <Text style={styles.primaryBtnText}>
-                  {t('sendResetCode', 'Send reset code')}
-                </Text>
-              )}
-            </Pressable>
-          ) : (
-            <>
-              <View style={styles.successBox}>
-                <Text style={styles.successTitle}>{t('codeSent', 'Code sent')}</Text>
-                <Text style={styles.successText}>
-                  {t(
-                    'codeSentDesc',
-                    'If an account exists for {{email}}, a verification code has been sent. Please check your inbox and spam folder.',
-                    { email }
-                  )}
-                </Text>
+            {/* App name: SCOUT white, WISE green */}
+            <Text style={styles.appName}>
+              <Text style={styles.appNameScout}>SCOUT</Text>
+              <Text style={styles.appNameWise}>WISE</Text>
+            </Text>
+
+            <View style={styles.card}>
+              <Text style={styles.title}>{t('resetTitle', 'Reset your password')}</Text>
+              <Text style={styles.subtitle}>
+                {t(
+                  'resetSubtitle',
+                  "Enter your email address. We’ll send a verification code to your inbox to reset your password."
+                )}
+              </Text>
+
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('email', 'E-mail')}</Text>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t('placeholderEmail', 'you@club.com')}
+                  placeholderTextColor={MUTED}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSend}
+                />
               </View>
 
-              <Pressable
-                onPress={goToLogin}
-                style={({ pressed }) => [
-                  styles.secondaryBtn,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
-              >
-                <Text style={styles.secondaryBtnText}>
-                  {t('backToLogin', 'Back to Login')}
-                </Text>
-              </Pressable>
-            </>
-          )}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              {!sent ? (
+                <Pressable
+                  onPress={handleSend}
+                  disabled={!isValid || submitting}
+                  style={({ pressed }) => [
+                    styles.primaryBtn,
+                    {
+                      backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                      opacity: !isValid || submitting ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  {submitting ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>
+                      {t('sendResetCode', 'Send reset code')}
+                    </Text>
+                  )}
+                </Pressable>
+              ) : (
+                <>
+                  <View style={styles.successBox}>
+                    <Text style={styles.successTitle}>{t('codeSent', 'Code sent')}</Text>
+                    <Text style={styles.successText}>
+                      {t(
+                        'codeSentDesc',
+                        'If an account exists for {{email}}, a verification code has been sent. Please check your inbox and spam folder.',
+                        { email }
+                      )}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={goToLogin}
+                    style={({ pressed }) => [
+                      styles.secondaryBtn,
+                      { opacity: pressed ? 0.85 : 1 },
+                    ]}
+                  >
+                    <Text style={styles.secondaryBtnText}>
+                      {t('backToLogin', 'Back to Login')}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
+
 }
 
 const styles = StyleSheet.create({

@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Text,
   KeyboardAvoidingView,
+  Keyboard,
+  Pressable,
   Platform,
 } from 'react-native';
 import Header from '@/components/Header';
@@ -250,43 +252,58 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       style={styles.wrap}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
-      keyboardVerticalOffset={Platform.select({ ios: 60, android: 0 })}
+      keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
     >
-      <Header />
+      {/* Tap outside input dismisses keyboard */}
+      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss} accessible={false}>
+        <Header />
 
-      {/* Toolbar */}
-      <View style={styles.toolbar}>
-        <TouchableOpacity onPress={startNewChat} style={styles.newChatBtn} accessibilityRole="button" accessibilityLabel={t('newChat', 'New Chat')}>
-          <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Toolbar */}
+        <View style={styles.toolbar}>
+          <TouchableOpacity
+            onPress={startNewChat}
+            style={styles.newChatBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('newChat', 'New Chat')}
+          >
+            <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
+          </TouchableOpacity>
+        </View>
 
-      <FlatList
-        ref={flatRef}
-        data={messages}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        ListEmptyComponent={<WelcomeCard />}
-        contentContainerStyle={
-          empty
-            ? { paddingTop: 12, paddingBottom: 220, gap: 8, flexGrow: 1 }
-            : { paddingVertical: 8, paddingBottom: 220, flexGrow: 1 }
-        }
-        showsVerticalScrollIndicator
-        keyboardShouldPersistTaps="handled"
-        style={{ flex: 1 }}
-        contentInset={{ bottom: 140 }}
-        scrollIndicatorInsets={{ bottom: 140 }}
-      />
+        {/* Let inner content receive touches normally */}
+        <Pressable style={{ flex: 1 }} onPress={() => {}} accessible={false}>
+          <FlatList
+            ref={flatRef}
+            data={messages}
+            keyExtractor={item => item.id}
+            renderItem={renderItem}
+            ListEmptyComponent={<WelcomeCard />}
+            contentContainerStyle={
+              empty
+                ? { paddingTop: 12, paddingBottom: 24, gap: 8, flexGrow: 1 }
+                : { paddingVertical: 8, paddingBottom: 24, flexGrow: 1 }
+            }
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+            style={{ flex: 1 }}
+            contentInset={{ bottom: 140 }}
+            scrollIndicatorInsets={{ bottom: 140 }}
+          />
+        </Pressable>
 
-      <ChatInput
-        value={inputText}
-        onChangeText={setInputText}
-        onSend={send}
-        disabled={sending}
-      />
+        {/* Input should NOT dismiss keyboard when interacting */}
+        <Pressable onPress={() => {}} accessible={false}>
+          <ChatInput
+            value={inputText}
+            onChangeText={setInputText}
+            onSend={send}
+            disabled={sending}
+          />
+        </Pressable>
+      </Pressable>
     </KeyboardAvoidingView>
   );
+
 }
 
 const styles = StyleSheet.create({

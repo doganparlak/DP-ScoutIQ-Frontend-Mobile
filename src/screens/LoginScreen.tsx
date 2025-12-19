@@ -10,7 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Image,              // 👈 added
+  Image,              
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -67,125 +69,109 @@ export default function LoginScreen() {
     }
   };
 
-  return (
+    return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
-      <View style={styles.wrap}>
-        {/* Logo above app name */}
-        <Image
-          source={scoutwiseLogo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.wrap}>
+            {/* Logo above app name */}
+            <Image source={scoutwiseLogo} style={styles.logo} resizeMode="contain" />
 
-        {/* App name: SCOUT white, WISE green */}
-        <Text style={styles.appName}>
-          <Text style={styles.appNameScout}>SCOUT</Text>
-          <Text style={styles.appNameWise}>WISE</Text>
-        </Text>
+            {/* App name: SCOUT white, WISE green */}
+            <Text style={styles.appName}>
+              <Text style={styles.appNameScout}>SCOUT</Text>
+              <Text style={styles.appNameWise}>WISE</Text>
+            </Text>
 
-        {/* Login frame/card */}
-        <View style={styles.card}>
-          <Text style={styles.title}>{t('login', 'Log in')}</Text>
+            {/* Login frame/card */}
+            <View style={styles.card}>
+              <Text style={styles.title}>{t('login', 'Log in')}</Text>
 
-          {/* Scouting-context greeting (centered) */}
-          <Text style={styles.greeting}>
-            {t('greeting', 'Spot the next star before anyone else.')}
-          </Text>
+              <Text style={styles.greeting}>
+                {t('greeting', 'Spot the next star before anyone else.')}
+              </Text>
 
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('email', 'E-mail')}</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t('placeholderEmail', 'you@club.com')}
-              placeholderTextColor={MUTED}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              returnKeyType="next"
-            />
-          </View>
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('email', 'E-mail')}</Text>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t('placeholderEmail', 'you@club.com')}
+                  placeholderTextColor={MUTED}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                  returnKeyType="next"
+                />
+              </View>
 
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('password', 'Password')}</Text>
-            <View style={styles.passwordRow}>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder={t('placeholderPassword', '••••••••')}
-                placeholderTextColor={MUTED}
-                secureTextEntry={!showPassword}
-                style={styles.passwordInput}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-              />
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('password', 'Password')}</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('placeholderPassword', '••••••••')}
+                    placeholderTextColor={MUTED}
+                    secureTextEntry={!showPassword}
+                    style={styles.passwordInput}
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(prev => !prev)}
+                    hitSlop={8}
+                    style={styles.eyeButton}
+                  >
+                    {showPassword ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
+                  </Pressable>
+                </View>
+              </View>
+
               <Pressable
-                onPress={() => setShowPassword(prev => !prev)}
-                hitSlop={8}
-                style={styles.eyeButton}
+                onPress={handleForgotPassword}
+                style={({ pressed }) => [{ alignSelf: 'flex-end', opacity: pressed ? 0.8 : 1 }]}
               >
-                {showPassword ? (
-                  <EyeOff size={20} color={MUTED} />
-                ) : (
-                  <Eye size={20} color={MUTED} />
-                )}
+                <Text style={styles.forgotLink}>
+                  {t('forgotPassword', 'Did you forget your password?')}
+                </Text>
+              </Pressable>
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              <Pressable
+                onPress={handleLogin}
+                disabled={!isValid || submitting}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  {
+                    backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                    opacity: !isValid || submitting ? 0.6 : 1,
+                  },
+                ]}
+              >
+                {submitting ? <ActivityIndicator /> : <Text style={styles.primaryBtnText}>{t('login', 'Log in')}</Text>}
+              </Pressable>
+
+              <Pressable
+                onPress={goToSignUp}
+                style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  {t('noAccount', 'Don’t have an account yet?')}{' '}
+                  <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>{t('signup', 'Sign up')}</Text>
+                </Text>
               </Pressable>
             </View>
           </View>
-
-          {/* Forgot password link */}
-          <Pressable
-            onPress={handleForgotPassword}
-            style={({ pressed }) => [{ alignSelf: 'flex-end', opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Text style={styles.forgotLink}>
-              {t('forgotPassword', 'Did you forget your password?')}
-            </Text>
-          </Pressable>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Log in */}
-          <Pressable
-            onPress={handleLogin}
-            disabled={!isValid || submitting}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              {
-                backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                opacity: !isValid || submitting ? 0.6 : 1,
-              },
-            ]}
-          >
-            {submitting ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.primaryBtnText}>{t('login', 'Log in')}</Text>
-            )}
-          </Pressable>
-
-          {/* Sign up */}
-          <Pressable
-            onPress={goToSignUp}
-            style={({ pressed }) => [
-              styles.secondaryBtn,
-              { opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={styles.secondaryBtnText}>
-              {t('noAccount', 'Don’t have an account yet?')}{' '}
-              <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>
-                {t('signup', 'Sign up')}
-              </Text>
-            </Text>
-          </Pressable>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
+
 }
 
 const styles = StyleSheet.create({

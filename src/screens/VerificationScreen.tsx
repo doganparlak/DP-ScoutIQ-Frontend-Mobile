@@ -10,6 +10,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image, 
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -93,77 +95,82 @@ export default function VerificationScreen() {
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
-      {/* Top-left back button aligned to card left */}
-      <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
-        <Pressable
-          onPress={() => navigation.replace('Login')}
-          hitSlop={14}
-          style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
-          accessibilityRole="button"
-          accessibilityLabel={t('backToLogin', 'Back to Login')}
-        >
-          <Text style={styles.backIcon}>←</Text>
-          <Text style={styles.backText}>{t('login', 'Log in')}</Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={styles.wrap}
-        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-      >
-        {/* Logo above app name */}
-        <Image
-          source={scoutwiseLogo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        {/* App name: SCOUT white, WISE green */}
-        <Text style={styles.appName}>
-          <Text style={styles.appNameScout}>SCOUT</Text>
-          <Text style={styles.appNameWise}>WISE</Text>
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle}
-
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('verificationCode', 'Verification code')}</Text>
-            <TextInput
-              value={code}
-              onChangeText={(t_) => setCode(t_.replace(/\D/g, '').slice(0, 6))}
-              placeholder={t('verificationCodePlaceholder', '123456')}
-              placeholderTextColor={MUTED}
-              keyboardType="number-pad"
-              style={styles.input}
-              maxLength={6}
-            />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          {/* Top-left back button aligned to card left */}
+          <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
+            <Pressable
+              onPress={() => navigation.replace('Login')}
+              hitSlop={14}
+              style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('backToLogin', 'Back to Login')}
+            >
+              <Text style={styles.backIcon}>←</Text>
+              <Text style={styles.backText}>{t('login', 'Log in')}</Text>
+            </Pressable>
           </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Pressable
-            onPress={handleVerify}
-            disabled={!isSixDigits || submitting}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              {
-                backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                opacity: !isSixDigits || submitting ? 0.6 : 1,
-              },
-            ]}
+          <View
+            style={styles.wrap}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
           >
-            {submitting ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.primaryBtnText}>{t('verify', 'Verify')}</Text>
-            )}
-          </Pressable>
+            {/* Logo above app name */}
+            <Image
+              source={scoutwiseLogo}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+
+            {/* App name: SCOUT white, WISE green */}
+            <Text style={styles.appName}>
+              <Text style={styles.appNameScout}>SCOUT</Text>
+              <Text style={styles.appNameWise}>WISE</Text>
+            </Text>
+
+            <View style={styles.card}>
+              <Text style={styles.title}>{title}</Text>
+              {subtitle}
+
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('verificationCode', 'Verification code')}</Text>
+                <TextInput
+                  value={code}
+                  onChangeText={(t_) => setCode(t_.replace(/\D/g, '').slice(0, 6))}
+                  placeholder={t('verificationCodePlaceholder', '123456')}
+                  placeholderTextColor={MUTED}
+                  keyboardType="number-pad"
+                  style={styles.input}
+                  maxLength={6}
+                />
+              </View>
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              <Pressable
+                onPress={handleVerify}
+                disabled={!isSixDigits || submitting}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  {
+                    backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                    opacity: !isSixDigits || submitting ? 0.6 : 1,
+                  },
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.primaryBtnText}>{t('verify', 'Verify')}</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
+
 }
 
 const styles = StyleSheet.create({
