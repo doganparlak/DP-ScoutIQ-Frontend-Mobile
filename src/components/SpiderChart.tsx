@@ -64,7 +64,7 @@ function formatValue(v: number, label: string) {
   // example rules
   if (label.includes('(%)')) return `${v.toFixed(1)}%`;
   if (Math.abs(v) >= 100) return v.toFixed(0);
-  return v.toFixed(1);
+  return v.toFixed(2);
 }
 
 
