@@ -18,7 +18,17 @@ import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
 import PlayerCard from '@/components/PlayerCard';
 import SpiderChart from '@/components/SpiderChart';
-import { addFavoritePlayer, healthcheck, sendChat, resetSession } from '@/services/api';
+import {
+  addFavoritePlayer,
+  healthcheck,
+  sendChat,
+  resetSession,
+  getMe,
+} from '@/services/api';
+
+import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
+import { showInterstitialIfReady } from '@/ads/interstitial';
+
 import {
   GK_METRICS,
   SHOOTING_METRICS,
@@ -44,13 +54,15 @@ type ChatMessageExt = ChatMessage & {
 
 export default function ChatScreen() {
   const { t } = useTranslation();
-  const [inputText, setInputText] = useState(''); 
+  const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
   const [sessionId, setSessionId] = useState<string>('');
+  const [plan, setPlan] = useState<'Free' | 'Pro'>('Free');
 
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
+  const pendingIdRef = React.useRef<string | null>(null);
 
   // boot
   useEffect(() => {
@@ -58,34 +70,49 @@ export default function ChatScreen() {
       const sid = await getSessionId();
       const hist = await loadHistory();
       const strat = await loadStrategy();
+
       setSessionId(sid);
       setMessages(hist as ChatMessageExt[]);
       setStrategy(strat);
 
       const ok = await healthcheck();
-      if (!ok) Alert.alert(t('backendUnreachable', 'Backend Unreachable'), t('checkApiBaseUrl', 'Check your connection'));
+      if (!ok) {
+        Alert.alert(
+          t('backendUnreachable', 'Backend Unreachable'),
+          t('checkApiBaseUrl', 'Check your connection'),
+        );
+      }
 
       // If no local history, clear server memory so "seen players" is empty
       if ((hist || []).length === 0) {
-        try { await resetSession(sid); } catch {}
+        try {
+          await resetSession(sid);
+        } catch {}
+      }
+
+      // Get user plan once (ads only for Free)
+      try {
+        const me = await getMe();
+        setPlan(me.plan === 'Pro' ? 'Pro' : 'Free');
+      } catch {
+        setPlan('Free');
       }
     })();
   }, [t]);
 
   // persist chat locally
-  useEffect(() => { saveHistory(messages as ChatMessage[]); }, [messages]);
-
-  const pendingIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    saveHistory(messages as ChatMessage[]);
+  }, [messages]);
 
   function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'> & { id?: string }) {
-    const id = msg.id || Math.random().toString(36).slice(2);
     const withMeta: ChatMessageExt = {
-      id: Math.random().toString(36).slice(2),
+      id: msg.id || Math.random().toString(36).slice(2),
       createdAt: Date.now(),
       ...msg,
     };
     setMessages(m => [...m, withMeta]);
-    return id;
+    return withMeta.id;
   }
 
   async function send(text: string) {
@@ -110,7 +137,20 @@ export default function ChatScreen() {
     });
     pendingIdRef.current = pendingId;
 
-    // 3) Build payload
+    // 3) Ad gating: after first 10, every 5 queries, Free users only
+    try {
+      const nextCount = await incrementChatQueryCount();
+      const isPro = plan === 'Pro';
+
+      if (!isPro && shouldShowFullscreenAd(nextCount)) {
+        // If not loaded, it will skip and load for next time (non-blocking UX)
+        await showInterstitialIfReady();
+      }
+    } catch {
+      // never break chat if ad logic fails
+    }
+
+    // 4) Build payload
     const textOnly = messages
       .filter(m => (m.kind ?? 'text') === 'text')
       .concat({ ...userMsg, id: 'temp', createdAt: Date.now() });
@@ -154,7 +194,9 @@ export default function ChatScreen() {
 
   // Fresh conversation: clears server memory + local state (user action)
   async function startNewChat() {
-    try { await resetSession(sessionId); } catch (e) {  }
+    try {
+      await resetSession(sessionId);
+    } catch {}
     setMessages([]);
   }
 
@@ -231,7 +273,6 @@ export default function ChatScreen() {
                 ) : null}
               </View>
             );
-
           })}
         </View>
       );
@@ -303,7 +344,6 @@ export default function ChatScreen() {
       </Pressable>
     </KeyboardAvoidingView>
   );
-
 }
 
 const styles = StyleSheet.create({
