@@ -1,8 +1,5 @@
-import {
-  InterstitialAd,
-  AdEventType,
-} from 'react-native-google-mobile-ads';
-import { Platform, Alert, InteractionManager } from 'react-native';
+import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
+import { Platform, InteractionManager, Keyboard } from 'react-native';
 
 const IOS_INTERSTITIAL = 'ca-app-pub-3940256099942544/4411468910';
 const ANDROID_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
@@ -14,6 +11,7 @@ const UNIT_ID = Platform.OS === 'ios'
 let ad: InterstitialAd | null = null;
 let loaded = false;
 let showing = false;
+let pendingShow = false;
 
 function getAd() {
   if (ad) return ad;
@@ -22,11 +20,12 @@ function getAd() {
 
   ad.addAdEventListener(AdEventType.LOADED, () => {
     loaded = true;
-    Alert.alert('Ad Debug', 'Interstitial loaded');
+    console.log('[ADS] loaded');
   });
 
   ad.addAdEventListener(AdEventType.OPENED, () => {
     showing = true;
+    pendingShow = false;
   });
 
   ad.addAdEventListener(AdEventType.CLOSED, () => {
@@ -38,7 +37,8 @@ function getAd() {
   ad.addAdEventListener(AdEventType.ERROR, (e) => {
     loaded = false;
     showing = false;
-    Alert.alert('Ad Error', String(e?.message ?? e));
+    pendingShow = false;
+    console.log('[ADS ERROR]', e?.message ?? e);
   });
 
   return ad;
@@ -48,14 +48,8 @@ export function preloadInterstitial() {
   getAd().load();
 }
 
-/**
- * SAFE interstitial show:
- * - waits for UI to finish
- * - waits a short delay
- * - never blocks chat
- */
 export function showInterstitialSafely() {
-  if (showing) return;
+  if (showing || pendingShow) return;
 
   const a = getAd();
 
@@ -64,12 +58,19 @@ export function showInterstitialSafely() {
     return;
   }
 
+  pendingShow = true;
+
+  Keyboard.dismiss();
+
   InteractionManager.runAfterInteractions(() => {
     setTimeout(() => {
-      if (!loaded || showing) return;
+      if (!loaded || showing) {
+        pendingShow = false;
+        return;
+      }
 
-      Alert.alert('Ad Debug', 'Showing interstitial (safe)');
+      console.log('[ADS] showing');
       a.show();
-    }, 600); // 👈 critical delay
+    }, 400);
   });
 }

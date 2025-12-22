@@ -140,19 +140,15 @@ export default function ChatScreen() {
     // 3) Ad gating (NON-BLOCKING)
     try {
       const nextCount = await incrementChatQueryCount();
+      console.log('[ADS]', 'Query count:', nextCount);
 
-      Alert.alert('Ad Debug', `Query count: ${nextCount}`);
-
-      if (plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
-        Alert.alert('Ad Debug', 'Ad trigger reached');
-        Keyboard.dismiss();
-        showInterstitialSafely(); // 🔥 SAFE
+      if (!sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
+        console.log('[ADS]', 'Ad trigger reached');
+        showInterstitialSafely();
       }
     } catch (e) {
-      Alert.alert('Ad Debug Error', String(e));
+      console.log('[ADS ERROR]', e);
     }
-
-
 
     // 4) Build payload
     const textOnly = messages
