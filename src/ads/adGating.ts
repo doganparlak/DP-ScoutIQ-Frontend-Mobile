@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'ads.chat.queryCount.v1';
 
-// show on 15,20,25... (after first 10, every 5)
+// TEST MODE:
+// show on 3,5,7,9...
 export function shouldShowFullscreenAd(queryCount: number) {
-  if (queryCount <= 10) return false;
-  return (queryCount - 10) % 5 === 0;
+  if (queryCount < 3) return false;
+  return (queryCount - 3) % 2 === 0;
 }
 
 export async function incrementChatQueryCount(): Promise<number> {

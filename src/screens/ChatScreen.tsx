@@ -137,18 +137,20 @@ export default function ChatScreen() {
     });
     pendingIdRef.current = pendingId;
 
-    // 3) Ad gating: after first 10, every 5 queries, Free users only
+    // 3) Ad gating (NON-BLOCKING)
     try {
       const nextCount = await incrementChatQueryCount();
-      const isPro = plan === 'Pro';
 
-      if (!isPro && shouldShowFullscreenAd(nextCount)) {
-        // If not loaded, it will skip and load for next time (non-blocking UX)
-        await showInterstitialIfReady();
+      Alert.alert('Ad Debug', `Query count: ${nextCount}`);
+
+      if (plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
+        Alert.alert('Ad Debug', 'Ad trigger reached');
+        showInterstitialIfReady(); // DO NOT await
       }
-    } catch {
-      // never break chat if ad logic fails
+    } catch (e) {
+      Alert.alert('Ad Debug Error', String(e));
     }
+
 
     // 4) Build payload
     const textOnly = messages

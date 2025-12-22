@@ -1,20 +1,15 @@
 import {
   InterstitialAd,
   AdEventType,
-  TestIds,
 } from 'react-native-google-mobile-ads';
-import { Platform } from 'react-native';
-const PROD_IOS_INTERSTITIAL = 'ca-app-pub-xxx/ios111';
-const PROD_ANDROID_INTERSTITIAL = 'ca-app-pub-xxx/android222';
+import { Platform, Alert } from 'react-native';
 
+const IOS_INTERSTITIAL = 'ca-app-pub-3940256099942544/4411468910';
+const ANDROID_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
 
-const FORCE_TEST_ADS = true;
-
-const UNIT_ID =
-  (__DEV__ || FORCE_TEST_ADS)
-    ? TestIds.INTERSTITIAL
-    : Platform.select({ ios: PROD_IOS_INTERSTITIAL, android: PROD_ANDROID_INTERSTITIAL })!;
-
+const UNIT_ID = Platform.OS === 'ios'
+  ? IOS_INTERSTITIAL
+  : ANDROID_INTERSTITIAL;
 
 let ad: InterstitialAd | null = null;
 let loaded = false;
@@ -27,17 +22,23 @@ function getAd() {
 
   ad.addAdEventListener(AdEventType.LOADED, () => {
     loaded = true;
+    Alert.alert('Ad Debug', 'Interstitial loaded');
+  });
+
+  ad.addAdEventListener(AdEventType.OPENED, () => {
+    showing = true;
   });
 
   ad.addAdEventListener(AdEventType.CLOSED, () => {
     loaded = false;
     showing = false;
-    ad?.load(); // preload next
+    ad?.load();
   });
 
-  ad.addAdEventListener(AdEventType.ERROR, () => {
+  ad.addAdEventListener(AdEventType.ERROR, (e) => {
     loaded = false;
     showing = false;
+    Alert.alert('Ad Error', String(e?.message ?? e));
   });
 
   return ad;
@@ -48,16 +49,20 @@ export function preloadInterstitial() {
   a.load();
 }
 
-export async function showInterstitialIfReady(): Promise<boolean> {
+export function showInterstitialIfReady(): void {
   const a = getAd();
-  if (showing) return false;
 
-  if (!loaded) {
-    a.load(); // attempt to load for next time
-    return false;
+  if (showing) {
+    Alert.alert('Ad Debug', 'Already showing');
+    return;
   }
 
-  showing = true;
-  await a.show();
-  return true;
+  if (!loaded) {
+    Alert.alert('Ad Debug', 'Not loaded yet');
+    a.load();
+    return;
+  }
+
+  Alert.alert('Ad Debug', 'Showing interstitial');
+  a.show();
 }
