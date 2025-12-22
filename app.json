@@ -7,7 +7,6 @@
     "userInterfaceStyle": "dark",
     "scheme": "dpscoutiq",
     "icon": "./assets/scoutwise_logo_green.png",
-
     "ios": {
       "icon": "./assets/scoutwise_logo_green.png",
       "supportsTablet": true,
@@ -17,19 +16,16 @@
         "CFBundleDisplayName": "ScoutWise"
       }
     },
-
     "android": {
       "package": "com.dpformance.dpscoutiq"
     },
-
     "web": {
       "bundler": "metro"
     },
-
     "plugins": [
-      "react-native-iap"
+      "react-native-iap",
+      "react-native-google-mobile-ads"
     ],
-
     "extra": {
       "eas": {
         "projectId": "ff45af19-a14f-462f-94f2-3efd08d55f4f"
