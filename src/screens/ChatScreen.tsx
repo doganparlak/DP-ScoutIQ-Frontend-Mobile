@@ -27,7 +27,7 @@ import {
 } from '@/services/api';
 
 import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
-import { showInterstitialIfReady } from '@/ads/interstitial';
+import { showInterstitialSafely } from '@/ads/interstitial';
 
 import {
   GK_METRICS,
@@ -145,11 +145,13 @@ export default function ChatScreen() {
 
       if (plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
         Alert.alert('Ad Debug', 'Ad trigger reached');
-        showInterstitialIfReady(); // DO NOT await
+        Keyboard.dismiss();
+        showInterstitialSafely(); // 🔥 SAFE
       }
     } catch (e) {
       Alert.alert('Ad Debug Error', String(e));
     }
+
 
 
     // 4) Build payload

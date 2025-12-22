@@ -2,7 +2,7 @@ import {
   InterstitialAd,
   AdEventType,
 } from 'react-native-google-mobile-ads';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, InteractionManager } from 'react-native';
 
 const IOS_INTERSTITIAL = 'ca-app-pub-3940256099942544/4411468910';
 const ANDROID_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
@@ -45,24 +45,31 @@ function getAd() {
 }
 
 export function preloadInterstitial() {
-  const a = getAd();
-  a.load();
+  getAd().load();
 }
 
-export function showInterstitialIfReady(): void {
+/**
+ * SAFE interstitial show:
+ * - waits for UI to finish
+ * - waits a short delay
+ * - never blocks chat
+ */
+export function showInterstitialSafely() {
+  if (showing) return;
+
   const a = getAd();
 
-  if (showing) {
-    Alert.alert('Ad Debug', 'Already showing');
-    return;
-  }
-
   if (!loaded) {
-    Alert.alert('Ad Debug', 'Not loaded yet');
     a.load();
     return;
   }
 
-  Alert.alert('Ad Debug', 'Showing interstitial');
-  a.show();
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
+      if (!loaded || showing) return;
+
+      Alert.alert('Ad Debug', 'Showing interstitial (safe)');
+      a.show();
+    }, 600); // 👈 critical delay
+  });
 }
