@@ -21,7 +21,7 @@ import {
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
-
+import { showRewardedSafely } from '../ads/rewarded';
 type PlayerRow = {
   id: string;
   name: string;
@@ -379,26 +379,34 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     };
   }, [queuedReportPlayer, t]);
 
-  const handleReportPress = (player: PlayerRow) => {
-    if (plan === 'Pro') {
-      Alert.alert(
-        t('upgradeToPro', 'Upgrade to Pro'),
-        t('scoutingReportProUpsell', 'To access the scouting report of the players on portfolio, upgrade to Pro now.'),
-      );
-      return;
-    }
+  const handleReportPress = async (player: PlayerRow) => {
 
     // prevent duplicate taps/queues
     if (processingReports.has(player.id) || queuedReportPlayer?.id === player.id) return;
 
-    setProcessingReports(prev => {
-      const next = new Set(prev);
-      next.add(player.id);
-      return next;
-    });
-
-    // enqueue -> effect runs after render, so "…" shows immediately
-    setQueuedReportPlayer(player);
+    // PRO: open immediately
+    if (plan === 'Pro') {
+      setProcessingReports(prev => {
+        const next = new Set(prev);
+        next.add(player.id);
+        return next;
+      });
+      setQueuedReportPlayer(player);
+      return;
+    }
+    // FREE: must watch rewarded
+    try {
+      const { shown, rewarded } = await showRewardedSafely();
+      // reward earned -> start report job
+      setProcessingReports(prev => {
+        const next = new Set(prev);
+        next.add(player.id);
+        return next;
+      });
+      setQueuedReportPlayer(player);
+    } catch (e: any) {
+      Alert.alert(t('adError', 'Ad error'), String(e?.message ?? e));
+    }
   };
 
   const handleDelete = async (id: string) => {
