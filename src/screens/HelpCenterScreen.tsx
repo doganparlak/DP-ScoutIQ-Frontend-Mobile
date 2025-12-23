@@ -217,6 +217,34 @@ export default function HelpCenter() {
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp3', 'If no custom strategy is defined, a balanced, general scouting perspective is applied.')}
               </Text>
             </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howScoutReportTitle', 'Scouting Report')}</Text>
+
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t(
+                  'howScoutReport1',
+                  'Scouting Report includes the Player Card and all available stats from the last 365 days, plus Strengths, Weakness & Concerns, and a Conclusion.'
+                )}
+                {'\n'}
+
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t(
+                  'howScoutReport2',
+                  'Interpretations are detailed and consider physical identity, stats, age, nationality, and role.'
+                )}
+                {'\n'}
+
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t(
+                  'howScoutReport3',
+                  'This helps you quickly evaluate the fit, upside, and risks of a player already in your portfolio.'
+                )}
+              </Text>
+            </View>
           </View>
         )}
 

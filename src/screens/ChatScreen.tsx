@@ -8,18 +8,15 @@ import {
   TouchableOpacity,
   Text,
   KeyboardAvoidingView,
-  Keyboard,
-  Pressable,
   Platform,
 } from 'react-native';
 import Header from '@/components/Header';
 import ChatInput from '@/components/ChatInput';
 import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
-import PlayerCard from '@/components/PlayerCard';
-import SpiderChart from '@/components/SpiderChart';
+import ChatVisualsBlock from '@/components/ChatVisualsBlock';
+
 import {
-  addFavoritePlayer,
   healthcheck,
   sendChat,
   resetSession,
@@ -29,15 +26,6 @@ import {
 import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
 import { showInterstitialSafely } from '@/ads/interstitial';
 
-import {
-  GK_METRICS,
-  SHOOTING_METRICS,
-  PASSING_METRICS,
-  CONTRIBUTION_IMPACT_METRICS,
-  ERRORS_DISCIPLINE_METRICS,
-  DEFENDING_METRICS,
-  toSpiderPoints,
-} from '@/components/spiderRanges';
 import { ACCENT, BG } from '@/theme';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
@@ -102,7 +90,11 @@ export default function ChatScreen() {
 
   // persist chat locally
   useEffect(() => {
-    saveHistory(messages as ChatMessage[]);
+    const id = setTimeout(() => {
+      saveHistory(messages as ChatMessage[]);
+    }, 1000); // 300–1000ms is fine
+
+    return () => clearTimeout(id);
   }, [messages]);
 
   function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'> & { id?: string }) {
@@ -140,14 +132,10 @@ export default function ChatScreen() {
     // 3) Ad gating (NON-BLOCKING)
     try {
       const nextCount = await incrementChatQueryCount();
-      console.log('[ADS]', 'Query count:', nextCount);
-
       if (!sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
-        console.log('[ADS]', 'Ad trigger reached');
         showInterstitialSafely();
       }
     } catch (e) {
-      console.log('[ADS ERROR]', e);
     }
 
     // 4) Build payload
@@ -203,82 +191,11 @@ export default function ChatScreen() {
   const empty = messages.length === 0;
 
   // Renders either a message bubble or a persisted visuals block
-  function renderItem({ item }: { item: ChatMessageExt }) {
-    if (item.kind === 'visuals' && item.players && item.players.length > 0) {
-      return (
-        <View style={{ paddingHorizontal: 12, marginBottom: 12, gap: 10 }}>
-          {item.players.map(p => {
-            const gk = toSpiderPoints(p.stats, GK_METRICS);
-            const shooting = toSpiderPoints(p.stats, SHOOTING_METRICS);
-            const passing = toSpiderPoints(p.stats, PASSING_METRICS);
-            const contrib = toSpiderPoints(p.stats, CONTRIBUTION_IMPACT_METRICS);
-            const errors = toSpiderPoints(p.stats, ERRORS_DISCIPLINE_METRICS);
-            const defending = toSpiderPoints(p.stats, DEFENDING_METRICS);
-
-            const hasAny =
-              gk.length ||
-              shooting.length ||
-              passing.length ||
-              contrib.length ||
-              errors.length ||
-              defending.length;
-
-            return (
-              <View key={p.name} style={{ gap: 10 }}>
-                <PlayerCard
-                  player={p}
-                  onAddFavorite={async (player) => {
-                    try {
-                      await addFavoritePlayer({
-                        name: player.name,
-                        nationality: player.meta?.nationality,
-                        age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-                        potential:
-                          typeof player.meta?.potential === 'number'
-                            ? Math.round(player.meta.potential)
-                            : undefined,
-                        gender: player.meta?.gender,
-                        height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
-                        weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
-                        team: player.meta?.team,
-                        roles: player.meta?.roles ?? [],
-                      });
-                      return true;
-                    } catch (e: any) {
-                      Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
-                      return false;
-                    }
-                  }}
-                />
-
-                {hasAny ? (
-                  <View style={{ gap: 10 }}>
-                    {gk.length > 0 ? <SpiderChart title={t('chartGK', 'Goalkeeping')} points={gk} /> : null}
-                    {shooting.length > 0 ? (
-                      <SpiderChart title={t('chartShooting', 'Shooting & Finishing')} points={shooting} />
-                    ) : null}
-                    {passing.length > 0 ? (
-                      <SpiderChart title={t('chartPassing', 'Passing & Delivery')} points={passing} />
-                    ) : null}
-                    {contrib.length > 0 ? (
-                      <SpiderChart title={t('chartContribution', 'Contribution & Impact')} points={contrib} />
-                    ) : null}
-                    {errors.length > 0 ? (
-                      <SpiderChart title={t('chartErrors', 'Errors & Discipline')} points={errors} />
-                    ) : null}
-                    {defending.length > 0 ? (
-                      <SpiderChart title={t('chartDefending', 'Defending')} points={defending} />
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-      );
+  const renderItem = React.useCallback(({ item }: { item: ChatMessageExt }) => {
+    if (item.kind === 'visuals' && item.players?.length) {
+      return <ChatVisualsBlock players={item.players} />;
     }
 
-    // default: text bubble
     return (
       <MessageBubble
         role={item.role === 'user' ? 'user' : 'assistant'}
@@ -287,63 +204,64 @@ export default function ChatScreen() {
         pending={item.pending}
       />
     );
-  }
+  }, []);
+
 
   return (
-    <KeyboardAvoidingView
-      style={styles.wrap}
-      behavior={Platform.select({ ios: 'padding', android: undefined })}
-      keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
-    >
-      {/* Tap outside input dismisses keyboard */}
-      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss} accessible={false}>
-        <Header />
+  <KeyboardAvoidingView
+    style={styles.wrap}
+    behavior={Platform.select({ ios: 'padding', android: undefined })}
+    keyboardVerticalOffset={0}
+  >
+    <View style={{ flex: 1 }}>
+      <Header />
 
-        {/* Toolbar */}
-        <View style={styles.toolbar}>
-          <TouchableOpacity
-            onPress={startNewChat}
-            style={styles.newChatBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('newChat', 'New Chat')}
-          >
-            <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.toolbar}>
+        <TouchableOpacity
+          onPress={startNewChat}
+          style={styles.newChatBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('newChat', 'New Chat')}
+        >
+          <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Let inner content receive touches normally */}
-        <Pressable style={{ flex: 1 }} onPress={() => {}} accessible={false}>
-          <FlatList
-            ref={flatRef}
-            data={messages}
-            keyExtractor={item => item.id}
-            renderItem={renderItem}
-            ListEmptyComponent={<WelcomeCard />}
-            contentContainerStyle={
-              empty
-                ? { paddingTop: 12, paddingBottom: 24, gap: 8, flexGrow: 1 }
-                : { paddingVertical: 8, paddingBottom: 24, flexGrow: 1 }
-            }
-            showsVerticalScrollIndicator
-            keyboardShouldPersistTaps="handled"
-            style={{ flex: 1 }}
-            contentInset={{ bottom: 140 }}
-            scrollIndicatorInsets={{ bottom: 140 }}
-          />
-        </Pressable>
+      <FlatList
+        ref={flatRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListEmptyComponent={<WelcomeCard />}
+        contentContainerStyle={
+          empty
+            ? { paddingTop: 12, paddingBottom: 24, gap: 8, flexGrow: 1 }
+            : { paddingVertical: 8, paddingBottom: 24, flexGrow: 1 }
+        }
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+        contentInset={{ bottom: 140 }}
+        scrollIndicatorInsets={{ bottom: 140 }}
+        initialNumToRender={10}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
+        scrollEventThrottle={16}
+      />
 
-        {/* Input should NOT dismiss keyboard when interacting */}
-        <Pressable onPress={() => {}} accessible={false}>
-          <ChatInput
-            value={inputText}
-            onChangeText={setInputText}
-            onSend={send}
-            disabled={sending}
-          />
-        </Pressable>
-      </Pressable>
-    </KeyboardAvoidingView>
-  );
+      <ChatInput
+        value={inputText}
+        onChangeText={setInputText}
+        onSend={send}
+        disabled={sending}
+      />
+    </View>
+  </KeyboardAvoidingView>
+);
+
+   
 }
 
 const styles = StyleSheet.create({

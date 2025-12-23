@@ -38,7 +38,6 @@ function getAd() {
     loaded = false;
     showing = false;
     pendingShow = false;
-    console.log('[ADS ERROR]', e?.message ?? e);
   });
 
   return ad;
@@ -68,8 +67,6 @@ export function showInterstitialSafely() {
         pendingShow = false;
         return;
       }
-
-      console.log('[ADS] showing');
       a.show();
     }, 400);
   });

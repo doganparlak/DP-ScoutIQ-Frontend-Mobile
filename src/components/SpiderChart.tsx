@@ -1,6 +1,8 @@
 // src/components/SpiderChart.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import ErrorsDisciplineTiles from '@/components/ErrorsDisciplineTiles';
+import SpiderBarsFallback from '@/components/SpiderBarsFallback';
 import {
   ShieldCheck,
   BrickWall,
@@ -107,68 +109,34 @@ const AVATAR = 34;
 
 export default function SpiderChart({ title, points, Icon }: Props) {
   const { t } = useTranslation();
+  const tTitle = (title || '').toLowerCase();
 
-  const isInPossession =
-    (title || '').toLowerCase().includes('in possession') ||
-    (title || '').toLowerCase().includes('in-possession');
+  // --- EARLY RETURN: Errors & Discipline uses tiles ---
+  if (tTitle.includes('error') || tTitle.includes('discipline')) {
+    return (
+      <ErrorsDisciplineTiles
+        title={title}
+        points={points}
+        thresholds={{ good: 0.25, warn: 0.55 }} // optional
+      />
+    );
+  }
+
+  const isInPossession = 
+    tTitle.includes('in possession') || tTitle.includes('in-possession');
 
   // Auto-pick icon if not provided
   let AutoIcon = Icon;
-  const tTitle = (title || '').toLowerCase();
+  
   if (!AutoIcon) {
-    if (tTitle.includes('goalkeeper') || tTitle.includes('gk')) {
-      AutoIcon = ShieldCheck;
-    } else if (tTitle.includes('shoot') || tTitle.includes('finish')) {
-      // Shooting / finishing
-      AutoIcon = LogIn;
-    } else if (tTitle.includes('pass') || tTitle.includes('delivery')) {
-      // Passing / delivery
-      AutoIcon = DraftingCompass;
-    } else if (tTitle.includes('contribution') || tTitle.includes('impact')) {
-      // Contribution & impact
-      AutoIcon = Star;
-    } else if (tTitle.includes('error') || tTitle.includes('discipline')) {
-      // Errors & discipline
-      AutoIcon = Bug;
-    } else if (
-      tTitle.includes('defend') ||
-      tTitle.includes('out of possession') ||
-      tTitle.includes('out-of-possession')
-    ) {
-      // Defending / out of possession
+    if (tTitle.includes('goalkeeper') || tTitle.includes('gk')) AutoIcon = ShieldCheck;
+    else if (tTitle.includes('shoot') || tTitle.includes('finish')) AutoIcon = LogIn;
+    else if (tTitle.includes('pass') || tTitle.includes('delivery')) AutoIcon = DraftingCompass;
+    else if (tTitle.includes('contribution') || tTitle.includes('impact')) AutoIcon = Star;
+    else if (tTitle.includes('error') || tTitle.includes('discipline')) AutoIcon = Bug;
+    else if (tTitle.includes('defend') || tTitle.includes('out of possession') || tTitle.includes('out-of-possession'))
       AutoIcon = BrickWall;
-    }
   }
-
-  // ---- Fallback list normalization (works for 1–2 metrics) ----
-  type ListMetric = { label: string; value: number; y: number };
-
-  const listMetrics: ListMetric[] = (() => {
-    const seen = new Set<string>();
-
-    return (points || [])
-      .map((p) => {
-        if (!p || !p.label || seen.has(p.label)) return null;
-        seen.add(p.label);
-
-        const min = Number(p.min);
-        const max = Number(p.max);
-        const vNum =
-          typeof p.value === 'number'
-            ? p.value
-            : Number(String(p.value ?? '').replace('%', '').trim());
-
-        if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return null;
-        if (!Number.isFinite(vNum)) return null;
-
-        const y = Math.max(0, Math.min(1, (vNum - min) / (max - min)));
-        return { label: p.label, value: vNum, y };
-      })
-      .filter(Boolean) as ListMetric[];
-  })();
-
-  // No valid stats at all → nothing
-  if (listMetrics.length === 0) return null;
 
   // ---- Radar normalization (only used if we have 3+ metrics) ----
   let cleaned = normalize(points);
@@ -180,57 +148,8 @@ export default function SpiderChart({ title, points, Icon }: Props) {
   }
 
   // If fewer than 3 valid metrics, show list fallback instead of radar
-  if (cleaned.length < 3) {
-    return (
-      <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8 }}>
-        {/* header bubble with icon + title */}
-        <View style={styles.headerRow}>
-          <View style={styles.titleFrame}>
-            {AutoIcon ? <AutoIcon size={18} color="white" /> : null}
-            <Text style={styles.title}>{title}</Text>
-          </View>
-        </View>
-
-        {listMetrics.map((p) => {
-          const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
-          return (
-            <View key={p.label} style={{ marginTop: 8 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 4,
-                }}
-              >
-                <Text style={{ color: MUTED, fontSize: 13 }}>{labelTr}</Text>
-                <Text style={{ color: TEXT, fontSize: 14, fontWeight: '700' }}>
-                  {formatValue(p.value, p.label)}
-                </Text>
-              </View>
-
-              {/* progress bar */}
-              <View
-                style={{
-                  height: 6,
-                  borderRadius: 999,
-                  backgroundColor: '#272a2a',
-                  overflow: 'hidden',
-                }}
-              >
-                <View
-                  style={{
-                    width: `${p.y * 100}%`,
-                    height: '100%',
-                    backgroundColor: ACCENT,
-                  }}
-                />
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    );
+  if (cleaned.length <= 3) {
+    return <SpiderBarsFallback title={title} points={points} Icon={AutoIcon} />;
   }
 
   // ---- Radar path (3+ metrics) ----

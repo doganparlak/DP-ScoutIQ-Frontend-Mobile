@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { User, HatGlasses } from 'lucide-react-native';
 import { ACCENT, PANEL, MUTED, CARD } from '@/theme';
 import { useTranslation } from 'react-i18next';
@@ -18,16 +18,6 @@ export default function MessageBubble({ role, content, pending }: Props) {
   const isUser = role === 'user';
   const { t } = useTranslation();
 
-  // Animate dots for pending
-  const [dots, setDots] = React.useState('.');
-  React.useEffect(() => {
-    if (!pending) return;
-    const interval = setInterval(() => {
-      setDots(d => (d.length >= 5 ? '.' : d + '.'));
-    }, 500);
-    return () => clearInterval(interval);
-  }, [pending]);
-
   return (
     <View style={[styles.row, isUser ? styles.rowEnd : styles.rowStart]}>
       {/* Assistant icon (left) */}
@@ -41,9 +31,9 @@ export default function MessageBubble({ role, content, pending }: Props) {
       <View style={[styles.bubble, isUser ? styles.user : styles.assistant]}>
         {pending && !isUser ? (
           <View style={styles.pendingRow}>
+            <ActivityIndicator size="small" color={MUTED} />
             <Text style={styles.pendingText}>
               {t('assistantPending', 'Unveiling insights')}
-              {dots}
             </Text>
           </View>
         ) : (
@@ -103,6 +93,6 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
 
-  pendingRow: { flexDirection: 'row', alignItems: 'center' },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pendingText: { color: MUTED, fontSize: 15, lineHeight: 21 },
 });
