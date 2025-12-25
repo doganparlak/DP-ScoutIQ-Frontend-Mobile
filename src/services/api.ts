@@ -150,6 +150,7 @@ export const ROLE_LONG_TO_SHORT: Record<string, string> = {
   ),
   // 2) extra allowed variants / aliases
   'Goal Keeper': 'GK',
+  'Central Midfield': 'CM',
   'Centre Back': 'CB',
   'Attacking Midfield': 'CAM',
   'Defensive Midfield': 'CDM',
