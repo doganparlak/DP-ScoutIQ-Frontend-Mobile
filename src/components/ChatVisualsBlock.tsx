@@ -16,6 +16,7 @@ import {
 } from '@/components/spiderRanges';
 
 import type { PlayerData } from '@/types';
+import ErrorsDisciplineTiles from '@/components/ErrorsDisciplineTiles';
 
 type Props = { players: PlayerData[] };
 
@@ -82,7 +83,14 @@ function ChatVisualsBlockInner({ players }: Props) {
                   <SpiderChart title={t('contribution_impact', 'Contribution & Impact')} points={contrib} />
                 ) : null}
                 {errors.length > 0 ? (
-                  <SpiderChart title={t('errors_discipline', 'Errors & Discipline')} points={errors} />
+                  <ErrorsDisciplineTiles
+                    title={t('errors_discipline', 'Errors & Discipline')}
+                    points={errors}
+                    // optionally tweak thresholds/collapsing:
+                    thresholds={{ good: 0.33, warn: 0.66 }}
+                    collapsedCount={2}
+                    defaultCollapsed={true}
+                  />
                 ) : null}
                 {defending.length > 0 ? (
                   <SpiderChart title={t('defending', 'Defending')} points={defending} />
