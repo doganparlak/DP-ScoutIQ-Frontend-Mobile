@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Image, Animated, Easing } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, LINE, PANEL } from '@/theme';
@@ -8,7 +8,6 @@ import { useLanguage } from '@/context/LanguageProvider';
 import { useTranslation } from 'react-i18next';
 
 import scoutwiseLogo from '../../assets/scoutwise_logo.png';
-
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function WelcomeScreen() {
@@ -16,141 +15,14 @@ export default function WelcomeScreen() {
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
 
-  // Ball-drop animation values
-  const dropY = useRef(new Animated.Value(-260)).current; // start above screen
-  const squash = useRef(new Animated.Value(1)).current;  // scaleY for squash/stretch
-  const stretch = useRef(new Animated.Value(1)).current; // scaleX inverse-ish for realism (optional)
-  const fade = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Entrance: drop -> bounce -> settle + a little squash/stretch on impact
-    Animated.sequence([
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-
-      // DROP (fast acceleration feeling)
-      Animated.timing(dropY, {
-        toValue: 0,
-        duration: 650,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-
-      // IMPACT squash (short + punchy)
-      Animated.parallel([
-        Animated.timing(squash, {
-          toValue: 0.85, // squish vertically
-          duration: 90,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(stretch, {
-          toValue: 1.08, // widen a bit
-          duration: 90,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-
-      // BOUNCE UP (first rebound)
-      Animated.parallel([
-        Animated.timing(dropY, {
-          toValue: -70,
-          duration: 260,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(squash, {
-          toValue: 1.05, // stretch vertically a bit as it leaves ground
-          duration: 180,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(stretch, {
-          toValue: 0.98,
-          duration: 180,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-
-      // FALL BACK DOWN (smaller)
-      Animated.timing(dropY, {
-        toValue: 0,
-        duration: 260,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-
-      // small squash
-      Animated.parallel([
-        Animated.timing(squash, {
-          toValue: 0.92,
-          duration: 80,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(stretch, {
-          toValue: 1.05,
-          duration: 80,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-
-      // smaller bounce up
-      Animated.timing(dropY, {
-        toValue: -28,
-        duration: 170,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-
-      // settle back to rest + stabilize scales
-      Animated.parallel([
-        Animated.timing(dropY, {
-          toValue: 0,
-          duration: 170,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.spring(squash, {
-          toValue: 1,
-          friction: 6,
-          tension: 140,
-          useNativeDriver: true,
-        }),
-        Animated.spring(stretch, {
-          toValue: 1,
-          friction: 6,
-          tension: 140,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, [dropY, squash, stretch, fade]);
-
   return (
     <View style={styles.wrap}>
-      {/* Logo: drops from top, bounces, stabilizes */}
-      <Animated.View
-        style={[
-          styles.logoWrap,
-          {
-            opacity: fade,
-            transform: [
-              { translateY: dropY },
-              { scaleX: stretch },
-              { scaleY: squash },
-            ],
-          },
-        ]}
-      >
-        <Image source={scoutwiseLogo} style={styles.logo} resizeMode="contain" />
-      </Animated.View>
+      {/* Logo */}
+      <Image
+        source={scoutwiseLogo}
+        style={styles.logo}
+        resizeMode="contain"
+      />
 
       {/* App name: "scout" white, "wise" green */}
       <Text style={styles.appName}>
@@ -199,7 +71,10 @@ export default function WelcomeScreen() {
 
       <Pressable
         onPress={() => navigation.navigate('SignUp')}
-        style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [
+          styles.secondaryBtn,
+          { opacity: pressed ? 0.85 : 1 },
+        ]}
       >
         <Text style={styles.secondaryBtnText}>{t('signup')}</Text>
       </Pressable>
@@ -215,34 +90,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-
-  // Keep marginBottom here so the final "resting" position matches your old layout
-  logoWrap: {
-    borderRadius: 28,
-    marginBottom: 26,
-
-    // depth (iOS)
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-
-    // depth (Android)
-    elevation: 6,
-  },
-
   logo: {
     width: 140,
     height: 140,
+    marginBottom: 26,
   },
-
   appName: {
     fontSize: 36,
     fontWeight: '800',
     marginBottom: 40,
   },
-  appNameScout: { color: '#FFFFFF' },
-  appNameWise: { color: ACCENT },
-
+  appNameScout: {
+    color: '#FFFFFF',
+  },
+  appNameWise: {
+    color: ACCENT,
+  },
   langRow: {
     flexDirection: 'row',
     gap: 12,
@@ -271,7 +134,6 @@ const styles = StyleSheet.create({
     color: TEXT,
     fontSize: 17,
   },
-
   primaryBtn: {
     width: '80%',
     borderRadius: 14,
@@ -280,7 +142,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 17 },
-
   secondaryBtn: {
     width: '80%',
     borderRadius: 14,
