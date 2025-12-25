@@ -35,13 +35,15 @@ function ChatVisualsBlockInner({ players }: Props) {
         const errors = toSpiderPoints(p.stats, ERRORS_DISCIPLINE_METRICS);
         
 
-        const hasAny =
+        const hasAny = !!(
           gk.length ||
           shooting.length ||
           passing.length ||
           contrib.length ||
           defending.length ||
-          errors.length;
+          errors.length
+        );
+
           
 
         return (
