@@ -31,16 +31,18 @@ function ChatVisualsBlockInner({ players }: Props) {
         const shooting = toSpiderPoints(p.stats, SHOOTING_METRICS);
         const passing = toSpiderPoints(p.stats, PASSING_METRICS);
         const contrib = toSpiderPoints(p.stats, CONTRIBUTION_IMPACT_METRICS);
-        const errors = toSpiderPoints(p.stats, ERRORS_DISCIPLINE_METRICS);
         const defending = toSpiderPoints(p.stats, DEFENDING_METRICS);
+        const errors = toSpiderPoints(p.stats, ERRORS_DISCIPLINE_METRICS);
+        
 
         const hasAny =
           gk.length ||
           shooting.length ||
           passing.length ||
           contrib.length ||
-          errors.length ||
-          defending.length;
+          defending.length ||
+          errors.length;
+          
 
         return (
           <View key={p.name} style={{ gap: 10 }}>
@@ -70,30 +72,37 @@ function ChatVisualsBlockInner({ players }: Props) {
               }}
             />
 
+            // ---- render ----
             {hasAny ? (
               <View style={{ gap: 10 }}>
+                {/* GK first ONLY if present */}
                 {gk.length > 0 ? <SpiderChart title={t('chartGK', 'Goalkeeping')} points={gk} /> : null}
-                {shooting.length > 0 ? (
-                  <SpiderChart title={t('shooting', 'Shooting & Finishing')} points={shooting} />
-                ) : null}
-                {passing.length > 0 ? (
-                  <SpiderChart title={t('passing', 'Passing & Delivery')} points={passing} />
-                ) : null}
+
+                {/* then: impact -> shooting -> passing -> defending */}
                 {contrib.length > 0 ? (
                   <SpiderChart title={t('contribution_impact', 'Contribution & Impact')} points={contrib} />
                 ) : null}
+
+                {shooting.length > 0 ? (
+                  <SpiderChart title={t('shooting', 'Shooting & Finishing')} points={shooting} />
+                ) : null}
+
+                {passing.length > 0 ? (
+                  <SpiderChart title={t('passing', 'Passing & Delivery')} points={passing} />
+                ) : null}
+
+                {defending.length > 0 ? (
+                  <SpiderChart title={t('defending', 'Defending')} points={defending} />
+                ) : null}
+
+                {/* errors ALWAYS last */}
                 {errors.length > 0 ? (
                   <ErrorsDisciplineTiles
                     title={t('errors_discipline', 'Errors & Discipline')}
                     points={errors}
-                    // optionally tweak thresholds/collapsing:
-                    thresholds={{ good: 0.33, warn: 0.66 }}
                     collapsedCount={2}
-                    defaultCollapsed={true}
+                    defaultCollapsed
                   />
-                ) : null}
-                {defending.length > 0 ? (
-                  <SpiderChart title={t('defending', 'Defending')} points={defending} />
                 ) : null}
               </View>
             ) : null}
