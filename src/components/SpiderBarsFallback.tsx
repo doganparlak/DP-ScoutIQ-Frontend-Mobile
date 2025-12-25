@@ -11,12 +11,9 @@ type Props = {
   title: string;
   points: SpiderPoint[];
   Icon?: React.ComponentType<{ size?: number; color?: string }>;
-  /** Optional override for header color (defaults ACCENT). */
   headerColor?: string;
-
-  // NEW
-  collapsedCount?: number; // default 2
-  defaultCollapsed?: boolean; // default true
+  collapsedCount?: number;
+  defaultCollapsed?: boolean;
 };
 
 function formatValue(v: number, label: string) {
@@ -83,9 +80,47 @@ export default function SpiderBarsFallback({
 
       {shown.map((p) => {
         const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
+
         return (
           <View key={p.label} style={{ marginTop: 8 }}>
-            {/* ...same row + bar as you have... */}
+            {/* Row: label + value */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+              <Text style={{ color: MUTED, fontSize: 13, fontWeight: '600', flex: 1 }}>
+                {labelTr}
+              </Text>
+              <Text style={{ color: TEXT, fontSize: 14, fontWeight: '800' }}>
+                {formatValue(p.value, p.label)}
+              </Text>
+            </View>
+
+            {/* Bar */}
+            <View
+              style={{
+                marginTop: 8,
+                height: 7,
+                borderRadius: 999,
+                backgroundColor: '#272a2a',
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  width: `${p.y * 100}%`,
+                  height: '100%',
+                  backgroundColor: headerColor,
+                }}
+              />
+            </View>
+
+            {/* Hint */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+              <Text style={{ color: MUTED, fontSize: 11 }}>
+                {t('low', { defaultValue: 'Low' })}
+              </Text>
+              <Text style={{ color: MUTED, fontSize: 11 }}>
+                {t('high', { defaultValue: 'High' })}
+              </Text>
+            </View>
           </View>
         );
       })}
@@ -106,7 +141,6 @@ export default function SpiderBarsFallback({
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

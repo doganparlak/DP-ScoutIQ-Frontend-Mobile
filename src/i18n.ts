@@ -267,6 +267,9 @@ export const resources = {
       riskBad: 'Problem',
       riskGood: 'Good',
       riskWatch: 'Watch',
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -668,6 +671,9 @@ export const resources = {
       riskBad: 'Problem',
       riskGood: 'İyi',
       riskWatch: 'Dikkat',
+      low: 'Düşük',
+      medium: 'Orta',
+      high: 'Yüksek',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',

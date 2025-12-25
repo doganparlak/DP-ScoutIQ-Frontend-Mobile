@@ -27,6 +27,7 @@ export type SpiderPoint = {
   min: number;
   max: number;
 };
+const MIN_RADAR_METRICS = 4;
 
 type Props = {
   title: string;
@@ -85,6 +86,7 @@ function normalize(points: SpiderPoint[]): Cleaned[] {
         typeof p.value === 'number'
           ? p.value
           : Number(String(p.value ?? '').replace('%', '').trim());
+
       if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return null;
       if (!Number.isFinite(vNum)) return null;
 
@@ -93,9 +95,9 @@ function normalize(points: SpiderPoint[]): Cleaned[] {
     })
     .filter(Boolean) as Array<{ y: number; value: number; label: string }>;
 
-  if (prelim.length < 4) return [];
   return prelim.map((p, i) => ({ x: i + 1, ...p }));
 }
+
 // Add a simple normalized type for the list
 type NormalizedPoint = {
   label: string;
@@ -148,7 +150,7 @@ export default function SpiderChart({ title, points, Icon }: Props) {
   }
 
   // If fewer than 3 valid metrics, show list fallback instead of radar
-  if (cleaned.length <= 3) {
+  if (cleaned.length < MIN_RADAR_METRICS) {
     return <SpiderBarsFallback title={title} points={points} Icon={AutoIcon} />;
   }
 

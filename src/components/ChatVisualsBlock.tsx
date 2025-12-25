@@ -74,7 +74,7 @@ function ChatVisualsBlockInner({ players }: Props) {
               }}
             />
 
-            // ---- render ----
+            {/* ---- render ---- */}
             {hasAny ? (
               <View style={{ gap: 10 }}>
                 {/* GK first ONLY if present */}
