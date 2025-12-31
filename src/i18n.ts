@@ -474,7 +474,7 @@ export const resources = {
       kickOff: 'Başlama Vuruşu!',
       welcomeSubtitle: 'Akıllı oyuncu keşfi mentörün.',
       wcFindCompare: 'İhtiyaçlarına göre oyuncuları bul ve karşılaştır.',
-      wcFilter: 'Aramanı yaşa, ülkeye, takım adına, role, istatistiklere, taktik uyuma, fiziksel kimliğe vb. göre filtrele.',
+      wcFilter: 'Aramanı yaşa, ülkeye, takım adına, role, istatistiklere, fiziksel kimliğe ve daha fazlasına göre filtrele.',
       wcPotential: 'Oyuncuların potansiyel değerlerini keşfet.',
       wcAnswers: 'Anında, veri bazlı yanıtlar al.',
       wcVisualize: 'Önemli istatistikleri grafikler ve özetlerle görselleştir.',
