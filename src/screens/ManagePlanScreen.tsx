@@ -175,7 +175,7 @@ export default function ManagePlan() {
       endConnection();
     };
   }, [nav, t]);
-  // */
+   //*/
   const formattedEndDate = React.useMemo(() => {
   if (!subscriptionEndAt) return null;
   const d = new Date(subscriptionEndAt);

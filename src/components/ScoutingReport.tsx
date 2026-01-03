@@ -123,9 +123,8 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
     const pts = toSpiderPoints(stats, GK_METRICS);
     if (pts.length) groups.push({ titleKey: 'goalkeeping', fallbackTitle: 'Goalkeeping', points: pts });
   }
-
-  const defending = toSpiderPoints(stats, DEFENDING_METRICS);
-  if (defending.length) groups.push({ titleKey: 'defending', fallbackTitle: 'Defending', points: defending });
+  const contrib = toSpiderPoints(stats, CONTRIBUTION_IMPACT_METRICS);
+  if (contrib.length) groups.push({ titleKey: 'contribution_impact', fallbackTitle: 'Contribution & Impact', points: contrib });
 
   const shooting = toSpiderPoints(stats, SHOOTING_METRICS);
   if (shooting.length) groups.push({ titleKey: 'shooting', fallbackTitle: 'Shooting & Finishing', points: shooting });
@@ -133,8 +132,8 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
   const passing = toSpiderPoints(stats, PASSING_METRICS);
   if (passing.length) groups.push({ titleKey: 'passing', fallbackTitle: 'Passing & Delivery', points: passing });
 
-  const contrib = toSpiderPoints(stats, CONTRIBUTION_IMPACT_METRICS);
-  if (contrib.length) groups.push({ titleKey: 'contribution_impact', fallbackTitle: 'Contribution & Impact', points: contrib });
+  const defending = toSpiderPoints(stats, DEFENDING_METRICS);
+  if (defending.length) groups.push({ titleKey: 'defending', fallbackTitle: 'Defending', points: defending });
 
   const errors = toSpiderPoints(stats, ERRORS_DISCIPLINE_METRICS);
   if (errors.length) groups.push({ titleKey: 'errors_discipline', fallbackTitle: 'Errors & Discipline', points: errors });
@@ -174,23 +173,35 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
     const out: Array<{ key: string; title: string; node: React.ReactNode }> = [playerPage];
 
     spiderGroups.forEach((g, idx) => {
-        const title = t(g.titleKey, g.fallbackTitle);
-        const isRadar = (g.points?.length ?? 0) >= 4;
+      const title = t(g.titleKey, g.fallbackTitle);
+      const isRadar = (g.points?.length ?? 0) >= 4;
 
-        out.push({
+      const isErrors = g.titleKey === 'errors_discipline';
+
+      const node = isErrors ? (
+        // ✅ Wider + centered ONLY for Errors & Discipline in the report
+        <View style={{ width: '100%', alignItems: 'center' }}>
+          <View style={{ width: '100%', maxWidth: 620 }}>
+            <SpiderChart title={title} points={g.points} />
+          </View>
+        </View>
+      ) : isRadar ? (
+        <View style={{ marginLeft: 28, paddingRight: -28, alignItems: 'center' }}>
+          <View style={{ transform: [{ scale: 0.90 }] }}>
+            <SpiderChart title={title} points={g.points} />
+          </View>
+        </View>
+      ) : (
+        <SpiderChart title={title} points={g.points} />
+      );
+
+      out.push({
         key: `metrics-${idx}`,
         title,
-        node: isRadar ? (
-            <View style={{ marginLeft: 28, paddingRight: -28, alignItems: 'center' }}>
-            <View style={{ transform: [{ scale: 0.90 }] }}>
-                <SpiderChart title={title} points={g.points} />
-            </View>
-            </View>
-        ) : (
-            <SpiderChart title={title} points={g.points} />
-        ),
-        });
+        node,
+      });
     });
+
 
     out.push({
       key: 'strengths',

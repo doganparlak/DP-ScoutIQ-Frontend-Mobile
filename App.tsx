@@ -6,11 +6,11 @@ import { LanguageProvider } from '@/context/LanguageProvider';
 import {
   Alert
 } from 'react-native';
-// /**
+ ///**
 import mobileAds from 'react-native-google-mobile-ads';
 import { preloadInterstitial } from '@/ads/interstitial';
 import { preloadRewarded } from '@/ads/rewarded';
-//  */
+ // */
 export default function App() {
   // /**
   React.useEffect(() => {
@@ -21,9 +21,9 @@ export default function App() {
         preloadInterstitial();
         preloadRewarded();
       })
-      .catch((e) => {Alert.alert('[ADS] not initialized', String(e?.message ?? e));});
+      .catch((e) => {});
   }, []);
-  //  */
+   // */
 
   return (
     <LanguageProvider>
