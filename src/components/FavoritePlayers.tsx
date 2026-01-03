@@ -381,42 +381,59 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     };
   }, [queuedReportPlayer, t]);
 
-  const handleReportPress = async (player: PlayerRow) => {
+  const allowReport = (player: PlayerRow) => {
+  setProcessingReports(prev => {
+    const next = new Set(prev);
+    next.add(player.id);
+    return next;
+  });
+  setQueuedReportPlayer(player);
+};
 
-    // prevent duplicate taps/queues
-    if (processingReports.has(player.id) || queuedReportPlayer?.id === player.id) return;
+const handleReportPress = async (player: PlayerRow) => {
+  // prevent duplicate taps/queues
+  if (processingReports.has(player.id) || queuedReportPlayer?.id === player.id) return;
 
-    // PRO: open immediately
-    if (plan === 'Pro') {
-      setProcessingReports(prev => {
-        const next = new Set(prev);
-        next.add(player.id);
-        return next;
-      });
-      setQueuedReportPlayer(player);
+  // PRO: open immediately
+  if (plan === 'Pro') {
+    allowReport(player);
+    return;
+  }
+
+  // FREE: try rewarded, but fallback to report on timeout
+  try {
+    const timeoutMs = 15000;
+
+    const ready = await ensureRewardedLoaded(timeoutMs);
+
+    // ✅ If ad didn't become ready in time, let user see the report
+    if (!ready) {
+      // Optional: inform user this was a fallback (or remove this Alert entirely)
+      // Alert.alert('No ad available', 'Showing the report this time.');
+      Alert.alert('Ad not ready', 'Ad is not ready yet. Showing the report now.');
+      allowReport(player);
       return;
     }
-    // FREE: must watch rewarded
-    try {
-      // Wait a short time for the ad to be ready
-      const ready = await ensureRewardedLoaded(5000);
-      if (!ready) return; // ✅ silent no-op in production
 
-      const { shown, rewarded } = await showRewardedSafely();
+    const { shown, rewarded } = await showRewardedSafely();
 
-      // Only proceed if user actually earned the reward
-      if (!shown || !rewarded) return;
-
-      setProcessingReports(prev => {
-        const next = new Set(prev);
-        next.add(player.id);
-        return next;
-      });
-      setQueuedReportPlayer(player);
-    } catch {
-      // ✅ silent fail in production (or log in dev)
+    // Only proceed if user earned the reward
+    if (shown && rewarded) {
+      allowReport(player);
+      return;
     }
-  };
+  } catch (e: any) {
+    const msg =
+      e?.message ??
+      e?.nativeEvent?.message ??
+      (typeof e === 'string' ? e : JSON.stringify(e));
+
+    Alert.alert('Ad error', msg || 'Unknown error');
+
+    // your desired fallback behavior
+    allowReport(player);
+    }
+};
 
   const handleDelete = async (id: string) => {
     try {

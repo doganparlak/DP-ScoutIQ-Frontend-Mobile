@@ -118,7 +118,7 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
   });
 }
 
-export function ensureRewardedLoaded(timeoutMs = 5000): Promise<boolean> {
+export function ensureRewardedLoaded(timeoutMs = 15000): Promise<boolean> {
   const a = getAd();
 
   // kick load if needed

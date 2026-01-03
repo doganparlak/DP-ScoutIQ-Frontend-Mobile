@@ -3,7 +3,9 @@ import React from 'react';
 import RootNavigator from '@/navigation/RootNavigator';
 import '@/i18n';
 import { LanguageProvider } from '@/context/LanguageProvider';
-
+import {
+  Alert
+} from 'react-native';
 // /**
 import mobileAds from 'react-native-google-mobile-ads';
 import { preloadInterstitial } from '@/ads/interstitial';
@@ -15,10 +17,11 @@ export default function App() {
     mobileAds()
       .initialize()
       .then(() => {
+        console.log('[ADS] initialized');
         preloadInterstitial();
         preloadRewarded();
       })
-      .catch(() => {});
+      .catch((e) => {Alert.alert('[ADS] not initialized', String(e?.message ?? e));});
   }, []);
   //  */
 
