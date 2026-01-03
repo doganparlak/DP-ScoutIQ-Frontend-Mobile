@@ -744,6 +744,7 @@ export const resources = {
         'Rating': 'Puan',
         'Captain': 'Kaptan',
         'Fouls Drawn': 'Kazanılan Fauller',
+        'Offsides Provoked': 'Rakibi Ofsayta Düşürme',
         // Topla (In possession)
         'Shots': 'Şut',
         'Shot Accuracy (%)': 'İsabetli Şut (%)',
@@ -769,7 +770,6 @@ export const resources = {
         'Turn Over': 'Top kaybı',
         'Possession Lost': 'Topun hakimiyetini kaybetme',
         'Offsides': 'Ofsayt',
-        'Offsides Provoked': 'Rakibi Ofsayta Düşürme',
         'Own Goals': 'Kendi Kalesine Gol Atma',
         'Error Lead To Goal': 'Gole Yol Açan Hata',
         'Error Lead To Shot': 'Şuta Yol Açan Hata',

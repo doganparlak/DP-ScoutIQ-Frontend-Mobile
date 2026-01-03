@@ -53,6 +53,7 @@ export const CONTRIBUTION_IMPACT_METRICS = [
   'Rating',
   'Captain',
   'Fouls Drawn',
+  'Offsides Provoked',
 ] as const;
 
 // Errors & Discipline (formerly "other negative")
@@ -70,7 +71,6 @@ export const ERRORS_DISCIPLINE_METRICS = [
   'Turn Over',
   'Possession Lost',
   'Offsides',
-  'Offsides Provoked',
   'Own Goals',
   'Error Lead To Goal',
   'Error Lead To Shot',
