@@ -86,6 +86,7 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
     const finish = (shown: boolean, rewarded: boolean) => {
       if (finished) return;
       finished = true;
+      pendingShow = false;
       cleanup();
       resolve({ shown, rewarded });
     };
@@ -114,5 +115,31 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
         a.show();
       }, 400);
     });
+  });
+}
+
+export function ensureRewardedLoaded(timeoutMs = 5000): Promise<boolean> {
+  const a = getAd();
+
+  // kick load if needed
+  if (!loaded) a.load();
+  if (loaded) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    let done = false;
+
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      subLoad?.();
+      subErr?.();
+      if (timer) clearTimeout(timer);
+      resolve(ok);
+    };
+
+    const subLoad = a.addAdEventListener(AdEventType.LOADED, () => finish(true));
+    const subErr = a.addAdEventListener(AdEventType.ERROR, () => finish(false));
+
+    const timer = setTimeout(() => finish(loaded), timeoutMs);
   });
 }

@@ -22,7 +22,7 @@ import {
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
 // /**
-import { showRewardedSafely } from '../ads/rewarded';
+import {ensureRewardedLoaded,  showRewardedSafely } from '../ads/rewarded';
 //*/
 type PlayerRow = {
   id: string;
@@ -398,18 +398,23 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     }
     // FREE: must watch rewarded
     try {
-      // /** 
+      // Wait a short time for the ad to be ready
+      const ready = await ensureRewardedLoaded(5000);
+      if (!ready) return; // ✅ silent no-op in production
+
       const { shown, rewarded } = await showRewardedSafely();
-      //*/
-      // reward earned -> start report job
+
+      // Only proceed if user actually earned the reward
+      if (!shown || !rewarded) return;
+
       setProcessingReports(prev => {
         const next = new Set(prev);
         next.add(player.id);
         return next;
       });
       setQueuedReportPlayer(player);
-    } catch (e: any) {
-      Alert.alert(t('adError', 'Ad error'), String(e?.message ?? e));
+    } catch {
+      // ✅ silent fail in production (or log in dev)
     }
   };
 
