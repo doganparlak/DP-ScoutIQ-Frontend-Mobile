@@ -21,7 +21,9 @@ import {
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
+// /**
 import { showRewardedSafely } from '../ads/rewarded';
+//*/
 type PlayerRow = {
   id: string;
   name: string;
@@ -396,7 +398,9 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     }
     // FREE: must watch rewarded
     try {
+      // /** 
       const { shown, rewarded } = await showRewardedSafely();
+      //*/
       // reward earned -> start report job
       setProcessingReports(prev => {
         const next = new Set(prev);

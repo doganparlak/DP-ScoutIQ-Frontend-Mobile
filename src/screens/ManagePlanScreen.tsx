@@ -72,7 +72,7 @@ export default function ManagePlan() {
     })();
   }, []);
 
-   // /**
+  //  /**
   // ---- IAP init + listeners ----
   React.useEffect(() => {
     let purchaseSub: EventSubscription | null = null;
