@@ -17,21 +17,20 @@ function getAd() {
 
   ad = RewardedAd.createForAdRequest(UNIT_ID);
 
-  ad.addAdEventListener(AdEventType.LOADED, () => {
+  ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
     loaded = true;
-    console.log('[REWARDED] loaded');
+    pendingShow = false;
   });
 
   ad.addAdEventListener(AdEventType.OPENED, () => {
     showing = true;
     pendingShow = false;
-    console.log('[REWARDED] opened');
   });
 
   ad.addAdEventListener(AdEventType.CLOSED, () => {
     loaded = false;
     showing = false;
-    console.log('[REWARDED] closed -> reloading');
+    pendingShow = false; 
     ad?.load(); // preload next
   });
 
@@ -39,7 +38,6 @@ function getAd() {
     loaded = false;
     showing = false;
     pendingShow = false;
-    console.log('[REWARDED ERROR]', e?.message ?? e);
   });
 
   return ad;
@@ -93,7 +91,6 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
 
     const subReward = a.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
       gotReward = true;
-      console.log('[REWARDED] reward earned');
     });
 
     const subClosed = a.addAdEventListener(AdEventType.CLOSED, () => {
@@ -111,7 +108,6 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
           finish(false, false);
           return;
         }
-        console.log('[REWARDED] showing');
         a.show();
       }, 400);
     });
@@ -137,7 +133,7 @@ export function ensureRewardedLoaded(timeoutMs = 15000): Promise<boolean> {
       resolve(ok);
     };
 
-    const subLoad = a.addAdEventListener(AdEventType.LOADED, () => finish(true));
+    const subLoad = a.addAdEventListener(RewardedAdEventType.LOADED, () => finish(true));
     const subErr = a.addAdEventListener(AdEventType.ERROR, () => finish(false));
 
     const timer = setTimeout(() => finish(loaded), timeoutMs);
