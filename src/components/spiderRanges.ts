@@ -10,8 +10,6 @@ export const GK_METRICS = [
   'Penalties Saved',
   'Punches',
   'Good High Claim',
-  'Ball Recovery',
-  'Clearances',
 ] as const;
 
 // Shooting / finishing metrics
