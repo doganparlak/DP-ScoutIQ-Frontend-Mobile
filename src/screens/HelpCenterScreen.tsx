@@ -170,10 +170,11 @@ export default function HelpCenter() {
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat1', 'Chat with ScoutWise to discover the best-fit players for your needs—just as you would with a regular chatbot.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat2', 'All responses are data-driven and interpreted through your defined preferences.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat3', 'Ask for filters on the fly (age, role, nationality, stats, tactical fit, etc.), compare players, and add favorites to your ')}
-                <Text style={styles.bold}>{t('playerPortfolio', 'Player Portfolio')}</Text>.{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat3', 'Ask for filters on the fly (age, role, nationality, stats, tactical fit, etc.), find players, and add favorites to your ')}
+                <Text style={styles.bold}>{t('playerPortfolio', 'Player Portfolio')}</Text>
+                <Text>{t('howChat5', '')}.</Text>{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat4', 'When requested, ScoutWise will introduce a player. Each introduction includes a ')}
-                <Text style={styles.bold}>{t('playerCard', 'Player Card')}</Text>, <Text style={styles.bold}>{t('radarCharts', 'Radar Charts')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('interpretation', 'Interpretation')}</Text> {t('ofPerformanceAndFit', 'of the player’s performance and fit.') }
+                <Text style={styles.bold}>{t('playerCard', 'Player Card')}</Text>, <Text style={styles.bold}>{t('metricVisualizations', 'Metric Visualizations')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('scoutwiseInsights', 'ScoutWise Insights')}</Text> {t('ofPerformanceAndFit', 'of the player’s performance and fit.') }
               </Text>
             </View>
 
@@ -198,10 +199,10 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
-              <Text style={styles.h3}>{t('howRadarTitle', 'Radar Charts')}</Text>
+              <Text style={styles.h3}>{t('howMetricTitle', 'Metric Visualizations')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart for a clear statistical profile.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>, <Text style={styles.bold}>{t('shooting', 'Shooting')}</Text>, <Text style={styles.bold}>{t('passing', 'Passing')}</Text>, <Text style={styles.bold}>{t('defending', 'Defending')}</Text>, <Text style={styles.bold}>{t('contribution_impact', 'Contribution & Impact')}</Text>, <Text style={styles.bold}>{t('errors_discipline', 'Errors & Discipline')}</Text>,{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart and Horizontal Bar Chart for a clear statistical profile.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>, <Text style={styles.bold}>{t('shooting', 'Shooting')}</Text>, <Text style={styles.bold}>{t('passing', 'Passing')}</Text>, <Text style={styles.bold}>{t('defending', 'Defending')}</Text>, <Text style={styles.bold}>{t('contribution_impact', 'Contribution & Impact')}</Text>, <Text style={styles.bold}>{t('errors_discipline', 'Errors & Discipline')}</Text>.{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar4', 'Shown metrics are the per game averages based on available data.')}
               </Text>
@@ -210,9 +211,27 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
-              <Text style={styles.h3}>{t('howInterpTitle', 'Interpretations')}</Text>
+              <Text style={styles.h3}>{t('howRadarTitle', 'Radar Charts')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp1', 'ScoutWise analyzes performance within role context and your criteria, highlighting the most relevant stats.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('RadarDefinition', 'A radar chart is a circular chart that shows multiple values at once by plotting them along spokes that extend from a central point, making it easy to see strengths and weaknesses at a glance.')}{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('RadarDefinition2', 'The values shown represent performance metrics, such as different aspects of a player’s play, displayed together to give an overall profile.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howHorizontalBar', 'Horizontal Bar Charts')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('HorizontalBarDefinition', 'A horizontal bar chart is a chart that displays data in horizontal bars, making it easy to compare values and see trends.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howInterpTitle', 'ScoutWise Insights')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp1', 'ScoutWise analyzes performance within role context and your criteria, highlighting the most relevant statistics.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp2', 'Each interpretation concisely explains past performances and tactical fit across systems.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp3', 'If no custom strategy is defined, a balanced, general scouting perspective is applied.')}
               </Text>
@@ -227,7 +246,7 @@ export default function HelpCenter() {
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
                 {t(
                   'howScoutReport1',
-                  'Scouting Report includes the Player Card and all available stats from the last 365 days, plus Strengths, Weakness & Concerns, and a Conclusion.'
+                  'Scouting Report includes the player card and all available statistics from the last 365 days, plus Strengths, Weakness & Concerns, and a Conclusion section.'
                 )}
                 {'\n'}
 
