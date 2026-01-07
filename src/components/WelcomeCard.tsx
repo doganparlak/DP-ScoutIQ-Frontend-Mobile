@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3, BookmarkPlus } from 'lucide-react-native';
-import { ACCENT, PANEL, MUTED, TEXT, LINE } from '@/theme';
+import { ACCENT, PANEL, MUTED, TEXT, LINE, ACCENT_DARK } from '@/theme';
 import { useTranslation } from 'react-i18next';
 
 function Row({
@@ -25,7 +25,15 @@ export default function WelcomeCard() {
   return (
     <View style={styles.card}>
       <Text style={styles.titleWelcome}>{t('kickOff', 'Kick Off!')}</Text>
-      <Text style={styles.subtitle}>{t('welcomeSubtitle', 'Your intelligent football scouting companion')}</Text>
+      <Text style={styles.subtitle}>
+        {t('welcomeSubtitle', 'Your intelligent football scouting companion')}
+      </Text>
+
+      <View style={styles.coveragePill}>
+        <Text style={styles.coverageText}>
+          {t('wcCoverageLine', '113 leagues  •  52,000+ players  •  75+ stats')}
+        </Text>
+      </View>
 
       <View style={styles.divider} />
       <Row Icon={Users} text={t('wcFindCompare', 'Find and compare players based on your needs.')} />
@@ -40,6 +48,23 @@ export default function WelcomeCard() {
 }
 
 const styles = StyleSheet.create({
+  coveragePill: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: PANEL,
+  },
+  coverageText: {
+    color: ACCENT,
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
   card: {
     backgroundColor: PANEL,
     borderRadius: 20,
