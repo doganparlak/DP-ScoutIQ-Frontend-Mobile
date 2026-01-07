@@ -565,7 +565,7 @@ export const resources = {
       howStrategy2: 'ScoutWise bu bilgiyi, önerilerini ve oyuncu uyum değerlendirmelerini senin isteklerine en uygun cevabı verebilmek için kullanır.',
       howStrategy3: 'Bu adımı atlayabilir ve istediğin zaman geri dönebilirsin.',
       howPlayerPortfolio: 'Oyuncu Portföyü',
-      howPlayerPortfolio1: 'Oyuncu Portföyü, detaylı inceleme için eklediğiniz oyuncuların yer aldığı bir izleme listesidir.',
+      howPlayerPortfolio1: 'Oyuncu portföyü, detaylı inceleme için eklediğiniz oyuncuların yer aldığı bir izleme listesidir.',
       howPlayerPortfolio2: 'Her satır bir oyuncuyu ifade eder ve ad, cinsiyet, ülke, takım, yaş, rol ve potansiyel gibi temel bilgileri içerir.',
       howPlayerPortfolio3: 'Satırın başında yer alan rapor simgesiyle keşif raporu oluşturulabilir; oyuncular oyuncu kartı özelliklerine göre filtrelenebilir.',
       howChatTitle: 'Sohbet',
