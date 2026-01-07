@@ -1,6 +1,7 @@
 // src/i18n.ts
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { updateCSSTransition } from 'react-native-reanimated/lib/typescript/css/native';
 
 export const resources = {
   en: {
@@ -100,9 +101,6 @@ export const resources = {
       managePlan: 'Manage plan',
       helpCenter: 'Help Center',
       logout: 'Log out',
-      plan_Free: 'Free',
-      plan_Pro: 'Pro',
-      plan_Elite: 'Elite',
       tabStrategy: 'Strategy',
       tabChat: 'Chat',
       tabProfile: 'My Profile',
@@ -218,7 +216,6 @@ export const resources = {
       saving: 'Saving',
       setPlan: 'Set plan',
       cancelNote: 'Your Pro access will stay active until your current period ends.',
-      proAdFreeNote: 'Pro includes an ad-free app experience.',
       subscriptionEndsAt: 'Pro plan end date',
       storeNotReady: 'Store connection is not ready yet. Please try again.',
       noProductConfigured: 'Subscription product is not configured for this platform.',
@@ -284,6 +281,16 @@ export const resources = {
       low: 'Low',
       medium: 'Medium',
       high: 'High',
+      tblFeatures: 'Features',
+      planFeatures_Free: 'Ad-supported',
+      planFeatures_Pro: 'Ad-free experience',
+      goProTitle: 'Pro benefits',
+      goProBody: 'Upgrade to Pro for a faster experience.',
+      whyGoPro: 'Why Pro?',
+      upsellReason1: 'A focused experience',
+      upsellReason2: 'Priority customer support',
+      upsellReason3: 'Support the development of new features',
+      upsellNote: 'Select “Pro” above and tap “Set Plan” to upgrade your plan.',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -521,11 +528,8 @@ export const resources = {
       accountTitle: 'Hesap',
       currentPlan: 'Mevcut plan',
       managePlan: 'Plan yönetimi',
-      helpCenter: 'Yardım Merkezi',
+      helpCenter: 'Yardım merkezi',
       logout: 'Çıkış yap',
-      plan_Free: 'Ücretsiz',
-      plan_Pro: 'Pro',
-      plan_Elite: 'Elite',
       tabStrategy: 'Strateji',
       tabChat: 'Sohbet',
       tabProfile: 'Profilim',
@@ -627,7 +631,6 @@ export const resources = {
       planNow: 'Mevcut plan {{plan}}.',
       error: 'Hata',
       couldNotUpdatePlan: 'Plan güncellenemedi. Lütfen tekrar deneyin.',
-      planOptions: 'Plan seçenekleri',
       plan: 'Plan',
       questionsQuota: 'Soru miktarı',
       price: 'Fiyat/Ay',
@@ -636,7 +639,6 @@ export const resources = {
       saving: 'Kaydediliyor',
       setPlan: 'Plan belirle',
       cancelNote: 'Pro ayrıcalıklarına erişimin, son abonelik tarihine kadar aktif kalacaktır.',
-      proAdFreeNote: 'Pro plan, reklamsız uygulama deneyimi sunar.',
       subscriptionEndsAt: 'Pro plan bitiş tarihi',
       storeNotReady: 'Store bağlantın hazır degil. Lütfen tekrar dene.',
       noProductConfigured: 'Pro Abonelik ürünü bu platform için yapılandırılmamış.',
@@ -689,7 +691,7 @@ export const resources = {
       player: 'Oyuncu',
       metrics: 'Metrikler',
       howScoutReportTitle: 'Keşif Raporu',
-      howScoutReport1: 'Keşif raporu; oyuncu kartı’nı, son 365 güne ait tüm mevcut istatistikleri ve ayrıca Güçlü Yönler, Zayıf Yönler & Endişeler analizini ve nihai bir Sonuç bölümünü içerir.',
+      howScoutReport1: 'Keşif raporu; oyuncu kartını, son 365 güne ait tüm mevcut istatistikleri ve ayrıca Güçlü Yönler, Zayıf Yönler & Endişeler analizini ve nihai bir Sonuç bölümünü içerir.',
       howScoutReport2: 'Yorumlar; oyuncunun temel kimliğini, takım kimliğini, fiziksel kimliğini ve bireysel performans metriklerini dikkate alacak şekilde oluşturulur.',
       howScoutReport3: 'Bu sayede portföyünüzde yer alan bir oyuncunun uyumunu, gelişim potansiyelini ve risklerini net bir şekilde analiz edebilirsiniz.',
       showMore: 'Daha fazla',
@@ -702,6 +704,16 @@ export const resources = {
       low: 'Düşük',
       medium: 'Orta',
       high: 'Yüksek',
+      tblFeatures: 'Özellikler',
+      planFeatures_Free: 'Reklam Destekli',
+      planFeatures_Pro: 'Reklamsız Deneyim',
+      goProTitle: 'Pro avantajlarını keşfet',
+      goProBody: 'Daha hızlı bir deneyim için Pro plana yükseltin.',
+      whyGoPro: 'Neden Pro?',
+      upsellReason1: 'Kesintisiz deneyim',
+      upsellReason2: 'Öncelikli kullanıcı desteği',
+      upsellReason3: 'Yeni özelliklerin geliştirilmesine destek olun',
+      upsellNote: 'Planınızı yükseltmek için yukarıdan ‘Pro’yu seçin ve ‘Plan belirle’ye basın.',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',
