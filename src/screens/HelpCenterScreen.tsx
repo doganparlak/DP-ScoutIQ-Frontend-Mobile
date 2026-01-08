@@ -240,6 +240,32 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
+              <Text style={styles.h3}>{t('howPlayerPortfolio', 'Player Portfolio')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t(
+                  'howPlayerPortfolio1',
+                  'The Player Portfolio is a watch list of players you have added for closer evaluation.'
+                )}
+                {'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t(
+                  'howPlayerPortfolio2',
+                  'Each row represents a player and displays key details such as name, gender, country, team, age, role, and potential.'
+                )}
+                {'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t(
+                  'howPlayerPortfolio3',
+                  'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.'
+                )}
+              </Text>
+            </View>
+
+          
+            <View style={styles.line} />
+
+            <View style={styles.block}>
               <Text style={styles.h3}>{t('howScoutReportTitle', 'Scouting Report')}</Text>
 
               <Text style={[styles.p, styles.justify]}>

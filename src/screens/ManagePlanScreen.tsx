@@ -8,6 +8,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -15,11 +16,7 @@ import { useTranslation } from 'react-i18next';
 
 import { BG, TEXT, PANEL, CARD, MUTED, LINE, ACCENT } from '@/theme';
 import type { Plan } from '@/services/api';
-import {
-  getMe,
-  activateIAPSubscription,
-  type ActivateIAPSubscriptionIn,
-} from '@/services/api';
+import { getMe, activateIAPSubscription, type ActivateIAPSubscriptionIn } from '@/services/api';
 
 import {
   initConnection,
@@ -39,10 +36,7 @@ const IOS_SKU = 'scoutwise_pro_monthly_ios'; // <- your App Store product id
 const ANDROID_SKU = 'scoutwise_pro_monthly_android'; // <- your Play Store product id
 const SUBS_SKU = Platform.select({ ios: IOS_SKU, android: ANDROID_SKU })!;
 
-const PLANS: Array<{ name: Plan; price: string }> = [
-  { name: 'Free', price: 'FREE' },
-  { name: 'Pro', price: '$2.99' },
-];
+const PLANS: Array<{ name: Plan }> = [{ name: 'Free' }, { name: 'Pro' }];
 
 export default function ManagePlan() {
   const nav = useNavigation();
@@ -64,15 +58,12 @@ export default function ManagePlan() {
         setSelected(cp);
         setSubscriptionEndAt(me.subscriptionEndAt ?? null);
       } catch {
-        // ignore
-        Alert.alert(
-              t('error', 'Error'),
-        );
+        Alert.alert(t('error', 'Error'));
       }
     })();
-  }, []);
+  }, [t]);
 
-  //  /**
+  ///**
   // ---- IAP init + listeners ----
   React.useEffect(() => {
     let purchaseSub: EventSubscription | null = null;
@@ -81,9 +72,10 @@ export default function ManagePlan() {
     const initIap = async () => {
       try {
         await initConnection({});
+        console.log('[IAP] initConnection ok');
         setIapReady(true);
       } catch (err) {
-
+        console.log('[IAP] initConnection failed', err);
       }
 
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
@@ -95,20 +87,15 @@ export default function ManagePlan() {
 
           if (platform === 'android') {
             const pAndroid = purchase as PurchaseAndroid;
-            // For server-side Google Play validation you need purchaseToken
             externalId = pAndroid.purchaseToken ?? pAndroid.transactionId ?? '';
           } else {
             const pIOS = purchase as PurchaseIOS;
-
-            // For App Store Server API we want the *original* transaction id
             const originalTxId =
               pIOS.originalTransactionIdentifierIOS ?? pIOS.transactionId;
-
             externalId = originalTxId ?? '';
           }
 
           if (!externalId) {
-            // Still finish the transaction to avoid it being re-delivered forever
             await finishTransaction({ purchase, isConsumable: false });
             setSaving(false);
             return;
@@ -116,13 +103,12 @@ export default function ManagePlan() {
 
           const payload: ActivateIAPSubscriptionIn = {
             platform,
-            product_id: purchase.productId, // e.g. "scoutwise_pro_monthly_ios"
-            external_id: externalId,        // iOS: originalTxId, Android: purchaseToken
+            product_id: purchase.productId,
+            external_id: externalId,
           };
 
           const res = await activateIAPSubscription(payload);
 
-          // Always finish the transaction (non-consumable subscription)
           await finishTransaction({ purchase, isConsumable: false });
 
           if (res?.ok) {
@@ -155,8 +141,6 @@ export default function ManagePlan() {
         }
       });
 
-
-
       errorSub = purchaseErrorListener(err => {
         if (err.code === ErrorCode.UserCancelled) {
           setSaving(false);
@@ -175,42 +159,42 @@ export default function ManagePlan() {
       endConnection();
     };
   }, [nav, t]);
-   //*/
+  //*/
+
   const formattedEndDate = React.useMemo(() => {
-  if (!subscriptionEndAt) return null;
-  const d = new Date(subscriptionEndAt);
-  if (Number.isNaN(d.getTime())) return null;
+    if (!subscriptionEndAt) return null;
+    const d = new Date(subscriptionEndAt);
+    if (Number.isNaN(d.getTime())) return null;
 
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
 
-  return `${day}.${month}.${year}`;
-}, [subscriptionEndAt]);
+    return `${day}.${month}.${year}`;
+  }, [subscriptionEndAt]);
 
   const onSave = async () => {
     // 0) If user selected the same plan they already have, block and warn
-      if (selected === currentPlan) {
-        if (currentPlan === 'Pro') {
-          Alert.alert(
-            t('alreadyProTitle', 'Already on Pro'),
-            t('alreadyProBody', 'You already have Pro access.'),
-          );
-        } else {
-          Alert.alert(
-            t('alreadyFreeTitle', 'Already on Free'),
-            t('alreadyFreeBody', 'Your plan is already Free.'),
-          );
-        }
-        return;
+    if (selected === currentPlan) {
+      if (currentPlan === 'Pro') {
+        Alert.alert(
+          t('alreadyProTitle', 'Already on Pro'),
+          t('alreadyProBody', 'You already have Pro access.'),
+        );
+      } else {
+        Alert.alert(
+          t('alreadyFreeTitle', 'Already on Free'),
+          t('alreadyFreeBody', 'Your plan is already Free.'),
+        );
       }
-   
+      return;
+    }
+
     // 1) Pro -> Free downgrade just inform stores handle those
     if (selected === 'Free') {
       if (currentPlan === 'Pro') {
         const endDateText =
-          formattedEndDate ??
-          t('currentPeriodEnd', 'the end of your current billing period');
+          formattedEndDate ?? t('currentPeriodEnd', 'the end of your current billing period');
         const message =
           Platform.OS === 'ios'
             ? t(
@@ -223,14 +207,13 @@ export default function ManagePlan() {
                 'To cancel your Pro plan, please manage it in your Google Play subscription settings. You will keep Pro access until {{date}}.',
                 { date: endDateText },
               );
-        Alert.alert(
-          t('manageSubscriptionTitle', 'Manage subscription'),
-          message,
-          [{ text: t('ok', 'OK') }],
-        );
+
+        Alert.alert(t('manageSubscriptionTitle', 'Manage subscription'), message, [
+          { text: t('ok', 'OK') },
+        ]);
         return;
       }
-            // If somehow not Pro but switching to Free, just explain nothing to do
+
       Alert.alert(
         t('alreadyFreeTitle', 'Already on Free'),
         t('alreadyFreeBody', 'Your plan is already Free.'),
@@ -250,29 +233,22 @@ export default function ManagePlan() {
     if (!SUBS_SKU) {
       Alert.alert(
         t('error', 'Error'),
-        t(
-          'noProductConfigured',
-          'Subscription product is not configured for this platform.',
-        ),
+        t('noProductConfigured', 'Subscription product is not configured for this platform.'),
       );
       return;
     }
 
     try {
       setSaving(true);
-      // /**
+      ///**
       await requestPurchase({
-        type: 'subs',       
+        type: 'subs',
         request: {
-          ios: {
-            sku: SUBS_SKU,
-          },
-          android: {
-            skus: [SUBS_SKU],
-          },
+          ios: { sku: SUBS_SKU },
+          android: { skus: [SUBS_SKU] },
         },
       });
-      // */
+      //*/
     } catch (e: any) {
       setSaving(false);
       Alert.alert(
@@ -280,26 +256,6 @@ export default function ManagePlan() {
         t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
       );
     }
-  };
-
-  const Row = ({ p }: { p: (typeof PLANS)[number] }) => {
-    const active = selected === p.name;
-    return (
-      <Pressable
-        onPress={() => setSelected(p.name)}
-        style={({ pressed }) => [
-          styles.row,
-          { backgroundColor: CARD },
-          active && styles.rowActive,
-          pressed && { opacity: 0.9 },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`${p.name} plan row`}
-      >
-        <Text style={[styles.cell, styles.name, active && styles.cellActive]}>{p.name}</Text>
-        <Text style={[styles.cell, active && styles.cellActive]}>{p.price}</Text>
-      </Pressable>
-    );
   };
 
   return (
@@ -317,98 +273,187 @@ export default function ManagePlan() {
         <Text style={styles.title}>{t('managePlan', 'Manage Plan')}</Text>
       </View>
 
-      <View style={styles.card}>
-        {/* 1) Plans table */}
-        <Text style={styles.sectionTitle}>{t('planOptions', 'Plan options')}</Text>
-        <View style={styles.table}>
+      {/* ✅ Scrollable content */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          {/* 1) Plans table */}
           <View style={[styles.row, styles.headerRow]}>
-            <Text style={[styles.cell, styles.headerCell, styles.name]}>
+            <Text style={[styles.cell, styles.headerCell, styles.planCol]}>
               {t('plan', 'Plan')}
             </Text>
-            <Text style={[styles.cell, styles.headerCell]}>
-              {t('price', 'Price/Month')}
+            <Text style={[styles.cell, styles.headerCell, styles.featureCol]}>
+              {t('tblFeatures', 'Features')}
             </Text>
           </View>
+
           {PLANS.map(p => (
-            <Row key={p.name} p={p} />
+            <Pressable
+              key={p.name}
+              onPress={() => setSelected(p.name)}
+              style={({ pressed }) => [
+                styles.row,
+                { backgroundColor: CARD },
+                selected === p.name && styles.rowActive,
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <Text style={[styles.cell, styles.planCol, selected === p.name && styles.cellActive]}>
+                {p.name}
+              </Text>
+
+              <Text
+                style={[
+                  styles.cell,
+                  styles.featureCol,
+                  selected === p.name && styles.cellActive,
+                ]}
+              >
+                {p.name === 'Free'
+                  ? t('planFeatures_Free', 'Ad-supported')
+                  : t('planFeatures_Pro', 'Ad-free experience')}
+              </Text>
+            </Pressable>
           ))}
-        </View>
 
-        {/* 1.5) Subscription end date (Pro only) */}
-        {currentPlan === 'Pro' && formattedEndDate && (
-          <View style={styles.subscriptionRow}>
-            <Text style={styles.subscriptionLabel}>
-              {t('subscriptionEndsAt', 'Pro subscription end date')}
-            </Text>
-            <Text style={styles.subscriptionValue}>{formattedEndDate}</Text>
-          </View>
-        )}
+          {/* 1.5) Subscription end date (Pro only) */}
+          {currentPlan === 'Pro' && formattedEndDate && (
+            <View style={styles.subscriptionRow}>
+              <Text style={styles.subscriptionLabel}>
+                {t('subscriptionEndsAt', 'Pro subscription end date')}
+              </Text>
+              <Text style={styles.subscriptionValue}>{formattedEndDate}</Text>
+            </View>
+          )}
 
-        {/* 2) Current plan */}
-        <View style={styles.currentWrap}>
-          <Text style={styles.currentLabel}>{t('currentPlan', 'Current plan')}</Text>
-          <View style={styles.currentPillRow}>
-            <View style={styles.currentPillBox}>
-              <View style={styles.currentPill}>
-                <Text style={styles.currentPillText}>{currentPlan}</Text>
+          {/* 2) Current plan */}
+          <View style={styles.currentWrap}>
+            <Text style={styles.currentLabel}>{t('currentPlan', 'Current plan')}</Text>
+            <View style={styles.currentPillRow}>
+              <View style={styles.currentPillBox}>
+                <View style={styles.currentPill}>
+                  <Text style={styles.currentPillText}>{currentPlan}</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        {/* 3) Select plan (segmented) */}
-        <View style={{ marginTop: 8 }}>
-          <Text style={styles.label}>{t('selectPlan', 'Select plan')}</Text>
-          <View style={styles.options}>
-            {PLANS.map(p => {
-              const active = selected === p.name;
-              return (
-                <Pressable
-                  key={p.name}
-                  onPress={() => setSelected(p.name)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    active && styles.optionActive,
-                    pressed && { transform: [{ scale: 0.98 }] },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t('choose', 'Choose')} ${p.name}`}
-                >
-                  <Text style={[styles.optionText, active && styles.optionTextActive]}>
-                    {p.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          {/* 3) Select plan (segmented) */}
+          <View style={{ marginTop: 8 }}>
+            <Text style={styles.label}>{t('selectPlan', 'Select plan')}</Text>
+            <View style={styles.options}>
+              {PLANS.map(p => {
+                const active = selected === p.name;
+                return (
+                  <Pressable
+                    key={p.name}
+                    onPress={() => setSelected(p.name)}
+                    style={({ pressed }) => [
+                      styles.option,
+                      active && styles.optionActive,
+                      pressed && { transform: [{ scale: 0.98 }] },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t('choose', 'Choose')} ${p.name}`}
+                  >
+                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                      {p.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
+
+          {/* Save */}
+          <TouchableOpacity
+            onPress={onSave}
+            disabled={saving}
+            accessibilityRole="button"
+            style={[styles.primaryBtn, saving && { opacity: 0.6 }]}
+          >
+            <Text style={styles.primaryBtnText}>
+              {saving ? t('saving', 'Saving...') : t('setPlan', 'Set plan')}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Cancel note */}
+          <Text style={styles.cancelNote}>
+            {t(
+              'cancelNote',
+              'To cancel your Pro subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
+            )}
+          </Text>
         </View>
 
-        {/* Save */}
-        <TouchableOpacity
-          onPress={onSave}
-          disabled={saving}
-          accessibilityRole="button"
-          style={[styles.primaryBtn, saving && { opacity: 0.6 }]}
-        >
-          <Text style={styles.primaryBtnText}>
-            {saving ? t('saving', 'Saving...') : t('setPlan', 'Set plan')}
-          </Text>
-        </TouchableOpacity>
+        {/* Pro upsell (separate table below main frame) */}
+        {currentPlan === 'Free' && (
+          <View style={styles.proUpsellTable}>
+            <Text style={styles.proUpsellTitle}>{t('goProTitle', 'Pro benefits')}</Text>
 
-        {/* Cancel note */}
-        <Text style={styles.cancelNote}>
-          {t(
-            'cancelNote',
-            'To cancel your Pro subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
-          )}
-        </Text>
-      </View>
+            <Text style={styles.proUpsellBody}>
+              {t(
+                'goProBody',
+                'Upgrade to Pro for a faster experience.',
+              )}
+            </Text>
+          <View style={styles.proUpsellTableInner}>
+            <View style={[styles.proUpsellRow, styles.proUpsellHeaderRow]}>
+              <View style={styles.proUpsellCellWrap}>
+                <Text style={[styles.proUpsellCell, styles.proUpsellHeaderCell]}>
+                  {t('whyGoPro', 'Why Pro?')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.proUpsellRow}>
+              <View style={styles.proUpsellCellWrap}>
+                <Text style={styles.proUpsellCell}>
+                  {t('upsellReason1', 'A focused experience')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.proUpsellRow}>
+              <View style={styles.proUpsellCellWrap}>
+                <Text style={styles.proUpsellCell}>
+                  {t('upsellReason2', 'Priority customer support')}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.proUpsellRow}>
+              <View style={styles.proUpsellCellWrap}>
+                <Text style={styles.proUpsellCell}>
+                  {t('upsellReason3', 'Support the development of new features')}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+
+            <Text style={styles.proUpsellFootnote}>
+              {t('upsellNote', 'Select “Pro” above and tap “Set plan” to upgrade.')}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
+
+  // ✅ scrolling
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 24 },
+
+  planCol: { flex: 1, textAlign: 'center' },
+  featureCol: { flex: 1, textAlign: 'center' },
 
   // header (title below back)
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
@@ -430,13 +475,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: { color: MUTED, fontWeight: '600', marginBottom: 10 },
 
-  // table
-  table: {
-    borderWidth: 1,
-    borderColor: LINE,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
+  // table rows
   row: {
     flexDirection: 'row',
     paddingVertical: 12,
@@ -449,7 +488,6 @@ const styles = StyleSheet.create({
   cell: { flex: 1, color: TEXT, fontSize: 14, textAlign: 'center' },
   cellActive: { color: ACCENT },
   headerCell: { color: MUTED, fontWeight: '700' },
-  name: { flex: 1.2, textAlign: 'left' },
 
   // subscription row
   subscriptionRow: {
@@ -511,6 +549,55 @@ const styles = StyleSheet.create({
 
   cancelNote: {
     marginTop: 8,
+    color: MUTED,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+
+  // ---- Pro upsell (separate table below main frame) ----
+  proUpsellTable: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: LINE,
+  },
+  proUpsellTitle: { color: ACCENT, fontWeight: '900', fontSize: 16, textAlign: 'center' },
+  proUpsellBody: { color: MUTED, fontSize: 12, textAlign: 'center', marginTop: 6, lineHeight: 16 },
+
+  proUpsellTableInner: {
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+  },
+  proUpsellRow: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+    backgroundColor: CARD,
+  },
+  proUpsellHeaderRow: { backgroundColor: '#151716', borderTopWidth: 0 },
+
+  // text
+  proUpsellCell: { textAlign: 'center', color: TEXT, fontSize: 13 },
+  proUpsellHeaderCell: { color: MUTED, fontWeight: '800' },
+
+  // ✅ true "cell" wrapper for vertical alignment
+  proUpsellCellWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  proUpsellFootnote: {
+    marginTop: 10,
     color: MUTED,
     fontSize: 12,
     textAlign: 'center',

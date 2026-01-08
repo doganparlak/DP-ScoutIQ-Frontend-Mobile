@@ -10,7 +10,7 @@ import {
 import mobileAds from 'react-native-google-mobile-ads';
 import { preloadInterstitial } from '@/ads/interstitial';
 import { preloadRewarded } from '@/ads/rewarded';
- // */
+//  */
 export default function App() {
   // /**
   React.useEffect(() => {
@@ -23,7 +23,7 @@ export default function App() {
       })
       .catch((e) => {});
   }, []);
-   // */
+  //  */
 
   return (
     <LanguageProvider>
