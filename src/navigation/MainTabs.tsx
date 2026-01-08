@@ -9,6 +9,7 @@ import HelpCenter from '@/screens/HelpCenterScreen';
 import { ACCENT, MUTED, PANEL, LINE } from '@/theme';
 import type { MainTabsParamList, RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 const ProfileStack = createNativeStackNavigator<RootStackParamList>();
@@ -39,31 +40,40 @@ export default function MainTabs() {
         },
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
-        tabBarLabelStyle: { fontWeight: '800', fontSize: 11 },
+        tabBarLabelStyle: { fontWeight: '800', fontSize: 12, marginTop: 6 },
       }}
     >
+      
       <Tab.Screen
         name="Strategy"
         component={StrategyScreen}
         options={{
           tabBarLabel: t('tabStrategy', 'Strategy'),
-          tabBarAccessibilityLabel: t('tabStrategy', 'Strategy'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="analytics-outline" size={Math.max(size, 16)} color={color} />
+          ),
         }}
       />
+      
       <Tab.Screen
         name="Chat"
         component={ChatScreen}
         options={{
           tabBarLabel: t('tabChat', 'Chat'),
-          tabBarAccessibilityLabel: t('tabChat', 'Chat'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-outline" size={Math.max(size, 16)} color={color} />
+          ),
         }}
       />
+      
       <Tab.Screen
         name="Profile"
         component={ProfileStackScreen}
         options={{
           tabBarLabel: t('tabProfile', 'My Profile'),
-          tabBarAccessibilityLabel: t('tabProfile', 'My Profile'),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={Math.max(size, 16)} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
