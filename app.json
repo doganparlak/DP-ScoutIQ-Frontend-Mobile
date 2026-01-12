@@ -18,8 +18,9 @@
     },
     "android": {
       "package": "com.dpformance.dpscoutiq",
-      "icon": "./assets/scoutwise_logo_android.png"
+      "icon":"./assets/scoutwise_logo_circular_transparent.png"
     },
+
     "web": {
       "bundler": "metro"
     },
