@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Trash2 } from 'lucide-react-native';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert,
+  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -324,6 +324,15 @@ export default function HelpCenter() {
               <Text style={styles.sendText}>{hasSentThisLogin ? t('sent', 'Sent') : t('send', 'Send')}</Text>
             </Pressable>
 
+            <Pressable
+              onPress={() => Linking.openURL('https://scoutwise.ai')}
+              accessibilityRole="link"
+              style={({ pressed }) => [{ marginTop: 12, opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Text style={styles.footerLink}>scoutwise.ai</Text>
+            </Pressable>
+
+
             {hasSentThisLogin && (
               <Text style={styles.sentNote}>{t('msgHasBeenSent', 'Your message has been sent.')}</Text>
             )}
@@ -396,6 +405,13 @@ const styles = StyleSheet.create({
   deleteContent: { flexDirection: 'row', alignItems: 'center' },
 
   bullet: { color: ACCENT, fontWeight: '800' },
+  footerLink: {
+    color: MUTED,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    fontWeight: '700',
+  },
+
 });
 
 
