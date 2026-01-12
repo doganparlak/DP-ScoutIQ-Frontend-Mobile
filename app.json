@@ -17,7 +17,11 @@
       }
     },
     "android": {
-      "package": "com.dpformance.dpscoutiq"
+      "package": "com.dpformance.dpscoutiq",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/scoutwise_android_foreground.png",
+        "backgroundColor": "#16A34A"
+      }
     },
     "web": {
       "bundler": "metro"
