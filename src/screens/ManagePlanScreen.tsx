@@ -199,13 +199,11 @@ export default function ManagePlan() {
           Platform.OS === 'ios'
             ? t(
                 'downgradeInfoIOS',
-                'To cancel your Pro plan, please manage it in your Apple subscription settings. You will keep Pro access until {{date}}.',
-                { date: endDateText },
+                'To cancel your Pro plan, please manage it in your Apple subscription settings.',
               )
             : t(
                 'downgradeInfoAndroid',
-                'To cancel your Pro plan, please manage it in your Google Play subscription settings. You will keep Pro access until {{date}}.',
-                { date: endDateText },
+                'To cancel your Pro plan, please manage it in your Google Play subscription settings.',
               );
 
         Alert.alert(t('manageSubscriptionTitle', 'Manage subscription'), message, [
