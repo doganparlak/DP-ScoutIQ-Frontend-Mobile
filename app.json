@@ -18,7 +18,10 @@
     },
     "android": {
       "package": "com.dpformance.dpscoutiq",
-      "icon":"./assets/scoutwise_logo_circular_transparent.png"
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/scoutwise_logo_green_foreground.png",
+        "backgroundColor": "#1B9346"
+      }
     },
 
     "web": {
