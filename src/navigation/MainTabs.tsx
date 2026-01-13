@@ -40,7 +40,7 @@ export default function MainTabs() {
         },
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
-        tabBarLabelStyle: { fontWeight: '800', fontSize: 12, marginTop: 6 },
+        tabBarLabelStyle: { fontWeight: '800', fontSize: 10, marginTop: 4 },
       }}
     >
       
@@ -50,7 +50,7 @@ export default function MainTabs() {
         options={{
           tabBarLabel: t('tabStrategy', 'Strategy'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="analytics-outline" size={Math.max(size, 16)} color={color} />
+            <Ionicons name="analytics-outline" size={24} color={color} />
           ),
         }}
       />
@@ -61,7 +61,7 @@ export default function MainTabs() {
         options={{
           tabBarLabel: t('tabChat', 'Chat'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-outline" size={Math.max(size, 16)} color={color} />
+            <Ionicons name="chatbox-ellipses-outline" size={24} color={color} />
           ),
         }}
       />
@@ -72,7 +72,7 @@ export default function MainTabs() {
         options={{
           tabBarLabel: t('tabProfile', 'My Profile'),
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={Math.max(size, 16)} color={color} />
+            <Ionicons name="person-circle-outline" size={24} color={color} />
           ),
         }}
       />
