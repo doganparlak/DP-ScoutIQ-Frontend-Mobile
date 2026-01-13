@@ -6,7 +6,7 @@ const KEY = 'ads.chat.queryCount.v1';
 // show on 3,5,7,9...
 export function shouldShowFullscreenAd(queryCount: number) {
   if (queryCount < 3) return false;
-  return (queryCount - 3) % 5 === 0;
+  return (queryCount - 3) % 3 === 0;
 }
 
 export async function incrementChatQueryCount(): Promise<number> {
