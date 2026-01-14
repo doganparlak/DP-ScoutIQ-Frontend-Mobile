@@ -152,7 +152,6 @@ const RANGES: Record<string, { min: number; max: number }> = {
   'Assists': { min: 0, max: 0.4 },
   'Minutes Played': { min: 0, max: 90 },
   'Dribble Attempts': { min: 0, max: 2.0 },
-  'Goalkeeper Goals Conceded': { min: 0, max: 2.0 },
   'Tackles': { min: 0, max: 3.0 },
   'Turn Over': { min: 0, max: 3.0 },
   'Fouls Drawn': { min: 0, max: 2.0 },
