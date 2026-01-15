@@ -480,7 +480,7 @@ export const resources = {
       passwordsNoMatch: 'Şifreler eşleşmiyor.',
       savePassword: 'Şifreyi kaydet',
       setNewPwFailed: 'Yeni şifren ayarlanamadı. Lütfen tekrar dene.',
-      tagline: 'Yapay zekâ destekli oyuncu keşfi ve transfer analitiği',
+      tagline: 'Yapay Zekâ Destekli Oyuncu Keşfi ve Transfer Analitiği',
       startChatting: 'Sohbete Başla',
       updateStrategyHint: 'Stratejini istediğin zaman güncelleyebilirsin.',
       strategyTitle: 'Takım Stratejisi / Oyuncu Keşfi Felsefesi',
