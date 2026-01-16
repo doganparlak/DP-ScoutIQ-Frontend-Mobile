@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
 
   createdByTitle: {
     textAlign: 'center',
-    marginTop: 120,
+    marginTop: 75,
     letterSpacing: 0.3,
     fontSize: 24,
     lineHeight: 30,
