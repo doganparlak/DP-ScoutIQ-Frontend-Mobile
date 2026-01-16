@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -6,6 +6,10 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
+  FlatList,
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import {
   toSpiderPoints,
@@ -47,6 +51,8 @@ type ParsedReport = {
   weaknesses: string[];
   conclusion: string[];
 };
+
+type PageItem = { key: string; title: string; node: React.ReactNode };
 
 function stripBullet(s: string) {
   return s.replace(/^\s*[-•]\s*/, '').trim();
@@ -142,10 +148,20 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
   return groups;
 }
 
-
 export default function ScoutingReport({ visible, onClose, player, report }: Props) {
   const [page, setPage] = useState(0);
   const { t } = useTranslation();
+
+  const [footerH, setFooterH] = useState(0);
+  const onFooterLayout = (e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height);
+    if (h > 0 && h !== footerH) setFooterH(h);
+  };
+
+  // ✅ width of the "content area" inside the card (so paging doesn't change layout)
+  const [pagerWidth, setPagerWidth] = useState<number>(0);
+
+  const listRef = useRef<FlatList<PageItem> | null>(null);
 
   const parsed = useMemo(() => parseReportText(report?.content || ''), [report?.content]);
   const spiderGroups = useMemo(() => buildSpiderGroupsFromReport(report), [report]);
@@ -154,53 +170,49 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
     if (visible) setPage(0);
   }, [visible, spiderGroups.length]);
 
+  const pages = useMemo<PageItem[]>(() => {
+    const playerPage: PageItem = {
+      key: 'player',
+      title: t('player', 'Player'),
+      node: (
+        <View style={{ gap: 12 }}>
+          <PlayerCard player={player} titleAlign="center" />
 
-  const pages = useMemo(() => {
-    const playerPage = {
-    key: 'player',
-    title: t('player', 'Player'),
-    node: (
-      <View style={{ gap: 12 }}>
-        <PlayerCard player={player} titleAlign="center" />
+          <Text style={styles.createdByTitle}>
+            {!!t('createdByPrefix', { defaultValue: '' }) && (
+              <Text style={styles.createdByPrefix}>
+                {t('createdByPrefix')}{' '}
+              </Text>
+            )}
 
-        <Text style={styles.createdByTitle}>
-          {!!t('createdByPrefix', { defaultValue: '' }) && (
-            <Text style={styles.createdByPrefix}>
-              {t('createdByPrefix')}{' '}
-            </Text>
-          )}
+            <Text style={styles.brandScout}>{t('brandScout', 'Scout')}</Text>
+            <Text style={styles.brandWise}>{t('brandWise', 'Wise')}</Text>
 
-          <Text style={styles.brandScout}>{t('brandScout', 'Scout')}</Text>
-          <Text style={styles.brandWise}>{t('brandWise', 'Wise')}</Text>
+            {!!t('createdBySuffix', { defaultValue: '' }) && (
+              <Text style={styles.createdByPrefix}>
+                {' '}{t('createdBySuffix')}
+              </Text>
+            )}
+          </Text>
 
-          {!!t('createdBySuffix', { defaultValue: '' }) && (
-            <Text style={styles.createdByPrefix}>
-              {' '}{t('createdBySuffix')}
-            </Text>
-          )}
-        </Text>
-
-
-
-        <Text style={{ color: MUTED, lineHeight: 18, textAlign: 'center' }}>
-          {t('tapArrowsToNavigate', 'Tap arrows to navigate the report.')}
-        </Text>
-      </View>
-    ),
-  };
+          <Text style={{ color: MUTED, lineHeight: 18, textAlign: 'center' }}>
+            {t('tapArrowsToNavigate', 'Tap arrows to navigate the report.')}
+          </Text>
+        </View>
+      ),
+    };
 
     if (spiderGroups.length === 0) return [playerPage];
 
-    const out: Array<{ key: string; title: string; node: React.ReactNode }> = [playerPage];
+    const out: PageItem[] = [playerPage];
 
     spiderGroups.forEach((g, idx) => {
       const title = t(g.titleKey, g.fallbackTitle);
       const isRadar = (g.points?.length ?? 0) >= 4;
-
       const isErrors = g.titleKey === 'errors_discipline';
 
       const node = isErrors ? (
-        <View style={{ marginTop: -5,width: '100%', alignItems: 'center' }}>
+        <View style={{ marginTop: -5, width: '100%', alignItems: 'center' }}>
           <View style={{ width: '100%', maxWidth: 620 }}>
             <ErrorsDisciplineTiles
               title={title}
@@ -220,13 +232,8 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
         <SpiderChart title={title} points={g.points} />
       );
 
-      out.push({
-        key: `metrics-${idx}`,
-        title,
-        node,
-      });
+      out.push({ key: `metrics-${idx}`, title, node });
     });
-
 
     out.push({
       key: 'strengths',
@@ -271,26 +278,25 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
     });
 
     out.push({
-        key: 'conclusion',
-        title: t('conclusion', 'Conclusion'),
-        node: (
-            <View style={{ gap: 10 }}>
-            {parsed.conclusion.length === 0 ? (
-                <Text style={{ color: MUTED }}>
-                {t('noConclusionFound', 'No conclusion found.')}
-                </Text>
-            ) : (
-                parsed.conclusion.map((s, i) => (
-                <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                    <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
-                    <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-                </View>
-                ))
-            )}
+      key: 'conclusion',
+      title: t('conclusion', 'Conclusion'),
+      node: (
+        <View style={{ gap: 10 }}>
+          {parsed.conclusion.length === 0 ? (
+            <Text style={{ color: MUTED }}>
+              {t('noConclusionFound', 'No conclusion found.')}
+            </Text>
+          ) : (
+            parsed.conclusion.map((s, i) => (
+              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
+                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
+                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
+              </View>
+            ))
+          )}
         </View>
-        ),
+      ),
     });
-
 
     return out;
   }, [player, parsed, spiderGroups, t]);
@@ -299,8 +305,38 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
   const canPrev = page > 0;
   const canNext = page < last;
 
-  const goPrev = () => setPage((p) => Math.max(0, p - 1));
-  const goNext = () => setPage((p) => Math.min(last, p + 1));
+  const scrollToPage = useCallback(
+    (nextIndex: number, animated = true) => {
+      const idx = Math.max(0, Math.min(last, nextIndex));
+      setPage(idx);
+      if (pagerWidth > 0) {
+        listRef.current?.scrollToIndex({ index: idx, animated });
+      }
+    },
+    [last, pagerWidth]
+  );
+
+  const goPrev = () => scrollToPage(page - 1);
+  const goNext = () => scrollToPage(page + 1);
+
+  // when opening, reset to first page (no animation)
+  useEffect(() => {
+    if (visible) {
+      scrollToPage(0, false);
+    }
+  }, [visible, scrollToPage]);
+
+  const onPagerLayout = (e: LayoutChangeEvent) => {
+    const w = Math.round(e.nativeEvent.layout.width);
+    if (w > 0 && w !== pagerWidth) setPagerWidth(w);
+  };
+
+  const onSwipeEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (pagerWidth <= 0) return;
+    const x = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(x / pagerWidth);
+    if (idx !== page) setPage(idx);
+  };
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
@@ -323,9 +359,37 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
 
           <View style={styles.headerDivider} />
 
-          <ScrollView contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator>
-            {pages[page]?.node}
-          </ScrollView>
+          {/* ✅ Same spot as before, but now supports swipe. Width measured from this container. */}
+          <View onLayout={onPagerLayout} style={{ flex: 1, paddingBottom: 65 }}>
+            {pagerWidth > 0 ? (
+              <FlatList
+                ref={listRef}
+                data={pages}
+                keyExtractor={(item) => item.key}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onSwipeEnd}
+                getItemLayout={(_, index) => ({
+                  length: pagerWidth,
+                  offset: pagerWidth * index,
+                  index,
+                })}
+                renderItem={({ item }) => (
+                  <View style={{ width: pagerWidth }}>
+                    <ScrollView
+                      contentContainerStyle={{ paddingBottom: 0}} // ✅ ensures content ends above footer line
+                      showsVerticalScrollIndicator
+                    >
+                      {item.node}
+                    </ScrollView>
+
+                  </View>
+                )}
+              />
+            ) : null}
+          </View>
+
 
           <View style={styles.footer}>
             <Pressable
@@ -390,6 +454,7 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     padding: 14,
     ...shadows.card,
+    position: 'relative', 
   },
   header: {
     flexDirection: 'row',
@@ -408,8 +473,11 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   footer: {
-    marginTop: 10,
-    paddingTop: 10,
+    position: 'absolute',   // ✅ float footer
+    left: 14,
+    right: 14,
+    bottom: 22,             // ✅ move up/down here (try 18–28)
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: LINE,
     flexDirection: 'row',
@@ -441,21 +509,21 @@ const styles = StyleSheet.create({
 
   createdByTitle: {
     textAlign: 'center',
-    marginTop: 120,        // ✅ don't use 200; it will break on small screens
+    marginTop: 120,
     letterSpacing: 0.3,
     fontSize: 24,
     lineHeight: 30,
   },
   createdByPrefix: {
-    color: MUTED,         // or TEXT with opacity
-    fontWeight: '600',    // ✅ not as bold as ScoutWise
+    color: MUTED,
+    fontWeight: '600',
   },
   brandScout: {
-    color: TEXT,          // ✅ white
+    color: TEXT,
     fontWeight: '900',
   },
   brandWise: {
-    color: ACCENT,        // ✅ green
+    color: ACCENT,
     fontWeight: '900',
-  },  
+  },
 });
