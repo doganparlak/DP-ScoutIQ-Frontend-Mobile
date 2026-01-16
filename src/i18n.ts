@@ -291,6 +291,10 @@ export const resources = {
       upsellReason2: 'Priority customer support',
       upsellReason3: 'Support the development of new features',
       upsellNote: 'Select “Pro” above and tap “Set Plan” to upgrade your plan.',
+      createdByPrefix: "Created by",
+      createdBySuffix: "",
+      brandScout: "SCOUT",
+      brandWise: "WISE",
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -714,6 +718,10 @@ export const resources = {
       upsellReason2: 'Öncelikli kullanıcı desteği',
       upsellReason3: 'Yeni özelliklerin geliştirilmesine destek olun',
       upsellNote: 'Planınızı yükseltmek için yukarıdan ‘Pro’yu seçin ve ‘Plan belirle’ye basın.',
+      createdByPrefix: "",
+      createdBySuffix: "imzasıyla",
+      brandScout: "SCOUT",
+      brandWise: "WISE",
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',

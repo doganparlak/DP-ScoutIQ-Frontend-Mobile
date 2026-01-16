@@ -162,7 +162,27 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
     node: (
       <View style={{ gap: 12 }}>
         <PlayerCard player={player} titleAlign="center" />
-        <Text style={{ color: MUTED, lineHeight: 18 }}>
+
+        <Text style={styles.createdByTitle}>
+          {!!t('createdByPrefix', { defaultValue: '' }) && (
+            <Text style={styles.createdByPrefix}>
+              {t('createdByPrefix')}{' '}
+            </Text>
+          )}
+
+          <Text style={styles.brandScout}>{t('brandScout', 'Scout')}</Text>
+          <Text style={styles.brandWise}>{t('brandWise', 'Wise')}</Text>
+
+          {!!t('createdBySuffix', { defaultValue: '' }) && (
+            <Text style={styles.createdByPrefix}>
+              {' '}{t('createdBySuffix')}
+            </Text>
+          )}
+        </Text>
+
+
+
+        <Text style={{ color: MUTED, lineHeight: 18, textAlign: 'center' }}>
           {t('tapArrowsToNavigate', 'Tap arrows to navigate the report.')}
         </Text>
       </View>
@@ -180,18 +200,18 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       const isErrors = g.titleKey === 'errors_discipline';
 
       const node = isErrors ? (
-        <View style={{ width: '100%', alignItems: 'center' }}>
+        <View style={{ marginTop: -5,width: '100%', alignItems: 'center' }}>
           <View style={{ width: '100%', maxWidth: 620 }}>
             <ErrorsDisciplineTiles
               title={title}
               points={g.points}
-              collapsedCount={2}
+              collapsedCount={3}
               defaultCollapsed
             />
           </View>
         </View>
       ) : isRadar ? (
-        <View style={{ marginLeft: 28, paddingRight: -28, alignItems: 'center' }}>
+        <View style={{ marginTop: -25, marginLeft: 40, alignItems: 'center' }}>
           <View style={{ transform: [{ scale: 0.90 }] }}>
             <SpiderChart title={title} points={g.points} />
           </View>
@@ -363,7 +383,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 700,
-    maxHeight: '88%',
+    height: '60%',
     backgroundColor: CARD,
     borderRadius: 18,
     borderWidth: 1,
@@ -418,4 +438,24 @@ const styles = StyleSheet.create({
   },
   dotActive: { backgroundColor: ACCENT },
   dotInactive: { backgroundColor: LINE },
+
+  createdByTitle: {
+    textAlign: 'center',
+    marginTop: 120,        // ✅ don't use 200; it will break on small screens
+    letterSpacing: 0.3,
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  createdByPrefix: {
+    color: MUTED,         // or TEXT with opacity
+    fontWeight: '600',    // ✅ not as bold as ScoutWise
+  },
+  brandScout: {
+    color: TEXT,          // ✅ white
+    fontWeight: '900',
+  },
+  brandWise: {
+    color: ACCENT,        // ✅ green
+    fontWeight: '900',
+  },  
 });

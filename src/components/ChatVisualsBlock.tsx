@@ -102,7 +102,7 @@ function ChatVisualsBlockInner({ players }: Props) {
                   <ErrorsDisciplineTiles
                     title={t('errors_discipline', 'Errors & Discipline')}
                     points={errors}
-                    collapsedCount={2}
+                    collapsedCount={3}
                     defaultCollapsed
                   />
                 ) : null}
