@@ -19,10 +19,8 @@ import WelcomeCard from '@/components/WelcomeCard';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
 
 import { healthcheck, sendChat, resetSession, getMe } from '@/services/api';
- ///**
 import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
 import { showInterstitialSafely } from '@/ads/interstitial';
- //*/
 import { ACCENT, BG } from '@/theme';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';

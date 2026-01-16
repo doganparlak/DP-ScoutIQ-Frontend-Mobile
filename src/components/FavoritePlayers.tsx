@@ -21,9 +21,7 @@ import {
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
-///**
 import {ensureRewardedLoaded,  showRewardedSafely } from '../ads/rewarded';
-//*/
 type PlayerRow = {
   id: string;
   name: string;
@@ -399,12 +397,10 @@ const handleReportPress = async (player: PlayerRow) => {
     allowReport(player);
     return;
   }
-
   // FREE: try rewarded, but fallback to report on timeout
   try {
     const timeoutMs = 15000;
-
-   // /**
+    ///**
     const ready = await ensureRewardedLoaded(timeoutMs);
 
     // ✅ If ad didn't become ready in time, let user see the report

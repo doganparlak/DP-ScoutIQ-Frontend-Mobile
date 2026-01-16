@@ -1,7 +1,9 @@
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { Platform, InteractionManager, Keyboard } from 'react-native';
 
-const IOS_INTERSTITIAL = 'ca-app-pub-3940256099942544/4411468910';
+const IOS_INTERSTITIAL = 'ca-app-pub-2754612075301490/1118898057'; 
+// REAL ca-app-pub-2754612075301490/1118898057
+// TEST ca-app-pub-3940256099942544/4411468910
 const ANDROID_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
 
 const UNIT_ID = Platform.OS === 'ios'
