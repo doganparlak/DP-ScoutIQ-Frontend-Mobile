@@ -23,6 +23,7 @@ import PlayerCard from '../components/PlayerCard';
 import SpiderChart, { type SpiderPoint } from '../components/SpiderChart';
 import type { PlayerData } from '../types';
 import type { ScoutingReportResponse } from '../services/api';
+import ErrorsDisciplineTiles from '../components/ErrorsDisciplineTiles';
 
 import {
   CARD,
@@ -179,10 +180,14 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       const isErrors = g.titleKey === 'errors_discipline';
 
       const node = isErrors ? (
-        // ✅ Wider + centered ONLY for Errors & Discipline in the report
         <View style={{ width: '100%', alignItems: 'center' }}>
           <View style={{ width: '100%', maxWidth: 620 }}>
-            <SpiderChart title={title} points={g.points} />
+            <ErrorsDisciplineTiles
+              title={title}
+              points={g.points}
+              collapsedCount={2}
+              defaultCollapsed
+            />
           </View>
         </View>
       ) : isRadar ? (
