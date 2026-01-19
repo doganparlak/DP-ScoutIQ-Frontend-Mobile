@@ -25,7 +25,7 @@ export const ENDPOINTS = {
   requestReset: '/auth/request_reset',
   verifyReset: '/auth/verify_reset',
   setNewPassword: '/auth/set_new_password',
-  verifySignup: '/auth/verify_signup',
+  verifySignup: '/auth/verify_signup_code',
   reachOut: '/help/reach_out',
   subscription: '/me/subscription/iap',
   favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
