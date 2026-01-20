@@ -443,6 +443,7 @@ export default function ManagePlan() {
   );
 }
 
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
 

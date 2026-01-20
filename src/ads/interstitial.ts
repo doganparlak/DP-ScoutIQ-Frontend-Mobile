@@ -1,10 +1,10 @@
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { Platform, InteractionManager, Keyboard } from 'react-native';
 
-const IOS_INTERSTITIAL = 'ca-app-pub-2754612075301490/1118898057'; 
+const IOS_INTERSTITIAL = 'ca-app-pub-3940256099942544/4411468910'; 
 // REAL ca-app-pub-2754612075301490/1118898057
 // TEST ca-app-pub-3940256099942544/4411468910
-const ANDROID_INTERSTITIAL = 'ca-app-pub-2754612075301490/6842816261';
+const ANDROID_INTERSTITIAL = 'ca-app-pub-3940256099942544/1033173712';
 // REAL ca-app-pub-2754612075301490/6842816261
 // TEST ca-app-pub-3940256099942544/1033173712
 
@@ -16,6 +16,11 @@ let ad: InterstitialAd | null = null;
 let loaded = false;
 let showing = false;
 let pendingShow = false;
+let onFailure: (() => void) | null = null;
+
+export function setInterstitialFailureHandler(fn: (() => void) | null) {
+  onFailure = fn;
+}
 
 function getAd() {
   if (ad) return ad;
@@ -42,6 +47,7 @@ function getAd() {
     loaded = false;
     showing = false;
     pendingShow = false;
+    onFailure?.();
   });
 
   return ad;
@@ -51,14 +57,14 @@ export function preloadInterstitial() {
   getAd().load();
 }
 
-export function showInterstitialSafely() {
-  if (showing || pendingShow) return;
+export function showInterstitialSafely(): boolean {
+  if (showing || pendingShow) return true;
 
   const a = getAd();
 
   if (!loaded) {
     a.load();
-    return;
+    return false;
   }
 
   pendingShow = true;
@@ -74,4 +80,5 @@ export function showInterstitialSafely() {
       a.show();
     }, 400);
   });
+  return true
 }

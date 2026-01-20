@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal,
-  Platform
+  Platform, InteractionManager
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { X, UserX, FileText } from 'lucide-react-native';
@@ -22,6 +22,8 @@ import {
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
 import {ensureRewardedLoaded,  showRewardedSafely } from '../ads/rewarded';
+import { ProNotReadyScreen } from '../ads/pro';
+
 type PlayerRow = {
   id: string;
   name: string;
@@ -58,6 +60,30 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   // ----- favorites state -----
   const [rows, setRows] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // PRO upsell
+  const [proUpsellOpen, setProUpsellOpen] = useState(false);
+  const pendingReportRef = useRef<PlayerRow | null>(null);
+
+
+  useEffect(() => {
+    if (proUpsellOpen) return;
+
+    const pending = pendingReportRef.current;
+    if (!pending) return;
+
+    // Clear first to avoid double-open
+    pendingReportRef.current = null;
+
+    // Wait for the modal dismiss animation / interactions to finish
+    const task = InteractionManager.runAfterInteractions(() => {
+      allowReport(pending);
+    });
+
+    return () => task.cancel();
+  }, [proUpsellOpen]);
+
+
 
   const fetchFavorites = React.useCallback(async () => {
     try {
@@ -399,16 +425,16 @@ const handleReportPress = async (player: PlayerRow) => {
   }
   // FREE: try rewarded, but fallback to report on timeout
   try {
-    const timeoutMs = 15000;
+    const timeoutMs = 1000;
+    //allowReport(player);
     ///**
     const ready = await ensureRewardedLoaded(timeoutMs);
 
     // ✅ If ad didn't become ready in time, let user see the report
     if (!ready) {
-      // Optional: inform user this was a fallback (or remove this Alert entirely)
-      // Alert.alert('No ad available', 'Showing the report this time.');
-      Alert.alert('Ad not ready', 'Ad is not ready yet. Showing the report now.');
-      allowReport(player);
+      //Alert.alert('Ad not ready', 'Ad is not ready yet. Showing the report now.');
+      pendingReportRef.current = player;
+      setProUpsellOpen(true);
       return;
     }
 
@@ -426,10 +452,10 @@ const handleReportPress = async (player: PlayerRow) => {
       e?.nativeEvent?.message ??
       (typeof e === 'string' ? e : JSON.stringify(e));
 
-    Alert.alert('Ad error', msg || 'Unknown error');
-
-    // your desired fallback behavior
-    allowReport(player);
+    //Alert.alert('Ad error', msg || 'Unknown error');
+    pendingReportRef.current = player;
+    setProUpsellOpen(true);
+    return;
     }
 };
 
@@ -934,6 +960,12 @@ const handleReportPress = async (player: PlayerRow) => {
           </View>
         </Modal>
       )}
+
+      <ProNotReadyScreen
+        visible={proUpsellOpen}
+        onClose={() => setProUpsellOpen(false)}
+      />
+
 
       {scoutOpen && scoutPlayer && scoutReport && (
         <ScoutingReport

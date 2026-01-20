@@ -11,6 +11,7 @@ import {
   Platform,
   AppState,
   AppStateStatus,
+  InteractionManager,
 } from 'react-native';
 import Header from '@/components/Header';
 import ChatInput from '@/components/ChatInput';
@@ -20,11 +21,13 @@ import ChatVisualsBlock from '@/components/ChatVisualsBlock';
 
 import { healthcheck, sendChat, resetSession, getMe } from '@/services/api';
 import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
-import { showInterstitialSafely } from '@/ads/interstitial';
+import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
 import { ACCENT, BG } from '@/theme';
+import { ProNotReadyScreen } from '@/ads/pro';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
 import { useTranslation } from 'react-i18next';
+
 
 const { useState, useEffect, useRef } = React;
 
@@ -51,6 +54,10 @@ export default function ChatScreen() {
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
   const pendingIdRef = React.useRef<string | null>(null);
 
+  // Ads not ready / Pro upsell
+  const [proUpsellOpen, setProUpsellOpen] = useState(false);
+  const pendingSendRef = useRef<string | null>(null);
+
   // AppState + retry bookkeeping
   const appStateRef = React.useRef<AppStateStatus>(AppState.currentState);
   const sendingRef = React.useRef<boolean>(false);
@@ -65,6 +72,21 @@ export default function ChatScreen() {
     payload: ChatPayloadItem[];
     sessionId: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (proUpsellOpen) return;
+
+    const pendingText = pendingSendRef.current;
+    if (!pendingText) return;
+
+    pendingSendRef.current = null;
+
+    // Wait for modal dismiss animation to finish
+    InteractionManager.runAfterInteractions(() => {
+      send(pendingText);
+    });
+  }, [proUpsellOpen]);
+
 
   // Keep sendingRef in sync (so AppState listener can read it without stale closures)
   useEffect(() => {
@@ -106,6 +128,12 @@ export default function ChatScreen() {
       }
     })();
   }, [t]);
+
+  useEffect(() => {
+    setInterstitialFailureHandler(() => setProUpsellOpen(true));
+    return () => setInterstitialFailureHandler(null);
+  }, []);
+
 
   // persist chat locally
   useEffect(() => {
@@ -270,12 +298,15 @@ export default function ChatScreen() {
     ///** 
      
     try {
-        const nextCount = await incrementChatQueryCount();
-        if (!sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
-          showInterstitialSafely();
+      const nextCount = await incrementChatQueryCount();
+
+      if (!sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
+        const ok = showInterstitialSafely();
+        if (!ok) {
+          setProUpsellOpen(true);
         }
-      } catch (e) {
-    }
+      }
+    } catch (e) {setProUpsellOpen(true);}
     //*/
     // 4) Build payload (text-only)
     const textOnly = messages
@@ -374,6 +405,10 @@ export default function ChatScreen() {
         />
 
         <ChatInput value={inputText} onChangeText={setInputText} onSend={send} disabled={sending} />
+        <ProNotReadyScreen
+          visible={proUpsellOpen}
+          onClose={() => setProUpsellOpen(false)}
+        />       
       </View>
     </KeyboardAvoidingView>
   );

@@ -295,6 +295,14 @@ export const resources = {
       createdBySuffix: "",
       brandScout: "SCOUT",
       brandWise: "WISE",
+      goProTitleAd: 'SCOUTWISE PRO',
+      goProCta: 'Upgrade to Pro now',
+      proBenefitsTitle: 'Pro Benefits',
+      proBenefit1: 'A focused, ad-free experience',
+      proBenefit2: 'Priority customer support',
+      proBenefit3: 'Support the development of new features',
+      goProSloganLine: 'Enhanced player scouting — seamless, sharper, and built for your next decision.',
+      goProSloganCta: 'Go Pro. Stay in flow.',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -722,6 +730,14 @@ export const resources = {
       createdBySuffix: "imzasıyla",
       brandScout: "SCOUT",
       brandWise: "WISE",
+      goProTitleAd: 'SCOUTWISE PRO',
+      goProCta: "Şimdi Pro plana yükselt",
+      proBenefitsTitle: 'Pro Avantajları',
+      proBenefit1: 'Reklamsız deneyim',
+      proBenefit2: 'Öncelikli kullanıcı desteği',
+      proBenefit3: 'Yeni özelliklerin geliştirilmesine destek olun',
+      goProSloganLine: 'Oyuncu keşfi artık kesintisiz — nokta atışı, stratejine ve felsefene uygun',
+      goProSloganCta: 'Pro’ya geç. Ritmi yakala. Oyunda kal.',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',
