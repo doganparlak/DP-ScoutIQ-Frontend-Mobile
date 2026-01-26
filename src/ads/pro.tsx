@@ -117,7 +117,7 @@ function Benefit({ text }: { text: string }) {
             {match}
           </Text>,
           after,
-        ].filter(Boolean);
+        ].filter(Boolean) as React.ReactNode[];
       });
     };
 
