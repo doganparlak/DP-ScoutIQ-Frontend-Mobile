@@ -306,6 +306,8 @@ export const resources = {
       legal: 'Legal Information',
       privacyPolicy: 'Privacy Policy',
       termsOfUse: 'Terms of Service',
+      signupAgreeSuffix: '',
+      signupAgreePrefix: 'I agree to the ',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -465,7 +467,7 @@ export const resources = {
       selectCountry: 'Ülkeni seç',
       searchCountry: 'Ülke ara...',
       newsletter: 'Bültene abone ol',
-      agreeTerms: 'Şartlar ve Gizlilik’i kabul ediyorum',
+      agreeTerms: 'Kullanim kosullari ve gizlilik politikasini kabul ediyorum',
       signup: 'Kayıt ol',
       haveAccount: 'Zaten hesabın var mı?',
       login: 'Giriş yap',
@@ -743,7 +745,11 @@ export const resources = {
       goProSloganCta: 'Pro’ya geç. Ritmi yakala. Oyunda kal.',
       legal: 'Yasal Bilgiler',
       privacyPolicy: 'Gizlilik Politikası',
-      termsOfUse: 'Kullanım Koşulları',
+      termsOfUse: 'Kullanım Koşulları', 
+      termsOfUseSignup: 'Kullanım Koşulları’nı',
+      privacyPolicySignup: 'Gizlilik Politikası’nı',
+      signupAgreeSuffix: ' kabul ediyorum', 
+      signupAgreePrefix: '',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',

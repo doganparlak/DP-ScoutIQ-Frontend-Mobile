@@ -11,9 +11,11 @@ import {
   Switch,
   Modal,
   FlatList,
-  Image, 
+  Image,
   Keyboard,
   TouchableWithoutFeedback,
+  Linking,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,24 +25,26 @@ import { signUp, requestSignupCode } from '@/services/api';
 import { COUNTRIES } from '@/constants/countries';
 import { useTranslation } from 'react-i18next';
 
-import scoutwiseLogo from '../../assets/scoutwise_logo.png'; // 👈 added
+import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
+const PRIVACY_URL = 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf';
+const TERMS_URL = 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf';
+
 // Format "YYYY-MM-DD" as the user types
 function formatDob(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 8); // keep up to 8 digits
-  if (digits.length <= 2) return digits;                                // D, DD
-  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`; // DD-MM
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;   // DD-MM-YYYY
+  const digits = input.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
 }
 
 // helper
 function toIsoDob(dmy: string): string {
-  // expects DD-MM-YYYY, returns YYYY-MM-DD
   const [dd, mm, yyyy] = dmy.split('-');
   return `${yyyy}-${mm}-${dd}`;
 }
@@ -59,7 +63,10 @@ export default function SignUpScreen() {
 
   const [dob, setDob] = useState('');
   const [country, setCountry] = useState('');
-  const [agree, setAgree] = useState(false);
+
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+
   const [newsletter, setNewsletter] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -81,11 +88,31 @@ export default function SignUpScreen() {
       pwValid &&
       dateRegex.test(dob) &&
       country.trim().length >= 2 &&
-      agree
+      agreePrivacy &&
+      agreeTerms
     );
-  }, [email, password, dob, country, agree]);
+  }, [email, pwValid, dob, country, agreePrivacy, agreeTerms]);
 
   const goToLogin = () => navigation.replace('Login');
+
+  const openUrl = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert(
+          t('cannotOpenLink', 'Cannot open link'),
+          t('cannotOpenLinkDesc', 'Your device cannot open this link right now.'),
+        );
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      Alert.alert(
+        t('cannotOpenLink', 'Cannot open link'),
+        String(e?.message || t('tryAgain', 'Please try again.')),
+      );
+    }
+  };
 
   const handleSubmit = async () => {
     if (!isValid || submitting) return;
@@ -97,7 +124,6 @@ export default function SignUpScreen() {
       await requestSignupCode(email);
       navigation.replace('Verification', { email, context: 'signup' });
     } catch (e: any) {
-      alert(e?.response?.status)
       setError(t('signupFailed', 'Sign up failed. Please try again.'));
     } finally {
       setSubmitting(false);
@@ -119,30 +145,19 @@ export default function SignUpScreen() {
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
-      {/* Dismiss keyboard when tapping outside */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ flex: 1 }}>
           <View style={styles.wrap}>
-            {/* Logo */}
-            <Image
-              source={scoutwiseLogo}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <Image source={scoutwiseLogo} style={styles.logo} resizeMode="contain" />
 
-            {/* App name */}
             <Text style={styles.appName}>
               <Text style={styles.appNameScout}>SCOUT</Text>
               <Text style={styles.appNameWise}>WISE</Text>
             </Text>
 
             <View style={styles.card}>
-              <Text style={styles.title}>
-                {t('createAccount', 'Create your account')}
-              </Text>
-              <Text style={styles.subtitle}>
-                {t('signupSubtitle', 'Join the data-driven scouting revolution.')}
-              </Text>
+              <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>
+              <Text style={styles.subtitle}>{t('signupSubtitle', 'Join the data-driven scouting revolution.')}</Text>
 
               {/* Email */}
               <View style={styles.fieldBlock}>
@@ -210,21 +225,40 @@ export default function SignUpScreen() {
                 </View>
               </View>
 
-              {/* Newsletter */}
+              {/* Newsletter (unchanged) */}
               <View style={[styles.switchRow, { marginTop: 12 }]}>
-                <Text style={styles.switchLabel}>
-                  {t('newsletter', 'Subscribe to newsletter')}
-                </Text>
+                <Text style={styles.switchLabel}>{t('newsletter', 'Subscribe to newsletter')}</Text>
                 <Switch value={newsletter} onValueChange={setNewsletter} />
               </View>
 
-              {/* Terms */}
+              {/* ✅ Privacy agreement with hyperlink (i18n-friendly) */}
               <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>
-                  {t('agreeTerms', 'I agree to the Terms & Privacy')}
-                </Text>
-                <Switch value={agree} onValueChange={setAgree} />
+                <View style={styles.switchLabelWrap}>
+                  <Text style={styles.switchLabel}>
+                    {t('signupAgreePrefix', 'I agree to the ')}
+                    <Text style={styles.link} onPress={() => openUrl(PRIVACY_URL)}>
+                      {t('privacyPolicySignup', 'Privacy Policy')}
+                    </Text>
+                    {t('signupAgreeSuffix', '')}
+                  </Text>
+                </View>
+                <Switch value={agreePrivacy} onValueChange={setAgreePrivacy} />
               </View>
+
+              {/* ✅ Terms agreement with hyperlink (i18n-friendly) */}
+              <View style={styles.switchRow}>
+                <View style={styles.switchLabelWrap}>
+                  <Text style={styles.switchLabel}>
+                    {t('signupAgreePrefix', 'I agree to the ')}
+                    <Text style={styles.link} onPress={() => openUrl(TERMS_URL)}>
+                      {t('termsOfUseSignup', 'Terms of Service')}
+                    </Text>
+                    {t('signupAgreeSuffix', '')}
+                  </Text>
+                </View>
+                <Switch value={agreeTerms} onValueChange={setAgreeTerms} />
+              </View>
+
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -240,28 +274,17 @@ export default function SignUpScreen() {
                   },
                 ]}
               >
-                {submitting ? (
-                  <ActivityIndicator />
-                ) : (
-                  <Text style={styles.primaryBtnText}>
-                    {t('signup', 'Sign up')}
-                  </Text>
-                )}
+                {submitting ? <ActivityIndicator /> : <Text style={styles.primaryBtnText}>{t('signup', 'Sign up')}</Text>}
               </Pressable>
 
               {/* Go to Login */}
               <Pressable
                 onPress={goToLogin}
-                style={({ pressed }) => [
-                  styles.secondaryBtn,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.85 : 1 }]}
               >
                 <Text style={styles.secondaryBtnText}>
                   {t('haveAccount', 'Already have an account?')}{' '}
-                  <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>
-                    {t('login', 'Log in')}
-                  </Text>
+                  <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>{t('login', 'Log in')}</Text>
                 </Text>
               </Pressable>
             </View>
@@ -274,15 +297,11 @@ export default function SignUpScreen() {
             transparent
             onRequestClose={() => setCountryOpen(false)}
           >
-            {/* backdrop dismiss */}
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
               <View style={styles.modalBackdrop}>
-                {/* modal content */}
                 <TouchableWithoutFeedback accessible={false}>
                   <View style={styles.modalCard}>
-                    <Text style={styles.modalTitle}>
-                      {t('selectCountry', 'Select your country')}
-                    </Text>
+                    <Text style={styles.modalTitle}>{t('selectCountry', 'Select your country')}</Text>
 
                     <TextInput
                       value={countryQuery}
@@ -313,9 +332,7 @@ export default function SignUpScreen() {
                         { marginTop: 12, opacity: pressed ? 0.85 : 1 },
                       ]}
                     >
-                      <Text style={styles.secondaryBtnText}>
-                        {t('close', 'Close')}
-                      </Text>
+                      <Text style={styles.secondaryBtnText}>{t('close', 'Close')}</Text>
                     </Pressable>
                   </View>
                 </TouchableWithoutFeedback>
@@ -326,18 +343,12 @@ export default function SignUpScreen() {
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
-
 }
 
 function PwRule({ ok, text }: { ok: boolean; text: string }) {
   return (
     <View style={styles.pwRuleRow}>
-      <View
-        style={[
-          styles.pwRuleDot,
-          { backgroundColor: ok ? ACCENT : MUTED },
-        ]}
-      />
+      <View style={[styles.pwRuleDot, { backgroundColor: ok ? ACCENT : MUTED }]} />
       <Text style={[styles.pwRuleText, { color: ok ? ACCENT : MUTED }]}>{text}</Text>
     </View>
   );
@@ -346,23 +357,10 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
 
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 26, // space between logo and title
-  },
-  appName: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 14, // space between title and card
-    letterSpacing: 0.5,
-  },
-  appNameScout: {
-    color: '#FFFFFF',
-  },
-  appNameWise: {
-    color: ACCENT,
-  },
+  logo: { width: 120, height: 120, marginBottom: 26 },
+  appName: { fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
+  appNameScout: { color: '#FFFFFF' },
+  appNameWise: { color: ACCENT },
 
   card: {
     width: '100%',
@@ -389,7 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
   },
-  hint: { color: MUTED, marginTop: 6, fontSize: 12 },
+
   pwChecklist: { marginTop: 8, gap: 6 },
   pwRuleRow: { flexDirection: 'row', alignItems: 'center' },
   pwRuleDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
@@ -397,8 +395,20 @@ const styles = StyleSheet.create({
 
   row2: { flexDirection: 'row', alignItems: 'center' },
 
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  switchLabelWrap: { flex: 1, paddingRight: 10 },
   switchLabel: { color: TEXT },
+
+  link: {
+    color: ACCENT,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
 
   error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
 

@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   linkText: {
-    color: TEXT,
+    color: ACCENT_DARK,
     fontWeight: '800',
     textDecorationLine: 'underline',
   },
