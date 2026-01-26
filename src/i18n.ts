@@ -816,8 +816,8 @@ export const resources = {
         'Penalties Won': 'Kazanılan Penaltılar',
         'Touches': 'Topla Buluşma',
         'Big Chances Created': 'Yaratılan Net Pozisyonlar',
-        'Dribble Attempts': 'Dripling Denemesi',
-        'Successful Dribbles': 'Başarılı Driplingler',
+        'Dribble Attempts': 'Çalım Denemesi',
+        'Successful Dribbles': 'Başarılı Çalımlar',
         'Man Of Match': 'Maçın Adamı',
         'Rating': 'Puan',
         'Captain': 'Kaptan',
@@ -832,8 +832,8 @@ export const resources = {
         'Crosses Attempted': 'Orta Denemesi',
         'Cross Accuracy (%)': 'İsabetli Orta (%)',
         'Carries': 'Top Taşıma',
-        'Dribbles': 'Dripling',
-        'Dribble Accuracy (%)': 'Başarılı Dripling (%)',
+        'Dribbles': 'Çalımlar',
+        'Dribble Accuracy (%)': 'Başarılı Çalım (%)',
 
          // === Radar metrikleri: Hata & Disiplin ===
         'Goals Conceded': 'Yenilen Goller',
