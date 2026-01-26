@@ -303,6 +303,9 @@ export const resources = {
       proBenefit3: 'Support the development of new features',
       goProSloganLine: 'Enhanced player scouting — seamless, sharper, and built for your next decision.',
       goProSloganCta: 'Go Pro. Stay in flow.',
+      legal: 'Legal Information',
+      privacyPolicy: 'Privacy Policy',
+      termsOfUse: 'Terms of Service',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -629,7 +632,7 @@ export const resources = {
       messageSent: 'Mesaj gönderildi',
       weWillFollowUp: 'Kısa süre içinde dönüş yapacağız.',
       accountSettings: 'Hesap Ayarları',
-      deleteIrreversible: 'Buradaki işlem hesabını ve tüm verilerini kalıcı olarak siler. Geri alınamaz.',
+      deleteIrreversible: 'Buradaki işlem, hesabını ve tüm verilerini kalıcı olarak siler. Geri alınamaz.',
       deleteAccount: 'Hesabı sil',
       deleteAccountTitle: 'Hesabı sil',
       deleteAccountConfirm: 'Hesabını ve tüm verilerini kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz.',
@@ -738,6 +741,9 @@ export const resources = {
       proBenefit3: 'Yeni özelliklerin geliştirilmesine destek olun',
       goProSloganLine: 'Oyuncu keşfi artık kesintisiz — nokta atışı, stratejine ve felsefene uygun',
       goProSloganCta: 'Pro’ya geç. Ritmi yakala. Oyunda kal.',
+      legal: 'Yasal Bilgiler',
+      privacyPolicy: 'Gizlilik Politikası',
+      termsOfUse: 'Kullanım Koşulları',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',
