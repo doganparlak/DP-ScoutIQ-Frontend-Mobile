@@ -19,6 +19,8 @@ import { sendReachOut } from '@/services/api';
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
 
+const PRIVACY_URL = 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf';
+const TERMS_URL = 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf';
 
 export default function HelpCenter() {
   const nav = useNavigation<RootNav>();
@@ -37,6 +39,25 @@ export default function HelpCenter() {
       setHasSentThisLogin(!!v);
     })();
   }, []);
+
+  const openUrl = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert(
+          t('cannotOpenLink', 'Cannot open link'),
+          t('cannotOpenLinkDesc', 'Your device cannot open this link right now.'),
+        );
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      Alert.alert(
+        t('cannotOpenLink', 'Cannot open link'),
+        String(e?.message || t('tryAgain', 'Please try again.')),
+      );
+    }
+  };
 
   const onPressDelete = () => {
     Alert.alert(
@@ -78,7 +99,6 @@ export default function HelpCenter() {
       ],
     );
   };
-
 
   const onSendMessage = async () => {
     if (hasSentThisLogin) {
@@ -243,26 +263,16 @@ export default function HelpCenter() {
               <Text style={styles.h3}>{t('howPlayerPortfolio', 'Player Portfolio')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t(
-                  'howPlayerPortfolio1',
-                  'The Player Portfolio is a watch list of players you have added for closer evaluation.'
-                )}
+                {t('howPlayerPortfolio1', 'The Player Portfolio is a watch list of players you have added for closer evaluation.')}
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t(
-                  'howPlayerPortfolio2',
-                  'Each row represents a player and displays key details such as name, gender, country, team, age, role, and potential.'
-                )}
+                {t('howPlayerPortfolio2', 'Each row represents a player and displays key details such as name, gender, country, team, age, role, and potential.')}
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t(
-                  'howPlayerPortfolio3',
-                  'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.'
-                )}
+                {t('howPlayerPortfolio3', 'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.')}
               </Text>
             </View>
 
-          
             <View style={styles.line} />
 
             <View style={styles.block}>
@@ -270,24 +280,15 @@ export default function HelpCenter() {
 
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t(
-                  'howScoutReport1',
-                  'Scouting Report includes the player card and all available statistics from the last 365 days, plus Strengths, Weakness & Concerns, and a Conclusion section.'
-                )}
+                {t('howScoutReport1', 'Scouting Report includes the player card and all available statistics from the last 365 days, plus Strengths, Weakness & Concerns, and a Conclusion section.')}
                 {'\n'}
 
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t(
-                  'howScoutReport2',
-                  'Interpretations are detailed and consider physical identity, stats, age, nationality, and role.'
-                )}
+                {t('howScoutReport2', 'Interpretations are detailed and consider physical identity, stats, age, nationality, and role.')}
                 {'\n'}
 
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t(
-                  'howScoutReport3',
-                  'This helps you quickly evaluate the fit, upside, and risks of a player already in your portfolio.'
-                )}
+                {t('howScoutReport3', 'This helps you quickly evaluate the fit, upside, and risks of a player already in your portfolio.')}
               </Text>
             </View>
           </View>
@@ -332,32 +333,59 @@ export default function HelpCenter() {
               <Text style={styles.footerLink}>scoutwise.ai</Text>
             </Pressable>
 
-
             {hasSentThisLogin && (
               <Text style={styles.sentNote}>{t('msgHasBeenSent', 'Your message has been sent.')}</Text>
             )}
           </View>
         )}
 
-        {/* ACCOUNT SETTINGS */}
+        {/* SETTINGS (ACCOUNT TAB) */}
         {selected === 'account' && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>{t('accountSettings', 'Account Settings')}</Text>
-            <Text style={[styles.p, { marginBottom: 12 }]}>
-              {t('deleteIrreversible', 'Proceeding here will permanently remove your account and all associated data. This is irreversible.')}
-            </Text>
-            <Pressable
-              onPress={onPressDelete}
-              style={({ pressed }) => [styles.deleteBtn, { backgroundColor: pressed ? DANGER_DARK : DANGER }]}
-              accessibilityRole="button"
-              accessibilityLabel={t('deleteAccount', 'Delete account')}
-            >
-              <View style={styles.deleteContent}>
-                <Trash2 size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.deleteText}>{t('deleteAccount', 'Delete account')}</Text>
-              </View>
-            </Pressable>
-          </View>
+          <>
+            {/* Account Settings frame */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('accountSettings', 'Account Settings')}</Text>
+              <Text style={[styles.p, { marginBottom: 12 }]}>
+                {t('deleteIrreversible', 'Proceeding here will permanently remove your account and all associated data. This is irreversible.')}
+              </Text>
+              <Pressable
+                onPress={onPressDelete}
+                style={({ pressed }) => [styles.deleteBtn, { backgroundColor: pressed ? DANGER_DARK : DANGER }]}
+                accessibilityRole="button"
+                accessibilityLabel={t('deleteAccount', 'Delete account')}
+              >
+                <View style={styles.deleteContent}>
+                  <Trash2 size={20} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.deleteText}>{t('deleteAccount', 'Delete account')}</Text>
+                </View>
+              </Pressable>
+            </View>
+
+            {/* ✅ Separate Legal frame */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('legal', 'Legal')}</Text>
+
+              <Pressable
+                onPress={() => openUrl(PRIVACY_URL)}
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.linkText}>{t('privacyPolicy', 'Privacy Policy')}</Text>
+                <Text style={styles.chev}>›</Text>
+              </Pressable>
+
+              <View style={styles.rowLine} />
+
+              <Pressable
+                onPress={() => openUrl(TERMS_URL)}
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.linkText}>{t('termsOfUse', 'Terms of Use & EULA')}</Text>
+                <Text style={styles.chev}>›</Text>
+              </Pressable>
+            </View>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -412,6 +440,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  // ✅ Legal link rows (separate frame)
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  linkText: {
+    color: TEXT,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  chev: { color: MUTED, fontSize: 18, fontWeight: '800', marginLeft: 10 },
+  rowLine: { height: 1, backgroundColor: LINE },
 });
-
-
