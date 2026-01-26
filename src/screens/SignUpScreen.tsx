@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   switchLabel: { color: TEXT },
 
   link: {
-    color: ACCENT,
+    color: ACCENT_DARK,
     fontWeight: '800',
     textDecorationLine: 'underline',
   },

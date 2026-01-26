@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SlidersHorizontal, Users, Database, Compass, SquareChevronUp, BarChart3, BookmarkPlus } from 'lucide-react-native';
+import { SlidersHorizontal, UserRoundSearch, Database, Compass, SquareChevronUp, BarChart3, BookmarkPlus, GitCompareArrows } from 'lucide-react-native';
 import { ACCENT, PANEL, MUTED, TEXT, LINE, ACCENT_DARK } from '@/theme';
 import { useTranslation } from 'react-i18next';
 
@@ -36,7 +36,8 @@ export default function WelcomeCard() {
       </View>
 
       <View style={styles.divider} />
-      <Row Icon={Users} text={t('wcFindCompare', 'Find and compare players based on your needs.')} />
+      <Row Icon={UserRoundSearch} text={t('wcFind', 'Find and compare players based on your needs, with each response focused on a single player for maximum clarity.')} />
+      <Row Icon={GitCompareArrows} text={t('wcCompare', 'Find and compare players based on your needs, with each response focused on a single player for maximum clarity.')} />
       <Row Icon={SlidersHorizontal} text={t('wcFilter', 'Filter your search by age, nationality, role, stats, or tactical fit.')} />
       <Row Icon={SquareChevronUp} text={t('wcPotential', 'Discover the quantified potential of players.')} />
       <Row Icon={Database} text={t('wcAnswers', 'Get instant, data-driven answers.')} />
