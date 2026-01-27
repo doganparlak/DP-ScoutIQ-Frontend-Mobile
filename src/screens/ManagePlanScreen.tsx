@@ -80,13 +80,12 @@ export default function ManagePlan() {
       } catch (err) {
         log('initConnection FAILED', err);
       }
-
+      log('HERE1');
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
-        log('purchaseUpdatedListener purchase HERE=', JSON.stringify(purchase, null, 2));
+        log('purchaseUpdatedListener purchase=', JSON.stringify(purchase, null, 2));
         try {
-          log('HERE');
-          const platform: 'ios' | 'android' =
-            purchase.platform === 'ios' ? 'ios' : 'android';
+          log('HERE2');
+          const platform: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
           log('PURCHASE PLATFORM=', purchase.platform);
           log('PLATFORM', platform);
           let externalId = '';
