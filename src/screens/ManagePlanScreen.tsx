@@ -38,6 +38,8 @@ const SUBS_SKU = Platform.select({ ios: IOS_SKU, android: ANDROID_SKU })!;
 
 const PLANS: Array<{ name: Plan }> = [{ name: 'Free' }, { name: 'Pro' }];
 
+const log = (...args: any[]) => console.log('[IAP]', ...args);
+
 export default function ManagePlan() {
   const nav = useNavigation();
   const { t } = useTranslation();
@@ -71,23 +73,28 @@ export default function ManagePlan() {
 
     const initIap = async () => {
       try {
+        log('getSubscriptions starting...', [SUBS_SKU]);
         await initConnection({});
-        console.log('[IAP] initConnection ok');
+        log('initConnection OK', { platform: Platform.OS, SUBS_SKU });
         setIapReady(true);
       } catch (err) {
-        console.log('[IAP] initConnection failed', err);
+        log('initConnection FAILED', err);
       }
 
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
+        log('purchaseUpdatedListener purchase HERE=', JSON.stringify(purchase, null, 2));
         try {
+          log('HERE');
           const platform: 'ios' | 'android' =
             purchase.platform === 'ios' ? 'ios' : 'android';
-
+          log('PURCHASE PLATFORM=', purchase.platform);
+          log('PLATFORM', platform);
           let externalId = '';
-
+          
           if (platform === 'android') {
             const pAndroid = purchase as PurchaseAndroid;
             externalId = pAndroid.purchaseToken ?? pAndroid.transactionId ?? '';
+            log('android externalId (token/tx)=', externalId);
           } else {
             const pIOS = purchase as PurchaseIOS;
             const originalTxId =
@@ -96,6 +103,7 @@ export default function ManagePlan() {
           }
 
           if (!externalId) {
+            log('No externalId -> finishTransaction and stop');
             await finishTransaction({ purchase, isConsumable: false });
             setSaving(false);
             return;
@@ -106,11 +114,11 @@ export default function ManagePlan() {
             product_id: purchase.productId,
             external_id: externalId,
           };
-
+          log('activateIAPSubscription payload=', payload);
           const res = await activateIAPSubscription(payload);
-
+          log('activateIAPSubscription response=', res);
           await finishTransaction({ purchase, isConsumable: false });
-
+          log('finishTransaction done');
           if (res?.ok) {
             setCurrentPlan(res.plan);
             setSelected(res.plan);
