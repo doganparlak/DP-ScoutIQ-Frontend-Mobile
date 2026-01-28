@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { PANEL, LINE, TEXT, MUTED, ACCENT, ACCENT_DARK, CARD } from '../theme';
 import { getMe, type Profile } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import type { Plan } from '@/services/api';
 
 type Props = {
-  plan: 'Free' | 'Pro' | 'Elite';
+  plan: Plan;
   onOpenPlans: () => void;
   onOpenHelp: () => void;
   onLogout: () => void;
@@ -29,7 +30,12 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
   }, []);
 
   // Map plan code to localized label, e.g. plan_Pro
-  const planLabel = t(`plan_${plan}`, plan);
+  const planLabel =
+    plan === 'Pro Monthly'
+      ? t('proMonthly', 'Pro Monthly')
+      : plan === 'Pro Yearly'
+        ? t('proYearly', 'Pro Yearly')
+        : t('free', 'Free');
 
   return (
     <View style={styles.card} accessibilityLabel={t('accountTitle', 'Account')}>

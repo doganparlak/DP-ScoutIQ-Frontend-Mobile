@@ -32,11 +32,15 @@ import {
   type PurchaseIOS,
 } from 'react-native-iap';
 
-const IOS_SKU = 'scoutwise_pro_monthly_ios'; // <- your App Store product id
-const ANDROID_SKU = 'scoutwise_pro_monthly_android'; // <- your Play Store product id
-const SUBS_SKU = Platform.select({ ios: IOS_SKU, android: ANDROID_SKU })!;
+// ✅ Monthly SKUs
+const IOS_SKU_MONTHLY = 'scoutwise_pro_monthly_ios';
+const ANDROID_SKU_MONTHLY = 'scoutwise_pro_monthly_android';
 
-const PLANS: Array<{ name: Plan }> = [{ name: 'Free' }, { name: 'Pro' }];
+// ✅ Yearly SKUs
+const IOS_SKU_YEARLY = 'scoutwise_pro_yearly_ios';
+const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
+
+const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
 
 const log = (...args: any[]) => console.log('[IAP]', ...args);
 
@@ -49,6 +53,32 @@ export default function ManagePlan() {
   const [saving, setSaving] = React.useState(false);
   const [subscriptionEndAt, setSubscriptionEndAt] = React.useState<string | null>(null);
   const [iapReady, setIapReady] = React.useState(false);
+
+  // ✅ plan label for UI
+  const planLabel = React.useCallback(
+    (p: Plan) => {
+      if (p === 'Pro Monthly') return t('proMonthly', 'Pro Monthly');
+      if (p === 'Pro Yearly') return t('proYearly', 'Pro Yearly');
+      return t('free', 'Free');
+    },
+    [t],
+  );
+
+  // ✅ pick SKU by selected plan
+  const selectedSku = React.useMemo(() => {
+    if (selected === 'Pro Monthly') {
+      return Platform.select({ ios: IOS_SKU_MONTHLY, android: ANDROID_SKU_MONTHLY })!;
+    }
+    if (selected === 'Pro Yearly') {
+      return Platform.select({ ios: IOS_SKU_YEARLY, android: ANDROID_SKU_YEARLY })!;
+    }
+    return null;
+  }, [selected]);
+
+  const PLANS: Array<{ name: Plan }> = React.useMemo(
+    () => [{ name: 'Free' }, { name: 'Pro Monthly' }, { name: 'Pro Yearly' }],
+    [],
+  );
 
   // ---- Load /me once ----
   React.useEffect(() => {
@@ -73,31 +103,26 @@ export default function ManagePlan() {
 
     const initIap = async () => {
       try {
-        log('getSubscriptions starting...', [SUBS_SKU]);
         await initConnection({});
-        log('initConnection OK', { platform: Platform.OS, SUBS_SKU });
+        log('initConnection OK', { platform: Platform.OS});
         setIapReady(true);
       } catch (err) {
         log('initConnection FAILED', err);
       }
-      log('HERE1');
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
         log('purchaseUpdatedListener purchase=', JSON.stringify(purchase, null, 2));
         try {
-          log('HERE2');
           const platform: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
-          log('PURCHASE PLATFORM=', purchase.platform);
-          log('PLATFORM', platform);
+
           let externalId = '';
           
           if (platform === 'android') {
             const pAndroid = purchase as PurchaseAndroid;
             externalId = pAndroid.purchaseToken ?? pAndroid.transactionId ?? '';
-            log('android externalId (token/tx)=', externalId);
+
           } else {
             const pIOS = purchase as PurchaseIOS;
-            const originalTxId =
-              pIOS.originalTransactionIdentifierIOS ?? pIOS.transactionId;
+            const originalTxId = pIOS.originalTransactionIdentifierIOS ?? pIOS.transactionId;
             externalId = originalTxId ?? '';
           }
 
@@ -113,6 +138,7 @@ export default function ManagePlan() {
             product_id: purchase.productId,
             external_id: externalId,
           };
+
           log('activateIAPSubscription payload=', payload);
           const res = await activateIAPSubscription(payload);
           log('activateIAPSubscription response=', res);
@@ -127,7 +153,7 @@ export default function ManagePlan() {
 
             Alert.alert(
               t('planUpdated', 'Plan updated'),
-              t('planNow', 'Your plan is now {{plan}}.', { plan: res.plan }),
+              t('planNow', 'Your plan is now {{plan}}.', { plan: planLabel(res.plan) }),
             );
 
             // @ts-ignore
@@ -180,10 +206,44 @@ export default function ManagePlan() {
     return `${day}.${month}.${year}`;
   }, [subscriptionEndAt]);
 
+  const showManageStoreSubscriptionAlert = React.useCallback(() => {
+    const message =
+      Platform.OS === 'ios'
+        ? t(
+            'manageProIOS',
+            'You are already on a Pro plan. Please manage it in your Apple subscription settings.',
+          )
+        : t(
+            'manageProAndroid',
+            'You are already on a Pro plan. Please manage it in your Google Play subscription settings.',
+          );
+
+    Alert.alert(t('manageSubscriptionTitle', 'Manage subscription'), message, [
+      { text: t('ok', 'OK') },
+    ]);
+  }, [t]);
+
+  const showDownGradeAlert = React.useCallback(() => {
+    const message =
+      Platform.OS === 'ios'
+        ? t(
+            'downgradeInfoIOS',
+            'To cancel your Pro plan, please manage it in your Apple subscription settings.',
+          )
+        : t(
+            'downgradeInfoAndroid',
+            'To cancel your Pro plan, please manage it in your Google Play subscription settings.',
+          );
+
+    Alert.alert(t('manageSubscriptionTitle', 'Manage subscription'), message, [
+          { text: t('ok', 'OK') },
+    ]);
+  }, [t]);
+
   const onSave = async () => {
-    // 0) If user selected the same plan they already have, block and warn
+    // If user selected the same plan they already have, block and warn
     if (selected === currentPlan) {
-      if (currentPlan === 'Pro') {
+      if (isPro(currentPlan)) {
         Alert.alert(
           t('alreadyProTitle', 'Already on Pro'),
           t('alreadyProBody', 'You already have Pro access.'),
@@ -197,33 +257,24 @@ export default function ManagePlan() {
       return;
     }
 
-    // 1) Pro -> Free downgrade just inform stores handle those
-    if (selected === 'Free') {
-      if (currentPlan === 'Pro') {
-        const endDateText =
-          formattedEndDate ?? t('currentPeriodEnd', 'the end of your current billing period');
-        const message =
-          Platform.OS === 'ios'
-            ? t(
-                'downgradeInfoIOS',
-                'To cancel your Pro plan, please manage it in your Apple subscription settings.',
-              )
-            : t(
-                'downgradeInfoAndroid',
-                'To cancel your Pro plan, please manage it in your Google Play subscription settings.',
-              );
+    // ✅ Pro Monthly <-> Pro Yearly 
+    if (isPro(currentPlan) && isPro(selected)) {
+      showManageStoreSubscriptionAlert();
+      return;
+    }
 
-        Alert.alert(t('manageSubscriptionTitle', 'Manage subscription'), message, [
-          { text: t('ok', 'OK') },
-        ]);
+    // Pro -> Free downgrade just inform stores handle those
+    if (selected === 'Free') {
+      if (isPro(currentPlan)) {
+        showDownGradeAlert();
         return;
       }
-
-      Alert.alert(
+    // Free -> Free no-op 
+    Alert.alert(
         t('alreadyFreeTitle', 'Already on Free'),
         t('alreadyFreeBody', 'Your plan is already Free.'),
-      );
-      return;
+    );
+    return;
     }
 
     // 2) Free -> Pro upgrade
@@ -235,7 +286,7 @@ export default function ManagePlan() {
       return;
     }
 
-    if (!SUBS_SKU) {
+    if (!selectedSku) {
       Alert.alert(
         t('error', 'Error'),
         t('noProductConfigured', 'Subscription product is not configured for this platform.'),
@@ -249,8 +300,8 @@ export default function ManagePlan() {
       await requestPurchase({
         type: 'subs',
         request: {
-          ios: { sku: SUBS_SKU },
-          android: { skus: [SUBS_SKU] },
+          ios: { sku: selectedSku },
+          android: { skus: [selectedSku] },
         },
       });
       //*/
@@ -307,7 +358,7 @@ export default function ManagePlan() {
               ]}
             >
               <Text style={[styles.cell, styles.planCol, selected === p.name && styles.cellActive]}>
-                {p.name}
+                {planLabel(p.name)}
               </Text>
 
               <Text
@@ -319,13 +370,19 @@ export default function ManagePlan() {
               >
                 {p.name === 'Free'
                   ? t('planFeatures_Free', 'Ad-supported')
-                  : t('planFeatures_Pro', 'Ad-free experience')}
+                  : p.name === 'Pro Monthly'
+                    ? t('planFeatures_Pro', 'Ad-free')
+                    : [
+                        t('planFeatures_Pro', 'Ad-free'),
+                        t('proYearlyDiscount', '- 30%'),
+                      ].join('  •  ')}
+
               </Text>
             </Pressable>
           ))}
 
           {/* 1.5) Subscription end date (Pro only) */}
-          {currentPlan === 'Pro' && formattedEndDate && (
+          {isPro(currentPlan) && formattedEndDate && (
             <View style={styles.subscriptionRow}>
               <Text style={styles.subscriptionLabel}>
                 {t('subscriptionEndsAt', 'Pro subscription end date')}
@@ -340,7 +397,7 @@ export default function ManagePlan() {
             <View style={styles.currentPillRow}>
               <View style={styles.currentPillBox}>
                 <View style={styles.currentPill}>
-                  <Text style={styles.currentPillText}>{currentPlan}</Text>
+                  <Text style={styles.currentPillText}>{planLabel(currentPlan)}</Text>
                 </View>
               </View>
             </View>
@@ -362,10 +419,10 @@ export default function ManagePlan() {
                       pressed && { transform: [{ scale: 0.98 }] },
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel={`${t('choose', 'Choose')} ${p.name}`}
+                    accessibilityLabel={`${t('choose', 'Choose')} ${planLabel(p.name)}`}
                   >
                     <Text style={[styles.optionText, active && styles.optionTextActive]}>
-                      {p.name}
+                      {planLabel(p.name)}
                     </Text>
                   </Pressable>
                 );
@@ -389,7 +446,7 @@ export default function ManagePlan() {
           <Text style={styles.cancelNote}>
             {t(
               'cancelNote',
-              'To cancel your Pro subscription, set your plan to Free. Your Pro access will stay active until your current period ends.',
+              'Your Pro access will stay active until your current period ends.',
             )}
           </Text>
         </View>
@@ -441,7 +498,7 @@ export default function ManagePlan() {
 
 
             <Text style={styles.proUpsellFootnote}>
-              {t('upsellNote', 'Select “Pro” above and tap “Set plan” to upgrade.')}
+              {t('upsellNote', 'Select your Pro plan and tap “Set plan” to upgrade.')}
             </Text>
           </View>
         )}
