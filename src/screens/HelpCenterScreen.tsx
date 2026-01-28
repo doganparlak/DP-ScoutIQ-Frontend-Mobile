@@ -19,12 +19,24 @@ import { sendReachOut } from '@/services/api';
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
 
-const PRIVACY_URL = 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf';
-const TERMS_URL = 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf';
+const LEGAL_URLS = {
+  en: {
+    privacy: 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf',
+    terms: 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf',
+  },
+  tr: {
+    privacy: 'https://scoutwise.ai/docs/PRIVACY%20POLICY%20TR.pdf',
+    terms: 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20TR.pdf',
+  },
+} as const;
+
 
 export default function HelpCenter() {
   const nav = useNavigation<RootNav>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
+  const privacyUrl = LEGAL_URLS[lang].privacy;
+  const termsUrl = LEGAL_URLS[lang].terms;
 
   const [selected, setSelected] = useState<TabKey>('how');
   const [message, setMessage] = useState('');
@@ -366,22 +378,26 @@ export default function HelpCenter() {
               <Text style={styles.sectionTitle}>{t('legal', 'Legal')}</Text>
 
               <Pressable
-                onPress={() => openUrl(PRIVACY_URL)}
+                onPress={() => openUrl(privacyUrl)}
                 accessibilityRole="link"
                 style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.7 }]}
               >
-                <Text style={styles.linkText}>{t('privacyPolicy', 'Privacy Policy')}</Text>
+                <Text style={styles.linkText}>
+                  {t('privacyPolicy', 'Privacy Policy')}
+                </Text>
                 <Text style={styles.chev}>›</Text>
               </Pressable>
 
               <View style={styles.rowLine} />
 
               <Pressable
-                onPress={() => openUrl(TERMS_URL)}
+                onPress={() => openUrl(termsUrl)}
                 accessibilityRole="link"
                 style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.7 }]}
               >
-                <Text style={styles.linkText}>{t('termsOfUse', 'Terms of Use & EULA')}</Text>
+                <Text style={styles.linkText}>
+                  {t('termsOfUse', 'Terms of Use & EULA')}
+                </Text>
                 <Text style={styles.chev}>›</Text>
               </Pressable>
             </View>

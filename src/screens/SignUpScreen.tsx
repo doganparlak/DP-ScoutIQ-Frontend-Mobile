@@ -32,8 +32,17 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
-const PRIVACY_URL = 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf';
-const TERMS_URL = 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf';
+const LEGAL_URLS = {
+  en: {
+    privacy: 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf',
+    terms: 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf',
+  },
+  tr: {
+    privacy: 'https://scoutwise.ai/docs/PRIVACY%20POLICY%20TR.pdf',
+    terms: 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20TR.pdf',
+  },
+} as const;
+
 
 // Format "YYYY-MM-DD" as the user types
 function formatDob(input: string): string {
@@ -51,7 +60,10 @@ function toIsoDob(dmy: string): string {
 
 export default function SignUpScreen() {
   const navigation = useNavigation<Nav>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
+  const privacyUrl = LEGAL_URLS[lang].privacy;
+  const termsUrl = LEGAL_URLS[lang].terms;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -236,7 +248,7 @@ export default function SignUpScreen() {
                 <View style={styles.switchLabelWrap}>
                   <Text style={styles.switchLabel}>
                     {t('signupAgreePrefix', 'I agree to the ')}
-                    <Text style={styles.link} onPress={() => openUrl(PRIVACY_URL)}>
+                    <Text style={styles.link} onPress={() => openUrl(privacyUrl)}>
                       {t('privacyPolicySignup', 'Privacy Policy')}
                     </Text>
                     {t('signupAgreeSuffix', '')}
@@ -250,7 +262,7 @@ export default function SignUpScreen() {
                 <View style={styles.switchLabelWrap}>
                   <Text style={styles.switchLabel}>
                     {t('signupAgreePrefix', 'I agree to the ')}
-                    <Text style={styles.link} onPress={() => openUrl(TERMS_URL)}>
+                    <Text style={styles.link} onPress={() => openUrl(termsUrl)}>
                       {t('termsOfUseSignup', 'Terms of Service')}
                     </Text>
                     {t('signupAgreeSuffix', '')}
