@@ -4,6 +4,9 @@ import { Modal, View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BG, PANEL, TEXT, ACCENT, MUTED, LINE, ACCENT_DARK } from '../theme';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { MainTabsParamList } from '@/types';
 
 type ProNotReadyProps = {
   visible: boolean;
@@ -12,6 +15,7 @@ type ProNotReadyProps = {
 
 export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
   const { t } = useTranslation();
+  const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   return (
     <Modal
       visible={visible}
@@ -58,16 +62,41 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
 
           {/* Mid CTA */}
           <View style={styles.midWrap}>
-            <Text style={styles.upgradeNow}>
-              {t('goProCta', 'Upgrade to Pro now')}
-            </Text>
+            <Text style={styles.upgradeNow}>{t('goProCta', 'Upgrade to Pro now')}</Text>
+          </View>
+
+          {/* Plans frame */}
+          <View style={styles.plansPanel}>
+            <Text style={styles.plansTitle}>{t('proPlansTitle', 'Choose your plan')}</Text>
+            <View style={styles.divider} />
+
+            <View style={styles.plansRow}>
+              {/* Monthly */}
+              <View style={styles.planCard}>
+                <View style={styles.planCenter}>
+                  <Text style={styles.planName}>{t('proMonthly', 'Pro Monthly')}</Text>
+                  <Text style={styles.planSub}>{t('proMonthlySubtitle', 'Flexible billing')}</Text>
+                </View>
+              </View>
+
+              {/* Yearly (badge outside, top-right) */}
+              <View style={[styles.planCard, styles.planCardFeatured]}>
+                {/* badge outside card */}
+                <View style={styles.yearlyBadgeOutside}>
+                  <Text style={styles.yearlyBadgeText}>{t('proYearlyDiscount', '-30%')}</Text>
+                </View>
+
+                <View style={styles.planCenter}>
+                  <Text style={styles.planName}>{t('proYearly', 'Pro Yearly')}</Text>
+                  <Text style={styles.planSub}>{t('proYearlySubtitle', 'Best value')}</Text>
+                </View>
+              </View>
+            </View>
           </View>
 
           {/* Benefits */}
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>
-              {t('proBenefitsTitle', 'Pro Benefits')}
-            </Text>
+            <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
             <View style={styles.divider} />
 
             <View style={styles.bullets}>
@@ -77,14 +106,30 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
             </View>
           </View>
 
+          {/* Buy Now button */}
+          <View style={styles.buyWrap}>
+            <Pressable
+              onPress={() => {
+                onClose(); // optional
+                navigation.navigate('Profile', { screen: 'ManagePlan' } as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t('buyNow', 'Buy now')}
+              style={({ pressed }) => [styles.buyButton, pressed && { opacity: 0.9 }]}
+            >
+              <Text style={styles.buyButtonText}>{t('buyNow', 'Buy now')}</Text>
+            </Pressable>
+          </View>
+
           {/* Slogan */}
           <View style={styles.sloganWrap}>
             <Text style={styles.slogan}>
-              {t('goProSloganLine', 'Enhanced player scouting — seamless, sharper, and built for your next decision.')}
+              {t(
+                'goProSloganLine',
+                'Enhanced player scouting — seamless, sharper, and built for your next decision.'
+              )}
             </Text>
-            <Text style={styles.sloganCta}>
-              {t('goProSloganCta', 'Go Pro. Stay in flow.')}
-            </Text>
+            <Text style={styles.sloganCta}>{t('goProSloganCta', 'Go Pro. Stay in flow.')}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -121,7 +166,6 @@ function Benefit({ text }: { text: string }) {
       });
     };
 
-    // Highlight terms based on active language + your actual strings
     if (i18n.language?.startsWith('tr')) {
       apply('Reklamsız');
       apply('Öncelikli');
@@ -145,8 +189,6 @@ function Benefit({ text }: { text: string }) {
     </View>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
@@ -185,7 +227,7 @@ const styles = StyleSheet.create({
 
   logoWrap: {
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: 14,
   },
   logo: {
     width: 126,
@@ -193,7 +235,7 @@ const styles = StyleSheet.create({
   },
 
   titleWrap: {
-    marginTop: 86, // ✅ more space between logo and title
+    marginTop: 40,
     alignItems: 'center',
   },
   title: {
@@ -206,7 +248,7 @@ const styles = StyleSheet.create({
   titlePro: { color: TEXT },
 
   midWrap: {
-    marginTop: 16,
+    marginTop: 14,
     alignItems: 'center',
   },
   upgradeNow: {
@@ -217,8 +259,92 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 
+  plansPanel: {
+    marginTop: 16,
+    borderRadius: 20,
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: LINE,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  plansTitle: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: LINE,
+    marginTop: 12,
+    marginBottom: 18,
+  },
+
+  plansRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  planCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: LINE,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: BG,
+    position: 'relative',
+  },
+  planCardFeatured: {
+    borderColor: ACCENT,
+  },
+
+  /* ✅ Center everything inside plan cards */
+  planCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planName: {
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  planSub: {
+    marginTop: 6,
+    color: MUTED,
+    fontSize: 12.5,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  /* ✅ Badge outside yearly card, top-right */
+  yearlyBadgeOutside: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: ACCENT,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    zIndex: 5,
+    elevation: 5,
+  },
+  yearlyBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
+
   panel: {
-    marginTop: 32,
+    marginTop: 16,
     borderRadius: 20,
     backgroundColor: PANEL,
     borderWidth: 1,
@@ -232,15 +358,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.3,
     textAlign: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: LINE,
-    marginTop: 12,
-    marginBottom: 18,
+    textTransform: 'uppercase',
   },
 
-  // ✅ more breathing room for bullets
   bullets: { gap: 24, paddingVertical: 6 },
 
   bulletRow: {
@@ -271,11 +391,37 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
   },
+  bulletAccent: {
+    color: ACCENT,
+    fontWeight: '900',
+  },
+
+  buyWrap: {
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  buyButton: {
+    width: '100%',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 1,
+    borderColor: ACCENT,
+  },
+  buyButtonText: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
 
   sloganWrap: {
     marginTop: 'auto',
     alignItems: 'center',
-    paddingTop: 22,
+    paddingTop: 18,
   },
   slogan: {
     color: MUTED,
@@ -283,10 +429,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 19,
     maxWidth: 520,
-  },
-  sloganAccent: {
-    color: ACCENT,
-    fontWeight: '900',
   },
   sloganCta: {
     marginTop: 8,
@@ -296,9 +438,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  bulletAccent: {
-    color: ACCENT,
-    fontWeight: '900',
-  },
-
 });

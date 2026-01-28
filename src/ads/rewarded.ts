@@ -2,10 +2,10 @@
 import { RewardedAd, AdEventType, RewardedAdEventType } from 'react-native-google-mobile-ads';
 import { InteractionManager, Keyboard, Platform } from 'react-native';
 
-const IOS_REWARDED = 'ca-app-pub-3940256099942544/1712485313';
+const IOS_REWARDED = 'ca-app-pub-2754612075301490/7917252456';
 // REAL: ca-app-pub-2754612075301490/7917252456
 // TEST: ca-app-pub-3940256099942544/1712485313
-const ANDROID_REWARDED = 'ca-app-pub-2754612075301490/7680436978';
+const ANDROID_REWARDED = 'ca-app-pub-2754612075301490/768043697';
 // REAL ca-app-pub-2754612075301490/7680436978
 // TEST ca-app-pub-3940256099942544/5224354917
 

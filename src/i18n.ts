@@ -309,6 +309,13 @@ export const resources = {
       termsOfUse: 'Terms of Service & EULA',
       signupAgreeSuffix: '',
       signupAgreePrefix: 'I agree to the ',
+      proMonthly: 'Pro Monthly',
+      proYearly: 'Pro Yearly',
+      proMonthlySubtitle: 'Flexible billing',
+      proYearlySubtitle: 'Best value',
+      proYearlyDiscount: '-30%',
+      proPlansTitle: 'Choose Your Plan',
+      buyNow: 'BUY NOW',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -752,6 +759,13 @@ export const resources = {
       privacyPolicySignup: 'Gizlilik Politikası’nı',
       signupAgreeSuffix: ' kabul ediyorum', 
       signupAgreePrefix: '',
+      proMonthly: 'Aylık Pro',
+      proYearly: 'Yıllık Pro',
+      proMonthlySubtitle: 'Esnek ödeme',
+      proYearlySubtitle: 'En iyi fiyat',
+      proYearlyDiscount: '-%30',
+      proPlansTitle: 'Planını seç',
+      buyNow: 'SATIN AL',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',
