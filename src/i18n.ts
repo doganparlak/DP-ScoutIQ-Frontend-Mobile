@@ -770,6 +770,8 @@ export const resources = {
       proYearlyDiscount: '- %30',
       proPlansTitle: 'Planını seç',
       buyNow: 'SATIN AL',
+      manageProAndroid: 'Zaten bir Pro planındasın. Lütfen Google Play abonelik ayarlarından yönet.',
+      manageProIOS: 'Zaten bir Pro planındasın. Lütfen Apple abonelik ayarlarından yönet.',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',
