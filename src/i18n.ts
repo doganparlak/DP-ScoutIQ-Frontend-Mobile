@@ -309,7 +309,7 @@ export const resources = {
       termsOfUse: 'Terms of Service & EULA',
       signupAgreeSuffix: '',
       signupAgreePrefix: 'I agree to the ',
-      free: 'Ücretsiz',
+      free: 'Free',
       proMonthly: 'Pro Monthly',
       proYearly: 'Pro Yearly',
       proMonthlySubtitle: 'Flexible billing',
