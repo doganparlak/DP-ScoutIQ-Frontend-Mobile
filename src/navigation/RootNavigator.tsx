@@ -11,6 +11,7 @@ import SignUpScreen from '@/screens/SignUpScreen';
 import ResetPasswordScreen from '@/screens/ResetPasswordScreen';
 import VerificationScreen from '@/screens/VerificationScreen';
 import NewPasswordScreen from '@/screens/NewPasswordScreen';
+import { restoreSubscriptionIfAny } from '@/subscriptions/restore';
 
 import { View, ActivityIndicator, AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
@@ -48,6 +49,14 @@ function AuthStack() {
 }
 
 function AppStack() {
+  React.useEffect(() => {
+    (async () => {
+      try {
+        await restoreSubscriptionIfAny();
+      } catch {}
+    })();
+  }, []);
+  
   return (
     <App.Navigator screenOptions={{ headerShown: false }}>
       <App.Screen name="MainTabs" component={MainTabs} />
@@ -68,6 +77,9 @@ export default function RootNavigator() {
       }
       // Validate with backend; if the session was revoked/expired, this should 401.
       await getMe();
+
+     
+
       setIsAuthed(true);
     } catch (e: any) {
       const msg = String(e?.message ?? '');
