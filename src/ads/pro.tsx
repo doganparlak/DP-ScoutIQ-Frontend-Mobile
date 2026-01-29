@@ -16,6 +16,7 @@ type ProNotReadyProps = {
 export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
+
   return (
     <Modal
       visible={visible}
@@ -190,6 +191,8 @@ function Benefit({ text }: { text: string }) {
   );
 }
 
+const SHIFT_UP = 14; // ✅ increase/decrease to move everything up while preserving spacing
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
 
@@ -199,6 +202,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 10,
     paddingBottom: 18,
+
+    // ✅ shifts the whole layout upward without changing internal gaps
+    transform: [{ translateY: -SHIFT_UP }],
   },
 
   topBar: {
