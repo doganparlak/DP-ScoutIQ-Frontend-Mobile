@@ -419,10 +419,14 @@ const handleReportPress = async (player: PlayerRow) => {
   if (processingReports.has(player.id) || queuedReportPlayer?.id === player.id) return;
 
   // PRO: open immediately
-  if (plan === 'Pro') {
+  const isPro =
+    plan === 'Pro Monthly' || plan === 'Pro Yearly';
+
+  if (isPro) {
     allowReport(player);
     return;
   }
+
   // FREE: try rewarded, but fallback to report on timeout
   try {
     const timeoutMs = 1000;
