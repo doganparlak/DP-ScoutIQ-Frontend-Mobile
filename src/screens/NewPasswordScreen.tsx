@@ -11,6 +11,7 @@ import {
   Image, 
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +36,8 @@ export default function NewPasswordScreen() {
   const [again, setAgain] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAgain, setShowAgain] = useState(false);
 
   // measure container width → align back button to card's left edge
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
@@ -117,15 +120,24 @@ export default function NewPasswordScreen() {
           {/* New password */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>{t('newPassword', 'New password')}</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t('placeholderPassword', '••••••••')}
-              placeholderTextColor={MUTED}
-              secureTextEntry
-              style={styles.input}
-              returnKeyType="next"
-            />
+            <View style={styles.passwordRow}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t('placeholderPassword', '••••••••')}
+                placeholderTextColor={MUTED}
+                secureTextEntry={!showPassword}
+                style={styles.passwordInput}
+                returnKeyType="next"
+              />
+              <Pressable
+                onPress={() => setShowPassword(prev => !prev)}
+                hitSlop={8}
+                style={styles.eyeButton}
+              >
+                {showPassword ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
+              </Pressable>
+            </View>
             {/* Always-visible checklist (same format as SignUp) */}
             <View style={styles.pwChecklist}>
               <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
@@ -261,4 +273,26 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 16 },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD,
+    borderColor: LINE,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingRight: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    color: TEXT,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingLeft: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
 });

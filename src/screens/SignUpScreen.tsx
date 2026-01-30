@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useMemo as useRNMemo } from 'react';
+import { Eye, EyeOff } from 'lucide-react-native';
 import {
   View,
   Text,
@@ -66,6 +67,7 @@ export default function SignUpScreen() {
   const termsUrl = LEGAL_URLS[lang].terms;
 
   const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
 
   const hasMin = password.length >= 8;
@@ -189,15 +191,29 @@ export default function SignUpScreen() {
               {/* Password */}
               <View style={styles.fieldBlock}>
                 <Text style={styles.label}>{t('password', 'Password')}</Text>
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder={t('placeholderPassword', '••••••••')}
-                  placeholderTextColor={MUTED}
-                  secureTextEntry
-                  style={styles.input}
-                  returnKeyType="next"
-                />
+
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('placeholderPassword', '••••••••')}
+                    placeholderTextColor={MUTED}
+                    secureTextEntry={!showPassword}
+                    style={styles.passwordInput}
+                    returnKeyType="next"
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(prev => !prev)}
+                    hitSlop={8}
+                    style={styles.eyeButton}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color={MUTED} />
+                    ) : (
+                      <Eye size={20} color={MUTED} />
+                    )}
+                  </Pressable>
+                </View>
 
                 <View style={styles.pwChecklist}>
                   <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
@@ -205,6 +221,7 @@ export default function SignUpScreen() {
                   <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
                 </View>
               </View>
+
 
               {/* DOB + Country */}
               <View style={styles.row2}>
@@ -462,4 +479,26 @@ const styles = StyleSheet.create({
     borderBottomColor: LINE,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD,
+    borderColor: LINE,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingRight: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    color: TEXT,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingLeft: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
 });
