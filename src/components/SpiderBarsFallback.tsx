@@ -56,7 +56,7 @@ export default function SpiderBarsFallback({
   points,
   Icon,
   headerColor = ACCENT,
-  collapsedCount = 2,
+  collapsedCount = 3,
   defaultCollapsed = true,
 }: Props) {
   const { t } = useTranslation();

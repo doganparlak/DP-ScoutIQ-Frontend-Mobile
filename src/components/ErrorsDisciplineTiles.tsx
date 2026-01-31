@@ -44,7 +44,7 @@ export default function ErrorsDisciplineTiles({
   points,
   Icon,
   thresholds = { good: 0.33, warn: 0.66 },
-  collapsedCount = 2,
+  collapsedCount = 3,
   defaultCollapsed = true,
 }: Props) {
   const { t } = useTranslation();

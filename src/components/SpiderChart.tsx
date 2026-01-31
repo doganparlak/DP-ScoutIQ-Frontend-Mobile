@@ -109,7 +109,8 @@ type NormalizedPoint = {
 
 const AVATAR = 34;
 
-export default function SpiderChart({ title, points, Icon }: Props) {
+export default function SpiderChart({ title, points, Icon,
+ }: Props) {
   const { t } = useTranslation();
   const tTitle = (title || '').toLowerCase();
 
@@ -151,7 +152,13 @@ export default function SpiderChart({ title, points, Icon }: Props) {
 
   // If fewer than 3 valid metrics, show list fallback instead of radar
   if (cleaned.length < MIN_RADAR_METRICS) {
-    return <SpiderBarsFallback title={title} points={points} Icon={AutoIcon} />;
+      return (
+        <SpiderBarsFallback
+          title={title}
+          points={points}
+          Icon={AutoIcon}
+        />
+    );
   }
 
   // ---- Radar path (3+ metrics) ----
