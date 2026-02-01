@@ -438,7 +438,7 @@ export default function ManagePlan() {
             style={[styles.primaryBtn, saving && { opacity: 0.6 }]}
           >
             <Text style={styles.primaryBtnText}>
-              {saving ? t('saving', 'Saving...') : t('setPlan', 'Set plan')}
+              {saving ? t('saving', 'Saving...') : t('setPlan', 'Set Plan')}
             </Text>
           </TouchableOpacity>
 

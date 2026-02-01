@@ -51,7 +51,7 @@ export const COUNTRY_CODE2: Record<string, string> = {
   Bangladesh: "BANG",
   Barbados: "BRDO",
   Belarus: "BYS",
-  Belgium: "BElG",
+  Belgium: "BELG",
   Belize: "BLZ",
   Benin: "BENN",
   Bermuda: "BERM",
