@@ -1,4 +1,6 @@
 import React from 'react';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import StrategyScreen from '@/screens/StrategyScreen';
@@ -14,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 const ProfileStack = createNativeStackNavigator<RootStackParamList>();
 
+
 function ProfileStackScreen() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -26,7 +29,8 @@ function ProfileStackScreen() {
 
 export default function MainTabs() {
   const { t } = useTranslation();
-
+  const insets = useSafeAreaInsets();
+  const androidBottom = Platform.OS === 'android' ? insets.bottom : 0;
   return (
     <Tab.Navigator
       initialRouteName="Strategy"
@@ -36,7 +40,7 @@ export default function MainTabs() {
           backgroundColor: PANEL,
           borderTopColor: LINE,
           borderTopWidth: 1,
-          height: 70,
+          height: 70 + androidBottom,
         },
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
