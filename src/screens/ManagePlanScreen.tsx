@@ -165,10 +165,7 @@ export default function ManagePlan() {
             );
           }
         } catch (err: any) {
-          Alert.alert(
-            'purchaseUpdatedListener error',
-            t('couldNotUpdatePlan', 'Could not update plan. Please try again.'),
-          );
+          
         } finally {
           setSaving(false);
         }
