@@ -42,7 +42,7 @@ const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
 
 const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
 
-const log = (...args: any[]) => console.log('[IAP]', ...args);
+//const log = (...args: any[]) => console.log('[IAP]', ...args);
 
 export default function ManagePlan() {
   const nav = useNavigation();
@@ -104,13 +104,13 @@ export default function ManagePlan() {
     const initIap = async () => {
       try {
         await initConnection({});
-        log('initConnection OK', { platform: Platform.OS});
+        //log('initConnection OK', { platform: Platform.OS});
         setIapReady(true);
       } catch (err) {
-        log('initConnection FAILED', err);
+        //log('initConnection FAILED', err);
       }
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
-        log('purchaseUpdatedListener purchase=', JSON.stringify(purchase, null, 2));
+        //log('purchaseUpdatedListener purchase=', JSON.stringify(purchase, null, 2));
         try {
           const platform: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
 
@@ -127,7 +127,7 @@ export default function ManagePlan() {
           }
 
           if (!externalId) {
-            log('No externalId -> finishTransaction and stop');
+            //log('No externalId -> finishTransaction and stop');
             await finishTransaction({ purchase, isConsumable: false });
             setSaving(false);
             return;
@@ -139,11 +139,11 @@ export default function ManagePlan() {
             external_id: externalId,
           };
 
-          log('activateIAPSubscription payload=', payload);
+          //log('activateIAPSubscription payload=', payload);
           const res = await activateIAPSubscription(payload);
-          log('activateIAPSubscription response=', res);
+          //log('activateIAPSubscription response=', res);
           await finishTransaction({ purchase, isConsumable: false });
-          log('finishTransaction done');
+          //log('finishTransaction done');
           if (res?.ok) {
             setCurrentPlan(res.plan);
             setSelected(res.plan);
