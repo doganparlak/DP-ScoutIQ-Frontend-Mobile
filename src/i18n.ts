@@ -215,7 +215,7 @@ export const resources = {
       selectPlan: 'Select plan',
       choose: 'Choose',
       saving: 'Saving',
-      setPlan: 'Set plan',
+      setPlan: 'Set Plan',
       cancelNote: 'Your Pro access will stay active until your current period ends.',
       subscriptionEndsAt: 'Pro plan end date',
       storeNotReady: 'Store connection is not ready yet. Please try again.',
