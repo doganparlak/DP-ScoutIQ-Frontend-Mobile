@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image, 
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -80,116 +82,120 @@ export default function NewPasswordScreen() {
       style={{ flex: 1, backgroundColor: BG }}
       behavior={Platform.select({ ios: 'padding', android: 'padding' })}
     >
-      {/* Top-left back button aligned to card left */}
-      <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
-        <Pressable
-          onPress={() => navigation.replace('Login')}
-          hitSlop={14}
-          style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
-          accessibilityRole="button"
-          accessibilityLabel={t('backToLogin', 'Back to Login')}
-        >
-          <Text style={styles.backIcon}>←</Text>
-          <Text style={styles.backText}>{t('login', 'Log in')}</Text>
-        </Pressable>
-      </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          {/* Top-left back button aligned to card left */}
+          <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
+            <Pressable
+              onPress={() => navigation.replace('Login')}
+              hitSlop={14}
+              style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('backToLogin', 'Back to Login')}
+            >
+              <Text style={styles.backIcon}>←</Text>
+              <Text style={styles.backText}>{t('login', 'Log in')}</Text>
+            </Pressable>
+          </View>
 
-      <View
-        style={styles.wrap}
-        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-      >
-        {/* Logo above app name */}
-        <Image
-          source={scoutwiseLogo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+          <View
+            style={styles.wrap}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+          >
+            {/* Logo above app name */}
+            <Image
+              source={scoutwiseLogo}
+              style={styles.logo}
+              resizeMode="contain"
+            />
 
-        {/* App name: SCOUT white, WISE green */}
-        <Text style={styles.appName}>
-          <Text style={styles.appNameScout}>SCOUT</Text>
-          <Text style={styles.appNameWise}>WISE</Text>
-        </Text>
+            {/* App name: SCOUT white, WISE green */}
+            <Text style={styles.appName}>
+              <Text style={styles.appNameScout}>SCOUT</Text>
+              <Text style={styles.appNameWise}>WISE</Text>
+            </Text>
 
-        <View style={styles.card}>
-          <Text style={styles.title}>{t('newPwTitle', 'Create a new password')}</Text>
-          <Text style={styles.subtitle}>
-            {t('newPwSubtitle', 'Set a new password for {{email}}.', { email })}
-          </Text>
+            <View style={styles.card}>
+              <Text style={styles.title}>{t('newPwTitle', 'Create a new password')}</Text>
+              <Text style={styles.subtitle}>
+                {t('newPwSubtitle', 'Set a new password for {{email}}.', { email })}
+              </Text>
 
-          {/* New password */}
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('newPassword', 'New password')}</Text>
-            <View style={styles.passwordRow}>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder={t('placeholderPassword', '••••••••')}
-                placeholderTextColor={MUTED}
-                secureTextEntry={!showPassword}
-                style={styles.passwordInput}
-                returnKeyType="next"
-              />
+              {/* New password */}
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('newPassword', 'New password')}</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('placeholderPassword', '••••••••')}
+                    placeholderTextColor={MUTED}
+                    secureTextEntry={!showPassword}
+                    style={styles.passwordInput}
+                    returnKeyType="next"
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(prev => !prev)}
+                    hitSlop={8}
+                    style={styles.eyeButton}
+                  >
+                    {showPassword ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
+                  </Pressable>
+                </View>
+                {/* Always-visible checklist (same format as SignUp) */}
+                <View style={styles.pwChecklist}>
+                  <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
+                  <PwRule ok={hasLetter} text={t('pwLetter', 'Contains a letter (A–Z or a–z)')} />
+                  <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
+                </View>
+              </View>
+
+              {/* Confirm */}
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>{t('reenterNewPassword', 'Re-enter new password')}</Text>
+                <TextInput
+                  value={again}
+                  onChangeText={setAgain}
+                  placeholder={t('placeholderPassword', '••••••••')}
+                  placeholderTextColor={MUTED}
+                  secureTextEntry
+                  style={styles.input}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSave}
+                />
+              </View>
+
+              {password && again && !match ? (
+                <Text style={styles.error}>
+                  {t('passwordsNoMatch', 'Passwords do not match.')}
+                </Text>
+              ) : null}
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
               <Pressable
-                onPress={() => setShowPassword(prev => !prev)}
-                hitSlop={8}
-                style={styles.eyeButton}
+                onPress={handleSave}
+                disabled={!isValid || submitting}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  {
+                    backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                    opacity: !isValid || submitting ? 0.6 : 1,
+                  },
+                ]}
               >
-                {showPassword ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
+                {submitting ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text style={styles.primaryBtnText}>
+                    {t('savePassword', 'Save password')}
+                  </Text>
+                )}
               </Pressable>
             </View>
-            {/* Always-visible checklist (same format as SignUp) */}
-            <View style={styles.pwChecklist}>
-              <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
-              <PwRule ok={hasLetter} text={t('pwLetter', 'Contains a letter (A–Z or a–z)')} />
-              <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
-            </View>
           </View>
-
-          {/* Confirm */}
-          <View style={styles.fieldBlock}>
-            <Text style={styles.label}>{t('reenterNewPassword', 'Re-enter new password')}</Text>
-            <TextInput
-              value={again}
-              onChangeText={setAgain}
-              placeholder={t('placeholderPassword', '••••••••')}
-              placeholderTextColor={MUTED}
-              secureTextEntry
-              style={styles.input}
-              returnKeyType="done"
-              onSubmitEditing={handleSave}
-            />
-          </View>
-
-          {password && again && !match ? (
-            <Text style={styles.error}>
-              {t('passwordsNoMatch', 'Passwords do not match.')}
-            </Text>
-          ) : null}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Pressable
-            onPress={handleSave}
-            disabled={!isValid || submitting}
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              {
-                backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                opacity: !isValid || submitting ? 0.6 : 1,
-              },
-            ]}
-          >
-            {submitting ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.primaryBtnText}>
-                {t('savePassword', 'Save password')}
-              </Text>
-            )}
-          </Pressable>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
