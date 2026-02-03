@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
 
   createdByTitle: {
     textAlign: 'center',
-    marginTop: Platform.OS === 'android' ? 40 : 75,
+    marginTop: Platform.OS === 'android' ? 35 : 75,
     letterSpacing: 0.3,
     fontSize: 24,
     lineHeight: 30,
