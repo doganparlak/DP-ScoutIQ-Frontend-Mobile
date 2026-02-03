@@ -1,6 +1,8 @@
 // src/screens/StrategyScreen.tsx
 import * as React from 'react';
-import { View, ScrollView, StyleSheet, Text, Pressable, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, ScrollView, StyleSheet, 
+        Text, Pressable, Keyboard, Platform,
+         TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Header from '@/components/Header';
@@ -18,37 +20,43 @@ export default function StrategyScreen() {
   const handleStart = () => navigation.navigate('Chat');
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.wrap}>
-        <Header />
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <StrategyCard />
-          <View style={{ paddingHorizontal: 16 }}>
-            <Pressable
-              onPress={handleStart}
-              accessibilityRole="button"
-              accessibilityLabel={t('startChatting', 'Start Chatting')}
-              style={({ pressed }) => ({
-                backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                borderRadius: 12,
-                padding: 14,
-              })}
-            >
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
-                {t('startChatting', 'Start Chatting')}
-              </Text>
-            </Pressable>
+     <KeyboardAvoidingView
+        style={styles.wrap}
+        behavior="padding" // ✅ both iOS + Android
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.wrap}>
+          <Header />
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <StrategyCard />
+            <View style={{ paddingHorizontal: 16 }}>
+              <Pressable
+                onPress={handleStart}
+                accessibilityRole="button"
+                accessibilityLabel={t('startChatting', 'Start Chatting')}
+                style={({ pressed }) => ({
+                  backgroundColor: pressed ? ACCENT_DARK : ACCENT,
+                  borderRadius: 12,
+                  padding: 14,
+                })}
+              >
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
+                  {t('startChatting', 'Start Chatting')}
+                </Text>
+              </Pressable>
 
-            <Text style={{ color: MUTED, marginTop: 8, fontSize: 14, textAlign: 'center' }}>
-              {t('updateStrategyHint', 'You can update your strategy anytime.')}
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
-    </TouchableWithoutFeedback>
+              <Text style={{ color: MUTED, marginTop: 8, fontSize: 14, textAlign: 'center' }}>
+                {t('updateStrategyHint', 'You can update your strategy anytime.')}
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
   );
 
 }

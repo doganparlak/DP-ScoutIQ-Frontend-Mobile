@@ -10,6 +10,7 @@ import {
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
 } from 'react-native';
 import {
   toSpiderPoints,
@@ -509,7 +510,7 @@ const styles = StyleSheet.create({
 
   createdByTitle: {
     textAlign: 'center',
-    marginTop: 75,
+    marginTop: Platform.OS === 'android' ? 40 : 75,
     letterSpacing: 0.3,
     fontSize: 24,
     lineHeight: 30,

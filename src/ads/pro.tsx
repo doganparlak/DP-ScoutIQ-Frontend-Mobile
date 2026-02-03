@@ -224,6 +224,7 @@ const styles = StyleSheet.create({
     backgroundColor: PANEL,
     borderWidth: 1,
     borderColor: LINE,
+    marginTop: 48,
   },
   closeIcon: {
     color: TEXT,

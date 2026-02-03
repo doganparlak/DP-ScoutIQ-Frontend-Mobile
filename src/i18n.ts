@@ -754,7 +754,7 @@ export const resources = {
       proBenefit2: 'Öncelikli kullanıcı desteği',
       proBenefit3: 'Yeni özelliklerin geliştirilmesine destek olun',
       goProSloganLine: 'Oyuncu keşfi artık kesintisiz — nokta atışı, stratejine ve felsefene uygun',
-      goProSloganCta: 'Pro’ya geç. Ritmi yakala. Oyunda kal.',
+      goProSloganCta: 'PRO’YA GEÇ. RİTMİ YAKALA. OYUNDA KAL.',
       legal: 'Yasal Bilgiler',
       privacyPolicy: "Gizlilik Politikası & KVKK Aydınlatma Metni & Açık Rıza Formu",
       termsOfUse: "Kullanım Koşulları & Üyelik Sözleşmesi",

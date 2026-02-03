@@ -78,7 +78,7 @@ export default function NewPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: BG }}
-      behavior={Platform.select({ ios: 'padding', android: undefined })}
+      behavior={Platform.select({ ios: 'padding', android: 'padding' })}
     >
       {/* Top-left back button aligned to card left */}
       <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
