@@ -19,6 +19,7 @@ import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
 
+import type { Plan } from '@/services/api';
 import { healthcheck, sendChat, resetSession, getMe } from '@/services/api';
 import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
 import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
@@ -49,7 +50,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
   const [sessionId, setSessionId] = useState<string>('');
-  const [plan, setPlan] = useState<'Free' | 'Pro'>('Free');
+  const [plan, setPlan] = useState<Plan>('Free');
 
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
   const pendingIdRef = React.useRef<string | null>(null);
@@ -122,7 +123,8 @@ export default function ChatScreen() {
       // Get user plan once (ads only for Free)
       try {
         const me = await getMe();
-        setPlan(me.plan === 'Pro' ? 'Pro' : 'Free');
+        const p = me?.plan;
+        setPlan(p === 'Pro Monthly' || p === 'Pro Yearly' ? p : 'Free');
       } catch {
         setPlan('Free');
       }
