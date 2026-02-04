@@ -14,12 +14,12 @@ export const GK_METRICS = [
 
 // Shooting / finishing metrics
 export const SHOOTING_METRICS = [
-  'Goals',
   'Shots Total',
-  'Penalties Scored',
   'Shots On Target',
   'Shots On Target (%)',
+  'Goals',
   'Hit Woodwork',
+  'Penalties Scored',
 ] as const;
 
 // Passing / delivery metrics
@@ -28,13 +28,13 @@ export const PASSING_METRICS = [
   'Long Balls',
   'Long Balls Won',
   'Long Balls Won (%)',
-  'Accurate Passes',
-  'Accurate Passes (%)',
-  'Backward Passes',
   'Total Crosses',
   'Accurate Crosses',
   'Successful Crosses (%)',
   'Passes',
+  'Accurate Passes',
+  'Accurate Passes (%)',
+  'Backward Passes',
   'Key Passes',
   'Passes In Final Third',
   'Through Balls',
@@ -91,11 +91,11 @@ export const DEFENDING_METRICS = [
   'Clearance Offline',
   'Ball Recovery',
   'Aerials',
-  'Aerials Won (%)',
   'Aerials Won',
+  'Aerials Won (%)',
+  'Total Duels',
   'Duels Won',
   'Duels Won (%)',
-  'Total Duels',
 ] as const;
 
 
