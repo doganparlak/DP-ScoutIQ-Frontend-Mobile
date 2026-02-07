@@ -1,6 +1,6 @@
 // src/ads/pro.tsx
 import React from 'react';
-import { Modal, View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { Modal, View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BG, PANEL, TEXT, ACCENT, MUTED, LINE, ACCENT_DARK } from '../theme';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +28,7 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
     >
       <SafeAreaView style={styles.safe}>
         <View style={styles.container}>
-          {/* Close */}
+          {/* Close (NOT shifted) */}
           <View style={styles.topBar}>
             <View style={styles.topBarSpacer} />
             <Pressable
@@ -42,98 +42,99 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
             </Pressable>
           </View>
 
-          {/* Logo (no frame) */}
-          <View style={styles.logoWrap}>
-            <Image
-              source={require('../../assets/scoutwise_logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-              accessibilityIgnoresInvertColors
-            />
-          </View>
+          {/* Everything else (shift on Android only) */}
+          <View style={[styles.content, isAndroid && styles.androidShift]}>
+            {/* Logo (no frame) */}
+            <View style={styles.logoWrap}>
+              <Image
+                source={require('../../assets/scoutwise_logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+                accessibilityIgnoresInvertColors
+              />
+            </View>
 
-          {/* Title */}
-          <View style={styles.titleWrap}>
-            <Text style={styles.title}>
-              <Text style={styles.titleScout}>SCOUT</Text>
-              <Text style={styles.titleWise}>WISE</Text>
-              <Text style={styles.titlePro}> PRO</Text>
-            </Text>
-          </View>
+            {/* Title */}
+            <View style={styles.titleWrap}>
+              <Text style={styles.title}>
+                <Text style={styles.titleScout}>SCOUT</Text>
+                <Text style={styles.titleWise}>WISE</Text>
+                <Text style={styles.titlePro}> PRO</Text>
+              </Text>
+            </View>
 
-          {/* Mid CTA */}
-          <View style={styles.midWrap}>
-            <Text style={styles.upgradeNow}>{t('goProCta', 'Upgrade to Pro now')}</Text>
-          </View>
+            {/* Mid CTA */}
+            <View style={styles.midWrap}>
+              <Text style={styles.upgradeNow}>{t('goProCta', 'Upgrade to Pro now')}</Text>
+            </View>
 
-          {/* Plans frame */}
-          <View style={styles.plansPanel}>
-            <Text style={styles.plansTitle}>{t('proPlansTitle', 'Choose your plan')}</Text>
-            <View style={styles.divider} />
+            {/* Plans frame */}
+            <View style={styles.plansPanel}>
+              <Text style={styles.plansTitle}>{t('proPlansTitle', 'Choose your plan')}</Text>
+              <View style={styles.divider} />
 
-            <View style={styles.plansRow}>
-              {/* Monthly */}
-              <View style={styles.planCard}>
-                <View style={styles.planCenter}>
-                  <Text style={styles.planName}>{t('proMonthly', 'Pro Monthly')}</Text>
-                  <Text style={styles.planSub}>{t('proMonthlySubtitle', 'Flexible billing')}</Text>
-                </View>
-              </View>
-
-              {/* Yearly (badge outside, top-right) */}
-              <View style={[styles.planCard, styles.planCardFeatured]}>
-                {/* badge outside card */}
-                <View style={styles.yearlyBadgeOutside}>
-                  <Text style={styles.yearlyBadgeText}>{t('proYearlyDiscount', '-30%')}</Text>
+              <View style={styles.plansRow}>
+                <View style={styles.planCard}>
+                  <View style={styles.planCenter}>
+                    <Text style={styles.planName}>{t('proMonthly', 'Pro Monthly')}</Text>
+                    <Text style={styles.planSub}>{t('proMonthlySubtitle', 'Flexible billing')}</Text>
+                  </View>
                 </View>
 
-                <View style={styles.planCenter}>
-                  <Text style={styles.planName}>{t('proYearly', 'Pro Yearly')}</Text>
-                  <Text style={styles.planSub}>{t('proYearlySubtitle', 'Best value')}</Text>
+                <View style={[styles.planCard, styles.planCardFeatured]}>
+                  <View style={styles.yearlyBadgeOutside}>
+                    <Text style={styles.yearlyBadgeText}>{t('proYearlyDiscount', '-30%')}</Text>
+                  </View>
+
+                  <View style={styles.planCenter}>
+                    <Text style={styles.planName}>{t('proYearly', 'Pro Yearly')}</Text>
+                    <Text style={styles.planSub}>{t('proYearlySubtitle', 'Best value')}</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
 
-          {/* Benefits */}
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
-            <View style={styles.divider} />
+            {/* Benefits */}
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
+              <View style={styles.divider} />
 
-            <View style={styles.bullets}>
-              <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
-              <Benefit text={t('proBenefit2', 'Priority customer support')} />
-              <Benefit text={t('proBenefit3', 'Support the development of new features')} />
+              <View style={styles.bullets}>
+                <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
+                <Benefit text={t('proBenefit2', 'Priority customer support')} />
+                <Benefit text={t('proBenefit3', 'Support the development of new features')} />
+              </View>
             </View>
-          </View>
 
-          {/* Buy Now button */}
-          <View style={styles.buyWrap}>
-            <Pressable
-              onPress={() => {
-                onClose(); // optional
-                navigation.navigate('Profile', { screen: 'ManagePlan' } as any);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t('buyNow', 'Buy now')}
-              style={({ pressed }) => [styles.buyButton, pressed && { opacity: 0.9 }]}
-            >
-              <Text style={styles.buyButtonText}>{t('buyNow', 'Buy now')}</Text>
-            </Pressable>
-          </View>
+            {/* Buy Now button */}
+            <View style={styles.buyWrap}>
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  navigation.navigate('Profile', { screen: 'ManagePlan' } as any);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t('buyNow', 'Buy now')}
+                style={({ pressed }) => [styles.buyButton, pressed && { opacity: 0.9 }]}
+              >
+                <Text style={styles.buyButtonText}>{t('buyNow', 'Buy now')}</Text>
+              </Pressable>
+            </View>
 
-          {/* Slogan */}
-          <View style={styles.sloganWrap}>
-            <Text style={styles.slogan}>
-              {t(
-                'goProSloganLine',
-                'Enhanced player scouting — seamless, sharper, and built for your next decision.'
-              )}
-            </Text>
-            <Text style={styles.sloganCta}>{t('goProSloganCta', 'Go Pro. Stay in flow.')}</Text>
+            {/* Slogan */}
+            <View style={styles.sloganWrap}>
+              <Text style={styles.slogan}>
+                {t(
+                  'goProSloganLine',
+                  'Enhanced player scouting — seamless, sharper, and built for your next decision.'
+                )}
+              </Text>
+              <Text style={styles.sloganCta}>{t('goProSloganCta', 'Go Pro. Stay in flow.')}</Text>
+            </View>
           </View>
         </View>
       </SafeAreaView>
+
     </Modal>
   );
 }
@@ -192,6 +193,8 @@ function Benefit({ text }: { text: string }) {
 }
 
 const SHIFT_UP = 14; // ✅ increase/decrease to move everything up while preserving spacing
+const SHIFT_UP_ANDROID = 44;
+const isAndroid = Platform.OS === 'android';
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
@@ -205,6 +208,13 @@ const styles = StyleSheet.create({
 
     // ✅ shifts the whole layout upward without changing internal gaps
     transform: [{ translateY: -SHIFT_UP }],
+  },
+  content: {
+    flex: 1,
+  },
+
+  androidShift: {
+    transform: [{ translateY: -SHIFT_UP_ANDROID }],
   },
 
   topBar: {
