@@ -1,6 +1,6 @@
 // src/ads/pro.tsx
 import React from 'react';
-import { Modal, View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
+import { Modal, View, Text, StyleSheet, Pressable, Image, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BG, PANEL, TEXT, ACCENT, MUTED, LINE, ACCENT_DARK } from '../theme';
 import { useTranslation } from 'react-i18next';
@@ -26,9 +26,9 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
       onRequestClose={onClose}
       statusBarTranslucent={false}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.container}>
-          {/* Close (NOT shifted) */}
+          {/* Close (fixed) */}
           <View style={styles.topBar}>
             <View style={styles.topBarSpacer} />
             <Pressable
@@ -42,96 +42,106 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
             </Pressable>
           </View>
 
-          {/* Everything else (shift on Android only) */}
-          <View style={[styles.content, isAndroid && styles.androidShift]}>
-            {/* Logo (no frame) */}
-            <View style={styles.logoWrap}>
-              <Image
-                source={require('../../assets/scoutwise_logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-                accessibilityIgnoresInvertColors
-              />
-            </View>
+          {/* Scrollable content */}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isAndroid && { paddingTop: -SHIFT_UP_ANDROID }, // keep Android shift effect
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              {/* Logo (no frame) */}
+              <View style={styles.logoWrap}>
+                <Image
+                  source={require('../../assets/scoutwise_logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                  accessibilityIgnoresInvertColors
+                />
+              </View>
 
-            {/* Title */}
-            <View style={styles.titleWrap}>
-              <Text style={styles.title}>
-                <Text style={styles.titleScout}>SCOUT</Text>
-                <Text style={styles.titleWise}>WISE</Text>
-                <Text style={styles.titlePro}> PRO</Text>
-              </Text>
-            </View>
+              {/* Title */}
+              <View style={styles.titleWrap}>
+                <Text style={styles.title}>
+                  <Text style={styles.titleScout}>SCOUT</Text>
+                  <Text style={styles.titleWise}>WISE</Text>
+                  <Text style={styles.titlePro}> PRO</Text>
+                </Text>
+              </View>
 
-            {/* Mid CTA */}
-            <View style={styles.midWrap}>
-              <Text style={styles.upgradeNow}>{t('goProCta', 'Upgrade to Pro now')}</Text>
-            </View>
+              {/* Mid CTA */}
+              <View style={styles.midWrap}>
+                <Text style={styles.upgradeNow}>{t('goProCta', 'Upgrade to Pro now')}</Text>
+              </View>
 
-            {/* Plans frame */}
-            <View style={styles.plansPanel}>
-              <Text style={styles.plansTitle}>{t('proPlansTitle', 'Choose your plan')}</Text>
-              <View style={styles.divider} />
+              {/* Plans frame */}
+              <View style={styles.plansPanel}>
+                <Text style={styles.plansTitle}>{t('proPlansTitle', 'Choose your plan')}</Text>
+                <View style={styles.divider} />
 
-              <View style={styles.plansRow}>
-                <View style={styles.planCard}>
-                  <View style={styles.planCenter}>
-                    <Text style={styles.planName}>{t('proMonthly', 'Pro Monthly')}</Text>
-                    <Text style={styles.planSub}>{t('proMonthlySubtitle', 'Flexible billing')}</Text>
+                <View style={styles.plansRow}>
+                  <View style={styles.planCard}>
+                    <View style={styles.planCenter}>
+                      <Text style={styles.planName}>{t('proMonthly', 'Pro Monthly')}</Text>
+                      <Text style={styles.planSub}>{t('proMonthlySubtitle', 'Flexible billing')}</Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={[styles.planCard, styles.planCardFeatured]}>
-                  <View style={styles.yearlyBadgeOutside}>
-                    <Text style={styles.yearlyBadgeText}>{t('proYearlyDiscount', '-30%')}</Text>
-                  </View>
+                  <View style={[styles.planCard, styles.planCardFeatured]}>
+                    <View style={styles.yearlyBadgeOutside}>
+                      <Text style={styles.yearlyBadgeText}>{t('proYearlyDiscount', '-30%')}</Text>
+                    </View>
 
-                  <View style={styles.planCenter}>
-                    <Text style={styles.planName}>{t('proYearly', 'Pro Yearly')}</Text>
-                    <Text style={styles.planSub}>{t('proYearlySubtitle', 'Best value')}</Text>
+                    <View style={styles.planCenter}>
+                      <Text style={styles.planName}>{t('proYearly', 'Pro Yearly')}</Text>
+                      <Text style={styles.planSub}>{t('proYearlySubtitle', 'Best value')}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
 
-            {/* Benefits */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
-              <View style={styles.divider} />
+              {/* Benefits */}
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
+                <View style={styles.divider} />
 
-              <View style={styles.bullets}>
-                <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
-                <Benefit text={t('proBenefit2', 'Priority customer support')} />
-                <Benefit text={t('proBenefit3', 'Support the development of new features')} />
+                <View style={styles.bullets}>
+                  <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
+                  <Benefit text={t('proBenefit2', 'Priority customer support')} />
+                  <Benefit text={t('proBenefit3', 'Support the development of new features')} />
+                </View>
+              </View>
+
+              {/* Buy Now button */}
+              <View style={styles.buyWrap}>
+                <Pressable
+                  onPress={() => {
+                    onClose();
+                    navigation.navigate('Profile', { screen: 'ManagePlan' } as any);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('buyNow', 'Buy now')}
+                  style={({ pressed }) => [styles.buyButton, pressed && { opacity: 0.9 }]}
+                >
+                  <Text style={styles.buyButtonText}>{t('buyNow', 'Buy now')}</Text>
+                </Pressable>
+              </View>
+
+              {/* Slogan */}
+              <View style={styles.sloganWrap}>
+                <Text style={styles.slogan}>
+                  {t(
+                    'goProSloganLine',
+                    'Enhanced player scouting — seamless, sharper, and built for your next decision.'
+                  )}
+                </Text>
+                <Text style={styles.sloganCta}>{t('goProSloganCta', 'Go Pro. Stay in flow.')}</Text>
               </View>
             </View>
-
-            {/* Buy Now button */}
-            <View style={styles.buyWrap}>
-              <Pressable
-                onPress={() => {
-                  onClose();
-                  navigation.navigate('Profile', { screen: 'ManagePlan' } as any);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={t('buyNow', 'Buy now')}
-                style={({ pressed }) => [styles.buyButton, pressed && { opacity: 0.9 }]}
-              >
-                <Text style={styles.buyButtonText}>{t('buyNow', 'Buy now')}</Text>
-              </Pressable>
-            </View>
-
-            {/* Slogan */}
-            <View style={styles.sloganWrap}>
-              <Text style={styles.slogan}>
-                {t(
-                  'goProSloganLine',
-                  'Enhanced player scouting — seamless, sharper, and built for your next decision.'
-                )}
-              </Text>
-              <Text style={styles.sloganCta}>{t('goProSloganCta', 'Go Pro. Stay in flow.')}</Text>
-            </View>
-          </View>
+          </ScrollView>
         </View>
       </SafeAreaView>
 
@@ -207,7 +217,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
 
     // ✅ shifts the whole layout upward without changing internal gaps
-    transform: [{ translateY: -SHIFT_UP }],
+    transform: [{ translateY: isAndroid ? -SHIFT_UP : 0 }],
   },
   content: {
     flex: 1,
@@ -222,6 +232,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexDirection: 'row',
+
+    zIndex: 50,
+    elevation: 50,
   },
   topBarSpacer: { width: 44, height: 44 },
 
@@ -235,6 +248,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     marginTop: 48,
+
+    zIndex: 60,
+    elevation: 60,
   },
   closeIcon: {
     color: TEXT,
@@ -436,7 +452,7 @@ const styles = StyleSheet.create({
   },
 
   sloganWrap: {
-    marginTop: 'auto',
+    marginTop: 18,
     alignItems: 'center',
     paddingTop: 18,
   },
@@ -454,5 +470,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 28, // so last text isn't glued to bottom / home indicator
   },
 });
