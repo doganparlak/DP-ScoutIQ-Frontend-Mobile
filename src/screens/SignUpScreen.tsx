@@ -35,12 +35,12 @@ const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
 const LEGAL_URLS = {
   en: {
-    privacy: 'https://scoutwise.ai/docs/PRIVACY%20POLICY.pdf',
-    terms: 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20%26%20EULA.pdf',
+    privacy: 'https://scoutwise.ai/legal/privacy/en',
+    terms: 'https://scoutwise.ai/legal/terms/en',
   },
   tr: {
-    privacy: 'https://scoutwise.ai/docs/PRIVACY%20POLICY%20TR.pdf',
-    terms: 'https://scoutwise.ai/docs/TERMS%20OF%20USE%20TR.pdf',
+    privacy: 'https://scoutwise.ai/legal/privacy/tr',
+    terms: 'https://scoutwise.ai/legal/terms/tr',
   },
 } as const;
 
