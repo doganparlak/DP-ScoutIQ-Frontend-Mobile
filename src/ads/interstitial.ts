@@ -29,7 +29,7 @@ function getAd() {
 
   ad.addAdEventListener(AdEventType.LOADED, () => {
     loaded = true;
-    console.log('[ADS] loaded');
+    //console.log('[ADS] loaded');
   });
 
   ad.addAdEventListener(AdEventType.OPENED, () => {

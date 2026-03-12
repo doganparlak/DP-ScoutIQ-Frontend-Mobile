@@ -12,7 +12,7 @@ export default function App() {
     mobileAds()
       .initialize()
       .then(() => {
-        console.log('[ADS] initialized');
+        //console.log('[ADS] initialized');
         preloadInterstitial();
         preloadRewarded();
       })

@@ -43,7 +43,7 @@ const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
 
 const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
 
-const log = (...args: any[]) => console.log('[IAP]', ...args);
+//const log = (...args: any[]) => console.log('[IAP]', ...args);
 
 export default function ManagePlan() {
   const nav = useNavigation();
