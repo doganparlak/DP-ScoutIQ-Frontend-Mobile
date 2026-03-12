@@ -119,12 +119,14 @@ export default function ManagePlan() {
 
         const map: Record<string, string> = {};
         //log('Subs:', subs);
-        for (const s of subs) {
+        if (subs) {
+          for (const s of subs) {
           if (s.id === IOS_SKU_MONTHLY || s.id === ANDROID_SKU_MONTHLY) {
             map['Pro Monthly'] = s.displayPrice;
           }
           if (s.id === IOS_SKU_YEARLY || s.id === ANDROID_SKU_YEARLY) {
             map['Pro Yearly'] = s.displayPrice;
+          }
           }
         }
         setPriceMap(map);
