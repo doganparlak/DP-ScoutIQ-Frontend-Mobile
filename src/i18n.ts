@@ -319,6 +319,9 @@ export const resources = {
       buyNow: 'BUY NOW',
       manageProIOS: 'You are already on a Pro plan. Please manage it in your Apple subscription settings.',
       manageProAndroid: 'You are already on a Pro plan. Please manage it in your Google Play subscription settings.',
+      duration_month: '1 month',
+      duration_year: '1 year',
+      duration: 'Duration',
       metric: {
         // === Radar metrics: GK-specific ===
         'Saves': 'Saves',
@@ -772,6 +775,9 @@ export const resources = {
       buyNow: 'SATIN AL',
       manageProAndroid: 'Zaten bir Pro planındasın. Lütfen Google Play abonelik ayarlarından yönet.',
       manageProIOS: 'Zaten bir Pro planındasın. Lütfen Apple abonelik ayarlarından yönet.',
+      duration_month: '1 ay',
+      duration_year: '1 yıl',
+      duration: 'Süre',
       metric: {
         // === Radar metrikleri: Kaleci / GK ===
         'Saves': 'Kurtarışlar',

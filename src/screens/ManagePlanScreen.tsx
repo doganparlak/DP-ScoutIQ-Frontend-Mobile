@@ -341,6 +341,9 @@ export default function ManagePlan() {
             <Text style={[styles.cell, styles.headerCell, styles.featureCol]}>
               {t('tblFeatures', 'Features')}
             </Text>
+            <Text style={[styles.cell, styles.headerCell, styles.durationCol]}>
+              {t('duration', 'Duration')}
+            </Text>
           </View>
 
           {PLANS.map(p => (
@@ -372,8 +375,21 @@ export default function ManagePlan() {
                     : [
                         t('planFeatures_Pro', 'Ad-free'),
                         t('proYearlyDiscount', '- 30%'),
-                      ].join('  •  ')}
+                      ].join(' • ')}
+              </Text>
 
+              <Text
+                style={[
+                  styles.cell,
+                  styles.durationCol,
+                  selected === p.name && styles.cellActive,
+                ]}
+              >
+                {p.name === 'Free'
+                  ? '-'
+                  : p.name === 'Pro Monthly'
+                    ? t('duration_month', '1 month')
+                    : t('duration_year', '1 year')}
               </Text>
             </Pressable>
           ))}
@@ -514,6 +530,7 @@ const styles = StyleSheet.create({
 
   planCol: { flex: 1, textAlign: 'center' },
   featureCol: { flex: 1, textAlign: 'center' },
+  durationCol: { flex: 1, textAlign: 'center' },
 
   // header (title below back)
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
