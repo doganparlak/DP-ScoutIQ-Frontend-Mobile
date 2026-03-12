@@ -26,6 +26,7 @@ import {
   purchaseErrorListener,
   finishTransaction,
   ErrorCode,
+  fetchProducts,
   type EventSubscription,
   type Purchase,
   type PurchaseAndroid,
@@ -42,7 +43,7 @@ const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
 
 const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
 
-//const log = (...args: any[]) => console.log('[IAP]', ...args);
+const log = (...args: any[]) => console.log('[IAP]', ...args);
 
 export default function ManagePlan() {
   const nav = useNavigation();
@@ -53,6 +54,7 @@ export default function ManagePlan() {
   const [saving, setSaving] = React.useState(false);
   const [subscriptionEndAt, setSubscriptionEndAt] = React.useState<string | null>(null);
   const [iapReady, setIapReady] = React.useState(false);
+  const [priceMap, setPriceMap] = React.useState<Record<string, string>>({});
 
   // ✅ plan label for UI
   const planLabel = React.useCallback(
@@ -105,6 +107,27 @@ export default function ManagePlan() {
       try {
         await initConnection({});
         //log('initConnection OK', { platform: Platform.OS});
+        const subs = await fetchProducts({
+          skus: [
+            IOS_SKU_MONTHLY,
+            ANDROID_SKU_MONTHLY,
+            IOS_SKU_YEARLY,
+            ANDROID_SKU_YEARLY,
+          ],
+          type: 'subs',
+        });
+
+        const map: Record<string, string> = {};
+        //log('Subs:', subs);
+        for (const s of subs) {
+          if (s.id === IOS_SKU_MONTHLY || s.id === ANDROID_SKU_MONTHLY) {
+            map['Pro Monthly'] = s.displayPrice;
+          }
+          if (s.id === IOS_SKU_YEARLY || s.id === ANDROID_SKU_YEARLY) {
+            map['Pro Yearly'] = s.displayPrice;
+          }
+        }
+        setPriceMap(map);
         setIapReady(true);
       } catch (err) {
         //log('initConnection FAILED', err);
@@ -344,6 +367,9 @@ export default function ManagePlan() {
             <Text style={[styles.cell, styles.headerCell, styles.durationCol]}>
               {t('duration', 'Duration')}
             </Text>
+            <Text style={[styles.cell, styles.headerCell, styles.priceCol]}>
+              {t('price', 'Price')}
+            </Text>
           </View>
 
           {PLANS.map(p => (
@@ -375,7 +401,7 @@ export default function ManagePlan() {
                     : [
                         t('planFeatures_Pro', 'Ad-free'),
                         t('proYearlyDiscount', '- 30%'),
-                      ].join(' • ')}
+                      ].join('\n')}
               </Text>
 
               <Text
@@ -390,6 +416,16 @@ export default function ManagePlan() {
                   : p.name === 'Pro Monthly'
                     ? t('duration_month', '1 month')
                     : t('duration_year', '1 year')}
+              </Text>
+
+              <Text
+                style={[
+                  styles.cell,
+                  styles.priceCol,
+                  selected === p.name && styles.cellActive,
+                ]}
+              >
+                {p.name === 'Free' ? '-' : priceMap[p.name] ?? '...'}
               </Text>
             </Pressable>
           ))}
@@ -528,9 +564,10 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
 
-  planCol: { flex: 1, textAlign: 'center' },
-  featureCol: { flex: 1, textAlign: 'center' },
-  durationCol: { flex: 1, textAlign: 'center' },
+  planCol: { flex: 1.1, textAlign: 'center' },
+  featureCol: { flex: 1.4, textAlign: 'center' },
+  durationCol: { flex: 0.9, textAlign: 'center' },
+  priceCol: { flex: 1, textAlign: 'center' },
 
   // header (title below back)
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
