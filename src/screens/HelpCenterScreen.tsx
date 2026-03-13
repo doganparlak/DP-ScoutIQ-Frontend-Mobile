@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Trash2 } from 'lucide-react-native';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking,
+  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -28,6 +28,7 @@ const LEGAL_URLS = {
     privacy: 'https://scoutwise.ai/legal/privacy/tr',
     terms: 'https://scoutwise.ai/legal/terms/tr',
   },
+  iosTerms: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
 } as const;
 
 
@@ -36,7 +37,8 @@ export default function HelpCenter() {
   const { t, i18n } = useTranslation();
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
   const privacyUrl = LEGAL_URLS[lang].privacy;
-  const termsUrl = LEGAL_URLS[lang].terms;
+  const termsUrl =
+  Platform.OS === 'ios' ? LEGAL_URLS.iosTerms : LEGAL_URLS[lang].terms;
 
   const [selected, setSelected] = useState<TabKey>('how');
   const [message, setMessage] = useState('');
