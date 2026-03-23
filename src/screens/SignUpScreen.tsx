@@ -142,7 +142,11 @@ export default function SignUpScreen() {
       setSubmitting(true);
       await signUp({ email, password, dob: '', country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
-      navigation.replace('Verification', { email, context: 'signup' });
+      navigation.replace('Verification', {
+        email,
+        password,
+        context: 'signup',
+      });
     } catch (e: any) {
       setError(t('signupFailed', 'Sign up failed. Please try again.'));
     } finally {

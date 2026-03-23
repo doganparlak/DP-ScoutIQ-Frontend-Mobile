@@ -19,7 +19,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
-import { verifyResetCode, verifySignupCode } from '@/services/api';
+import { verifyResetCode, verifySignupCode, login } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 
 import scoutwiseLogo from '../../assets/scoutwise_logo.png'; 
@@ -59,10 +59,20 @@ export default function VerificationScreen() {
 
       if (params.context === 'reset') {
         await verifyResetCode(params.email, code);
-        navigation.replace('NewPassword', { email: params.email });
+        navigation.replace('NewPassword', { email: params.email});
       } else {
         await verifySignupCode(params.email, code);
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        if (!params.password) {
+          setError('Missing password for auto-login. Please log in once.');
+          navigation.replace('Login');
+          return;
+        }
+        await login({ email: params.email, password: params.password!});
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'App' }],
+        });
       }
     } catch (e: any) {
       setError(e?.message || t('verificationFailed', 'Verification failed. Please try again.'));

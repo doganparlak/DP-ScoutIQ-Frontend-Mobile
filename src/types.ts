@@ -25,7 +25,7 @@ export type RootStackParamList = {
   ManagePlan: undefined;
   SignUp: undefined;
   NewPassword: { email: string };
-  Verification: { email: string; context: 'signup' | 'reset' };
+  Verification: { email: string; password?: string; context: 'signup' | 'reset' };
   ResetPassword?: undefined;
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
 };
