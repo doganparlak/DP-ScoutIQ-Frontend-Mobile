@@ -33,7 +33,6 @@ import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
 const LEGAL_URLS = {
   en: {
@@ -81,7 +80,6 @@ export default function SignUpScreen() {
   const hasNumber = /[0-9]/.test(password);
   const pwValid = hasMin && hasLetter && hasNumber;
 
-  const [dob, setDob] = useState('');
   const [country, setCountry] = useState('');
 
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -106,12 +104,11 @@ export default function SignUpScreen() {
     return (
       emailRegex.test(email) &&
       pwValid &&
-      dateRegex.test(dob) &&
       country.trim().length >= 2 &&
       agreePrivacy &&
       agreeTerms
     );
-  }, [email, pwValid, dob, country, agreePrivacy, agreeTerms]);
+  }, [email, pwValid, country, agreePrivacy, agreeTerms]);
 
   const goToLogin = () => navigation.replace('Login');
 
@@ -139,8 +136,7 @@ export default function SignUpScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      const dobIso = toIsoDob(dob);
-      await signUp({ email, password, dob: dobIso, country, plan: 'Free', favorite_players: [], newsletter });
+      await signUp({ email, password, dob: '', country, plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
       navigation.replace('Verification', { email, context: 'signup' });
     } catch (e: any) {
@@ -240,35 +236,16 @@ export default function SignUpScreen() {
                     </View>
                   </View>
 
-                  {/* DOB + Country */}
-                  <View style={styles.row2}>
-                    <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
-                      <Text style={styles.label}>{t('dob', 'Date of birth')}</Text>
-                      <TextInput
-                        value={dob}
-                        onChangeText={(t_) => setDob(formatDob(t_))}
-                        placeholder={t('placeholderDob', 'DD-MM-YYYY')}
-                        placeholderTextColor={MUTED}
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        inputMode="numeric"
-                        autoCorrect={false}
-                        autoComplete="off"
-                        importantForAutofill="no"
-                        maxLength={10}
-                      />
-                    </View>
-
-                    <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
-                      <Text style={styles.label}>{t('country', 'Country')}</Text>
-                      <Pressable onPress={openCountryPicker}>
-                        <View style={[styles.input, { justifyContent: 'center' }]}>
-                          <Text style={{ color: country ? TEXT : MUTED }}>
-                            {country || t('selectCountry', 'Select your country')}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    </View>
+                  {/* Country */}
+                  <View style={styles.fieldBlock}>
+                    <Text style={styles.label}>{t('country', 'Country')}</Text>
+                    <Pressable onPress={openCountryPicker}>
+                      <View style={[styles.input, { justifyContent: 'center' }]}>
+                        <Text style={{ color: country ? TEXT : MUTED }}>
+                          {country || t('selectCountry', 'Select your country')}
+                        </Text>
+                      </View>
+                    </Pressable>
                   </View>
 
                   <View style={[styles.switchRow, { marginTop: 12 }]}>
