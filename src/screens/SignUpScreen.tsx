@@ -25,6 +25,7 @@ import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme
 import { RootStackParamList } from '@/types';
 import { signUp, requestSignupCode } from '@/services/api';
 import { COUNTRIES } from '@/constants/countries';
+import DataUsage from '@/components/DataUsage';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -84,6 +85,8 @@ export default function SignUpScreen() {
 
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeDataUsage, setAgreeDataUsage] = useState(false);
+  const [dataUsageOpen, setDataUsageOpen] = useState(false);
 
   const [newsletter, setNewsletter] = useState(false);
 
@@ -106,12 +109,13 @@ export default function SignUpScreen() {
       pwValid &&
       country.trim().length >= 2 &&
       agreePrivacy &&
-      agreeTerms
+      agreeTerms &&
+      agreeDataUsage
     );
-  }, [email, pwValid, country, agreePrivacy, agreeTerms]);
+  }, [email, pwValid, country, agreePrivacy, agreeTerms, agreeDataUsage]);
 
   const goToLogin = () => navigation.replace('Login');
-
+  
   const openUrl = async (url: string) => {
     try {
       const supported = await Linking.canOpenURL(url);
@@ -279,6 +283,19 @@ export default function SignUpScreen() {
                     <Switch value={agreeTerms} onValueChange={setAgreeTerms} />
                   </View>
 
+                  <View style={styles.switchRow}>
+                    <View style={styles.switchLabelWrap}>
+                      <Text style={styles.switchLabel}>
+                        {t('signupAgreePrefix', 'I agree to the ')}
+                        <Text style={styles.link} onPress={() => setDataUsageOpen(true)}>
+                          {t('dataUsageSignup', 'Data Usage')}
+                        </Text>
+                        {t('signupAgreeSuffix', '')}
+                      </Text>
+                    </View>
+                    <Switch value={agreeDataUsage} onValueChange={setAgreeDataUsage} />
+                  </View>
+
                   {error ? <Text style={styles.error}>{error}</Text> : null}
 
                   <Pressable
@@ -362,6 +379,30 @@ export default function SignUpScreen() {
                   </TouchableWithoutFeedback>
                 </View>
               </TouchableWithoutFeedback>
+            </Modal>
+            <Modal
+              visible={dataUsageOpen}
+              animationType="slide"
+              transparent
+              onRequestClose={() => setDataUsageOpen(false)}
+            >
+              <View style={styles.modalBackdrop}>
+                <View style={[styles.modalCard, styles.dataUsageModalCard]}>
+                  <View style={styles.dataUsageHeader}>
+                    <Text style={styles.modalTitle}>{t('dataUsageTitle', 'Data Usage')}</Text>
+
+                    <Pressable
+                      onPress={() => setDataUsageOpen(false)}
+                      hitSlop={8}
+                      style={styles.dataUsageCloseBtn}
+                    >
+                      <Text style={styles.dataUsageCloseText}>{t('close', 'Close')}</Text>
+                    </Pressable>
+                  </View>
+
+                  <DataUsage />
+                </View>
+              </View>
             </Modal>
           </View>
         </TouchableWithoutFeedback>
@@ -518,6 +559,27 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  dataUsageModalCard: {
+    maxHeight: '85%',
+    paddingBottom: 12,
+  },
+
+  dataUsageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  dataUsageCloseBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+
+  dataUsageCloseText: {
+    color: ACCENT_DARK,
+    fontWeight: '800',
   },
 
 });
