@@ -24,7 +24,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { signUp, requestSignupCode } from '@/services/api';
-import { COUNTRIES } from '@/constants/countries';
 import DataUsage from '@/components/DataUsage';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -81,8 +80,6 @@ export default function SignUpScreen() {
   const hasNumber = /[0-9]/.test(password);
   const pwValid = hasMin && hasLetter && hasNumber;
 
-  const [country, setCountry] = useState('');
-
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeDataUsage, setAgreeDataUsage] = useState(false);
@@ -93,26 +90,15 @@ export default function SignUpScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // country picker state
-  const [countryOpen, setCountryOpen] = useState(false);
-  const [countryQuery, setCountryQuery] = useState('');
-
-  const filteredCountries = useRNMemo(() => {
-    const q = countryQuery.trim().toLowerCase();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter(c => c.toLowerCase().includes(q));
-  }, [countryQuery]);
-
   const isValid = useMemo(() => {
     return (
       emailRegex.test(email) &&
       pwValid &&
-      country.trim().length >= 2 &&
       agreePrivacy &&
       agreeTerms &&
       agreeDataUsage
     );
-  }, [email, pwValid, country, agreePrivacy, agreeTerms, agreeDataUsage]);
+  }, [email, pwValid, agreePrivacy, agreeTerms, agreeDataUsage]);
 
   const goToLogin = () => navigation.replace('Login');
   
@@ -140,7 +126,7 @@ export default function SignUpScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      await signUp({ email, password, dob: '', country, plan: 'Free', favorite_players: [], newsletter });
+      await signUp({ email, password, dob: '', country: 'Unknown', plan: 'Free', favorite_players: [], newsletter });
       await requestSignupCode(email);
       navigation.replace('Verification', {
         email,
@@ -152,16 +138,6 @@ export default function SignUpScreen() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const openCountryPicker = () => {
-    setCountryQuery('');
-    setCountryOpen(true);
-  };
-
-  const pickCountry = (name: string) => {
-    setCountry(name);
-    setCountryOpen(false);
   };
 
   return (
@@ -244,18 +220,6 @@ export default function SignUpScreen() {
                     </View>
                   </View>
 
-                  {/* Country */}
-                  <View style={styles.fieldBlock}>
-                    <Text style={styles.label}>{t('country', 'Country')}</Text>
-                    <Pressable onPress={openCountryPicker}>
-                      <View style={[styles.input, { justifyContent: 'center' }]}>
-                        <Text style={{ color: country ? TEXT : MUTED }}>
-                          {country || t('selectCountry', 'Select your country')}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  </View>
-
                   <View style={[styles.switchRow, { marginTop: 12 }]}>
                     <Text style={styles.switchLabel}>{t('newsletter', 'Subscribe to newsletter')}</Text>
                     <Switch value={newsletter} onValueChange={setNewsletter} />
@@ -335,55 +299,6 @@ export default function SignUpScreen() {
               </View>
             </ScrollView>
 
-            {/* Country Picker Modal */}
-            <Modal
-              visible={countryOpen}
-              animationType="slide"
-              transparent
-              onRequestClose={() => setCountryOpen(false)}
-            >
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                <View style={styles.modalBackdrop}>
-                  <TouchableWithoutFeedback accessible={false}>
-                    <View style={styles.modalCard}>
-                      <Text style={styles.modalTitle}>{t('selectCountry', 'Select your country')}</Text>
-
-                      <TextInput
-                        value={countryQuery}
-                        onChangeText={setCountryQuery}
-                        placeholder={t('searchCountry', 'Search country...')}
-                        placeholderTextColor={MUTED}
-                        style={[styles.input, { marginTop: 10 }]}
-                      />
-
-                      <FlatList
-                        data={filteredCountries}
-                        keyExtractor={(item) => item}
-                        keyboardShouldPersistTaps="handled"
-                        style={{ marginTop: 10, maxHeight: 360 }}
-                        renderItem={({ item }) => (
-                          <Pressable onPress={() => pickCountry(item)}>
-                            <View style={styles.countryRow}>
-                              <Text style={{ color: TEXT }}>{item}</Text>
-                            </View>
-                          </Pressable>
-                        )}
-                      />
-
-                      <Pressable
-                        onPress={() => setCountryOpen(false)}
-                        style={({ pressed }) => [
-                          styles.secondaryBtn,
-                          { marginTop: 12, opacity: pressed ? 0.85 : 1 },
-                        ]}
-                      >
-                        <Text style={styles.secondaryBtnText}>{t('close', 'Close')}</Text>
-                      </Pressable>
-                    </View>
-                  </TouchableWithoutFeedback>
-                </View>
-              </TouchableWithoutFeedback>
-            </Modal>
             <Modal
               visible={dataUsageOpen}
               animationType="slide"
