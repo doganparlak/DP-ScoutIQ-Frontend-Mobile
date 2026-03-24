@@ -801,7 +801,7 @@ export const resources = {
       duration_year: '1 yıl',
       duration: 'Süre',
       dataUsageSignup: 'Veri Kullanımı’nı',
-      dataUsageTitle: 'Veri Kullanımı’nı',
+      dataUsageTitle: 'Veri Kullanımı',
       dataUsageSection2Title: 'Topladığımız Veriler',
       dataUsageSection2Intro:
         'Verileri bir hesap oluşturduğunuzda, uygulamanın özellikleriyle etkileşime geçtiğinizde (örneğin yapay zekâ sorguları gibi) ve uygulamayı kullanırken cihazınız ve sunucularımız tarafından otomatik olarak oluşturulan teknik kayıtlar aracılığıyla toplamaktayız.',
