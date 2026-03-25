@@ -8,9 +8,12 @@ import { useTranslation } from 'react-i18next';
 const MIN_HEIGHT = 240;
 const MAX_HEIGHT = 560;
 
-interface Props { onSaved?: (value: string) => void }
+interface Props {
+  onSaved?: (value: string) => void;
+  disabled?: boolean;
+}
 
-export default function StrategyCard({ onSaved }: Props) {
+export default function StrategyCard({ onSaved, disabled = false }: Props) {
   const { t } = useTranslation();
 
   const [text, setText] = useState('');                 // empty => show placeholder
@@ -19,6 +22,7 @@ export default function StrategyCard({ onSaved }: Props) {
   const [phMode, setPhMode] = useState<'initial' | 'empty'>('initial');
 
   const locked = !showSetButton;
+  const isDisabled = disabled || locked;
 
   useEffect(() => {
     (async () => {
@@ -43,26 +47,30 @@ export default function StrategyCard({ onSaved }: Props) {
       : t('strategyEmptyPlaceholder', 'No strategy is set.');
 
   async function handleSet() {
+    if (disabled) return;
+
     const value = text.trim();
     if (!value) {
       await saveStrategy('');
       setText('');
-      setPhMode('empty');          // show “empty” placeholder after saving blank
+      setPhMode('empty');
       onSaved?.('');
     } else {
       await saveStrategy(value);
       onSaved?.(value);
       setPhMode('initial');
     }
-    setShowSetButton(false);       // lock editing, show only Reset
+    setShowSetButton(false);
   }
 
   async function handleReset() {
+    if (disabled) return;
+
     setText('');
-    setPhMode('initial');          // back to initial placeholder
+    setPhMode('initial');
     await saveStrategy('');
     onSaved?.('');
-    setShowSetButton(true);        // unlock + restore two-button layout
+    setShowSetButton(true);
   }
 
   return (
@@ -105,10 +113,16 @@ export default function StrategyCard({ onSaved }: Props) {
 
           <Pressable
             onPress={handleSet}
-            style={({ pressed }) => [styles.btnHalf, styles.btnPrimary, pressed && styles.pressed]}
+            disabled={disabled}
+            style={({ pressed }) => [
+              styles.btnHalf,
+              styles.btnPrimary,
+              disabled && styles.btnDisabled,
+              pressed && !disabled && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t('setStrategy', 'Set Strategy')}
-          >
+>
             <Save size={18} color="white" />
             <Text style={styles.btnText}>{t('setStrategy', 'Set Strategy')}</Text>
           </Pressable>
@@ -185,4 +199,5 @@ const styles = StyleSheet.create({
   btnOutline: { borderWidth: 1.5, borderColor: LINE, backgroundColor: 'transparent' },
   btnText: { color: 'white', fontWeight: '800', marginLeft: 8 },
   pressed: { opacity: 0.9 },
+  btnDisabled: { opacity: 0.45 },
 });
