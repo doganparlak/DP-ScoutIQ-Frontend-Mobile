@@ -21,6 +21,12 @@ export default function DataUsage() {
       contentContainerStyle={styles.content}
       style={styles.scroll}
     >
+      <Text style={styles.summaryBox}>
+        {t(
+          'dataUsageAiSummary',
+          'When you use AI features, your chat messages, strategy inputs, and search queries are sent to OpenAI and DeepSeek to generate responses.'
+        )}
+      </Text>
       <Text style={styles.sectionTitle}>{t('dataUsageSection2Title')}</Text>
       <Text style={styles.text}>{t('dataUsageSection2Intro')}</Text>
       <Bullet>{t('dataUsageSection2Item1')}</Bullet>
@@ -39,6 +45,16 @@ export default function DataUsage() {
 }
 
 const styles = StyleSheet.create({
+  summaryBox: {
+    color: TEXT,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '700',
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
   scroll: {
     width: '100%',
   },

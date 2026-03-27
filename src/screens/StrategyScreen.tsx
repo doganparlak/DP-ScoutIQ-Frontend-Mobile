@@ -90,7 +90,6 @@ export default function StrategyScreen() {
                   <Text style={styles.checkboxText}>
                     {t(
                       'aiConsentPrefix',
-                      'I agree that my messages may be sent to a third-party AI provider. Please review our '
                     )}
                     <Text style={styles.link} onPress={() => setDataUsageOpen(true)}>
                       {t('dataUsageSignup', 'Data Usage')}
@@ -119,6 +118,13 @@ export default function StrategyScreen() {
                   {t('startChatting', 'Start Chatting')}
                 </Text>
               </Pressable>
+
+              <Text style={styles.aiDisclosureText}>
+                {t(
+                  'aiDisclosureInline',
+                  'By continuing, you confirm that your chat messages, strategy inputs, and search queries will be sent to OpenAI and DeepSeek to generate AI responses.'
+                )}
+              </Text>
 
               <Text style={styles.hintText}>
                 {buttonsDisabled
@@ -167,6 +173,14 @@ export default function StrategyScreen() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: BG },
+
+  aiDisclosureText: {
+    color: TEXT,
+    marginTop: 10,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
 
   consentCard: {
     marginTop: 12,
