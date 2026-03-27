@@ -27,6 +27,7 @@ export default function DataUsage() {
           'When you use AI features, your chat messages, strategy inputs, and search queries are sent to OpenAI and DeepSeek to generate responses.'
         )}
       </Text>
+
       <Text style={styles.sectionTitle}>{t('dataUsageSection2Title')}</Text>
       <Text style={styles.text}>{t('dataUsageSection2Intro')}</Text>
       <Bullet>{t('dataUsageSection2Item1')}</Bullet>
@@ -36,10 +37,21 @@ export default function DataUsage() {
       <Text style={styles.sectionTitle}>{t('dataUsageSection3Title')}</Text>
       <Text style={styles.text}>{t('dataUsageSection3Body')}</Text>
 
-      <Text style={styles.sectionTitle}>{t('dataUsageSection8Title')}</Text>
-      <Bullet>{t('dataUsageSection8Item1')}</Bullet>
-      <Bullet>{t('dataUsageSection8Item2')}</Bullet>
-      <Bullet>{t('dataUsageSection8Item3')}</Bullet>
+      <Text style={styles.sectionTitle}>{t('dataUsageAiSectionTitle')}</Text>
+      <Text style={styles.text}>{t('dataUsageAiSectionIntro')}</Text>
+      <Bullet>{t('dataUsageAiSectionItem1')}</Bullet>
+      <Bullet>{t('dataUsageAiSectionItem2')}</Bullet>
+      <Bullet>{t('dataUsageAiSectionItem3')}</Bullet>
+      <Bullet>{t('dataUsageAiSectionItem4')}</Bullet>
+
+      <Text style={styles.sectionTitle}>{t('dataUsageBackendSectionTitle')}</Text>
+      <Text style={styles.text}>{t('dataUsageBackendSectionIntro')}</Text>
+      <Bullet>{t('dataUsageBackendSectionItem1')}</Bullet>
+
+      <Text style={styles.sectionTitle}>{t('dataUsageDatabaseSectionTitle')}</Text>
+      <Text style={styles.text}>{t('dataUsageDatabaseSectionIntro')}</Text>
+      <Bullet>{t('dataUsageDatabaseSectionItem1')}</Bullet>
+      <Bullet>{t('dataUsageDatabaseSectionItem2')}</Bullet>
     </ScrollView>
   );
 }
