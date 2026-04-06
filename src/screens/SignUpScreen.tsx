@@ -27,7 +27,7 @@ import { signUp, requestSignupCode } from '@/services/api';
 import DataUsage from '@/components/DataUsage';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { COUNTRIES } from '@/constants/countries';
 import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
@@ -46,8 +46,7 @@ const LEGAL_URLS = {
   iosTerms: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
 } as const;
 
-
-// Format "YYYY-MM-DD" as the user types
+// Format "DD-MM-YYYY" as the user types
 function formatDob(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 2) return digits;
@@ -67,7 +66,7 @@ export default function SignUpScreen() {
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
   const privacyUrl = LEGAL_URLS[lang].privacy;
   const termsUrl =
-  Platform.OS === 'ios' ? LEGAL_URLS.iosTerms : LEGAL_URLS[lang].terms;
+    Platform.OS === 'ios' ? LEGAL_URLS.iosTerms : LEGAL_URLS[lang].terms;
 
   const insets = useSafeAreaInsets();
 
@@ -89,6 +88,17 @@ export default function SignUpScreen() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dob, setDob] = useState('');
+  const [country, setCountry] = useState('Unknown');
+
+  const [countryModalOpen, setCountryModalOpen] = useState(false);
+  const [countryQuery, setCountryQuery] = useState('');
+
+  const filteredCountries = useRNMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    if (!q) return COUNTRIES;
+    return COUNTRIES.filter(c => c.toLowerCase().includes(q));
+  }, [countryQuery]);
 
   const isValid = useMemo(() => {
     return (
@@ -101,7 +111,7 @@ export default function SignUpScreen() {
   }, [email, pwValid, agreePrivacy, agreeTerms, agreeDataUsage]);
 
   const goToLogin = () => navigation.replace('Login');
-  
+
   const openUrl = async (url: string) => {
     try {
       const supported = await Linking.canOpenURL(url);
@@ -126,7 +136,15 @@ export default function SignUpScreen() {
     try {
       setError(null);
       setSubmitting(true);
-      await signUp({ email, password, dob: '', country: 'Unknown', plan: 'Free', favorite_players: [], newsletter });
+      await signUp({
+        email,
+        password,
+        dob: dob.trim() ? toIsoDob(dob) : '',
+        country: country.trim() ? country : 'Unknown',
+        plan: 'Free',
+        favorite_players: [],
+        newsletter,
+      });
       await requestSignupCode(email);
       navigation.replace('Verification', {
         email,
@@ -144,7 +162,8 @@ export default function SignUpScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={styles.flex}>
@@ -155,6 +174,8 @@ export default function SignUpScreen() {
                 { paddingBottom: Math.max(insets.bottom + 24, 36) },
               ]}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.wrap}>
@@ -215,13 +236,61 @@ export default function SignUpScreen() {
 
                     <View style={styles.pwChecklist}>
                       <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
-                      <PwRule ok={hasLetter} text={t('pwLetter', 'Contains a letter (A–Z or a–z)')} />
+                      <PwRule
+                        ok={hasLetter}
+                        text={t('pwLetter', 'Contains a letter (A–Z or a–z)')}
+                      />
                       <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
                     </View>
                   </View>
 
+                  {/* DOB + Country */}
+                  <View style={styles.row2}>
+                    <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
+                      <Text style={styles.label}>
+                        {t('dob', 'Date of birth')} {t('optional', '(Optional)')}
+                      </Text>
+                      <TextInput
+                        value={dob}
+                        onChangeText={(t_) => setDob(formatDob(t_))}
+                        placeholder={t('placeholderDob', 'DD-MM-YYYY')}
+                        placeholderTextColor={MUTED}
+                        style={styles.input}
+                        keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'numeric'}
+                        inputMode="numeric"
+                        autoCorrect={false}
+                        autoComplete="off"
+                        importantForAutofill="no"
+                        maxLength={10}
+                        returnKeyType="next"
+                      />
+                    </View>
+
+                    <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
+                      <Text style={styles.label}>
+                        {t('country', 'Country')} {t('optional', '(Optional)')}
+                      </Text>
+                      <Pressable
+                        onPress={() => setCountryModalOpen(true)}
+                        style={({ pressed }) => [
+                          styles.input,
+                          styles.row2,
+                          { justifyContent: 'space-between', opacity: pressed ? 0.9 : 1 },
+                        ]}
+                      >
+                        <Text style={{ color: country === 'Unknown' ? MUTED : TEXT }}>
+                          {country === 'Unknown'
+                            ? t('selectCountryOptional', 'Select your country')
+                            : country}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
                   <View style={[styles.switchRow, { marginTop: 12 }]}>
-                    <Text style={styles.switchLabel}>{t('newsletter', 'Subscribe to newsletter')}</Text>
+                    <Text style={styles.switchLabel}>
+                      {t('newsletter', 'Subscribe to newsletter')}
+                    </Text>
                     <Switch value={newsletter} onValueChange={setNewsletter} />
                   </View>
 
@@ -323,6 +392,60 @@ export default function SignUpScreen() {
                 </View>
               </View>
             </Modal>
+
+            <Modal
+              visible={countryModalOpen}
+              animationType="slide"
+              transparent
+              onRequestClose={() => setCountryModalOpen(false)}
+            >
+              <View style={styles.modalBackdrop}>
+                <View style={[styles.modalCard, styles.countryModalCard]}>
+                  <View style={styles.dataUsageHeader}>
+                    <Text style={styles.modalTitle}>
+                      {t('selectCountry', 'Select your country')}
+                    </Text>
+                    <Pressable
+                      onPress={() => setCountryModalOpen(false)}
+                      hitSlop={8}
+                      style={styles.dataUsageCloseBtn}
+                    >
+                      <Text style={styles.dataUsageCloseText}>{t('close', 'Close')}</Text>
+                    </Pressable>
+                  </View>
+
+                  <TextInput
+                    value={countryQuery}
+                    onChangeText={setCountryQuery}
+                    placeholder={t('searchCountry', 'Search country...')}
+                    placeholderTextColor={MUTED}
+                    style={[styles.input, { marginBottom: 12 }]}
+                  />
+
+                  <FlatList
+                    data={[t('noCountrySelected', 'No country selected'), ...filteredCountries]}
+                    keyExtractor={(item) => item}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => (
+                      <Pressable
+                        onPress={() => {
+                          setCountry(
+                            item === t('noCountrySelected', 'No country selected')
+                              ? 'Unknown'
+                              : item,
+                          );
+                          setCountryModalOpen(false);
+                          setCountryQuery('');
+                        }}
+                        style={styles.countryRow}
+                      >
+                        <Text style={{ color: TEXT }}>{item}</Text>
+                      </Pressable>
+                    )}
+                  />
+                </View>
+              </View>
+            </Modal>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -341,7 +464,7 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
 
 const styles = StyleSheet.create({
   safe: {
-  flex: 1,
+    flex: 1,
     backgroundColor: BG,
   },
   flex: {
@@ -355,7 +478,7 @@ const styles = StyleSheet.create({
   wrap: {
     flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 18,
   },
 
@@ -381,7 +504,13 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   title: { color: TEXT, fontSize: 20, fontWeight: '700', textAlign: 'center' },
-  subtitle: { color: MUTED, marginTop: 6, marginBottom: 12, lineHeight: 20, textAlign: 'center' },
+  subtitle: {
+    color: MUTED,
+    marginTop: 6,
+    marginBottom: 12,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
 
   fieldBlock: { marginTop: 12 },
   label: { color: TEXT, marginBottom: 6, fontWeight: '600' },
@@ -434,7 +563,6 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: MUTED, fontSize: 14 },
 
-  // Modal styles
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -457,6 +585,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderBottomColor: LINE,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
   },
   passwordRow: {
     flexDirection: 'row',
@@ -483,22 +612,21 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
     paddingBottom: 12,
   },
-
+  countryModalCard: {
+    maxHeight: '70%',
+  },
   dataUsageHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-
   dataUsageCloseBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-
   dataUsageCloseText: {
     color: ACCENT_DARK,
     fontWeight: '800',
   },
-
 });
