@@ -12,8 +12,8 @@ import {
   KeyboardAvoidingView,
   Modal,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { getMe, updateConsent } from '@/services/api';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
@@ -24,8 +24,6 @@ import { useTranslation } from 'react-i18next';
 
 type Nav = BottomTabNavigationProp<MainTabsParamList, 'Strategy'>;
 
-const AI_CONSENT_KEY = 'ai_data_usage_consent_v1';
-
 export default function StrategyScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
@@ -33,33 +31,50 @@ export default function StrategyScreen() {
   const [dataUsageOpen, setDataUsageOpen] = React.useState(false);
   const [aiConsent, setAiConsent] = React.useState(false);
   const [loadingConsent, setLoadingConsent] = React.useState(true);
+  const [savingConsent, setSavingConsent] = React.useState(false);
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(AI_CONSENT_KEY);
-        setAiConsent(saved === 'true');
-      } finally {
-        setLoadingConsent(false);
-      }
-    })();
+  const loadConsent = React.useCallback(async () => {
+    try {
+      setLoadingConsent(true);
+      const me = await getMe();
+      setAiConsent(!!me.consent);
+    } finally {
+      setLoadingConsent(false);
+    }
   }, []);
 
-  const handleConsentToggle = async () => {
-    if (aiConsent) return;
+  React.useEffect(() => {
+    loadConsent();
+  }, [loadConsent]);
 
-    setAiConsent(true);
-    await AsyncStorage.setItem(AI_CONSENT_KEY, 'true');
+  useFocusEffect(
+    React.useCallback(() => {
+      loadConsent();
+    }, [loadConsent])
+  );
+
+  const handleConsentToggle = async () => {
+    if (aiConsent || savingConsent) return;
+
+    try {
+      setSavingConsent(true);
+      const updated = await updateConsent(true);
+      setAiConsent(!!updated.consent);
+    } catch (e: any) {
+      console.log('CONSENT SAVE ERROR:', e?.message ?? e);
+    } finally {
+      setSavingConsent(false);
+    }
   };
 
   const handleStart = () => {
-    if (loadingConsent) return;
+    if (loadingConsent || savingConsent) return;
     if (!aiConsent) return;
     navigation.navigate('Chat');
   };
 
-  const buttonsDisabled = loadingConsent || !aiConsent;
-  const showConsentUI = !loadingConsent && !aiConsent;
+  const buttonsDisabled = loadingConsent || savingConsent || !aiConsent;
+  const showConsentUI = !loadingConsent && !savingConsent && !aiConsent;
 
   return (
     <KeyboardAvoidingView
@@ -82,8 +97,9 @@ export default function StrategyScreen() {
                 <View style={styles.consentCard}>
                   <Pressable
                     onPress={handleConsentToggle}
+                    disabled={savingConsent}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: aiConsent }}
+                    accessibilityState={{ checked: aiConsent, disabled: savingConsent }}
                     style={styles.checkboxRow}
                   >
                     <View style={[styles.checkbox, aiConsent && styles.checkboxChecked]}>

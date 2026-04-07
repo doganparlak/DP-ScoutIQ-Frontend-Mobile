@@ -212,6 +212,7 @@ export type Profile = {
   favorite_players: any[];
   uiLanguage?: UILang;
   subscriptionEndAt?: string | null;
+  consent?: boolean;
 };
 
 // --- Teach request() to forward language on every call ---
@@ -295,10 +296,17 @@ export async function getMe(): Promise<Profile> {
   return request<Profile>('/me');
 }
 
-export async function updateMe(patch: Partial<Pick<Profile, 'dob' | 'country' | 'plan' | 'favorite_players' | 'uiLanguage'>>): Promise<Profile> {
+export async function updateMe(patch: Partial<Pick<Profile, 'dob' | 'country' | 'plan' | 'favorite_players' | 'uiLanguage' | 'consent'>>): Promise<Profile> {
   return request<Profile>('/me', {
     method: 'PATCH',
     body: JSON.stringify(patch),
+  });
+}
+
+export async function updateConsent(consent: boolean): Promise<Profile> {
+  return request<Profile>('/me/consent', {
+    method: 'PATCH',
+    body: JSON.stringify({ consent }),
   });
 }
 
