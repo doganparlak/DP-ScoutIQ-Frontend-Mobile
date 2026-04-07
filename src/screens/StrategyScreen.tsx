@@ -46,17 +46,20 @@ export default function StrategyScreen() {
   }, []);
 
   const handleConsentToggle = async () => {
-    const next = !aiConsent;
-    setAiConsent(next);
-    await AsyncStorage.setItem(AI_CONSENT_KEY, String(next));
+    if (aiConsent) return;
+
+    setAiConsent(true);
+    await AsyncStorage.setItem(AI_CONSENT_KEY, 'true');
   };
 
   const handleStart = () => {
+    if (loadingConsent) return;
     if (!aiConsent) return;
     navigation.navigate('Chat');
   };
 
   const buttonsDisabled = loadingConsent || !aiConsent;
+  const showConsentUI = !loadingConsent && !aiConsent;
 
   return (
     <KeyboardAvoidingView
@@ -72,32 +75,31 @@ export default function StrategyScreen() {
             contentContainerStyle={{ paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
           >
-
             <StrategyCard disabled={buttonsDisabled} />
 
             <View style={{ paddingHorizontal: 16 }}>
-              <View style={styles.consentCard}>
-                <Pressable
-                  onPress={handleConsentToggle}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: aiConsent }}
-                  style={styles.checkboxRow}
-                >
-                  <View style={[styles.checkbox, aiConsent && styles.checkboxChecked]}>
-                    {aiConsent ? <Text style={styles.checkmark}>✓</Text> : null}
-                  </View>
+              {showConsentUI && (
+                <View style={styles.consentCard}>
+                  <Pressable
+                    onPress={handleConsentToggle}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: aiConsent }}
+                    style={styles.checkboxRow}
+                  >
+                    <View style={[styles.checkbox, aiConsent && styles.checkboxChecked]}>
+                      {aiConsent ? <Text style={styles.checkmark}>✓</Text> : null}
+                    </View>
 
-                  <Text style={styles.checkboxText}>
-                    {t(
-                      'aiConsentPrefix',
-                    )}
-                    <Text style={styles.link} onPress={() => setDataUsageOpen(true)}>
-                      {t('dataUsageSignup', 'Data Usage')}
+                    <Text style={styles.checkboxText}>
+                      {t('aiConsentPrefix')}
+                      <Text style={styles.link} onPress={() => setDataUsageOpen(true)}>
+                        {t('dataUsageSignup', 'Data Usage')}
+                      </Text>
+                      {t('aiConsentSuffix', ' before continuing.')}
                     </Text>
-                    {t('aiConsentSuffix', ' before continuing.')}
-                  </Text>
-                </Pressable>
-              </View>
+                  </Pressable>
+                </View>
+              )}
 
               <Pressable
                 onPress={handleStart}
@@ -110,21 +112,19 @@ export default function StrategyScreen() {
                   pressed && !buttonsDisabled ? styles.startBtnPressed : null,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.startBtnText,
-                  ]}
-                >
+                <Text style={styles.startBtnText}>
                   {t('startChatting', 'Start Chatting')}
                 </Text>
               </Pressable>
 
-              <Text style={styles.aiDisclosureText}>
-                {t(
-                  'aiDisclosureInline',
-                  'By continuing, you confirm that your chat messages, strategy inputs, and search queries will be sent to OpenAI and DeepSeek to generate AI responses.'
-                )}
-              </Text>
+              {showConsentUI && (
+                <Text style={styles.aiDisclosureText}>
+                  {t(
+                    'aiDisclosureInline',
+                    'By continuing, you confirm that your chat messages, strategy inputs, and search queries will be sent to OpenAI and DeepSeek to generate AI responses.'
+                  )}
+                </Text>
+              )}
 
               <Text style={styles.hintText}>
                 {buttonsDisabled
