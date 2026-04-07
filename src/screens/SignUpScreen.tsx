@@ -33,6 +33,7 @@ import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
 const LEGAL_URLS = {
   en: {
@@ -73,6 +74,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
+  const [dob, setDob] = useState('');
 
   const hasMin = password.length >= 8;
   const hasLetter = /[A-Za-z]/.test(password);
@@ -88,7 +90,6 @@ export default function SignUpScreen() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dob, setDob] = useState('');
   const [country, setCountry] = useState('Unknown');
 
   const [countryModalOpen, setCountryModalOpen] = useState(false);
@@ -104,11 +105,12 @@ export default function SignUpScreen() {
     return (
       emailRegex.test(email) &&
       pwValid &&
+      (!dob || dateRegex.test(dob)) &&
       agreePrivacy &&
       agreeTerms &&
       agreeDataUsage
     );
-  }, [email, pwValid, agreePrivacy, agreeTerms, agreeDataUsage]);
+  }, [email, pwValid, dob, agreePrivacy, agreeTerms, agreeDataUsage]);
 
   const goToLogin = () => navigation.replace('Login');
 
@@ -139,7 +141,7 @@ export default function SignUpScreen() {
       await signUp({
         email,
         password,
-        dob: dob.trim() ? toIsoDob(dob) : '',
+        dob: dob ? toIsoDob(dob) : '',
         country: country.trim() ? country : 'Unknown',
         plan: 'Free',
         favorite_players: [],
@@ -171,7 +173,6 @@ export default function SignUpScreen() {
               style={styles.flex}
               contentContainerStyle={[
                 styles.scrollContent,
-                { paddingBottom: Math.max(insets.bottom + 24, 36) },
               ]}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
@@ -244,28 +245,29 @@ export default function SignUpScreen() {
                     </View>
                   </View>
 
-                  {/* DOB + Country */}
+                  {/* DOB + Country (side by side) */}
                   <View style={styles.row2}>
+                    {/* DOB */}
                     <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
                       <Text style={styles.label}>
                         {t('dob', 'Date of birth')} {t('optional', '(Optional)')}
                       </Text>
                       <TextInput
                         value={dob}
-                        onChangeText={(t_) => setDob(formatDob(t_))}
+                        onChangeText={(text) => setDob(formatDob(text))}
                         placeholder={t('placeholderDob', 'DD-MM-YYYY')}
                         placeholderTextColor={MUTED}
                         style={styles.input}
-                        keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'numeric'}
+                        keyboardType="number-pad"
                         inputMode="numeric"
                         autoCorrect={false}
                         autoComplete="off"
                         importantForAutofill="no"
                         maxLength={10}
-                        returnKeyType="next"
                       />
                     </View>
 
+                    {/* Country */}
                     <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
                       <Text style={styles.label}>
                         {t('country', 'Country')} {t('optional', '(Optional)')}
@@ -274,8 +276,7 @@ export default function SignUpScreen() {
                         onPress={() => setCountryModalOpen(true)}
                         style={({ pressed }) => [
                           styles.input,
-                          styles.row2,
-                          { justifyContent: 'space-between', opacity: pressed ? 0.9 : 1 },
+                          { justifyContent: 'center', opacity: pressed ? 0.9 : 1 },
                         ]}
                       >
                         <Text style={{ color: country === 'Unknown' ? MUTED : TEXT }}>
@@ -367,6 +368,9 @@ export default function SignUpScreen() {
                 </View>
               </View>
             </ScrollView>
+
+            {/* rest unchanged */}
+
 
             <Modal
               visible={dataUsageOpen}
