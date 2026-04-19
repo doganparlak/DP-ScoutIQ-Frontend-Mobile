@@ -258,7 +258,7 @@ export const resources = {
       reportFailedBody: 'Could not generate the report. Please try again later.',
       reportError: 'Report error',
       scoutingReport: 'Scouting Report',
-      strengths: 'Strengths',
+      strengths: 'Key Strengths',
       weakness_concerns: 'Weakness & Concerns',
       conclusion: 'Conclusion',
       tapArrowsToNavigate: 'Swipe or use arrows to navigate the report.',

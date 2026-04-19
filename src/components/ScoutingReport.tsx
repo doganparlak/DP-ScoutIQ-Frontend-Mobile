@@ -153,15 +153,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
   const [page, setPage] = useState(0);
   const { t } = useTranslation();
 
-  const [footerH, setFooterH] = useState(0);
-  const onFooterLayout = (e: LayoutChangeEvent) => {
-    const h = Math.round(e.nativeEvent.layout.height);
-    if (h > 0 && h !== footerH) setFooterH(h);
-  };
-
-  // ✅ width of the "content area" inside the card (so paging doesn't change layout)
   const [pagerWidth, setPagerWidth] = useState<number>(0);
-
   const listRef = useRef<FlatList<PageItem> | null>(null);
 
   const parsed = useMemo(() => parseReportText(report?.content || ''), [report?.content]);
@@ -203,9 +195,70 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ),
     };
 
-    if (spiderGroups.length === 0) return [playerPage];
+    const strengthsPage: PageItem = {
+      key: 'strengths',
+      title: t('strengths', 'Strengths'),
+      node: (
+        <View style={{ gap: 10 }}>
+          {parsed.strengths.length === 0 ? (
+            <Text style={{ color: MUTED }}>
+              {t('noStrengthsFound', 'No strengths section found.')}
+            </Text>
+          ) : (
+            parsed.strengths.map((s, i) => (
+              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
+                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
+                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      ),
+    };
 
-    const out: PageItem[] = [playerPage];
+    const weaknessesPage: PageItem = {
+      key: 'weaknesses',
+      title: t('weakness_concerns', 'Weakness & Concerns'),
+      node: (
+        <View style={{ gap: 10 }}>
+          {parsed.weaknesses.length === 0 ? (
+            <Text style={{ color: MUTED }}>
+              {t('noConcernsFound', 'No concerns section found.')}
+            </Text>
+          ) : (
+            parsed.weaknesses.map((s, i) => (
+              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
+                <Text style={{ color: DANGER, fontWeight: '900' }}>•</Text>
+                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      ),
+    };
+
+    const conclusionPage: PageItem = {
+      key: 'conclusion',
+      title: t('conclusion', 'Conclusion'),
+      node: (
+        <View style={{ gap: 10 }}>
+          {parsed.conclusion.length === 0 ? (
+            <Text style={{ color: MUTED }}>
+              {t('noConclusionFound', 'No conclusion found.')}
+            </Text>
+          ) : (
+            parsed.conclusion.map((s, i) => (
+              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
+                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
+                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      ),
+    };
+
+    const out: PageItem[] = [playerPage, strengthsPage, weaknessesPage];
 
     spiderGroups.forEach((g, idx) => {
       const title = t(g.titleKey, g.fallbackTitle);
@@ -236,68 +289,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       out.push({ key: `metrics-${idx}`, title, node });
     });
 
-    out.push({
-      key: 'strengths',
-      title: t('strengths', 'Strengths'),
-      node: (
-        <View style={{ gap: 10 }}>
-          {parsed.strengths.length === 0 ? (
-            <Text style={{ color: MUTED }}>
-              {t('noStrengthsFound', 'No strengths section found.')}
-            </Text>
-          ) : (
-            parsed.strengths.map((s, i) => (
-              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
-                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-              </View>
-            ))
-          )}
-        </View>
-      ),
-    });
-
-    out.push({
-      key: 'weaknesses',
-      title: t('weakness_concerns', 'Weakness & Concerns'),
-      node: (
-        <View style={{ gap: 10 }}>
-          {parsed.weaknesses.length === 0 ? (
-            <Text style={{ color: MUTED }}>
-              {t('noConcernsFound', 'No concerns section found.')}
-            </Text>
-          ) : (
-            parsed.weaknesses.map((s, i) => (
-              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                <Text style={{ color: DANGER, fontWeight: '900' }}>•</Text>
-                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-              </View>
-            ))
-          )}
-        </View>
-      ),
-    });
-
-    out.push({
-      key: 'conclusion',
-      title: t('conclusion', 'Conclusion'),
-      node: (
-        <View style={{ gap: 10 }}>
-          {parsed.conclusion.length === 0 ? (
-            <Text style={{ color: MUTED }}>
-              {t('noConclusionFound', 'No conclusion found.')}
-            </Text>
-          ) : (
-            parsed.conclusion.map((s, i) => (
-              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
-                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-              </View>
-            ))
-          )}
-        </View>
-      ),
-    });
+    out.push(conclusionPage);
 
     return out;
   }, [player, parsed, spiderGroups, t]);
@@ -320,7 +312,6 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
   const goPrev = () => scrollToPage(page - 1);
   const goNext = () => scrollToPage(page + 1);
 
-  // when opening, reset to first page (no animation)
   useEffect(() => {
     if (visible) {
       scrollToPage(0, false);
@@ -360,7 +351,6 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
 
           <View style={styles.headerDivider} />
 
-          {/* ✅ Same spot as before, but now supports swipe. Width measured from this container. */}
           <View onLayout={onPagerLayout} style={{ flex: 1, paddingBottom: 65 }}>
             {pagerWidth > 0 ? (
               <FlatList
@@ -379,18 +369,16 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
                 renderItem={({ item }) => (
                   <View style={{ width: pagerWidth }}>
                     <ScrollView
-                      contentContainerStyle={{ paddingBottom: 0}} // ✅ ensures content ends above footer line
+                      contentContainerStyle={{ paddingBottom: 0 }}
                       showsVerticalScrollIndicator
                     >
                       {item.node}
                     </ScrollView>
-
                   </View>
                 )}
               />
             ) : null}
           </View>
-
 
           <View style={styles.footer}>
             <Pressable
@@ -455,7 +443,7 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     padding: 14,
     ...shadows.card,
-    position: 'relative', 
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',
@@ -474,10 +462,10 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   footer: {
-    position: 'absolute',   // ✅ float footer
+    position: 'absolute',
     left: 14,
     right: 14,
-    bottom: 22,             // ✅ move up/down here (try 18–28)
+    bottom: 22,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: LINE,
