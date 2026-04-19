@@ -237,9 +237,9 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ),
     };
 
-    const conclusionPage: PageItem = {
+    const roleUsagePage: PageItem = {
       key: 'conclusion',
-      title: t('conclusion', 'Conclusion'),
+      title: t('role_usage', 'Role & Usage'),
       node: (
         <View style={{ gap: 10 }}>
           {parsed.conclusion.length === 0 ? (
@@ -258,7 +258,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ),
     };
 
-    const out: PageItem[] = [playerPage, strengthsPage, weaknessesPage];
+    const out: PageItem[] = [playerPage, roleUsagePage, strengthsPage, weaknessesPage];
 
     spiderGroups.forEach((g, idx) => {
       const title = t(g.titleKey, g.fallbackTitle);
@@ -288,8 +288,6 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
 
       out.push({ key: `metrics-${idx}`, title, node });
     });
-
-    out.push(conclusionPage);
 
     return out;
   }, [player, parsed, spiderGroups, t]);
