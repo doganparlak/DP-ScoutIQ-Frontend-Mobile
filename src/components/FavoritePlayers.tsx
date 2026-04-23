@@ -373,7 +373,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           // temporary network error: keep polling
         }
       }
-    }, 20000);
+    }, 10000);
 
     return () => {
       cancelled = true;

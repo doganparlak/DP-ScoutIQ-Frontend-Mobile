@@ -29,8 +29,10 @@ import {
   Crown,
   Database,
   MessageCircleMore,
+  MessageSquareMore,
+  ChartSpline,
 } from 'lucide-react-native';
-import { getMe } from '@/services/api';
+import { getMe, type Plan } from '@/services/api';
 
 const TAB_BASE_HEIGHT = 70;
 const TAB_ICON_SIZE = 24;
@@ -101,6 +103,7 @@ type ScoutWiseProTabButtonProps = BottomTabBarButtonProps & {
   hasAiConsent: boolean;
   isConsentLoading: boolean;
   isMenuOpen: boolean;
+  isFreePlan: boolean;
   onCloseMenu: () => void;
   onOpenMenu: () => void;
   t: TFunction;
@@ -112,6 +115,7 @@ function ScoutWiseProTabButton({
   hasAiConsent,
   isConsentLoading,
   isMenuOpen,
+  isFreePlan,
   onCloseMenu,
   onOpenMenu,
   t,
@@ -130,7 +134,7 @@ function ScoutWiseProTabButton({
             }}
             isTop
           >
-            <ChartColumnIncreasing size={TAB_ICON_SIZE} color={ACCENT} strokeWidth={2.2} />
+            <ChartSpline size={TAB_ICON_SIZE} color={ACCENT} strokeWidth={2.2} />
           </ShortcutButton>
 
           <ShortcutButton
@@ -142,7 +146,7 @@ function ScoutWiseProTabButton({
               navigation.navigate('Chat', { screen: 'LegacyChat' });
             }}
           >
-            <MessageCircleMore
+            <MessageSquareMore
               size={TAB_ICON_SIZE}
               color={hasAiConsent && !isConsentLoading ? ACCENT : MUTED}
               strokeWidth={2.2}
@@ -156,6 +160,9 @@ function ScoutWiseProTabButton({
         accessibilityState={accessibilityState}
         accessibilityLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
         onLongPress={() => {
+          if (isFreePlan) {
+            return;
+          }
           if (isMenuOpen) {
             onCloseMenu();
             return;
@@ -164,7 +171,9 @@ function ScoutWiseProTabButton({
         }}
         onPress={() => {
           onCloseMenu();
-          navigation.navigate('Chat', { screen: 'ProHome' });
+          navigation.navigate('Chat', {
+            screen: isFreePlan ? 'ProHome' : 'LegacyStrategy',
+          });
         }}
         style={({ pressed }) => [styles.tabButton, pressed && styles.tabButtonPressed]}
       >
@@ -183,6 +192,7 @@ export default function MainTabs() {
   const [hasAiConsent, setHasAiConsent] = React.useState(false);
   const [loadingConsent, setLoadingConsent] = React.useState(true);
   const [proMenuOpen, setProMenuOpen] = React.useState(false);
+  const [plan, setPlan] = React.useState<Plan>('Free');
 
   const closeProMenu = React.useCallback(() => {
     setProMenuOpen(false);
@@ -193,9 +203,13 @@ export default function MainTabs() {
       setLoadingConsent(true);
       const me = await getMe();
       setHasAiConsent(!!me.consent);
+      if (me?.plan) {
+        setPlan(me.plan as Plan);
+      }
     } catch (e: any) {
       console.log('LOAD CONSENT ERROR:', e?.message ?? e);
       setHasAiConsent(false);
+      setPlan('Free');
     } finally {
       setLoadingConsent(false);
     }
@@ -259,6 +273,7 @@ export default function MainTabs() {
               hasAiConsent={hasAiConsent}
               isConsentLoading={loadingConsent}
               isMenuOpen={proMenuOpen}
+              isFreePlan={plan === 'Free'}
               onCloseMenu={closeProMenu}
               onOpenMenu={() => {
                 loadConsent();

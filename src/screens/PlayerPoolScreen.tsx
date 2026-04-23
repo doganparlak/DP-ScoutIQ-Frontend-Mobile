@@ -1,7 +1,9 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,10 +11,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Search, X } from 'lucide-react-native';
 
+import Header from '@/components/Header';
 import PlayerCard from '@/components/PlayerCard';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import { searchPlayerPool, type PlayerPoolSearchInput } from '@/services/api';
@@ -20,6 +22,15 @@ import { BG, PANEL, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK } from 
 import type { PlayerData } from '@/types';
 
 const ROW_HEIGHT = 48;
+const CANDIDATE_TABLE_VISIBLE_ROWS = 5;
+const COL = {
+  name: 0.93,
+  gen: 0.9,
+  nat: 0.93,
+  team: 1.0,
+  age: 0.8,
+  roles: 0.8,
+} as const;
 
 type SearchResultRow = {
   id: string;
@@ -144,19 +155,29 @@ export default function PlayerPoolScreen() {
     team,
   ]);
 
+  const candidateTableHeight = React.useMemo(() => {
+    if (results.length === 0) {
+      return ROW_HEIGHT * 3;
+    }
+
+    const visibleRows = Math.min(results.length, CANDIDATE_TABLE_VISIBLE_ROWS);
+    return ROW_HEIGHT * (visibleRows + 1) + 2;
+  }, [results.length]);
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>{t('playerPoolEyebrow', 'ScoutWise')}</Text>
-          <Text style={styles.title}>{t('playerPoolTitle', 'Player Pool')}</Text>
-          <Text style={styles.subtitle}>
-            {t(
-              'playerPoolSubtitle',
-              'Search your player database by identity, club, profile, and position in one focused scouting workspace.',
+    <KeyboardAvoidingView
+      style={styles.safe}
+      behavior={Platform.select({ ios: 'padding', android: 'padding' })}
+      keyboardVerticalOffset={0}
+    >
+      <View style={styles.screen}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <Header
+            subtitle={t(
+              'playerPoolHeaderSubtitle',
+              'Discover 52,000+ players from 113 leagues worldwide.',
             )}
-          </Text>
-        </View>
+          />
 
         <View style={styles.panel}>
           <Text style={styles.sectionTitle}>{t('playerPoolFilters', 'Search filters')}</Text>
@@ -340,70 +361,128 @@ export default function PlayerPoolScreen() {
             </View>
           ) : (
             <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.headerText, styles.colName]}>{t('tblName', 'Name')}</Text>
-                <Text style={[styles.headerText, styles.colGender]}>{t('gender', 'Gender')}</Text>
-                <Text style={[styles.headerText, styles.colNationality]}>{t('tblNat', 'Nat.')}</Text>
-                <Text style={[styles.headerText, styles.colTeam]}>{t('team', 'Team')}</Text>
-                <Text style={[styles.headerText, styles.colAge]}>{t('tblAge', 'Age')}</Text>
-                <Text style={[styles.headerText, styles.colRole]}>{t('tblRoles', 'Role')}</Text>
+              <View style={styles.tableTopBorder} />
+
+              <View style={[styles.tableScrollWrap, { minHeight: candidateTableHeight }]}>
+                <ScrollView
+                  style={{ maxHeight: candidateTableHeight }}
+                  contentContainerStyle={{ paddingRight: 5 }}
+                  scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
+                  nestedScrollEnabled
+                  bounces={false}
+                  showsVerticalScrollIndicator
+                >
+                  <View>
+                    <View style={styles.row}>
+                      <View style={[styles.cell, { flex: COL.name }]}>
+                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+                      </View>
+                      <View style={styles.vsep} />
+                      <View style={[styles.cell, { flex: COL.gen }]}>
+                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
+                      </View>
+                      <View style={styles.vsep} />
+                      <View style={[styles.cell, { flex: COL.nat }]}>
+                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
+                      </View>
+                      <View style={styles.vsep} />
+                      <View style={[styles.cell, { flex: COL.team }]}>
+                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
+                      </View>
+                      <View style={styles.vsep} />
+                      <View style={[styles.cell, { flex: COL.age }]}>
+                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
+                      </View>
+                      <View style={styles.vsep} />
+                      <View style={[styles.cell, { flex: COL.roles }]}>
+                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.hsepThick} />
+                  </View>
+
+                  {results.length === 0 ? (
+                    <View style={styles.emptyRow}>
+                      <Text style={styles.emptyText}>
+                        {t('playerPoolEmptyBody', 'Run a search to see matching players from your database.')}
+                      </Text>
+                    </View>
+                  ) : (
+                    results.map((row) => {
+                      const genderValue = row.player.meta?.gender?.toLowerCase();
+                      const genderLabel =
+                        genderValue === 'male'
+                          ? t('genderMaleShort', 'M')
+                          : genderValue === 'female'
+                            ? t('genderFemaleShort', 'F')
+                            : '—';
+                      const nationalityShort = row.player.meta?.nationality
+                        ? row.player.meta.nationality
+                            .normalize('NFKD')
+                            .replace(/[^\p{Letter}\s]/gu, '')
+                            .trim()
+                            .split(/\s+/)[0]
+                            ?.slice(0, 3)
+                            .toUpperCase() || '—'
+                        : '—';
+
+                      return (
+                        <View key={row.id}>
+                          <Pressable
+                            onPress={() => setSelectedPlayer(row.player)}
+                            style={({ pressed }) => [
+                              styles.row,
+                              selectedPlayer?.name === row.player.name && styles.dataRowActive,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+                              {row.player.name.split(/\s+/)[0] || row.player.name}
+                            </Text>
+                            <View style={styles.vsep} />
+                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}>
+                              {genderLabel}
+                            </Text>
+                            <View style={styles.vsep} />
+                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
+                              {nationalityShort}
+                            </Text>
+                            <View style={styles.vsep} />
+                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
+                              {row.player.meta?.team || '—'}
+                            </Text>
+                            <View style={styles.vsep} />
+                            <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
+                              {row.player.meta?.age ?? '—'}
+                            </Text>
+                            <View style={styles.vsep} />
+                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
+                              {row.player.meta?.roles?.[0] ?? '—'}
+                            </Text>
+                          </Pressable>
+                          <View style={styles.hsepThick} />
+                        </View>
+                      );
+                    })
+                  )}
+                </ScrollView>
               </View>
 
-              <ScrollView style={{ maxHeight: ROW_HEIGHT * 3 }} nestedScrollEnabled showsVerticalScrollIndicator>
-                {results.length === 0 ? (
-                  <View style={styles.emptyRow}>
-                    <Text style={styles.emptyText}>
-                      {t('playerPoolEmptyBody', 'Run a search to see matching players from your database.')}
-                    </Text>
-                  </View>
-                ) : (
-                  results.map((row) => {
-                    const genderValue = row.player.meta?.gender?.toLowerCase();
-                    const genderLabel =
-                      genderValue === 'male'
-                        ? t('genderMaleShort', 'M')
-                        : genderValue === 'female'
-                          ? t('genderFemaleShort', 'F')
-                          : '—';
-                    return (
-                      <Pressable
-                        key={row.id}
-                        onPress={() => setSelectedPlayer(row.player)}
-                        style={({ pressed }) => [
-                          styles.dataRow,
-                          selectedPlayer?.name === row.player.name && styles.dataRowActive,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <Text numberOfLines={1} style={[styles.rowText, styles.colName]}>
-                          {row.player.name}
-                        </Text>
-                        <Text numberOfLines={1} style={[styles.rowText, styles.colGender]}>
-                          {genderLabel}
-                        </Text>
-                        <Text numberOfLines={1} style={[styles.rowText, styles.colNationality]}>
-                          {row.player.meta?.nationality ?? '—'}
-                        </Text>
-                        <Text numberOfLines={1} style={[styles.rowText, styles.colTeam]}>
-                          {row.player.meta?.team ?? '—'}
-                        </Text>
-                        <Text numberOfLines={1} style={[styles.rowText, styles.colAge]}>
-                          {row.player.meta?.age ?? '—'}
-                        </Text>
-                        <Text numberOfLines={1} style={[styles.rowText, styles.colRole]}>
-                          {row.player.meta?.roles?.[0] ?? '—'}
-                        </Text>
-                      </Pressable>
-                    );
-                  })
-                )}
-              </ScrollView>
+              <View style={styles.tableBottomBorder} />
             </View>
           )}
         </View>
 
         <View style={styles.panel}>
           <Text style={styles.sectionTitle}>{t('playerCard', 'Player Card')}</Text>
+          <View style={styles.curateRow}>
+            <View style={styles.curatePlusWrap}>
+              <Text style={styles.curatePlusText}>＋</Text>
+            </View>
+            <Text style={styles.curateText}>
+              {t('wcCurate', 'Curate your dream squad in your portfolio.')}
+            </Text>
+          </View>
           {sanitizedSelectedPlayer ? (
             <PlayerCard player={sanitizedSelectedPlayer} titleAlign="center" />
           ) : (
@@ -466,8 +545,9 @@ export default function PlayerPoolScreen() {
             </View>
           </View>
         </Modal>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -476,36 +556,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
+  screen: {
+    flex: 1,
+    backgroundColor: BG,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 18,
   },
   content: {
-    paddingTop: 20,
+    paddingTop: 0,
     paddingBottom: 32,
     gap: 16,
-  },
-  hero: {
-    marginBottom: 2,
-  },
-  eyebrow: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  title: {
-    marginTop: 8,
-    color: TEXT,
-    fontSize: 32,
-    fontWeight: '900',
-  },
-  subtitle: {
-    marginTop: 10,
-    color: MUTED,
-    fontSize: 15,
-    lineHeight: 22,
   },
   panel: {
     borderRadius: 20,
@@ -518,7 +580,31 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 16,
     fontWeight: '800',
+    marginBottom: 10,
+  },
+  curateRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
     marginBottom: 12,
+  },
+  curatePlusWrap: {
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  curatePlusText: {
+    color: ACCENT,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  curateText: {
+    color: MUTED,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 21,
   },
   filters: {
     flexDirection: 'row',
@@ -626,61 +712,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 13,
   },
-  table: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: LINE,
+  table: { marginTop: 10 },
+  tableTopBorder: { height: 1, backgroundColor: LINE },
+  tableBottomBorder: { height: 1, backgroundColor: LINE },
+  tableScrollWrap: {
+    paddingRight: 1,
   },
-  tableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-    paddingHorizontal: 4,
-  },
-  headerText: {
-    color: TEXT,
-    fontSize: 12,
-    fontWeight: '800',
-  },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
+  hsepThick: { height: 2, backgroundColor: LINE },
+  cell: { paddingVertical: 10, justifyContent: 'center' },
+  thText: { color: TEXT, fontWeight: '700' },
+  td: { color: TEXT, flex: 1, fontSize: 12.5 },
+  vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
   dataRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     minHeight: ROW_HEIGHT,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
   },
   dataRowActive: {
     backgroundColor: 'rgba(22, 163, 74, 0.10)',
-  },
-  rowText: {
-    color: TEXT,
-    fontSize: 12.5,
-  },
-  colName: {
-    flex: 1.4,
-    paddingRight: 8,
-  },
-  colGender: {
-    flex: 0.7,
-    paddingRight: 8,
-  },
-  colNationality: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  colTeam: {
-    flex: 1.25,
-    paddingRight: 8,
-  },
-  colAge: {
-    flex: 0.65,
-    paddingRight: 8,
-  },
-  colRole: {
-    flex: 0.85,
   },
   emptyRow: {
     minHeight: ROW_HEIGHT * 2,

@@ -5,7 +5,11 @@ import { useTranslation } from 'react-i18next';
 
 const scoutwiseLogo = require('../../assets/scoutwise_logo.png');
 
-export default function Header() {
+type HeaderProps = {
+  subtitle?: string;
+};
+
+export default function Header({ subtitle }: HeaderProps) {
   const { t } = useTranslation();
 
   return (
@@ -39,7 +43,7 @@ export default function Header() {
 
       {/* Subtitle (localized) */}
       <Text style={styles.subtitle}>
-        {t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
+        {subtitle ?? t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
       </Text>
     </View>
   );
