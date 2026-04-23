@@ -70,7 +70,7 @@ export default function StrategyScreen() {
   const handleStart = () => {
     if (loadingConsent || savingConsent) return;
     if (!aiConsent) return;
-    navigation.navigate('Chat');
+    navigation.getParent()?.navigate('Chat', { screen: 'LegacyChat' } as never);
   };
 
   const buttonsDisabled = loadingConsent || savingConsent || !aiConsent;

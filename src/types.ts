@@ -11,8 +11,14 @@ export interface ChatMessage {
 
 export type MainTabsParamList = {
   Strategy: undefined;
-  Chat: undefined;
+  Chat: NavigatorScreenParams<ScoutWiseProStackParamList> | undefined;
   Profile: undefined;
+};
+
+export type ScoutWiseProStackParamList = {
+  ProHome: undefined;
+  LegacyStrategy: undefined;
+  LegacyChat: undefined;
 };
 
 export type RootStackParamList = {

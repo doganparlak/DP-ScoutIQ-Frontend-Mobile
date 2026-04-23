@@ -30,5 +30,6 @@ export const ENDPOINTS = {
   reachOut: '/help/reach_out',
   subscription: '/me/subscription/iap',
   consent: '/me/consent',
+  playerPoolSearch: '/player-pool/search',
   favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
 };

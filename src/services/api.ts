@@ -172,6 +172,109 @@ export type FavoritePlayer = {
   roles: string[];      // LONG strings from backend (e.g., "Center Back")
 };
 
+export type PlayerPoolSearchInput = {
+  name?: string;
+  gender?: 'male' | 'female';
+  nationality?: string;
+  team?: string;
+  minAge?: number;
+  maxAge?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  minWeight?: number;
+  maxWeight?: number;
+  position?: string;
+};
+
+type PlayerPoolRawRow = {
+  id?: string | number;
+  content?: unknown;
+  [key: string]: unknown;
+};
+
+function normalizeRole(role: unknown): string | null {
+  if (typeof role !== 'string') return null;
+  const trimmed = role.trim();
+  if (!trimmed) return null;
+  return ROLE_SHORT_TO_LONG[trimmed] ?? trimmed;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const num = Number(value);
+    if (Number.isFinite(num)) return num;
+  }
+  return undefined;
+}
+
+function normalizePlayerPoolContent(content: unknown, fallbackId: string): PlayerData | null {
+  let source = content;
+
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!source || typeof source !== 'object') return null;
+
+  const raw = source as Record<string, unknown>;
+  const name =
+    (typeof raw.name === 'string' && raw.name) ||
+    (typeof raw.player_name === 'string' && raw.player_name) ||
+    fallbackId;
+
+  if (!name) return null;
+
+  const rawRoles = Array.isArray(raw.roles)
+    ? raw.roles
+    : Array.isArray(raw.positions)
+      ? raw.positions
+      : [raw.position_name].filter(Boolean);
+
+  const roles = rawRoles.map(normalizeRole).filter(Boolean) as string[];
+
+  return {
+    name,
+    stats: [],
+    meta: {
+      nationality:
+        (typeof raw.nationality === 'string' && raw.nationality) ||
+        (typeof raw.nationality_name === 'string' && raw.nationality_name) ||
+        undefined,
+      age: toFiniteNumber(raw.age),
+      roles,
+      gender: typeof raw.gender === 'string' ? raw.gender : undefined,
+      height: toFiniteNumber(raw.height),
+      weight: toFiniteNumber(raw.weight),
+      team:
+        (typeof raw.team === 'string' && raw.team) ||
+        (typeof raw.team_name === 'string' && raw.team_name) ||
+        undefined,
+    },
+  };
+}
+
+export async function searchPlayerPool(
+  input: PlayerPoolSearchInput,
+): Promise<Array<{ id: string; player: PlayerData }>> {
+  const rows = await request<PlayerPoolRawRow[]>(ENDPOINTS.playerPoolSearch, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+
+  return (rows || [])
+    .map((row, index) => {
+      const id = String(row.id ?? `player-pool-${index}`);
+      const player = normalizePlayerPoolContent(row.content ?? row, id);
+      return player ? { id, player } : null;
+    })
+    .filter(Boolean) as Array<{ id: string; player: PlayerData }>;
+}
+
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
   return request<FavoritePlayer[]>('/me/favorites');
 }
@@ -370,4 +473,3 @@ export async function getScoutingReport(
     body: JSON.stringify(player ?? {}),
   });
 }
-
