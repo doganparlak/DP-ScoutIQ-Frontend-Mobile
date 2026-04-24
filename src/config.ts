@@ -31,5 +31,6 @@ export const ENDPOINTS = {
   subscription: '/me/subscription/iap',
   consent: '/me/consent',
   playerPoolSearch: '/player-pool/search',
+  playerPoolOptions: '/player-pool/options',
   favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
 };

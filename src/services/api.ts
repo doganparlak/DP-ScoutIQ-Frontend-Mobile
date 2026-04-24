@@ -176,7 +176,9 @@ export type PlayerPoolSearchInput = {
   name?: string;
   gender?: 'male' | 'female';
   nationality?: string;
+  nationalityExact?: boolean;
   team?: string;
+  teamExact?: boolean;
   minAge?: number;
   maxAge?: number;
   minHeight?: number;
@@ -184,6 +186,12 @@ export type PlayerPoolSearchInput = {
   minWeight?: number;
   maxWeight?: number;
   position?: string;
+};
+
+export type PlayerPoolFilterOptions = {
+  teams: string[];
+  nationalities: string[];
+  positions: string[];
 };
 
 type PlayerPoolRawRow = {
@@ -275,6 +283,10 @@ export async function searchPlayerPool(
     .filter(Boolean) as Array<{ id: string; player: PlayerData }>;
 }
 
+export async function getPlayerPoolOptions(): Promise<PlayerPoolFilterOptions> {
+  return request<PlayerPoolFilterOptions>(ENDPOINTS.playerPoolOptions);
+}
+
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
   return request<FavoritePlayer[]>('/me/favorites');
 }
@@ -331,18 +343,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (lang)  headers['Accept-Language'] = lang;      // <--- forward user’s language to backend
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const text = await res.text();
+
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
-      const data = await res.json();
+      const data = text ? JSON.parse(text) : null;
       if (data?.detail) msg = data.detail;
     } catch {
-      const text = await res.text();
       if (text) msg = text;
     }
     throw new Error(msg);
   }
-  const text = await res.text();
   return (text ? JSON.parse(text) : {}) as T;
 }
 

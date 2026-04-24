@@ -23,6 +23,19 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
 
   const [isAdding, setIsAdding] = React.useState(false);
   const [isAdded, setIsAdded] = React.useState(false);
+  const [showAddedMessage, setShowAddedMessage] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsAdding(false);
+    setIsAdded(false);
+    setShowAddedMessage(false);
+  }, [player.name, meta?.team, meta?.nationality]);
+
+  React.useEffect(() => {
+    if (!showAddedMessage) return;
+    const timeout = setTimeout(() => setShowAddedMessage(false), 1800);
+    return () => clearTimeout(timeout);
+  }, [showAddedMessage]);
 
   const handleAdd = async () => {
     if (!onAddFavorite || isAdding || isAdded) return;
@@ -33,7 +46,10 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
       if (maybePromise && typeof (maybePromise as Promise<boolean>)?.then === 'function') {
         ok = await (maybePromise as Promise<boolean>);
       }
-      if (ok !== false) setIsAdded(true);
+      if (ok !== false) {
+        setIsAdded(true);
+        setShowAddedMessage(true);
+      }
       else setIsAdding(false); // handled failure => re-enable
     } catch {
       setIsAdding(false);
@@ -55,6 +71,22 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
 
   return (
     <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 14, gap: 8 }}>
+      {showAddedMessage && (
+        <View
+          style={{
+            alignSelf: 'center',
+            backgroundColor: ACCENT,
+            borderRadius: 999,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+          }}
+        >
+          <Text style={{ color: 'white', fontSize: 12, fontWeight: '800' }}>
+            {t('playerAddedToPortfolio', 'Player is added to your portfolio')}
+          </Text>
+        </View>
+      )}
+
       {/* header row: name + add button */}
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Text

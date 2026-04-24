@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,7 +18,13 @@ import { ChevronDown, Search, X } from 'lucide-react-native';
 import Header from '@/components/Header';
 import PlayerCard from '@/components/PlayerCard';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
-import { searchPlayerPool, type PlayerPoolSearchInput } from '@/services/api';
+import {
+  ROLE_LONG_TO_SHORT,
+  addFavoritePlayer,
+  getPlayerPoolOptions,
+  searchPlayerPool,
+  type PlayerPoolSearchInput,
+} from '@/services/api';
 import { BG, PANEL, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK } from '@/theme';
 import type { PlayerData } from '@/types';
 
@@ -43,6 +50,8 @@ export default function PlayerPoolScreen() {
   const [gender, setGender] = React.useState<'' | 'male' | 'female'>('');
   const [nationality, setNationality] = React.useState('');
   const [team, setTeam] = React.useState('');
+  const [selectedNationality, setSelectedNationality] = React.useState<string | null>(null);
+  const [selectedTeam, setSelectedTeam] = React.useState<string | null>(null);
   const [position, setPosition] = React.useState('');
   const [minAge, setMinAge] = React.useState('');
   const [maxAge, setMaxAge] = React.useState('');
@@ -55,18 +64,67 @@ export default function PlayerPoolScreen() {
   const [searching, setSearching] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [positionOpen, setPositionOpen] = React.useState(false);
+  const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
+  const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
+  const [positionOptions, setPositionOptions] = React.useState<string[]>(
+    [...PLAYER_POOL_POSITION_OPTIONS],
+  );
+
+  React.useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const options = await getPlayerPoolOptions();
+        if (!alive) return;
+
+        const nationalityFromBackend = Array.isArray(options.nationalities) && options.nationalities.length > 0;
+        const teamFromBackend = Array.isArray(options.teams) && options.teams.length > 0;
+
+        if (nationalityFromBackend) {
+          setCountryOptions(options.nationalities);
+        }
+        if (teamFromBackend) {
+          setTeamOptions(options.teams);
+        }
+        if (Array.isArray(options.positions) && options.positions.length > 0) {
+          setPositionOptions(options.positions);
+        }
+
+        console.log(
+          `[player-pool options] nationality source: ${nationalityFromBackend ? 'backend' : 'frontend'} | team source: ${teamFromBackend ? 'backend' : 'frontend'}`,
+        );
+      } catch (error) {
+        console.warn(
+          '[player-pool options] nationality source: frontend | team source: frontend',
+          error,
+        );
+        // Keep local fallback lists when the backend options endpoint is unavailable.
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const nationalitySuggestions = React.useMemo(() => {
     const q = nationality.trim().toLowerCase();
     if (!q) return [];
-    return PLAYER_POOL_COUNTRIES.filter((item) => item.toLowerCase().includes(q)).slice(0, 6);
-  }, [nationality]);
+    const matches = countryOptions.filter((item) => item.toLowerCase().includes(q));
+    const exactMatch = matches.find((item) => item.toLowerCase() === q);
+    if (exactMatch) return [exactMatch];
+    return matches.slice(0, 6);
+  }, [countryOptions, nationality]);
 
   const teamSuggestions = React.useMemo(() => {
     const q = team.trim().toLowerCase();
     if (!q) return [];
-    return PLAYER_POOL_TEAM_NAMES.filter((item) => item.toLowerCase().includes(q)).slice(0, 6);
-  }, [team]);
+    const matches = teamOptions.filter((item) => item.toLowerCase().includes(q));
+    const exactMatch = matches.find((item) => item.toLowerCase() === q);
+    if (exactMatch) return [exactMatch];
+    return matches.slice(0, 6);
+  }, [team, teamOptions]);
 
   const renderGenderLabel = React.useCallback(() => {
     if (gender === 'male') return t('genderMale', 'Male');
@@ -87,6 +145,8 @@ export default function PlayerPoolScreen() {
     setGender('');
     setNationality('');
     setTeam('');
+    setSelectedNationality(null);
+    setSelectedTeam(null);
     setPosition('');
     setMinAge('');
     setMaxAge('');
@@ -117,7 +177,11 @@ export default function PlayerPoolScreen() {
       name: name.trim() || undefined,
       gender: gender || undefined,
       nationality: nationality.trim() || undefined,
+      nationalityExact:
+        !!selectedNationality &&
+        selectedNationality.trim().toLowerCase() === nationality.trim().toLowerCase(),
       team: team.trim() || undefined,
+      teamExact: !!selectedTeam && selectedTeam.trim().toLowerCase() === team.trim().toLowerCase(),
       position: position || undefined,
       minAge: minAge ? Number(minAge) : undefined,
       maxAge: maxAge ? Number(maxAge) : undefined,
@@ -208,17 +272,25 @@ export default function PlayerPoolScreen() {
               <Text style={styles.filterLabel}>{t('fltNationality', 'Nationality')}</Text>
               <TextInput
                 value={nationality}
-                onChangeText={setNationality}
+                onChangeText={(value) => {
+                  setNationality(value);
+                  setSelectedNationality(
+                    selectedNationality && selectedNationality === value ? selectedNationality : null,
+                  );
+                }}
                 placeholder={t('phSearchNationality', 'Search nationality')}
                 placeholderTextColor={MUTED}
                 style={styles.input}
               />
-              {nationalitySuggestions.length > 0 ? (
+              {nationalitySuggestions.length > 0 && nationality.trim().toLowerCase() !== selectedNationality?.trim().toLowerCase() ? (
                 <View style={styles.suggestions}>
                   {nationalitySuggestions.map((item) => (
                     <Pressable
                       key={item}
-                      onPress={() => setNationality(item)}
+                      onPress={() => {
+                        setNationality(item);
+                        setSelectedNationality(item);
+                      }}
                       style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
                     >
                       <Text style={styles.suggestionText}>{item}</Text>
@@ -232,17 +304,23 @@ export default function PlayerPoolScreen() {
               <Text style={styles.filterLabel}>{t('fltTeam', 'Team')}</Text>
               <TextInput
                 value={team}
-                onChangeText={setTeam}
+                onChangeText={(value) => {
+                  setTeam(value);
+                  setSelectedTeam(selectedTeam && selectedTeam === value ? selectedTeam : null);
+                }}
                 placeholder={t('phSearchTeam', 'Search team')}
                 placeholderTextColor={MUTED}
                 style={styles.input}
               />
-              {teamSuggestions.length > 0 ? (
+              {teamSuggestions.length > 0 && team.trim().toLowerCase() !== selectedTeam?.trim().toLowerCase() ? (
                 <View style={styles.suggestions}>
                   {teamSuggestions.map((item) => (
                     <Pressable
                       key={item}
-                      onPress={() => setTeam(item)}
+                      onPress={() => {
+                        setTeam(item);
+                        setSelectedTeam(item);
+                      }}
                       style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
                     >
                       <Text style={styles.suggestionText}>{item}</Text>
@@ -363,6 +441,35 @@ export default function PlayerPoolScreen() {
             <View style={styles.table}>
               <View style={styles.tableTopBorder} />
 
+              <View>
+                <View style={styles.row}>
+                  <View style={[styles.cell, { flex: COL.name }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+                  </View>
+                  <View style={styles.vsep} />
+                  <View style={[styles.cell, { flex: COL.gen }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
+                  </View>
+                  <View style={styles.vsep} />
+                  <View style={[styles.cell, { flex: COL.nat }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
+                  </View>
+                  <View style={styles.vsep} />
+                  <View style={[styles.cell, { flex: COL.team }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
+                  </View>
+                  <View style={styles.vsep} />
+                  <View style={[styles.cell, { flex: COL.age }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
+                  </View>
+                  <View style={styles.vsep} />
+                  <View style={[styles.cell, { flex: COL.roles }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
+                  </View>
+                </View>
+                <View style={styles.hsepThick} />
+              </View>
+
               <View style={[styles.tableScrollWrap, { minHeight: candidateTableHeight }]}>
                 <ScrollView
                   style={{ maxHeight: candidateTableHeight }}
@@ -372,35 +479,6 @@ export default function PlayerPoolScreen() {
                   bounces={false}
                   showsVerticalScrollIndicator
                 >
-                  <View>
-                    <View style={styles.row}>
-                      <View style={[styles.cell, { flex: COL.name }]}>
-                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
-                      </View>
-                      <View style={styles.vsep} />
-                      <View style={[styles.cell, { flex: COL.gen }]}>
-                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
-                      </View>
-                      <View style={styles.vsep} />
-                      <View style={[styles.cell, { flex: COL.nat }]}>
-                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-                      </View>
-                      <View style={styles.vsep} />
-                      <View style={[styles.cell, { flex: COL.team }]}>
-                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
-                      </View>
-                      <View style={styles.vsep} />
-                      <View style={[styles.cell, { flex: COL.age }]}>
-                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
-                      </View>
-                      <View style={styles.vsep} />
-                      <View style={[styles.cell, { flex: COL.roles }]}>
-                        <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.hsepThick} />
-                  </View>
-
                   {results.length === 0 ? (
                     <View style={styles.emptyRow}>
                       <Text style={styles.emptyText}>
@@ -425,6 +503,11 @@ export default function PlayerPoolScreen() {
                             ?.slice(0, 3)
                             .toUpperCase() || '—'
                         : '—';
+                      const roleValue = row.player.meta?.roles?.[0];
+                      const roleShort =
+                        (roleValue && ROLE_LONG_TO_SHORT[roleValue]) ||
+                        roleValue ||
+                        '—';
 
                       return (
                         <View key={row.id}>
@@ -457,7 +540,7 @@ export default function PlayerPoolScreen() {
                             </Text>
                             <View style={styles.vsep} />
                             <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
-                              {row.player.meta?.roles?.[0] ?? '—'}
+                              {roleShort}
                             </Text>
                           </Pressable>
                           <View style={styles.hsepThick} />
@@ -484,7 +567,32 @@ export default function PlayerPoolScreen() {
             </Text>
           </View>
           {sanitizedSelectedPlayer ? (
-            <PlayerCard player={sanitizedSelectedPlayer} titleAlign="center" />
+            <PlayerCard
+              player={sanitizedSelectedPlayer}
+              titleAlign="center"
+              onAddFavorite={async (player) => {
+                try {
+                  await addFavoritePlayer({
+                    name: player.name,
+                    nationality: player.meta?.nationality,
+                    age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
+                    potential:
+                      typeof player.meta?.potential === 'number'
+                        ? Math.round(player.meta.potential)
+                        : undefined,
+                    gender: player.meta?.gender,
+                    height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
+                    weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
+                    team: player.meta?.team,
+                    roles: player.meta?.roles ?? [],
+                  });
+                  return true;
+                } catch (e: any) {
+                  Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
+                  return false;
+                }
+              }}
+            />
           ) : (
             <View style={styles.emptyCardState}>
               <Text style={styles.emptyText}>
@@ -527,7 +635,7 @@ export default function PlayerPoolScreen() {
                   </Text>
                 </Pressable>
 
-                {PLAYER_POOL_POSITION_OPTIONS.map((item) => (
+                {positionOptions.map((item) => (
                   <Pressable
                     key={item}
                     onPress={() => {
