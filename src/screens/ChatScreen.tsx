@@ -13,6 +13,7 @@ import {
   AppStateStatus,
   InteractionManager,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Header from '@/components/Header';
 import ChatInput from '@/components/ChatInput';
 import MessageBubble from '@/components/MessageBubble';
@@ -45,6 +46,7 @@ type ChatPayloadItem = { role: ChatPayloadRole; content: string };
 
 export default function ChatScreen() {
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
@@ -380,6 +382,15 @@ export default function ChatScreen() {
           >
             <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('LegacyStrategy')}
+            style={styles.strategyBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('tabStrategy', 'Strategy')}
+          >
+            <Text style={styles.strategyBtnText}>{t('tabStrategy', 'Strategy')}</Text>
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -424,6 +435,7 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   newChatBtn: {
     flexDirection: 'row',
@@ -436,6 +448,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   newChatText: {
+    color: ACCENT,
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  strategyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'transparent',
+  },
+  strategyBtnText: {
     color: ACCENT,
     fontWeight: '500',
     fontSize: 14,

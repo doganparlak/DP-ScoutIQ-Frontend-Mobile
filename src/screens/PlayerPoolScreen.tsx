@@ -23,6 +23,7 @@ import PlayerCard from '@/components/PlayerCard';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
+  ROLE_SHORT_TO_LONG,
   addFavoritePlayer,
   getMe,
   getPlayerPoolOptions,
@@ -184,6 +185,7 @@ export default function PlayerPoolScreen() {
   }, []);
 
   const onSearch = React.useCallback(async () => {
+    const isShortRoleSelection = !!ROLE_SHORT_TO_LONG[position];
     const payload: PlayerPoolSearchInput = {
       name: name.trim() || undefined,
       gender: gender || undefined,
@@ -193,7 +195,7 @@ export default function PlayerPoolScreen() {
         selectedNationality.trim().toLowerCase() === nationality.trim().toLowerCase(),
       team: team.trim() || undefined,
       teamExact: !!selectedTeam && selectedTeam.trim().toLowerCase() === team.trim().toLowerCase(),
-      position: position || undefined,
+      position: isShortRoleSelection ? undefined : position || undefined,
       minAge: minAge ? Number(minAge) : undefined,
       maxAge: maxAge ? Number(maxAge) : undefined,
       minHeight: minHeight ? Number(minHeight) : undefined,
@@ -206,10 +208,18 @@ export default function PlayerPoolScreen() {
       setSearching(true);
       setError(null);
       const next = await searchPlayerPool(payload);
+      const filteredNext =
+        isShortRoleSelection
+          ? next.filter((row) =>
+              (row.player.meta?.roles ?? []).some(
+                (role) => (ROLE_LONG_TO_SHORT[role] || role) === position,
+              ),
+            )
+          : next;
       setRevealedPotentialForCard(false);
-      setResults(next);
-      setSelectedPlayerId(next[0]?.id ?? null);
-      setSelectedPlayer(next[0]?.player ?? null);
+      setResults(filteredNext);
+      setSelectedPlayerId(filteredNext[0]?.id ?? null);
+      setSelectedPlayer(filteredNext[0]?.player ?? null);
     } catch (err: any) {
       setResults([]);
       setSelectedPlayerId(null);
@@ -251,9 +261,6 @@ export default function PlayerPoolScreen() {
 
       const revealed = await revealPlayerPoolPotential(selectedPlayerId);
       const potential = Math.round(revealed.potential);
-      console.log(
-        `[player-pool potential] source: ${revealed.source} | playerId: ${selectedPlayerId} | potential: ${potential}`,
-      );
       setRevealedPotentialForCard(true);
 
       setResults((current) =>
@@ -314,6 +321,24 @@ export default function PlayerPoolScreen() {
     const visibleRows = Math.min(results.length, CANDIDATE_TABLE_VISIBLE_ROWS);
     return ROW_HEIGHT * (visibleRows + 1) + 2;
   }, [results.length]);
+
+  const roleDisplayLabel = React.useCallback((value: string) => {
+    return ROLE_LONG_TO_SHORT[value] || value;
+  }, []);
+
+  const positionOptionLabels = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+
+    for (const item of positionOptions) {
+      const short = roleDisplayLabel(item);
+      if (seen.has(short)) continue;
+      seen.add(short);
+      out.push(short);
+    }
+
+    return out;
+  }, [positionOptions, roleDisplayLabel]);
 
   const cycleSort = React.useCallback((key: CandidateSortKey) => {
     setSortKey((current) => {
@@ -569,7 +594,7 @@ export default function PlayerPoolScreen() {
                 style={({ pressed }) => [styles.input, styles.dropdownInput, pressed && styles.pressed]}
               >
                 <Text style={{ color: position ? TEXT : MUTED, fontSize: 14 }}>
-                  {position || t('tblRoles', 'Role')}
+                  {position ? roleDisplayLabel(position) : t('tblRoles', 'Role')}
                 </Text>
                 <ChevronDown size={16} color={MUTED} strokeWidth={2.2} />
               </Pressable>
@@ -840,7 +865,7 @@ export default function PlayerPoolScreen() {
                   </Text>
                 </Pressable>
 
-                {positionOptions.map((item) => (
+                {positionOptionLabels.map((item) => (
                   <Pressable
                     key={item}
                     onPress={() => {
