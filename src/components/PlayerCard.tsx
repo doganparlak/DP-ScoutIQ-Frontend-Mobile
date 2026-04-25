@@ -31,12 +31,6 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
     setShowAddedMessage(false);
   }, [player.name, meta?.team, meta?.nationality]);
 
-  React.useEffect(() => {
-    if (!showAddedMessage) return;
-    const timeout = setTimeout(() => setShowAddedMessage(false), 1800);
-    return () => clearTimeout(timeout);
-  }, [showAddedMessage]);
-
   const handleAdd = async () => {
     if (!onAddFavorite || isAdding || isAdded) return;
     try {

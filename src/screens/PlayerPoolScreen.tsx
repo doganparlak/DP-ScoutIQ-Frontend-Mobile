@@ -15,13 +15,18 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Search, X } from 'lucide-react-native';
 
+import { incrementPotentialRevealCount, shouldShowPotentialInterstitial } from '@/ads/adGating';
+import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
+import { ProNotReadyScreen } from '@/ads/pro';
 import Header from '@/components/Header';
 import PlayerCard from '@/components/PlayerCard';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
   addFavoritePlayer,
+  getMe,
   getPlayerPoolOptions,
+  revealPlayerPoolPotential,
   searchPlayerPool,
   type PlayerPoolSearchInput,
 } from '@/services/api';
@@ -44,6 +49,9 @@ type SearchResultRow = {
   player: PlayerData;
 };
 
+type CandidateSortKey = 'name' | 'gender' | 'nationality' | 'team' | 'age' | 'role';
+type SortDir = 'asc' | 'desc';
+
 export default function PlayerPoolScreen() {
   const { t } = useTranslation();
   const [name, setName] = React.useState('');
@@ -60,10 +68,17 @@ export default function PlayerPoolScreen() {
   const [minWeight, setMinWeight] = React.useState('');
   const [maxWeight, setMaxWeight] = React.useState('');
   const [results, setResults] = React.useState<SearchResultRow[]>([]);
+  const [selectedPlayerId, setSelectedPlayerId] = React.useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState<PlayerData | null>(null);
   const [searching, setSearching] = React.useState(false);
+  const [revealingPotential, setRevealingPotential] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [positionOpen, setPositionOpen] = React.useState(false);
+  const [sortOpen, setSortOpen] = React.useState(false);
+  const [plan, setPlan] = React.useState<'Free' | 'Pro Monthly' | 'Pro Yearly'>('Free');
+  const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
+  const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
+  const [sortDir, setSortDir] = React.useState<SortDir>('asc');
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
   const [positionOptions, setPositionOptions] = React.useState<string[]>(
@@ -71,9 +86,22 @@ export default function PlayerPoolScreen() {
   );
 
   React.useEffect(() => {
+    setInterstitialFailureHandler(() => setProUpsellOpen(true));
+    return () => setInterstitialFailureHandler(null);
+  }, []);
+
+  React.useEffect(() => {
     let alive = true;
 
     (async () => {
+      try {
+        const me = await getMe();
+        const currentPlan = me?.plan;
+        setPlan(currentPlan === 'Pro Monthly' || currentPlan === 'Pro Yearly' ? currentPlan : 'Free');
+      } catch {
+        setPlan('Free');
+      }
+
       try {
         const options = await getPlayerPoolOptions();
         if (!alive) return;
@@ -155,22 +183,10 @@ export default function PlayerPoolScreen() {
     setMinWeight('');
     setMaxWeight('');
     setResults([]);
+    setSelectedPlayerId(null);
     setSelectedPlayer(null);
     setError(null);
   }, []);
-
-  const sanitizedSelectedPlayer = React.useMemo(() => {
-    if (!selectedPlayer) return null;
-    return {
-      ...selectedPlayer,
-      meta: selectedPlayer.meta
-        ? {
-            ...selectedPlayer.meta,
-            potential: undefined,
-          }
-        : undefined,
-    };
-  }, [selectedPlayer]);
 
   const onSearch = React.useCallback(async () => {
     const payload: PlayerPoolSearchInput = {
@@ -196,9 +212,11 @@ export default function PlayerPoolScreen() {
       setError(null);
       const next = await searchPlayerPool(payload);
       setResults(next);
+      setSelectedPlayerId(next[0]?.id ?? null);
       setSelectedPlayer(next[0]?.player ?? null);
     } catch (err: any) {
       setResults([]);
+      setSelectedPlayerId(null);
       setSelectedPlayer(null);
       setError(err?.message ?? t('favoritesError', 'Favorites error'));
     } finally {
@@ -219,6 +237,60 @@ export default function PlayerPoolScreen() {
     team,
   ]);
 
+  const onRevealPotential = React.useCallback(async () => {
+    if (!selectedPlayerId || !selectedPlayer || revealingPotential) return;
+
+    try {
+      setRevealingPotential(true);
+
+      if (plan === 'Free') {
+        const nextCount = await incrementPotentialRevealCount();
+        if (shouldShowPotentialInterstitial(nextCount)) {
+          const ok = showInterstitialSafely();
+          if (!ok) {
+            setProUpsellOpen(true);
+          }
+        }
+      }
+
+      const revealed = await revealPlayerPoolPotential(selectedPlayerId);
+      const potential = Math.round(revealed.potential);
+
+      setResults((current) =>
+        current.map((row) =>
+          row.id === selectedPlayerId
+            ? {
+                ...row,
+                player: {
+                  ...row.player,
+                  meta: {
+                    ...(row.player.meta ?? {}),
+                    potential,
+                  },
+                },
+              }
+            : row,
+        ),
+      );
+
+      setSelectedPlayer((current) =>
+        current
+          ? {
+              ...current,
+              meta: {
+                ...(current.meta ?? {}),
+                potential,
+              },
+            }
+          : current,
+      );
+    } catch (err: any) {
+      Alert.alert(t('potentialRevealFailed', 'Potential reveal failed'), String(err?.message || err));
+    } finally {
+      setRevealingPotential(false);
+    }
+  }, [plan, revealingPotential, selectedPlayer, selectedPlayerId, t]);
+
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
       return ROW_HEIGHT * 3;
@@ -227,6 +299,85 @@ export default function PlayerPoolScreen() {
     const visibleRows = Math.min(results.length, CANDIDATE_TABLE_VISIBLE_ROWS);
     return ROW_HEIGHT * (visibleRows + 1) + 2;
   }, [results.length]);
+
+  const cycleSort = React.useCallback((key: CandidateSortKey) => {
+    setSortKey((current) => {
+      if (current === key) {
+        setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+        return current;
+      }
+      setSortDir('asc');
+      return key;
+    });
+  }, []);
+
+  const sortLabel = React.useMemo(() => {
+    const base =
+      sortKey === 'name'
+        ? t('tblName', 'Name')
+        : sortKey === 'gender'
+          ? t('tblGender', 'Gen.')
+          : sortKey === 'nationality'
+            ? t('tblNat', 'Nat.')
+            : sortKey === 'team'
+              ? t('tblTeam', 'Team')
+              : sortKey === 'age'
+                ? t('tblAge', 'Age')
+                : t('tblRoles', 'Role');
+    return `${base} (${sortDir === 'asc' ? 'A-Z' : 'Z-A'})`;
+  }, [sortDir, sortKey, t]);
+
+  const sortedResults = React.useMemo(() => {
+    const list = [...results];
+    const dir = sortDir === 'asc' ? 1 : -1;
+
+    list.sort((a, b) => {
+      if (sortKey === 'age') {
+        const aAge = a.player.meta?.age;
+        const bAge = b.player.meta?.age;
+        const aMissing = typeof aAge !== 'number';
+        const bMissing = typeof bAge !== 'number';
+
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+
+        return (aAge - bAge) * dir;
+      }
+
+      const aVal =
+        sortKey === 'name'
+          ? a.player.name
+          : sortKey === 'gender'
+            ? a.player.meta?.gender ?? ''
+            : sortKey === 'role'
+              ? a.player.meta?.roles?.[0] ?? ''
+          : sortKey === 'nationality'
+            ? a.player.meta?.nationality ?? ''
+            : a.player.meta?.team ?? '';
+
+      const bVal =
+        sortKey === 'name'
+          ? b.player.name
+          : sortKey === 'gender'
+            ? b.player.meta?.gender ?? ''
+            : sortKey === 'role'
+              ? b.player.meta?.roles?.[0] ?? ''
+          : sortKey === 'nationality'
+            ? b.player.meta?.nationality ?? ''
+            : b.player.meta?.team ?? '';
+
+      const aMissing = !aVal.trim();
+      const bMissing = !bVal.trim();
+      if (aMissing && bMissing) return 0;
+      if (aMissing) return 1;
+      if (bMissing) return -1;
+
+      return aVal.localeCompare(bVal) * dir;
+    });
+
+    return list;
+  }, [results, sortDir, sortKey]);
 
   return (
     <KeyboardAvoidingView
@@ -331,7 +482,7 @@ export default function PlayerPoolScreen() {
             </View>
 
             <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('age', 'Age')} (min / max)</Text>
+              <Text style={styles.filterLabel}>{t('fltAge', 'Age (min / max)')}</Text>
               <View style={styles.rangeRow}>
                 <TextInput
                   value={minAge}
@@ -353,7 +504,7 @@ export default function PlayerPoolScreen() {
             </View>
 
             <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('height', 'Height')} (min / max)</Text>
+              <Text style={styles.filterLabel}>{t('fltHeight', 'Height (min / max)')}</Text>
               <View style={styles.rangeRow}>
                 <TextInput
                   value={minHeight}
@@ -375,7 +526,7 @@ export default function PlayerPoolScreen() {
             </View>
 
             <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('weight', 'Weight')} (min / max)</Text>
+              <Text style={styles.filterLabel}>{t('fltWeight', 'Weight (min / max)')}</Text>
               <View style={styles.rangeRow}>
                 <TextInput
                   value={minWeight}
@@ -429,7 +580,18 @@ export default function PlayerPoolScreen() {
         </View>
 
         <View style={styles.panel}>
-          <Text style={styles.sectionTitle}>{t('playerPoolCandidates', 'Candidate players')}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>{t('playerPoolCandidates', 'Candidate players')}</Text>
+            <Pressable
+              onPress={() => setSortOpen(true)}
+              style={({ pressed }) => [styles.sortByButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.sortByButtonText}>
+                {t('sortBy', 'Sort by')}: {sortLabel}
+              </Text>
+              <ChevronDown size={15} color={MUTED} strokeWidth={2.2} />
+            </Pressable>
+          </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -441,7 +603,7 @@ export default function PlayerPoolScreen() {
             <View style={styles.table}>
               <View style={styles.tableTopBorder} />
 
-              <View>
+              <View style={styles.tableHeaderWrap}>
                 <View style={styles.row}>
                   <View style={[styles.cell, { flex: COL.name }]}>
                     <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
@@ -486,7 +648,7 @@ export default function PlayerPoolScreen() {
                       </Text>
                     </View>
                   ) : (
-                    results.map((row) => {
+                    sortedResults.map((row) => {
                       const genderValue = row.player.meta?.gender?.toLowerCase();
                       const genderLabel =
                         genderValue === 'male'
@@ -512,7 +674,10 @@ export default function PlayerPoolScreen() {
                       return (
                         <View key={row.id}>
                           <Pressable
-                            onPress={() => setSelectedPlayer(row.player)}
+                            onPress={() => {
+                              setSelectedPlayerId(row.id);
+                              setSelectedPlayer(row.player);
+                            }}
                             style={({ pressed }) => [
                               styles.row,
                               selectedPlayer?.name === row.player.name && styles.dataRowActive,
@@ -566,9 +731,10 @@ export default function PlayerPoolScreen() {
               {t('wcCurate', 'Curate your dream squad in your portfolio.')}
             </Text>
           </View>
-          {sanitizedSelectedPlayer ? (
+          {selectedPlayer ? (
+            <>
             <PlayerCard
-              player={sanitizedSelectedPlayer}
+              player={selectedPlayer}
               titleAlign="center"
               onAddFavorite={async (player) => {
                 try {
@@ -593,6 +759,29 @@ export default function PlayerPoolScreen() {
                 }
               }}
             />
+            <Pressable
+              onPress={onRevealPotential}
+              disabled={revealingPotential || typeof selectedPlayer.meta?.potential === 'number'}
+              style={({ pressed }) => [
+                styles.revealPotentialButton,
+                typeof selectedPlayer.meta?.potential === 'number' && styles.revealPotentialButtonMuted,
+                (pressed || revealingPotential) && styles.pressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.revealPotentialButtonText,
+                  typeof selectedPlayer.meta?.potential === 'number' && styles.revealPotentialButtonTextRevealed,
+                ]}
+              >
+                {revealingPotential
+                  ? t('revealingPotential', 'Revealing potential...')
+                  : typeof selectedPlayer.meta?.potential === 'number'
+                    ? t('potentialRevealed', 'Potential is Revealed')
+                    : t('revealPotential', 'Reveal Potential')}
+              </Text>
+            </Pressable>
+            </>
           ) : (
             <View style={styles.emptyCardState}>
               <Text style={styles.emptyText}>
@@ -653,6 +842,54 @@ export default function PlayerPoolScreen() {
             </View>
           </View>
         </Modal>
+
+        <Modal
+          transparent
+          visible={sortOpen}
+          animationType="fade"
+          onRequestClose={() => setSortOpen(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{t('sortBy', 'Sort by')}</Text>
+                <Pressable onPress={() => setSortOpen(false)}>
+                  {({ pressed }) => (
+                    <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
+                  )}
+                </Pressable>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {([
+                  ['name', t('tblName', 'Name')],
+                  ['gender', t('tblGender', 'Gen.')],
+                  ['nationality', t('tblNat', 'Nat.')],
+                  ['team', t('tblTeam', 'Team')],
+                  ['age', t('tblAge', 'Age')],
+                  ['role', t('tblRoles', 'Role')],
+                ] as Array<[CandidateSortKey, string]>).map(([key, label]) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => {
+                      cycleSort(key);
+                      setSortOpen(false);
+                    }}
+                    style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.optionText, sortKey === key && styles.optionTextActive]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+        <ProNotReadyScreen
+          visible={proUpsellOpen}
+          onClose={() => setProUpsellOpen(false)}
+        />
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -689,6 +926,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 10,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
+  },
+  sortByButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  sortByButtonText: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: '700',
   },
   curateRow: {
     flexDirection: 'row',
@@ -823,6 +1083,9 @@ const styles = StyleSheet.create({
   table: { marginTop: 10 },
   tableTopBorder: { height: 1, backgroundColor: LINE },
   tableBottomBorder: { height: 1, backgroundColor: LINE },
+  tableHeaderWrap: {
+    paddingRight: 5,
+  },
   tableScrollWrap: {
     paddingRight: 1,
   },
@@ -853,6 +1116,32 @@ const styles = StyleSheet.create({
     minHeight: 140,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  revealPotentialButton: {
+    marginTop: 12,
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revealPotentialButtonMuted: {
+    borderColor: LINE,
+    backgroundColor: CARD,
+  },
+  revealPotentialButtonText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  revealPotentialButtonTextMuted: {
+    color: MUTED,
+  },
+  revealPotentialButtonTextRevealed: {
+    color: ACCENT,
   },
   emptyText: {
     color: MUTED,

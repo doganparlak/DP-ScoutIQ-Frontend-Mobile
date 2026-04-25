@@ -66,6 +66,15 @@ export default function ManagePlan() {
     [t],
   );
 
+  const tablePlanLabel = React.useCallback(
+    (p: Plan) => {
+      if (p === 'Pro Monthly') return t('proMonthly', 'Pro Monthly').replace(' ', '\n');
+      if (p === 'Pro Yearly') return t('proYearly', 'Pro Yearly').replace(' ', '\n');
+      return t('free', 'Free');
+    },
+    [t],
+  );
+
   // ✅ pick SKU by selected plan
   const selectedSku = React.useMemo(() => {
     if (selected === 'Pro Monthly') {
@@ -386,7 +395,7 @@ export default function ManagePlan() {
               ]}
             >
               <Text style={[styles.cell, styles.planCol, selected === p.name && styles.cellActive]}>
-                {planLabel(p.name)}
+                {tablePlanLabel(p.name)}
               </Text>
 
               <Text
@@ -399,9 +408,13 @@ export default function ManagePlan() {
                 {p.name === 'Free'
                   ? t('planFeatures_Free', 'Ad-supported')
                   : p.name === 'Pro Monthly'
-                    ? t('planFeatures_Pro', 'Ad-free')
+                    ? [
+                        t('planFeatures_Pro', 'Ad-free'),
+                        t('planFeatures_ProName', 'ScoutWise Pro'),
+                      ].join('\n')
                     : [
                         t('planFeatures_Pro', 'Ad-free'),
+                        t('planFeatures_ProName', 'ScoutWise Pro'),
                         t('proYearlyDiscount', '- 30%'),
                       ].join('\n')}
               </Text>
@@ -502,17 +515,16 @@ export default function ManagePlan() {
           </Text>
         </View>
 
-        {/* Pro upsell (separate table below main frame) */}
-        {currentPlan === 'Free' && (
-          <View style={styles.proUpsellTable}>
-            <Text style={styles.proUpsellTitle}>{t('goProTitle', 'Pro benefits')}</Text>
+        {/* Pro benefits (always visible) */}
+        <View style={styles.proUpsellTable}>
+          <Text style={styles.proUpsellTitle}>{t('goProTitle', 'Pro benefits')}</Text>
 
-            <Text style={styles.proUpsellBody}>
-              {t(
-                'goProBody',
-                'Upgrade to Pro for a faster experience.',
-              )}
-            </Text>
+          <Text style={styles.proUpsellBody}>
+            {t(
+              'goProBody',
+              'Upgrade to Pro for a faster experience.',
+            )}
+          </Text>
           <View style={styles.proUpsellTableInner}>
             <View style={[styles.proUpsellRow, styles.proUpsellHeaderRow]}>
               <View style={styles.proUpsellCellWrap}>
@@ -522,37 +534,31 @@ export default function ManagePlan() {
               </View>
             </View>
 
-            <View style={styles.proUpsellRow}>
-              <View style={styles.proUpsellCellWrap}>
-                <Text style={styles.proUpsellCell}>
-                  {t('upsellReason1', 'A focused experience')}
-                </Text>
+            {[
+              t('proBenefit1', 'A focused, Ad-Free experience'),
+              t(
+                'proBenefit2',
+                'Use Team Strategy to define your tactical approach and the idea behind your scouting philosophy',
+              ),
+              t(
+                'proBenefit3',
+                'Chat with ScoutWise to discover the best-fit players for your needs',
+              ),
+              t('proBenefit4', 'Priority customer support'),
+              t('proBenefit5', 'Support the development of New Features'),
+            ].map((benefit) => (
+              <View key={benefit} style={styles.proUpsellRow}>
+                <View style={styles.proUpsellCellWrap}>
+                  <Text style={styles.proUpsellCell}>{benefit}</Text>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.proUpsellRow}>
-              <View style={styles.proUpsellCellWrap}>
-                <Text style={styles.proUpsellCell}>
-                  {t('upsellReason2', 'Priority customer support')}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.proUpsellRow}>
-              <View style={styles.proUpsellCellWrap}>
-                <Text style={styles.proUpsellCell}>
-                  {t('upsellReason3', 'Support the development of new features')}
-                </Text>
-              </View>
-            </View>
+            ))}
           </View>
 
-
-            <Text style={styles.proUpsellFootnote}>
-              {t('upsellNote', 'Select your Pro plan and tap “Set plan” to upgrade.')}
-            </Text>
-          </View>
-        )}
+          <Text style={styles.proUpsellFootnote}>
+            {t('upsellNote', 'Select your Pro plan and tap “Set plan” to upgrade.')}
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

@@ -194,6 +194,12 @@ export type PlayerPoolFilterOptions = {
   positions: string[];
 };
 
+export type PlayerPoolPotentialResponse = {
+  player_id: string;
+  status: 'ready';
+  potential: number;
+};
+
 type PlayerPoolRawRow = {
   id?: string | number;
   content?: unknown;
@@ -255,6 +261,7 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
         undefined,
       age: toFiniteNumber(raw.age),
       roles,
+      potential: toFiniteNumber(raw.potential),
       gender: typeof raw.gender === 'string' ? raw.gender : undefined,
       height: toFiniteNumber(raw.height),
       weight: toFiniteNumber(raw.weight),
@@ -285,6 +292,14 @@ export async function searchPlayerPool(
 
 export async function getPlayerPoolOptions(): Promise<PlayerPoolFilterOptions> {
   return request<PlayerPoolFilterOptions>(ENDPOINTS.playerPoolOptions);
+}
+
+export async function revealPlayerPoolPotential(
+  playerId: string,
+): Promise<PlayerPoolPotentialResponse> {
+  return request<PlayerPoolPotentialResponse>(ENDPOINTS.playerPoolPotential(playerId), {
+    method: 'POST',
+  });
 }
 
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {

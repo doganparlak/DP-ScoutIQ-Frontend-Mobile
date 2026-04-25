@@ -103,18 +103,6 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
                 </View>
               </View>
 
-              {/* Benefits */}
-              <View style={styles.panel}>
-                <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
-                <View style={styles.divider} />
-
-                <View style={styles.bullets}>
-                  <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
-                  <Benefit text={t('proBenefit2', 'Priority customer support')} />
-                  <Benefit text={t('proBenefit3', 'Support the development of new features')} />
-                </View>
-              </View>
-
               {/* Buy Now button */}
               <View style={styles.buyWrap}>
                 <Pressable
@@ -128,6 +116,30 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
                 >
                   <Text style={styles.buyButtonText}>{t('buyNow', 'Buy now')}</Text>
                 </Pressable>
+              </View>
+
+              {/* Benefits */}
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>{t('proBenefitsTitle', 'Pro Benefits')}</Text>
+                <View style={styles.divider} />
+
+                <View style={styles.bullets}>
+                  <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
+                  <Benefit
+                    text={t(
+                      'proBenefit2',
+                      'Use Team Strategy to define your tactical approach and the idea behind your scouting philosophy',
+                    )}
+                  />
+                  <Benefit
+                    text={t(
+                      'proBenefit3',
+                      'Chat with ScoutWise to discover the best-fit players for your needs',
+                    )}
+                  />
+                  <Benefit text={t('proBenefit4', 'Priority customer support')} />
+                  <Benefit text={t('proBenefit5', 'Support the development of new features')} />
+                </View>
               </View>
 
               {/* Slogan */}
@@ -180,12 +192,20 @@ function Benefit({ text }: { text: string }) {
 
     if (i18n.language?.startsWith('tr')) {
       apply('Reklamsız');
+      apply('Takım Stratejisi');
+      apply('ScoutWise');
+      apply('sohbet');
       apply('Öncelikli');
       apply('Yeni özelliklerin');
     } else {
       apply('ad-free');
+      apply('Ad-Free');
+      apply('Team Strategy');
+      apply('Chat');
+      apply('ScoutWise');
       apply('Priority');
       apply('new features');
+      apply('New Features');
     }
 
     return out;
@@ -247,7 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: PANEL,
     borderWidth: 1,
     borderColor: LINE,
-    marginTop: 48,
+    marginTop: 84,
 
     zIndex: 60,
     elevation: 60,

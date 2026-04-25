@@ -96,10 +96,20 @@ export default function ScoutWiseProScreen() {
 
               <View style={styles.bullets}>
                 <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
-                <Benefit text={t('proBenefit2', 'Priority customer support')} />
                 <Benefit
-                  text={t('proBenefit3', 'Support the development of new features')}
+                  text={t(
+                    'proBenefit2',
+                    'Use Team Strategy to define your tactical approach and the idea behind your scouting philosophy',
+                  )}
                 />
+                <Benefit
+                  text={t(
+                    'proBenefit3',
+                    'Chat with ScoutWise to discover the best-fit players for your needs',
+                  )}
+                />
+                <Benefit text={t('proBenefit4', 'Priority customer support')} />
+                <Benefit text={t('proBenefit5', 'Support the development of new features')} />
               </View>
             </View>
 
@@ -150,12 +160,20 @@ function Benefit({ text }: { text: string }) {
 
     if (i18n.language?.startsWith('tr')) {
       apply('Reklamsız');
+      apply('Takım Stratejisi');
+      apply('ScoutWise');
+      apply('sohbet');
       apply('Öncelikli');
       apply('Yeni özelliklerin');
     } else {
       apply('ad-free');
+      apply('Ad-Free');
+      apply('Team Strategy');
+      apply('Chat');
+      apply('ScoutWise');
       apply('Priority');
       apply('new features');
+      apply('New Features');
     }
 
     return out;

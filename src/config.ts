@@ -32,5 +32,6 @@ export const ENDPOINTS = {
   consent: '/me/consent',
   playerPoolSearch: '/player-pool/search',
   playerPoolOptions: '/player-pool/options',
+  playerPoolPotential: (playerId: string) => `/player-pool/${playerId}/potential`,
   favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
 };
