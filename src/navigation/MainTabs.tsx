@@ -66,7 +66,7 @@ type ShortcutButtonProps = {
   disabled?: boolean;
   onPress: () => void;
   children: React.ReactNode;
-  isTop?: boolean;
+  subtitle: string;
 };
 
 function ShortcutButton({
@@ -74,7 +74,7 @@ function ShortcutButton({
   disabled = false,
   onPress,
   children,
-  isTop = false,
+  subtitle,
 }: ShortcutButtonProps) {
   return (
     <Pressable
@@ -84,15 +84,19 @@ function ShortcutButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.shortcutButton,
-        isTop && styles.shortcutButtonTop,
         disabled && styles.shortcutButtonDisabled,
         pressed && !disabled && styles.shortcutButtonPressed,
       ]}
     >
       <View style={styles.shortcutInner}>
-        {children}
+        <View style={[styles.shortcutIconWrap, disabled && styles.shortcutIconWrapDisabled]}>
+          {children}
+        </View>
         <Text style={[styles.shortcutLabel, disabled && styles.shortcutLabelDisabled]}>
           {label}
+        </Text>
+        <Text style={[styles.shortcutSubtitle, disabled && styles.shortcutSubtitleDisabled]}>
+          {subtitle}
         </Text>
       </View>
     </Pressable>
@@ -128,17 +132,18 @@ function ScoutWiseProTabButton({
         <View style={styles.shortcutMenu} pointerEvents="box-none">
           <ShortcutButton
             label={t('tabStrategy', 'Strategy')}
+            subtitle={t('setStrategy', 'Set Strategy')}
             onPress={() => {
               onCloseMenu();
               navigation.navigate('Chat', { screen: 'LegacyStrategy' });
             }}
-            isTop
           >
             <ChartSpline size={TAB_ICON_SIZE} color={ACCENT} strokeWidth={2.2} />
           </ShortcutButton>
 
           <ShortcutButton
             label={t('tabChat', 'Chat')}
+            subtitle={t('startChatting', 'Start Chatting')}
             disabled={!hasAiConsent || isConsentLoading}
             onPress={() => {
               if (!hasAiConsent || isConsentLoading) return;
@@ -318,45 +323,77 @@ const styles = StyleSheet.create({
   },
   shortcutMenu: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: TAB_BASE_HEIGHT,
+    left: '50%',
+    bottom: TAB_BASE_HEIGHT + 14,
+    transform: [{ translateX: -118 }],
     zIndex: 40,
     elevation: 40,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
+    width: 236,
+    padding: 8,
+    borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: PANEL,
+    borderRadius: 24,
+    backgroundColor: '#161917',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
   shortcutButton: {
-    height: TAB_BASE_HEIGHT,
+    flex: 1,
+    minHeight: 96,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PANEL,
-    borderBottomWidth: 1,
-    borderBottomColor: LINE,
-  },
-  shortcutButtonTop: {
-    borderTopWidth: 1,
-    borderTopColor: LINE,
+    backgroundColor: '#1D211F',
+    borderWidth: 1,
+    borderColor: '#2A302C',
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
   },
   shortcutButtonDisabled: {
     opacity: 0.45,
   },
   shortcutButtonPressed: {
-    backgroundColor: '#1F2220',
+    backgroundColor: '#232826',
+    transform: [{ translateY: 1 }],
   },
   shortcutInner: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  shortcutIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.28)',
+    marginBottom: 10,
+  },
+  shortcutIconWrapDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
   shortcutLabel: {
-    marginTop: 4,
     color: ACCENT,
     fontWeight: '800',
-    fontSize: 10,
+    fontSize: 13,
+  },
+  shortcutSubtitle: {
+    marginTop: 3,
+    color: '#98A29B',
+    fontWeight: '600',
+    fontSize: 11,
   },
   shortcutLabelDisabled: {
+    color: MUTED,
+  },
+  shortcutSubtitleDisabled: {
     color: MUTED,
   },
 });
