@@ -215,9 +215,73 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
+              <Text style={styles.h3}>{t('howPlayerPoolTitle', 'Player Pool')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerPool1', 'Player Pool is a dedicated search space where you can discover players directly from your database.')}
+                {'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {i18n.language?.startsWith('tr') ? (
+                  <>
+                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
+                      .split('Oyuncu Arama')[0]}
+                    <Text style={styles.bold}>Oyuncu Arama</Text>
+                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
+                      .split('Oyuncu Arama')[1]
+                      ?.split('Oyuncu Adayları')[0]}
+                    <Text style={styles.bold}>Oyuncu Adayları</Text>
+                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
+                      .split('Oyuncu Adayları')[1]
+                      ?.split('Oyuncu Kartı')[0]}
+                    <Text style={styles.bold}>Oyuncu Kartı</Text>
+                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
+                      .split('Oyuncu Kartı')[1]}
+                  </>
+                ) : (
+                  <>
+                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
+                      .split('Player Search')[0]}
+                    <Text style={styles.bold}>Player Search</Text>
+                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
+                      .split('Player Search')[1]
+                      ?.split('Candidate Players')[0]}
+                    <Text style={styles.bold}>Candidate Players</Text>
+                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
+                      .split('Candidate Players')[1]
+                      ?.split('Player Card')[0]}
+                    <Text style={styles.bold}>Player Card</Text>
+                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
+                      .split('Player Card')[1]}
+                  </>
+                )}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howPlayerSearchTitle', 'Player Search')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerSearch1', 'Use the search filters to narrow players by identity, team, nationality, role, age, and physical profile.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howCandidatePlayersTitle', 'Candidate Players')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCandidatePlayers1', 'Candidate Players lists the matching results from your search and lets you open a player card for selection.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
               <Text style={styles.h3}>{t('howCardTitle', 'Player Card')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each Player Card encapsulates essential identity (age, nationality, role) and a Potential value.')}
+                {'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard2', 'Allows you to add the player to your portfolio.')}
               </Text>
             </View>
 

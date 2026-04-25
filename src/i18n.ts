@@ -161,6 +161,18 @@ export const resources = {
       howChat4: 'When requested, ScoutWise will introduce a player. Each introduction includes a ',
       howCardTitle: 'Player Card',
       howCard1: 'Each player card encapsulates essential identity (age, nationality), team identity (team name, role), physical identity (weight, height) and a potential value.',
+      howCard2: 'Allows you to add the player to your portfolio.',
+      howPlayerPoolTitle: 'Player Pool',
+      howPlayerPool1:
+        'Player Pool is a dedicated search space where you can discover players directly from your database.',
+      howPlayerPool2:
+        'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.',
+      howPlayerSearchTitle: 'Player Search',
+      howPlayerSearch1:
+        'Use the search filters to narrow players by identity, team, nationality, role, age, and physical profile.',
+      howCandidatePlayersTitle: 'Candidate Players',
+      howCandidatePlayers1:
+        'Candidate Players lists the matching results from your search and lets you open a player card for selection.',
       howPotentialTitle: 'Potential',
       howPotential1: 'ScoutWise assigns a potential score (0–100) based on player card information and available statistics from the last 365 days—representing projected ceiling and development outlook.',
       howRadarTitle: 'Radar Charts',
@@ -286,7 +298,7 @@ export const resources = {
       player: 'Player',
       metrics: 'Metrics',
       howScoutReportTitle: 'Scouting Report',
-      howScoutReport1: 'Scouting report includes the player card, metric visualizations, as well as an analysis of Strengths, Weaknesses & Concerns, and a final Conclusion.',
+      howScoutReport1: 'Scouting report includes the player card, metric visualizations, as well as Role & Usage, Strengths, and Weaknesses & Concerns.',
       howScoutReport2: 'Interpretations are detailed and take into account the player’s essential identity, team identity, physical identity, and individual performance metrics.',
       howScoutReport3: 'This helps you quickly assess how well a player fits your portfolio, along with their potential upside and associated risks.',
       showMore: 'Show more',
@@ -691,6 +703,18 @@ export const resources = {
       howChat4: 'Talep edildiğinde, ScoutWise size yeni bir oyuncu sunar. Her oyuncu tanıtımı, ',
       howCardTitle: 'Oyuncu Kartı',
       howCard1: 'Oyuncunun; temel kimliğini (yaş, ülke), takım kimliğini (takım adı, rol), fiziksel kimliğini (kilo, boy) ve potansiyel değerini içerir.',
+      howCard2: 'Oyuncuyu portföyüne ekleme opsiyonu sunar.',
+      howPlayerPoolTitle: 'Oyuncu Havuzu',
+      howPlayerPool1:
+        'Oyuncu Havuzu, veritabanındaki oyuncuları doğrudan keşfetmeni sağlayan özel bir arama alanıdır.',
+      howPlayerPool2:
+        'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.',
+      howPlayerSearchTitle: 'Oyuncu Arama',
+      howPlayerSearch1:
+        'Arama filtrelerini kullanarak oyuncuları kimlik, takım, ülke, rol, yaş ve fiziksel profile göre filtreleyebilirsin.',
+      howCandidatePlayersTitle: 'Oyuncu Adayları',
+      howCandidatePlayers1:
+        'Oyuncu Adayları, aramana uyan sonuçları listeler ve seçim için oyuncu kartını açmanı sağlar.',
       howPotentialTitle: 'Potansiyel',
       howPotential1: 'ScoutWise her oyuncuya 0–100 arası bir potansiyel puanı atar; bu puan oyuncu kartı bilgileri ve son 365 günün istatistiklerine dayanır.',
       howRadarTitle: 'Radar Grafikleri',
@@ -808,7 +832,7 @@ export const resources = {
       player: 'Oyuncu',
       metrics: 'Metrikler',
       howScoutReportTitle: 'Keşif Raporu',
-      howScoutReport1: 'Keşif raporu; oyuncu kartını, metrik görselleştirmelerini ve ayrıca Güçlü Yönler, Zayıf Yönler & Endişeler analizini ve nihai bir Sonuç bölümünü içerir.',
+      howScoutReport1: 'Keşif raporu; oyuncu kartını, metrik görselleştirmelerini ve ayrıca Rol & Kullanım Önerisi, Güçlü Yönler ve Zayıf Yönler & Endişeler bölümlerini içerir.',
       howScoutReport2: 'Yorumlar; oyuncunun temel kimliğini, takım kimliğini, fiziksel kimliğini ve bireysel performans metriklerini dikkate alacak şekilde oluşturulur.',
       howScoutReport3: 'Bu sayede portföyünüzde yer alan bir oyuncunun uyumunu, gelişim potansiyelini ve risklerini net bir şekilde analiz edebilirsiniz.',
       showMore: 'Daha fazla',
