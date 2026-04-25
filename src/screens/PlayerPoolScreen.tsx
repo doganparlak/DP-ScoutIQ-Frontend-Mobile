@@ -120,14 +120,7 @@ export default function PlayerPoolScreen() {
           setPositionOptions(options.positions);
         }
 
-        console.log(
-          `[player-pool options] nationality source: ${nationalityFromBackend ? 'backend' : 'frontend'} | team source: ${teamFromBackend ? 'backend' : 'frontend'}`,
-        );
       } catch (error) {
-        console.warn(
-          '[player-pool options] nationality source: frontend | team source: frontend',
-          error,
-        );
         // Keep local fallback lists when the backend options endpoint is unavailable.
       }
     })();

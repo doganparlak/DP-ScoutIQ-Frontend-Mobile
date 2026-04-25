@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 
 // Change this IP to your Mac's local IP:
 //const LOCAL_DEV_API = 'http://192.168.1.114:8000';
-const LOCAL_DEV_API =  'http://localhost:8000' //'https://dp-scoutiq-backend-mobile.onrender.com';
+const LOCAL_DEV_API =
+  Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
 //const LOCAL_DEV_API = 'https://dp-scoutiq-backend-mobile.onrender.com';
 const PROD_API = 'https://dp-scoutiq-backend-mobile.onrender.com';
 
