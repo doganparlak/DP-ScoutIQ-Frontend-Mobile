@@ -70,6 +70,7 @@ export default function PlayerPoolScreen() {
   const [results, setResults] = React.useState<SearchResultRow[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = React.useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState<PlayerData | null>(null);
+  const [revealedPotentialForCard, setRevealedPotentialForCard] = React.useState(false);
   const [searching, setSearching] = React.useState(false);
   const [revealingPotential, setRevealingPotential] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -185,6 +186,7 @@ export default function PlayerPoolScreen() {
     setResults([]);
     setSelectedPlayerId(null);
     setSelectedPlayer(null);
+    setRevealedPotentialForCard(false);
     setError(null);
   }, []);
 
@@ -211,6 +213,7 @@ export default function PlayerPoolScreen() {
       setSearching(true);
       setError(null);
       const next = await searchPlayerPool(payload);
+      setRevealedPotentialForCard(false);
       setResults(next);
       setSelectedPlayerId(next[0]?.id ?? null);
       setSelectedPlayer(next[0]?.player ?? null);
@@ -255,6 +258,10 @@ export default function PlayerPoolScreen() {
 
       const revealed = await revealPlayerPoolPotential(selectedPlayerId);
       const potential = Math.round(revealed.potential);
+      console.log(
+        `[player-pool potential] source: ${revealed.source} | playerId: ${selectedPlayerId} | potential: ${potential}`,
+      );
+      setRevealedPotentialForCard(true);
 
       setResults((current) =>
         current.map((row) =>
@@ -290,6 +297,21 @@ export default function PlayerPoolScreen() {
       setRevealingPotential(false);
     }
   }, [plan, revealingPotential, selectedPlayer, selectedPlayerId, t]);
+
+  const selectedPlayerForCard = React.useMemo(() => {
+    if (!selectedPlayer) return null;
+    if (revealedPotentialForCard) return selectedPlayer;
+
+    return {
+      ...selectedPlayer,
+      meta: selectedPlayer.meta
+        ? {
+            ...selectedPlayer.meta,
+            potential: undefined,
+          }
+        : selectedPlayer.meta,
+    };
+  }, [revealedPotentialForCard, selectedPlayer]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -675,6 +697,7 @@ export default function PlayerPoolScreen() {
                         <View key={row.id}>
                           <Pressable
                             onPress={() => {
+                              setRevealedPotentialForCard(false);
                               setSelectedPlayerId(row.id);
                               setSelectedPlayer(row.player);
                             }}
@@ -734,7 +757,7 @@ export default function PlayerPoolScreen() {
           {selectedPlayer ? (
             <>
             <PlayerCard
-              player={selectedPlayer}
+              player={selectedPlayerForCard ?? selectedPlayer}
               titleAlign="center"
               onAddFavorite={async (player) => {
                 try {
@@ -761,22 +784,22 @@ export default function PlayerPoolScreen() {
             />
             <Pressable
               onPress={onRevealPotential}
-              disabled={revealingPotential || typeof selectedPlayer.meta?.potential === 'number'}
+              disabled={revealingPotential || revealedPotentialForCard}
               style={({ pressed }) => [
                 styles.revealPotentialButton,
-                typeof selectedPlayer.meta?.potential === 'number' && styles.revealPotentialButtonMuted,
+                revealedPotentialForCard && styles.revealPotentialButtonMuted,
                 (pressed || revealingPotential) && styles.pressed,
               ]}
             >
               <Text
                 style={[
                   styles.revealPotentialButtonText,
-                  typeof selectedPlayer.meta?.potential === 'number' && styles.revealPotentialButtonTextRevealed,
+                  revealedPotentialForCard && styles.revealPotentialButtonTextRevealed,
                 ]}
               >
                 {revealingPotential
                   ? t('revealingPotential', 'Revealing potential...')
-                  : typeof selectedPlayer.meta?.potential === 'number'
+                  : revealedPotentialForCard
                     ? t('potentialRevealed', 'Potential is Revealed')
                     : t('revealPotential', 'Reveal Potential')}
               </Text>

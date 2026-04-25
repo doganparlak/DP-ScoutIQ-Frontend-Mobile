@@ -198,6 +198,7 @@ export type PlayerPoolPotentialResponse = {
   player_id: string;
   status: 'ready';
   potential: number;
+  source: 'db' | 'model';
 };
 
 type PlayerPoolRawRow = {
