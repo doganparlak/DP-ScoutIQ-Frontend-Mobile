@@ -64,6 +64,7 @@ function ChatVisualsBlockInner({ players }: Props) {
                     height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
                     weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
                     team: player.meta?.team,
+                    league: player.meta?.league,
                     roles: player.meta?.roles ?? [],
                   });
                   return true;

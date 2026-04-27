@@ -41,6 +41,7 @@ const COL = {
   gen: 0.9,
   nat: 0.93,
   team: 1.0,
+  league: 0.95,
   age: 0.8,
   roles: 0.8,
 } as const;
@@ -50,7 +51,7 @@ type SearchResultRow = {
   player: PlayerData;
 };
 
-type CandidateSortKey = 'name' | 'gender' | 'nationality' | 'team' | 'age' | 'role';
+type CandidateSortKey = 'name' | 'gender' | 'nationality' | 'league' | 'team' | 'age' | 'role';
 type SortDir = 'asc' | 'desc';
 
 export default function PlayerPoolScreen() {
@@ -58,16 +59,16 @@ export default function PlayerPoolScreen() {
   const [name, setName] = React.useState('');
   const [gender, setGender] = React.useState<'' | 'male' | 'female'>('');
   const [nationality, setNationality] = React.useState('');
+  const [league, setLeague] = React.useState('');
   const [team, setTeam] = React.useState('');
   const [selectedNationality, setSelectedNationality] = React.useState<string | null>(null);
+  const [selectedLeague, setSelectedLeague] = React.useState<string | null>(null);
   const [selectedTeam, setSelectedTeam] = React.useState<string | null>(null);
   const [position, setPosition] = React.useState('');
   const [minAge, setMinAge] = React.useState('');
   const [maxAge, setMaxAge] = React.useState('');
   const [minHeight, setMinHeight] = React.useState('');
   const [maxHeight, setMaxHeight] = React.useState('');
-  const [minWeight, setMinWeight] = React.useState('');
-  const [maxWeight, setMaxWeight] = React.useState('');
   const [results, setResults] = React.useState<SearchResultRow[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = React.useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState<PlayerData | null>(null);
@@ -82,6 +83,7 @@ export default function PlayerPoolScreen() {
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
+  const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
   const [positionOptions, setPositionOptions] = React.useState<string[]>(
     [...PLAYER_POOL_POSITION_OPTIONS],
@@ -109,10 +111,14 @@ export default function PlayerPoolScreen() {
         if (!alive) return;
 
         const nationalityFromBackend = Array.isArray(options.nationalities) && options.nationalities.length > 0;
+        const leagueFromBackend = Array.isArray(options.leagues) && options.leagues.length > 0;
         const teamFromBackend = Array.isArray(options.teams) && options.teams.length > 0;
 
         if (nationalityFromBackend) {
           setCountryOptions(options.nationalities);
+        }
+        if (leagueFromBackend) {
+          setLeagueOptions(options.leagues);
         }
         if (teamFromBackend) {
           setTeamOptions(options.teams);
@@ -149,6 +155,15 @@ export default function PlayerPoolScreen() {
     return matches.slice(0, 6);
   }, [team, teamOptions]);
 
+  const leagueSuggestions = React.useMemo(() => {
+    const q = league.trim().toLowerCase();
+    if (!q) return [];
+    const matches = leagueOptions.filter((item) => item.toLowerCase().includes(q));
+    const exactMatch = matches.find((item) => item.toLowerCase() === q);
+    if (exactMatch) return [exactMatch];
+    return matches.slice(0, 6);
+  }, [league, leagueOptions]);
+
   const renderGenderLabel = React.useCallback(() => {
     if (gender === 'male') return t('genderMale', 'Male');
     if (gender === 'female') return t('genderFemale', 'Female');
@@ -167,16 +182,16 @@ export default function PlayerPoolScreen() {
     setName('');
     setGender('');
     setNationality('');
+    setLeague('');
     setTeam('');
     setSelectedNationality(null);
+    setSelectedLeague(null);
     setSelectedTeam(null);
     setPosition('');
     setMinAge('');
     setMaxAge('');
     setMinHeight('');
     setMaxHeight('');
-    setMinWeight('');
-    setMaxWeight('');
     setResults([]);
     setSelectedPlayerId(null);
     setSelectedPlayer(null);
@@ -193,6 +208,8 @@ export default function PlayerPoolScreen() {
       nationalityExact:
         !!selectedNationality &&
         selectedNationality.trim().toLowerCase() === nationality.trim().toLowerCase(),
+      league: league.trim() || undefined,
+      leagueExact: !!selectedLeague && selectedLeague.trim().toLowerCase() === league.trim().toLowerCase(),
       team: team.trim() || undefined,
       teamExact: !!selectedTeam && selectedTeam.trim().toLowerCase() === team.trim().toLowerCase(),
       position: isShortRoleSelection ? undefined : position || undefined,
@@ -200,8 +217,6 @@ export default function PlayerPoolScreen() {
       maxAge: maxAge ? Number(maxAge) : undefined,
       minHeight: minHeight ? Number(minHeight) : undefined,
       maxHeight: maxHeight ? Number(maxHeight) : undefined,
-      minWeight: minWeight ? Number(minWeight) : undefined,
-      maxWeight: maxWeight ? Number(maxWeight) : undefined,
     };
 
     try {
@@ -232,12 +247,14 @@ export default function PlayerPoolScreen() {
     gender,
     maxAge,
     maxHeight,
-    maxWeight,
     minAge,
     minHeight,
-    minWeight,
     name,
     nationality,
+    league,
+    selectedLeague,
+    selectedNationality,
+    selectedTeam,
     position,
     t,
     team,
@@ -357,13 +374,15 @@ export default function PlayerPoolScreen() {
         ? t('tblName', 'Name')
         : sortKey === 'gender'
           ? t('tblGender', 'Gen.')
-          : sortKey === 'nationality'
-            ? t('tblNat', 'Nat.')
-            : sortKey === 'team'
-              ? t('tblTeam', 'Team')
-              : sortKey === 'age'
-                ? t('tblAge', 'Age')
-                : t('tblRoles', 'Role');
+            : sortKey === 'nationality'
+              ? t('tblNat', 'Nat.')
+              : sortKey === 'league'
+                ? t('tblLeague', 'League')
+                : sortKey === 'team'
+                  ? t('tblTeam', 'Team')
+                  : sortKey === 'age'
+                    ? t('tblAge', 'Age')
+                    : t('tblRoles', 'Role');
     return `${base} (${sortDir === 'asc' ? 'A-Z' : 'Z-A'})`;
   }, [sortDir, sortKey, t]);
 
@@ -392,9 +411,11 @@ export default function PlayerPoolScreen() {
             ? a.player.meta?.gender ?? ''
             : sortKey === 'role'
               ? a.player.meta?.roles?.[0] ?? ''
-          : sortKey === 'nationality'
-            ? a.player.meta?.nationality ?? ''
-            : a.player.meta?.team ?? '';
+              : sortKey === 'nationality'
+                ? a.player.meta?.nationality ?? ''
+                : sortKey === 'league'
+                  ? a.player.meta?.league ?? ''
+                  : a.player.meta?.team ?? '';
 
       const bVal =
         sortKey === 'name'
@@ -403,9 +424,11 @@ export default function PlayerPoolScreen() {
             ? b.player.meta?.gender ?? ''
             : sortKey === 'role'
               ? b.player.meta?.roles?.[0] ?? ''
-          : sortKey === 'nationality'
-            ? b.player.meta?.nationality ?? ''
-            : b.player.meta?.team ?? '';
+              : sortKey === 'nationality'
+                ? b.player.meta?.nationality ?? ''
+                : sortKey === 'league'
+                  ? b.player.meta?.league ?? ''
+                  : b.player.meta?.team ?? '';
 
       const aMissing = !aVal.trim();
       const bMissing = !bVal.trim();
@@ -460,7 +483,7 @@ export default function PlayerPoolScreen() {
             </View>
 
             <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltNationality', 'Nationality')}</Text>
+              <Text style={styles.filterLabel}>{t('fltNationality', 'Country')}</Text>
               <TextInput
                 value={nationality}
                 onChangeText={(value) => {
@@ -481,6 +504,36 @@ export default function PlayerPoolScreen() {
                       onPress={() => {
                         setNationality(item);
                         setSelectedNationality(item);
+                      }}
+                      style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.suggestionText}>{item}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.filterCol}>
+              <Text style={styles.filterLabel}>{t('fltLeague', 'League')}</Text>
+              <TextInput
+                value={league}
+                onChangeText={(value) => {
+                  setLeague(value);
+                  setSelectedLeague(selectedLeague && selectedLeague === value ? selectedLeague : null);
+                }}
+                placeholder={t('phSearchLeague', 'Search league')}
+                placeholderTextColor={MUTED}
+                style={styles.input}
+              />
+              {leagueSuggestions.length > 0 && league.trim().toLowerCase() !== selectedLeague?.trim().toLowerCase() ? (
+                <View style={styles.suggestions}>
+                  {leagueSuggestions.map((item) => (
+                    <Pressable
+                      key={item}
+                      onPress={() => {
+                        setLeague(item);
+                        setSelectedLeague(item);
                       }}
                       style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
                     >
@@ -519,6 +572,19 @@ export default function PlayerPoolScreen() {
                   ))}
                 </View>
               ) : null}
+            </View>
+
+            <View style={styles.filterCol}>
+              <Text style={styles.filterLabel}>{t('tblRoles', 'Role')}</Text>
+              <Pressable
+                onPress={() => setPositionOpen(true)}
+                style={({ pressed }) => [styles.input, styles.dropdownInput, pressed && styles.pressed]}
+              >
+                <Text style={{ color: position ? TEXT : MUTED, fontSize: 14 }}>
+                  {position ? roleDisplayLabel(position) : t('tblRoles', 'Role')}
+                </Text>
+                <ChevronDown size={16} color={MUTED} strokeWidth={2.2} />
+              </Pressable>
             </View>
 
             <View style={styles.filterCol}>
@@ -563,41 +629,6 @@ export default function PlayerPoolScreen() {
                   style={[styles.input, styles.rangeInput]}
                 />
               </View>
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltWeight', 'Weight (min / max)')}</Text>
-              <View style={styles.rangeRow}>
-                <TextInput
-                  value={minWeight}
-                  onChangeText={(value) => setMinWeight(value.replace(/[^\d.]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder={t('phMin', 'Min')}
-                  placeholderTextColor={MUTED}
-                  style={[styles.input, styles.rangeInput]}
-                />
-                <TextInput
-                  value={maxWeight}
-                  onChangeText={(value) => setMaxWeight(value.replace(/[^\d.]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder={t('phMax', 'Max')}
-                  placeholderTextColor={MUTED}
-                  style={[styles.input, styles.rangeInput]}
-                />
-              </View>
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('tblRoles', 'Role')}</Text>
-              <Pressable
-                onPress={() => setPositionOpen(true)}
-                style={({ pressed }) => [styles.input, styles.dropdownInput, pressed && styles.pressed]}
-              >
-                <Text style={{ color: position ? TEXT : MUTED, fontSize: 14 }}>
-                  {position ? roleDisplayLabel(position) : t('tblRoles', 'Role')}
-                </Text>
-                <ChevronDown size={16} color={MUTED} strokeWidth={2.2} />
-              </Pressable>
             </View>
           </View>
 
@@ -657,6 +688,10 @@ export default function PlayerPoolScreen() {
                     <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
                   </View>
                   <View style={styles.vsep} />
+                  <View style={[styles.cell, { flex: COL.league }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
+                  </View>
+                  <View style={styles.vsep} />
                   <View style={[styles.cell, { flex: COL.team }]}>
                     <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
                   </View>
@@ -710,6 +745,14 @@ export default function PlayerPoolScreen() {
                         (roleValue && ROLE_LONG_TO_SHORT[roleValue]) ||
                         roleValue ||
                         '—';
+                      const leagueShort = row.player.meta?.league
+                        ? row.player.meta.league
+                            .split(/\s+/)
+                            .map((part) => part[0])
+                            .join('')
+                            .slice(0, 5)
+                            .toUpperCase() || row.player.meta.league
+                        : '—';
 
                       return (
                         <View key={row.id}>
@@ -735,6 +778,10 @@ export default function PlayerPoolScreen() {
                             <View style={styles.vsep} />
                             <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
                               {nationalityShort}
+                            </Text>
+                            <View style={styles.vsep} />
+                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
+                              {leagueShort}
                             </Text>
                             <View style={styles.vsep} />
                             <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
@@ -791,6 +838,7 @@ export default function PlayerPoolScreen() {
                     height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
                     weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
                     team: player.meta?.team,
+                    league: player.meta?.league,
                     roles: player.meta?.roles ?? [],
                   });
                   return true;
@@ -906,6 +954,7 @@ export default function PlayerPoolScreen() {
                   ['name', t('tblName', 'Name')],
                   ['gender', t('tblGender', 'Gen.')],
                   ['nationality', t('tblNat', 'Nat.')],
+                  ['league', t('tblLeague', 'League')],
                   ['team', t('tblTeam', 'Team')],
                   ['age', t('tblAge', 'Age')],
                   ['role', t('tblRoles', 'Role')],

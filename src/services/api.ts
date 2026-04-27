@@ -32,6 +32,7 @@ export type PlayerMeta = {
   height?: number;
   weight?: number;
   team?: string;
+  league?: string;
 };
 export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 export type ChatData = { players: PlayerData[] };
@@ -169,6 +170,7 @@ export type FavoritePlayer = {
   height?: number;
   weight?: number;
   team?: string;
+  league?: string;
   roles: string[];      // LONG strings from backend (e.g., "Center Back")
 };
 
@@ -179,17 +181,18 @@ export type PlayerPoolSearchInput = {
   nationalityExact?: boolean;
   team?: string;
   teamExact?: boolean;
+  league?: string;
+  leagueExact?: boolean;
   minAge?: number;
   maxAge?: number;
   minHeight?: number;
   maxHeight?: number;
-  minWeight?: number;
-  maxWeight?: number;
   position?: string;
 };
 
 export type PlayerPoolFilterOptions = {
   teams: string[];
+  leagues: string[];
   nationalities: string[];
   positions: string[];
 };
@@ -270,6 +273,10 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
         (typeof raw.team === 'string' && raw.team) ||
         (typeof raw.team_name === 'string' && raw.team_name) ||
         undefined,
+      league:
+        (typeof raw.league === 'string' && raw.league) ||
+        (typeof raw.league_name === 'string' && raw.league_name) ||
+        undefined,
     },
   };
 }
@@ -316,6 +323,7 @@ type AddFavoriteIn = {
   height?: number;
   weight?: number;
   team?: string;
+  league?: string;
   // can be SHORT or LONG – we’ll normalize to LONG before sending
   roles: string[];
 };

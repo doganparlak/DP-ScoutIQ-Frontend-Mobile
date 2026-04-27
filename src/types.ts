@@ -50,6 +50,7 @@ export type PlayerMeta = {
   height?: number;
   weight?: number;
   team?: string;
+  league?: string;
 };
 export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 

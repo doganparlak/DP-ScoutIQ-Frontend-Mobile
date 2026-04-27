@@ -129,8 +129,9 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
 
       {/* meta block: 
           row 1 -> gender, age
-          row 2 -> nationality, team
-          row 3 -> height, weight
+          row 2 -> nationality, league
+          row 3 -> team
+          row 4 -> height, weight
       */}
       <View style={{ gap: 4, marginTop: 4 }}>
         {/* Row 1: Gender, Age */}
@@ -149,8 +150,8 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
           </View>
         )}
 
-        {/* Row 2: Nationality, Team */}
-        {(meta?.nationality || meta?.team) && (
+        {/* Row 2: Nationality, League */}
+        {(meta?.nationality || meta?.league) && (
           <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
             {meta?.nationality && (
               <Text style={{ color: MUTED }}>
@@ -158,15 +159,24 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
                 <Text style={{ color: TEXT }}>{meta.nationality}</Text>
               </Text>
             )}
-            {meta?.team && (
+            {meta?.league && (
               <Text style={{ color: MUTED }}>
-                {t('team', 'Team')}: <Text style={{ color: TEXT }}>{meta.team}</Text>
+                {t('league', 'League')}: <Text style={{ color: TEXT }}>{meta.league}</Text>
               </Text>
             )}
           </View>
         )}
 
-        {/* Row 3: Height, Weight */}
+        {/* Row 3: Team */}
+        {meta?.team && (
+          <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+            <Text style={{ color: MUTED }}>
+              {t('team', 'Team')}: <Text style={{ color: TEXT }}>{meta.team}</Text>
+            </Text>
+          </View>
+        )}
+
+        {/* Row 4: Height, Weight */}
         {(typeof meta?.height === 'number' || typeof meta?.weight === 'number') && (
           <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
             {typeof meta?.height === 'number' && (

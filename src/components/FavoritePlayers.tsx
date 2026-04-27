@@ -40,6 +40,7 @@ type PlayerRow = {
   potential?: number;
   gender?: string;
   team?: string;
+  league?: string;
   height?: number;
   weight?: number;
 };
@@ -52,8 +53,8 @@ const ROW_HEIGHT = 48;
 const COL = {
   rep: 0.55,
   name: 0.93,
-  gen: 0.9,
   nat: 0.93,
+  league: 0.95,
   team: 1.0,
   age: 0.8,
   roles: 0.8,
@@ -61,7 +62,7 @@ const COL = {
   del: 0.55,
 } as const;
 
-type SortKey = 'name' | 'gender' | 'nationality' | 'team' | 'age' | 'roles' | 'potential';
+type SortKey = 'name' | 'nationality' | 'league' | 'team' | 'age' | 'roles' | 'potential';
 type SortDir = 'asc' | 'desc';
 
 function firstWord(full: string): string {
@@ -82,6 +83,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   const [qName, setQName] = useState('');
   const [genderFilter, setGenderFilter] = useState<'' | 'male' | 'female'>('');
   const [qNat, setQNat] = useState('');
+  const [qLeague, setQLeague] = useState('');
   const [qTeam, setQTeam] = useState('');
   const [minAge, setMinAge] = useState<string>('');
   const [maxAge, setMaxAge] = useState<string>('');
@@ -89,8 +91,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   const [maxPot, setMaxPot] = useState<string>('');
   const [minHeight, setMinHeight] = useState<string>('');
   const [maxHeight, setMaxHeight] = useState<string>('');
-  const [minWeight, setMinWeight] = useState<string>('');
-  const [maxWeight, setMaxWeight] = useState<string>('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const [sortKey, setSortKey] = useState<SortKey>('potential');
@@ -130,6 +130,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         rolesShort: (f.roles || []).map((long) => ROLE_LONG_TO_SHORT[long] ?? long),
         gender: f.gender || undefined,
         team: f.team || undefined,
+        league: f.league || undefined,
         height: typeof (f as any).height === 'number' ? (f as any).height : undefined,
         weight: typeof (f as any).weight === 'number' ? (f as any).weight : undefined,
       }));
@@ -151,6 +152,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       potential: p.potential,
       gender: p.gender,
       team: p.team,
+      league: p.league,
       height: p.height,
       weight: p.weight,
     },
@@ -197,12 +199,11 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     const maxP = maxPot ? Math.min(100, parseInt(maxPot, 10)) : undefined;
     const minH = minHeight ? parseFloat(minHeight) : undefined;
     const maxH = maxHeight ? parseFloat(maxHeight) : undefined;
-    const minW = minWeight ? parseFloat(minWeight) : undefined;
-    const maxW = maxWeight ? parseFloat(maxWeight) : undefined;
 
     const list = rows.filter((p) => {
       if (qName && !p.name.toLowerCase().includes(qName.toLowerCase())) return false;
       if (qNat && !(p.nationality || '').toLowerCase().includes(qNat.toLowerCase())) return false;
+      if (qLeague && !(p.league || '').toLowerCase().includes(qLeague.toLowerCase())) return false;
       if (qTeam && !(p.team || '').toLowerCase().includes(qTeam.toLowerCase())) return false;
 
       if (genderFilter) {
@@ -219,9 +220,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       if (minH !== undefined && (p.height ?? -Infinity) < minH) return false;
       if (maxH !== undefined && (p.height ?? Infinity) > maxH) return false;
 
-      if (minW !== undefined && (p.weight ?? -Infinity) < minW) return false;
-      if (maxW !== undefined && (p.weight ?? Infinity) > maxW) return false;
-
       if (selectedRoles.length > 0 && !selectedRoles.some((r) => p.rolesShort.includes(r))) return false;
 
       return true;
@@ -233,13 +231,10 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       switch (sortKey) {
         case 'name':
           return a.name.localeCompare(b.name) * dir;
-        case 'gender': {
-          const ag = (a.gender || '').toLowerCase();
-          const bg = (b.gender || '').toLowerCase();
-          return ag.localeCompare(bg) * dir;
-        }
         case 'nationality':
           return (a.nationality || '').localeCompare(b.nationality || '') * dir;
+        case 'league':
+          return (a.league || '').localeCompare(b.league || '') * dir;
         case 'team':
           return (a.team || '').localeCompare(b.team || '') * dir;
         case 'age':
@@ -259,6 +254,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     rows,
     qName,
     qNat,
+    qLeague,
     qTeam,
     minAge,
     maxAge,
@@ -266,8 +262,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     maxPot,
     minHeight,
     maxHeight,
-    minWeight,
-    maxWeight,
     selectedRoles,
     genderFilter,
     sortKey,
@@ -278,6 +272,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     setQName('');
     setGenderFilter('');
     setQNat('');
+    setQLeague('');
     setQTeam('');
     setMinAge('');
     setMaxAge('');
@@ -285,8 +280,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     setMaxPot('');
     setMinHeight('');
     setMaxHeight('');
-    setMinWeight('');
-    setMaxWeight('');
     setSelectedRoles([]);
   };
 
@@ -604,34 +597,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 
         {isHeader ? (
           <Pressable
-            onPress={() => cycleSort('gender')}
-            style={({ pressed }) => [
-              styles.cell,
-              { flex: COL.gen },
-              pressed && pressedStyle,
-              sortKey === 'gender' && { backgroundColor: CARD },
-            ]}
-          >
-            <Text style={[styles.thText, { textAlign: 'center' }]}>
-              {t('tblGender', 'Gen.')}
-              {chevron('gender')}
-            </Text>
-          </Pressable>
-        ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}>
-            {(() => {
-              const g = (item as PlayerRow).gender?.toLowerCase();
-              if (g === 'male') return t('genderMaleShort', 'M');
-              if (g === 'female') return t('genderFemaleShort', 'F');
-              return '—';
-            })()}
-          </Text>
-        )}
-
-        <View style={styles.vsep} />
-
-        {isHeader ? (
-          <Pressable
             onPress={() => cycleSort('nationality')}
             style={({ pressed }) => [
               styles.cell,
@@ -648,6 +613,29 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
             {countryToCode2((item as PlayerRow).nationality)}
+          </Text>
+        )}
+
+        <View style={styles.vsep} />
+
+        {isHeader ? (
+          <Pressable
+            onPress={() => cycleSort('league')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.league },
+              pressed && pressedStyle,
+              sortKey === 'league' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblLeagueShort', 'Lg.')}
+              {chevron('league')}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
+            {(item as PlayerRow).league || '—'}
           </Text>
         )}
 
@@ -815,6 +803,17 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         </View>
 
         <View style={styles.filterCol}>
+          <Text style={styles.filterLabel}>{t('fltLeague', 'League')}</Text>
+          <TextInput
+            value={qLeague}
+            onChangeText={setQLeague}
+            placeholder={t('phSearchLeague', 'Search league')}
+            placeholderTextColor={MUTED}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltTeam', 'Team')}</Text>
           <TextInput
             value={qTeam}
@@ -891,27 +890,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           </View>
         </View>
 
-        <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltWeight', 'Weight (min / max)')}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput
-              value={minWeight}
-              onChangeText={(t_) => setMinWeight(t_.replace(/[^\d.]/g, ''))}
-              keyboardType="numeric"
-              placeholder={t('phMin', 'min')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, { flex: 1 }]}
-            />
-            <TextInput
-              value={maxWeight}
-              onChangeText={(t_) => setMaxWeight(t_.replace(/[^\d.]/g, ''))}
-              keyboardType="numeric"
-              placeholder={t('phMax', 'max')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, { flex: 1 }]}
-            />
-          </View>
-        </View>
       </View>
 
       <View style={styles.rolesWrap}>
