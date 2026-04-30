@@ -261,7 +261,7 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howPlayerSearchTitle', 'Player Search')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerSearch1', 'Use the search filters to narrow players by identity, team, nationality, role, age, and physical profile.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerSearch1', 'Use the search filters to narrow players by identity, team, league, nationality, role, age, and physical profile.')}
               </Text>
             </View>
 
@@ -279,7 +279,7 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howCardTitle', 'Player Card')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each Player Card encapsulates essential identity (age, nationality, role) and a Potential value.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each player card encapsulates essential identity (age, gender, nationality), team identity (team name, league), technical identity (role), physical identity (weight, height), and potential/form values.')}
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard2', 'Allows you to add the player to your portfolio.')}
               </Text>
@@ -291,6 +291,15 @@ export default function HelpCenter() {
               <Text style={styles.h3}>{t('howPotentialTitle', 'Potential')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPotential1', 'ScoutWise assigns a Potential score (0–100) based on metadata and historical stats—representing projected ceiling and development outlook.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howFormTitle', 'Form')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howForm1', 'ScoutWise assigns a form score (0–100) based on current role-relevant metrics and age context—representing current performance and reliability.')}
               </Text>
             </View>
 
@@ -331,7 +340,6 @@ export default function HelpCenter() {
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp1', 'ScoutWise analyzes performance within role context and your criteria, highlighting the most relevant statistics.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp2', 'Each interpretation concisely explains past performances and tactical fit across systems.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp3', 'If no custom strategy is defined, a balanced, general scouting perspective is applied.')}
               </Text>
             </View>
 
@@ -344,7 +352,7 @@ export default function HelpCenter() {
                 {t('howPlayerPortfolio1', 'The Player Portfolio is a watch list of players you have added for closer evaluation.')}
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howPlayerPortfolio2', 'Each row represents a player and displays key details such as name, gender, country, team, age, role, and potential.')}
+                {t('howPlayerPortfolio2', 'Each row represents a player and displays name, nationality, team, age, role, form, and potential.')}
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
                 {t('howPlayerPortfolio3', 'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.')}
@@ -497,7 +505,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
   block: { gap: 6 },
   h3: { color: ACCENT, fontSize: 14, fontWeight: '800' },
-  p: { color: TEXT, opacity: 0.9, lineHeight: 20 },
+  p: { color: TEXT, opacity: 0.9, lineHeight: 20, flexShrink: 1, width: '100%' },
   justify: { textAlign: 'left' },
   bold: { fontWeight: '700', color: TEXT },
   line: { height: 1, backgroundColor: LINE, marginVertical: 12 },
