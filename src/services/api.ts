@@ -191,6 +191,7 @@ const HIDDEN_LEAGUE_NAMES = new Set([
   'russian cup',
   'kings cup',
   'atlantic cup',
+  'copa libertadores',
 ]);
 
 function normalizeLeagueName(value: unknown): string | undefined {
