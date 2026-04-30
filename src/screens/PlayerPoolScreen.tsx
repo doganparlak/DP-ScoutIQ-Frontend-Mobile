@@ -1,30 +1,30 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Search, X } from 'lucide-react-native';
 
 import { incrementPotentialRevealCount, shouldShowPotentialInterstitial } from '@/ads/adGating';
 import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
 import { ProNotReadyScreen } from '@/ads/pro';
+import CandidatePlayers, {
+  CANDIDATE_TABLE_VISIBLE_ROWS,
+  ROW_HEIGHT,
+  type CandidateSortKey,
+  type SearchResultRow,
+} from '@/components/CandidatePlayers';
 import Header from '@/components/Header';
-import PlayerCard from '@/components/PlayerCard';
+import PlayerCardPP from '@/components/PlayerCardPP';
+import SearchFilters from '@/components/SearchFilters';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
   ROLE_SHORT_TO_LONG,
-  addFavoritePlayer,
   getMe,
   getPlayerPoolOptions,
   revealPlayerPoolForm,
@@ -32,27 +32,9 @@ import {
   searchPlayerPool,
   type PlayerPoolSearchInput,
 } from '@/services/api';
-import { BG, PANEL, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK } from '@/theme';
+import { BG } from '@/theme';
 import type { PlayerData } from '@/types';
 
-const ROW_HEIGHT = 48;
-const CANDIDATE_TABLE_VISIBLE_ROWS = 5;
-const COL = {
-  name: 0.93,
-  gen: 0.9,
-  nat: 0.93,
-  team: 1.0,
-  league: 0.95,
-  age: 0.8,
-  roles: 0.8,
-} as const;
-
-type SearchResultRow = {
-  id: string;
-  player: PlayerData;
-};
-
-type CandidateSortKey = 'name' | 'gender' | 'nationality' | 'league' | 'team' | 'age' | 'role';
 type SortDir = 'asc' | 'desc';
 
 export default function PlayerPoolScreen() {
@@ -519,555 +501,75 @@ export default function PlayerPoolScreen() {
             )}
           />
 
-        <View style={styles.panel}>
-          <Text style={styles.sectionTitle}>{t('playerPoolFilters', 'Search filters')}</Text>
+        <SearchFilters
+          name={name}
+          setName={setName}
+          gender={gender}
+          renderGenderLabel={renderGenderLabel}
+          cycleGender={cycleGender}
+          nationality={nationality}
+          setNationality={setNationality}
+          selectedNationality={selectedNationality}
+          setSelectedNationality={setSelectedNationality}
+          nationalitySuggestions={nationalitySuggestions}
+          league={league}
+          setLeague={setLeague}
+          selectedLeague={selectedLeague}
+          setSelectedLeague={setSelectedLeague}
+          leagueSuggestions={leagueSuggestions}
+          team={team}
+          setTeam={setTeam}
+          selectedTeam={selectedTeam}
+          setSelectedTeam={setSelectedTeam}
+          teamSuggestions={teamSuggestions}
+          position={position}
+          setPosition={setPosition}
+          positionOpen={positionOpen}
+          setPositionOpen={setPositionOpen}
+          positionOptionLabels={positionOptionLabels}
+          roleDisplayLabel={roleDisplayLabel}
+          minAge={minAge}
+          setMinAge={setMinAge}
+          maxAge={maxAge}
+          setMaxAge={setMaxAge}
+          minHeight={minHeight}
+          setMinHeight={setMinHeight}
+          maxHeight={maxHeight}
+          setMaxHeight={setMaxHeight}
+          clearFilters={clearFilters}
+          onSearch={onSearch}
+        />
 
-          <View style={styles.filters}>
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder={t('phSearchName', 'Search name')}
-                placeholderTextColor={MUTED}
-                style={styles.input}
-              />
-            </View>
+        <CandidatePlayers
+          results={results}
+          sortedResults={sortedResults}
+          selectedPlayer={selectedPlayer}
+          searching={searching}
+          error={error}
+          candidateTableHeight={candidateTableHeight}
+          sortLabel={sortLabel}
+          sortOpen={sortOpen}
+          setSortOpen={setSortOpen}
+          sortKey={sortKey}
+          cycleSort={cycleSort}
+          onSelectRow={(row) => {
+            setRevealedPotentialForCard(false);
+            setRevealedFormForCard(false);
+            setSelectedPlayerId(row.id);
+            setSelectedPlayer(row.player);
+          }}
+        />
 
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltGender', 'Gender')}</Text>
-              <Pressable
-                onPress={cycleGender}
-                style={({ pressed }) => [styles.input, styles.centeredInput, pressed && styles.pressed]}
-              >
-                <Text style={{ color: gender ? TEXT : MUTED, fontSize: 14 }}>{renderGenderLabel()}</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltNationality', 'Country')}</Text>
-              <TextInput
-                value={nationality}
-                onChangeText={(value) => {
-                  setNationality(value);
-                  setSelectedNationality(
-                    selectedNationality && selectedNationality === value ? selectedNationality : null,
-                  );
-                }}
-                placeholder={t('phSearchNationality', 'Search nationality')}
-                placeholderTextColor={MUTED}
-                style={styles.input}
-              />
-              {nationalitySuggestions.length > 0 && nationality.trim().toLowerCase() !== selectedNationality?.trim().toLowerCase() ? (
-                <View style={styles.suggestions}>
-                  {nationalitySuggestions.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => {
-                        setNationality(item);
-                        setSelectedNationality(item);
-                      }}
-                      style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
-                    >
-                      <Text style={styles.suggestionText}>{item}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltLeague', 'League')}</Text>
-              <TextInput
-                value={league}
-                onChangeText={(value) => {
-                  setLeague(value);
-                  setSelectedLeague(selectedLeague && selectedLeague === value ? selectedLeague : null);
-                }}
-                placeholder={t('phSearchLeague', 'Search league')}
-                placeholderTextColor={MUTED}
-                style={styles.input}
-              />
-              {leagueSuggestions.length > 0 && league.trim().toLowerCase() !== selectedLeague?.trim().toLowerCase() ? (
-                <View style={styles.suggestions}>
-                  {leagueSuggestions.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => {
-                        setLeague(item);
-                        setSelectedLeague(item);
-                      }}
-                      style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
-                    >
-                      <Text style={styles.suggestionText}>{item}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltTeam', 'Team')}</Text>
-              <TextInput
-                value={team}
-                onChangeText={(value) => {
-                  setTeam(value);
-                  setSelectedTeam(selectedTeam && selectedTeam === value ? selectedTeam : null);
-                }}
-                placeholder={t('phSearchTeam', 'Search team')}
-                placeholderTextColor={MUTED}
-                style={styles.input}
-              />
-              {teamSuggestions.length > 0 && team.trim().toLowerCase() !== selectedTeam?.trim().toLowerCase() ? (
-                <View style={styles.suggestions}>
-                  {teamSuggestions.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => {
-                        setTeam(item);
-                        setSelectedTeam(item);
-                      }}
-                      style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
-                    >
-                      <Text style={styles.suggestionText}>{item}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('tblRoles', 'Role')}</Text>
-              <Pressable
-                onPress={() => setPositionOpen(true)}
-                style={({ pressed }) => [styles.input, styles.dropdownInput, pressed && styles.pressed]}
-              >
-                <Text style={{ color: position ? TEXT : MUTED, fontSize: 14 }}>
-                  {position ? roleDisplayLabel(position) : t('tblRoles', 'Role')}
-                </Text>
-                <ChevronDown size={16} color={MUTED} strokeWidth={2.2} />
-              </Pressable>
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltAge', 'Age (min / max)')}</Text>
-              <View style={styles.rangeRow}>
-                <TextInput
-                  value={minAge}
-                  onChangeText={(value) => setMinAge(value.replace(/[^\d]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder={t('phMin', 'Min')}
-                  placeholderTextColor={MUTED}
-                  style={[styles.input, styles.rangeInput]}
-                />
-                <TextInput
-                  value={maxAge}
-                  onChangeText={(value) => setMaxAge(value.replace(/[^\d]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder={t('phMax', 'Max')}
-                  placeholderTextColor={MUTED}
-                  style={[styles.input, styles.rangeInput]}
-                />
-              </View>
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={styles.filterLabel}>{t('fltHeight', 'Height (min / max)')}</Text>
-              <View style={styles.rangeRow}>
-                <TextInput
-                  value={minHeight}
-                  onChangeText={(value) => setMinHeight(value.replace(/[^\d.]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder={t('phMin', 'Min')}
-                  placeholderTextColor={MUTED}
-                  style={[styles.input, styles.rangeInput]}
-                />
-                <TextInput
-                  value={maxHeight}
-                  onChangeText={(value) => setMaxHeight(value.replace(/[^\d.]/g, ''))}
-                  keyboardType="numeric"
-                  placeholder={t('phMax', 'Max')}
-                  placeholderTextColor={MUTED}
-                  style={[styles.input, styles.rangeInput]}
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.actionsRow}>
-            <Pressable
-              onPress={clearFilters}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-            >
-              <Text style={styles.secondaryButtonText}>{t('clearFilters', 'Clear filters')}</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={onSearch}
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
-            >
-              <Search size={16} color={TEXT} strokeWidth={2.2} />
-              <Text style={styles.primaryButtonText}>{t('playerPoolSearchButton', 'Search')}</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View style={styles.panel}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>{t('playerPoolCandidates', 'Candidate players')}</Text>
-            <Pressable
-              onPress={() => setSortOpen(true)}
-              style={({ pressed }) => [styles.sortByButton, pressed && styles.pressed]}
-            >
-              <Text style={styles.sortByButtonText}>
-                {t('sortBy', 'Sort by')}: {sortLabel}
-              </Text>
-              <ChevronDown size={15} color={MUTED} strokeWidth={2.2} />
-            </Pressable>
-          </View>
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {searching ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color={ACCENT} />
-            </View>
-          ) : (
-            <View style={styles.table}>
-              <View style={styles.tableTopBorder} />
-
-              <View style={styles.tableHeaderWrap}>
-                <View style={styles.row}>
-                  <View style={[styles.cell, { flex: COL.name }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
-                  </View>
-                  <View style={styles.vsep} />
-                  <View style={[styles.cell, { flex: COL.gen }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
-                  </View>
-                  <View style={styles.vsep} />
-                  <View style={[styles.cell, { flex: COL.nat }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-                  </View>
-                  <View style={styles.vsep} />
-                  <View style={[styles.cell, { flex: COL.league }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
-                  </View>
-                  <View style={styles.vsep} />
-                  <View style={[styles.cell, { flex: COL.team }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
-                  </View>
-                  <View style={styles.vsep} />
-                  <View style={[styles.cell, { flex: COL.age }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
-                  </View>
-                  <View style={styles.vsep} />
-                  <View style={[styles.cell, { flex: COL.roles }]}>
-                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
-                  </View>
-                </View>
-                <View style={styles.hsepThick} />
-              </View>
-
-              <View style={[styles.tableScrollWrap, { minHeight: candidateTableHeight }]}>
-                <ScrollView
-                  style={{ maxHeight: candidateTableHeight }}
-                  contentContainerStyle={{ paddingRight: 5 }}
-                  scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
-                  nestedScrollEnabled
-                  bounces={false}
-                  showsVerticalScrollIndicator
-                >
-                  {results.length === 0 ? (
-                    <View style={styles.emptyRow}>
-                      <Text style={styles.emptyText}>
-                        {t('playerPoolEmptyBody', 'Run a search to see matching players from your database.')}
-                      </Text>
-                    </View>
-                  ) : (
-                    sortedResults.map((row) => {
-                      const genderValue = row.player.meta?.gender?.toLowerCase();
-                      const genderLabel =
-                        genderValue === 'male'
-                          ? t('genderMaleShort', 'M')
-                          : genderValue === 'female'
-                            ? t('genderFemaleShort', 'F')
-                            : '—';
-                      const nationalityShort = row.player.meta?.nationality
-                        ? row.player.meta.nationality
-                            .normalize('NFKD')
-                            .replace(/[^\p{Letter}\s]/gu, '')
-                            .trim()
-                            .split(/\s+/)[0]
-                            ?.slice(0, 3)
-                            .toUpperCase() || '—'
-                        : '—';
-                      const roleValue = row.player.meta?.roles?.[0];
-                      const roleShort =
-                        (roleValue && ROLE_LONG_TO_SHORT[roleValue]) ||
-                        roleValue ||
-                        '—';
-                      const leagueShort = row.player.meta?.league
-                        ? row.player.meta.league
-                            .split(/\s+/)
-                            .map((part) => part[0])
-                            .join('')
-                            .slice(0, 5)
-                            .toUpperCase() || row.player.meta.league
-                        : '—';
-
-                      return (
-                        <View key={row.id}>
-                          <Pressable
-                            onPress={() => {
-                              setRevealedPotentialForCard(false);
-                              setRevealedFormForCard(false);
-                              setSelectedPlayerId(row.id);
-                              setSelectedPlayer(row.player);
-                            }}
-                            style={({ pressed }) => [
-                              styles.row,
-                              selectedPlayer?.name === row.player.name && styles.dataRowActive,
-                              pressed && styles.pressed,
-                            ]}
-                          >
-                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
-                              {row.player.name.split(/\s+/)[0] || row.player.name}
-                            </Text>
-                            <View style={styles.vsep} />
-                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}>
-                              {genderLabel}
-                            </Text>
-                            <View style={styles.vsep} />
-                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
-                              {nationalityShort}
-                            </Text>
-                            <View style={styles.vsep} />
-                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
-                              {leagueShort}
-                            </Text>
-                            <View style={styles.vsep} />
-                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
-                              {row.player.meta?.team || '—'}
-                            </Text>
-                            <View style={styles.vsep} />
-                            <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
-                              {row.player.meta?.age ?? '—'}
-                            </Text>
-                            <View style={styles.vsep} />
-                            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
-                              {roleShort}
-                            </Text>
-                          </Pressable>
-                          <View style={styles.hsepThick} />
-                        </View>
-                      );
-                    })
-                  )}
-                </ScrollView>
-              </View>
-
-              <View style={styles.tableBottomBorder} />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.panel}>
-          <Text style={styles.sectionTitle}>{t('playerCard', 'Player Card')}</Text>
-          <View style={styles.curateRow}>
-            <View style={styles.curatePlusWrap}>
-              <Text style={styles.curatePlusText}>＋</Text>
-            </View>
-            <Text style={styles.curateText}>
-              {t('wcCurate', 'Curate your dream squad in your portfolio.')}
-            </Text>
-          </View>
-          {selectedPlayer ? (
-            <>
-            <PlayerCard
-              player={selectedPlayerForCard ?? selectedPlayer}
-              titleAlign="center"
-              onAddFavorite={async (player) => {
-                try {
-                  await addFavoritePlayer({
-                    name: player.name,
-                    nationality: player.meta?.nationality,
-                    age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-                    potential:
-                      typeof player.meta?.potential === 'number'
-                        ? Math.round(player.meta.potential)
-                        : undefined,
-                    form:
-                      typeof player.meta?.form === 'number'
-                        ? Math.round(player.meta.form)
-                        : undefined,
-                    gender: player.meta?.gender,
-                    height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
-                    weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
-                    team: player.meta?.team,
-                    league: player.meta?.league,
-                    roles: player.meta?.roles ?? [],
-                  });
-                  return true;
-                } catch (e: any) {
-                  Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
-                  return false;
-                }
-              }}
-            />
-            <View style={styles.revealActionsRow}>
-              <Pressable
-                onPress={onRevealPotential}
-                disabled={revealingPotential || revealedPotentialForCard}
-                style={({ pressed }) => [
-                  styles.revealScoreButton,
-                  revealedPotentialForCard && styles.revealScoreButtonMuted,
-                  (pressed || revealingPotential) && styles.pressed,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.revealScoreButtonText,
-                    revealedPotentialForCard && styles.revealScoreButtonTextRevealed,
-                  ]}
-                >
-                  {revealingPotential
-                    ? t('revealingPotential', 'Revealing potential...')
-                    : revealedPotentialForCard
-                      ? t('potentialRevealed', 'Potential is Revealed')
-                      : t('revealPotential', 'Reveal Potential')}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={onRevealForm}
-                disabled={revealingForm || revealedFormForCard}
-                style={({ pressed }) => [
-                  styles.revealScoreButton,
-                  revealedFormForCard && styles.revealScoreButtonMuted,
-                  (pressed || revealingForm) && styles.pressed,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.revealScoreButtonText,
-                    revealedFormForCard && styles.revealScoreButtonTextRevealed,
-                  ]}
-                >
-                  {revealingForm
-                    ? t('revealingForm', 'Revealing form...')
-                    : revealedFormForCard
-                      ? t('formRevealed', 'Form is Revealed')
-                      : t('revealForm', 'Reveal Form')}
-                </Text>
-              </Pressable>
-            </View>
-            </>
-          ) : (
-            <View style={styles.emptyCardState}>
-              <Text style={styles.emptyText}>
-                {t(
-                  'playerPoolEmptyTitle',
-                  'Select a player from the search results to render the card here.',
-                )}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <Modal
-          transparent
-          visible={positionOpen}
-          animationType="fade"
-          onRequestClose={() => setPositionOpen(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('tblRoles', 'Role')}</Text>
-                <Pressable onPress={() => setPositionOpen(false)}>
-                  {({ pressed }) => (
-                    <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-                  )}
-                </Pressable>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Pressable
-                  onPress={() => {
-                    setPosition('');
-                    setPositionOpen(false);
-                  }}
-                  style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.optionText, !position && styles.optionTextActive]}>
-                    {t('clearFilters', 'Clear filters')}
-                  </Text>
-                </Pressable>
-
-                {positionOptionLabels.map((item) => (
-                  <Pressable
-                    key={item}
-                    onPress={() => {
-                      setPosition(item);
-                      setPositionOpen(false);
-                    }}
-                    style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
-                  >
-                    <Text style={[styles.optionText, position === item && styles.optionTextActive]}>
-                      {item}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
-          transparent
-          visible={sortOpen}
-          animationType="fade"
-          onRequestClose={() => setSortOpen(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('sortBy', 'Sort by')}</Text>
-                <Pressable onPress={() => setSortOpen(false)}>
-                  {({ pressed }) => (
-                    <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-                  )}
-                </Pressable>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {([
-                  ['name', t('tblName', 'Name')],
-                  ['gender', t('tblGender', 'Gen.')],
-                  ['nationality', t('tblNat', 'Nat.')],
-                  ['league', t('tblLeague', 'League')],
-                  ['team', t('tblTeam', 'Team')],
-                  ['age', t('tblAge', 'Age')],
-                  ['role', t('tblRoles', 'Role')],
-                ] as Array<[CandidateSortKey, string]>).map(([key, label]) => (
-                  <Pressable
-                    key={key}
-                    onPress={() => {
-                      cycleSort(key);
-                      setSortOpen(false);
-                    }}
-                    style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
-                  >
-                    <Text style={[styles.optionText, sortKey === key && styles.optionTextActive]}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
+        <PlayerCardPP
+          selectedPlayer={selectedPlayer}
+          selectedPlayerForCard={selectedPlayerForCard}
+          onRevealPotential={onRevealPotential}
+          onRevealForm={onRevealForm}
+          revealingPotential={revealingPotential}
+          revealingForm={revealingForm}
+          revealedPotentialForCard={revealedPotentialForCard}
+          revealedFormForCard={revealedFormForCard}
+        />
         <ProNotReadyScreen
           visible={proUpsellOpen}
           onClose={() => setProUpsellOpen(false)}
@@ -1095,289 +597,5 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 32,
     gap: 16,
-  },
-  panel: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: PANEL,
-    padding: 16,
-  },
-  sectionTitle: {
-    color: ACCENT,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 10,
-  },
-  sortByButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  sortByButtonText: {
-    color: MUTED,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  curateRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
-  },
-  curatePlusWrap: {
-    borderWidth: 1,
-    borderColor: ACCENT,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-  },
-  curatePlusText: {
-    color: ACCENT,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  curateText: {
-    color: MUTED,
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  filters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  filterCol: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    gap: 6,
-  },
-  filterLabel: {
-    color: MUTED,
-    fontSize: 12,
-  },
-  input: {
-    color: TEXT,
-    backgroundColor: CARD,
-    borderColor: LINE,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
-  centeredInput: {
-    justifyContent: 'center',
-  },
-  dropdownInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  suggestions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  suggestionChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  suggestionText: {
-    color: MUTED,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  rangeRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  rangeInput: {
-    flex: 1,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    color: MUTED,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  primaryButton: {
-    flex: 1.25,
-    minHeight: 46,
-    borderRadius: 14,
-    backgroundColor: ACCENT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  primaryButtonText: {
-    color: TEXT,
-    fontSize: 14,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  pressed: {
-    opacity: 0.92,
-  },
-  loadingWrap: {
-    minHeight: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  errorText: {
-    color: DANGER,
-    marginBottom: 12,
-    fontSize: 13,
-  },
-  table: { marginTop: 10 },
-  tableTopBorder: { height: 1, backgroundColor: LINE },
-  tableBottomBorder: { height: 1, backgroundColor: LINE },
-  tableHeaderWrap: {
-    paddingRight: 5,
-  },
-  tableScrollWrap: {
-    paddingRight: 1,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
-  hsepThick: { height: 2, backgroundColor: LINE },
-  cell: { paddingVertical: 10, justifyContent: 'center' },
-  thText: { color: TEXT, fontWeight: '700' },
-  td: { color: TEXT, flex: 1, fontSize: 12.5 },
-  vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
-  dataRow: {
-    minHeight: ROW_HEIGHT,
-  },
-  dataRowActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.10)',
-  },
-  emptyRow: {
-    minHeight: ROW_HEIGHT * 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  emptyCardState: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    padding: 18,
-    minHeight: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  revealActionsRow: {
-    marginTop: 12,
-    flexDirection: 'row',
-    gap: 10,
-  },
-  revealScoreButton: {
-    flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  revealScoreButtonMuted: {
-    borderColor: LINE,
-    backgroundColor: CARD,
-  },
-  revealScoreButtonText: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: '900',
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  revealScoreButtonTextMuted: {
-    color: MUTED,
-  },
-  revealScoreButtonTextRevealed: {
-    color: ACCENT,
-  },
-  emptyText: {
-    color: MUTED,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    padding: 18,
-  },
-  modalCard: {
-    backgroundColor: PANEL,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: LINE,
-    padding: 16,
-    maxHeight: '70%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  modalTitle: {
-    color: TEXT,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  optionRow: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  optionText: {
-    color: MUTED,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  optionTextActive: {
-    color: ACCENT,
   },
 });

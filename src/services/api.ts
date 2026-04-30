@@ -90,10 +90,20 @@ export async function sendChat(
     }),
   });
 
+  const players = (json.data?.players || []).map((player) => ({
+    ...player,
+    meta: player.meta
+      ? {
+          ...player.meta,
+          league: normalizeLeagueName(player.meta.league),
+        }
+      : player.meta,
+  }));
+
   // Normalize
   return {
     response: (json.response ?? '').toString(),
-    data: json.data ?? { players: [] },
+    data: { players },
     response_parts: json.response_parts ?? [],
   };
 }
@@ -159,6 +169,37 @@ export const ROLE_LONG_TO_SHORT: Record<string, string> = {
   'Centre Forward': 'CF',
   'Attacker': 'CF',
 };
+
+const HIDDEN_LEAGUE_NAMES = new Set([
+  'champions league',
+  'uefa champions league',
+  "uefa women's champions league",
+  'europa league',
+  'uefa europa league',
+  'europa conference league',
+  'uefa europa conference league',
+  'conference league',
+  'fa cup',
+  'coupe de france',
+  'copa del rey',
+  'knvb beker',
+  'Taça De Portugal',
+  'Taca De Portugal',
+  'coppa italia',
+  'dfb pokal',
+  'uefa youth league',
+  'russian cup',
+  'kings cup',
+  'atlantic cup',
+]);
+
+function normalizeLeagueName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const normalized = trimmed.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+  return HIDDEN_LEAGUE_NAMES.has(normalized) ? undefined : trimmed;
+}
 
 
 export type FavoritePlayer = {
@@ -283,10 +324,7 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
         (typeof raw.team === 'string' && raw.team) ||
         (typeof raw.team_name === 'string' && raw.team_name) ||
         undefined,
-      league:
-        (typeof raw.league === 'string' && raw.league) ||
-        (typeof raw.league_name === 'string' && raw.league_name) ||
-        undefined,
+      league: normalizeLeagueName(raw.league) ?? normalizeLeagueName(raw.league_name),
     },
   };
 }
@@ -309,7 +347,11 @@ export async function searchPlayerPool(
 }
 
 export async function getPlayerPoolOptions(): Promise<PlayerPoolFilterOptions> {
-  return request<PlayerPoolFilterOptions>(ENDPOINTS.playerPoolOptions);
+  const options = await request<PlayerPoolFilterOptions>(ENDPOINTS.playerPoolOptions);
+  return {
+    ...options,
+    leagues: (options.leagues || []).filter((league) => !!normalizeLeagueName(league)),
+  };
 }
 
 export async function revealPlayerPoolPotential(
@@ -329,7 +371,11 @@ export async function revealPlayerPoolForm(
 }
 
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
-  return request<FavoritePlayer[]>('/me/favorites');
+  const favorites = await request<FavoritePlayer[]>('/me/favorites');
+  return (favorites || []).map((favorite) => ({
+    ...favorite,
+    league: normalizeLeagueName(favorite.league),
+  }));
 }
 
 type AddFavoriteIn = {
@@ -351,7 +397,7 @@ export async function addFavoritePlayer(input: AddFavoriteIn): Promise<FavoriteP
   const longRoles = (input.roles || []).map(r => ROLE_SHORT_TO_LONG[r] ?? r);
   return request<FavoritePlayer>('/me/favorites', {
     method: 'POST',
-    body: JSON.stringify({ ...input, roles: longRoles }),
+    body: JSON.stringify({ ...input, league: normalizeLeagueName(input.league), roles: longRoles }),
   });
 }
 
