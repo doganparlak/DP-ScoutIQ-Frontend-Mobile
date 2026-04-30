@@ -71,6 +71,26 @@ function firstWord(full: string): string {
   return parts[0] ?? '';
 }
 
+function missingRank(value: unknown): 0 | 1 {
+  if (value === null || value === undefined) return 1;
+  if (typeof value === 'string' && !value.trim()) return 1;
+  if (typeof value === 'number' && !Number.isFinite(value)) return 1;
+  return 0;
+}
+
+function compareWithMissingLast<T>(
+  aValue: T,
+  bValue: T,
+  dir: number,
+  comparePresent: (a: NonNullable<T>, b: NonNullable<T>) => number,
+) {
+  const aMissing = missingRank(aValue);
+  const bMissing = missingRank(bValue);
+  if (aMissing !== bMissing) return aMissing - bMissing;
+  if (aMissing) return 0;
+  return comparePresent(aValue as NonNullable<T>, bValue as NonNullable<T>) * dir;
+}
+
 export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   const { t } = useTranslation();
 
@@ -233,21 +253,21 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 
       switch (sortKey) {
         case 'name':
-          return a.name.localeCompare(b.name) * dir;
+          return compareWithMissingLast(a.name, b.name, dir, (av, bv) => av.localeCompare(bv));
         case 'nationality':
-          return (a.nationality || '').localeCompare(b.nationality || '') * dir;
+          return compareWithMissingLast(a.nationality, b.nationality, dir, (av, bv) => av.localeCompare(bv));
         case 'team':
-          return (a.team || '').localeCompare(b.team || '') * dir;
+          return compareWithMissingLast(a.team, b.team, dir, (av, bv) => av.localeCompare(bv));
         case 'age':
-          return ((a.age ?? 0) - (b.age ?? 0)) * dir;
+          return compareWithMissingLast(a.age, b.age, dir, (av, bv) => av - bv);
         case 'potential':
-          return ((a.potential ?? 0) - (b.potential ?? 0)) * dir;
+          return compareWithMissingLast(a.potential, b.potential, dir, (av, bv) => av - bv);
         case 'form':
-          return ((a.form ?? 0) - (b.form ?? 0)) * dir;
+          return compareWithMissingLast(a.form, b.form, dir, (av, bv) => av - bv);
         case 'roles': {
           const ar = a.rolesShort[0] ?? '';
           const br = b.rolesShort[0] ?? '';
-          return ar.localeCompare(br) * dir;
+          return compareWithMissingLast(ar, br, dir, (av, bv) => av.localeCompare(bv));
         }
       }
     });
