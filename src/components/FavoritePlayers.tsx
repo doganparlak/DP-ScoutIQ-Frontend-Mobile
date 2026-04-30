@@ -619,7 +619,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           </Pressable>
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
-            {countryToCode2((item as PlayerRow).nationality)}
+            {countryToCode2((item as PlayerRow).nationality) || '—'}
           </Text>
         )}
 
@@ -642,7 +642,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           </Pressable>
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
-            {(item as PlayerRow).team || '—'}
+            {(item as PlayerRow).team?.trim() || '—'}
           </Text>
         )}
 
@@ -665,7 +665,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           </Pressable>
         ) : (
           <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
-            {(item as PlayerRow).age ?? '—'}
+            {Number.isFinite((item as PlayerRow).age) ? (item as PlayerRow).age : '—'}
           </Text>
         )}
 
@@ -690,7 +690,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
             {(() => {
               const roles = (item as PlayerRow).rolesShort || [];
-              return roles[0] ?? '—';
+              return roles[0]?.trim() || '—';
             })()}
           </Text>
         )}
