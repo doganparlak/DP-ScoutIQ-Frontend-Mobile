@@ -38,6 +38,7 @@ type PlayerRow = {
   age?: number;
   rolesShort: string[];
   potential?: number;
+  form?: number;
   gender?: string;
   team?: string;
   league?: string;
@@ -54,15 +55,15 @@ const COL = {
   rep: 0.55,
   name: 0.93,
   nat: 0.93,
-  league: 0.95,
   team: 1.0,
   age: 0.8,
   roles: 0.8,
+  form: 0.83,
   pot: 0.83,
   del: 0.55,
 } as const;
 
-type SortKey = 'name' | 'nationality' | 'league' | 'team' | 'age' | 'roles' | 'potential';
+type SortKey = 'name' | 'nationality' | 'team' | 'age' | 'roles' | 'form' | 'potential';
 type SortDir = 'asc' | 'desc';
 
 function firstWord(full: string): string {
@@ -89,8 +90,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   const [maxAge, setMaxAge] = useState<string>('');
   const [minPot, setMinPot] = useState<string>('');
   const [maxPot, setMaxPot] = useState<string>('');
-  const [minHeight, setMinHeight] = useState<string>('');
-  const [maxHeight, setMaxHeight] = useState<string>('');
+  const [minForm, setMinForm] = useState<string>('');
+  const [maxForm, setMaxForm] = useState<string>('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const [sortKey, setSortKey] = useState<SortKey>('potential');
@@ -127,6 +128,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         nationality: f.nationality || '',
         age: typeof f.age === 'number' ? f.age : undefined,
         potential: typeof f.potential === 'number' ? f.potential : undefined,
+        form: typeof f.form === 'number' ? f.form : undefined,
         rolesShort: (f.roles || []).map((long) => ROLE_LONG_TO_SHORT[long] ?? long),
         gender: f.gender || undefined,
         team: f.team || undefined,
@@ -150,6 +152,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       age: p.age,
       roles: p.rolesShort,
       potential: p.potential,
+      form: p.form,
       gender: p.gender,
       team: p.team,
       league: p.league,
@@ -197,8 +200,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     const maxA = maxAge ? parseInt(maxAge, 10) : undefined;
     const minP = minPot ? Math.min(100, parseInt(minPot, 10)) : undefined;
     const maxP = maxPot ? Math.min(100, parseInt(maxPot, 10)) : undefined;
-    const minH = minHeight ? parseFloat(minHeight) : undefined;
-    const maxH = maxHeight ? parseFloat(maxHeight) : undefined;
+    const minF = minForm ? Math.min(100, parseInt(minForm, 10)) : undefined;
+    const maxF = maxForm ? Math.min(100, parseInt(maxForm, 10)) : undefined;
 
     const list = rows.filter((p) => {
       if (qName && !p.name.toLowerCase().includes(qName.toLowerCase())) return false;
@@ -217,8 +220,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       if (minP !== undefined && (p.potential ?? -Infinity) < minP) return false;
       if (maxP !== undefined && (p.potential ?? Infinity) > maxP) return false;
 
-      if (minH !== undefined && (p.height ?? -Infinity) < minH) return false;
-      if (maxH !== undefined && (p.height ?? Infinity) > maxH) return false;
+      if (minF !== undefined && (p.form ?? -Infinity) < minF) return false;
+      if (maxF !== undefined && (p.form ?? Infinity) > maxF) return false;
 
       if (selectedRoles.length > 0 && !selectedRoles.some((r) => p.rolesShort.includes(r))) return false;
 
@@ -233,14 +236,14 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           return a.name.localeCompare(b.name) * dir;
         case 'nationality':
           return (a.nationality || '').localeCompare(b.nationality || '') * dir;
-        case 'league':
-          return (a.league || '').localeCompare(b.league || '') * dir;
         case 'team':
           return (a.team || '').localeCompare(b.team || '') * dir;
         case 'age':
           return ((a.age ?? 0) - (b.age ?? 0)) * dir;
         case 'potential':
           return ((a.potential ?? 0) - (b.potential ?? 0)) * dir;
+        case 'form':
+          return ((a.form ?? 0) - (b.form ?? 0)) * dir;
         case 'roles': {
           const ar = a.rolesShort[0] ?? '';
           const br = b.rolesShort[0] ?? '';
@@ -260,8 +263,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     maxAge,
     minPot,
     maxPot,
-    minHeight,
-    maxHeight,
+    minForm,
+    maxForm,
     selectedRoles,
     genderFilter,
     sortKey,
@@ -278,8 +281,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
     setMaxAge('');
     setMinPot('');
     setMaxPot('');
-    setMinHeight('');
-    setMaxHeight('');
+    setMinForm('');
+    setMaxForm('');
     setSelectedRoles([]);
   };
 
@@ -335,6 +338,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             age: row.age,
             height: row.height,
             weight: row.weight,
+            potential: row.potential,
+            form: row.form,
           };
 
           const res = await getScoutingReport(playerId, payload);
@@ -392,6 +397,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           age: p.age,
           height: p.height,
           weight: p.weight,
+          potential: p.potential,
+          form: p.form,
         };
 
         const res = await getScoutingReport(p.id, payload);
@@ -620,29 +627,6 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 
         {isHeader ? (
           <Pressable
-            onPress={() => cycleSort('league')}
-            style={({ pressed }) => [
-              styles.cell,
-              { flex: COL.league },
-              pressed && pressedStyle,
-              sortKey === 'league' && { backgroundColor: CARD },
-            ]}
-          >
-            <Text style={[styles.thText, { textAlign: 'center' }]}>
-              {t('tblLeagueShort', 'Lg.')}
-              {chevron('league')}
-            </Text>
-          </Pressable>
-        ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
-            {(item as PlayerRow).league || '—'}
-          </Text>
-        )}
-
-        <View style={styles.vsep} />
-
-        {isHeader ? (
-          <Pressable
             onPress={() => cycleSort('team')}
             style={({ pressed }) => [
               styles.cell,
@@ -708,6 +692,29 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
               const roles = (item as PlayerRow).rolesShort || [];
               return roles[0] ?? '—';
             })()}
+          </Text>
+        )}
+
+        <View style={styles.vsep} />
+
+        {isHeader ? (
+          <Pressable
+            onPress={() => cycleSort('form')}
+            style={({ pressed }) => [
+              styles.cell,
+              { flex: COL.form },
+              pressed && pressedStyle,
+              sortKey === 'form' && { backgroundColor: CARD },
+            ]}
+          >
+            <Text style={[styles.thText, { textAlign: 'center' }]}>
+              {t('tblForm', 'Form')}
+              {chevron('form')}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={[styles.td, styles.cell, { flex: COL.form, textAlign: 'center' }]}>
+            {(item as PlayerRow).form ?? '—'}
           </Text>
         )}
 
@@ -869,19 +876,19 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltHeight', 'Height (min / max)')}</Text>
+          <Text style={styles.filterLabel}>{t('fltForm', 'Form (min / max)')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
-              value={minHeight}
-              onChangeText={(t_) => setMinHeight(t_.replace(/[^\d.]/g, ''))}
+              value={minForm}
+              onChangeText={(t_) => setMinForm(t_.replace(/[^\d]/g, '').slice(0, 3))}
               keyboardType="numeric"
               placeholder={t('phMin', 'min')}
               placeholderTextColor={MUTED}
               style={[styles.input, { flex: 1 }]}
             />
             <TextInput
-              value={maxHeight}
-              onChangeText={(t_) => setMaxHeight(t_.replace(/[^\d.]/g, ''))}
+              value={maxForm}
+              onChangeText={(t_) => setMaxForm(t_.replace(/[^\d]/g, '').slice(0, 3))}
               keyboardType="numeric"
               placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}

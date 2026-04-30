@@ -168,7 +168,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       key: 'player',
       title: t('player', 'Player'),
       node: (
-        <View style={{ gap: 12 }}>
+        <View style={styles.playerPage}>
           <PlayerCard player={player} titleAlign="center" />
 
           <Text style={styles.createdByTitle}>
@@ -188,7 +188,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
             )}
           </Text>
 
-          <Text style={{ color: MUTED, lineHeight: 18, textAlign: 'center' }}>
+          <Text style={styles.reportHint}>
             {t('tapArrowsToNavigate', 'Tap arrows to navigate the report.')}
           </Text>
         </View>
@@ -494,12 +494,20 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: ACCENT },
   dotInactive: { backgroundColor: LINE },
 
+  playerPage: {
+    gap: 8,
+  },
   createdByTitle: {
     textAlign: 'center',
-    marginTop: Platform.OS === 'android' ? 35 : 75,
+    marginTop: Platform.OS === 'android' ? 8 : 12,
     letterSpacing: 0.3,
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 27,
+  },
+  reportHint: {
+    color: MUTED,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   createdByPrefix: {
     color: MUTED,

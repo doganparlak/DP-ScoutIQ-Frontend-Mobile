@@ -1,7 +1,7 @@
 // src/components/PlayerCard.tsx
 import * as React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { CARD, TEXT, MUTED, ACCENT, LINE } from '@/theme';
+import { CARD, TEXT, MUTED, ACCENT, LINE, DANGER } from '@/theme';
 import type { PlayerData } from '@/types';
 import { useTranslation } from 'react-i18next';
 
@@ -15,11 +15,58 @@ function isValidPotential(x: unknown): x is number {
   return typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 100;
 }
 
+function getScoreColor(score: number): string {
+  if (score < 50) return DANGER;
+  if (score < 70) return '#F59E0B';
+  return ACCENT;
+}
+
+function ScoreBar({
+  label,
+  value,
+  accessibilityLabel,
+}: {
+  label: string;
+  value: number;
+  accessibilityLabel: string;
+}) {
+  const score = Math.max(0, Math.min(100, Math.round(value)));
+  const scoreColor = getScoreColor(score);
+
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={{ color: MUTED }}>
+        {label}:{' '}
+        <Text style={{ color: scoreColor, fontWeight: '800' }}>{score}</Text>/100
+      </Text>
+
+      <View
+        style={{
+          height: 8,
+          borderRadius: 999,
+          backgroundColor: '#272a2a',
+          overflow: 'hidden',
+        }}
+        accessibilityLabel={accessibilityLabel}
+      >
+        <View
+          style={{
+            width: `${score}%`,
+            height: '100%',
+            backgroundColor: scoreColor,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' }: Props) {
   const { t } = useTranslation();
   const { name, meta } = player;
   const roles = meta?.roles ?? [];
   const potential = meta?.potential;
+  const form = meta?.form;
 
   const [isAdding, setIsAdding] = React.useState(false);
   const [isAdded, setIsAdded] = React.useState(false);
@@ -52,6 +99,7 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
 
   const disabled = !onAddFavorite || isAdding || isAdded;
   const potentialInt = Math.round(isValidPotential(potential) ? potential : 0);
+  const formInt = Math.round(isValidPotential(form) ? form : 0);
 
   // gender label (localized if 'male'/'female')
   const genderLabel = React.useMemo(() => {
@@ -193,33 +241,26 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
         )}
       </View>
 
-      {/* Potential (unchanged) */}
-      {isValidPotential(potential) && (
-        <View style={{ marginTop: 4, gap: 6 }}>
-          <Text style={{ color: MUTED }}>
-            {t('potential', 'Potential')}:{' '}
-            <Text style={{ color: TEXT, fontWeight: '700' }}>{potentialInt}</Text>/100
-          </Text>
-
-          <View
-            style={{
-              height: 8,
-              borderRadius: 999,
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              overflow: 'hidden',
-            }}
-            accessibilityLabel={t('potentialA11y', 'Potential {{val}} out of 100', {
-              val: potentialInt,
-            })}
-          >
-            <View
-              style={{
-                width: `${Math.max(0, Math.min(100, potentialInt))}%`,
-                height: '100%',
-                backgroundColor: ACCENT,
-              }}
+      {(isValidPotential(potential) || isValidPotential(form)) && (
+        <View style={{ marginTop: 4, gap: 8 }}>
+          {isValidPotential(potential) && (
+            <ScoreBar
+              label={t('potential', 'Potential')}
+              value={potentialInt}
+              accessibilityLabel={t('potentialA11y', 'Potential {{val}} out of 100', {
+                val: potentialInt,
+              })}
             />
-          </View>
+          )}
+          {isValidPotential(form) && (
+            <ScoreBar
+              label={t('form', 'Form')}
+              value={formInt}
+              accessibilityLabel={t('formA11y', 'Form {{val}} out of 100', {
+                val: formInt,
+              })}
+            />
+          )}
         </View>
       )}
 

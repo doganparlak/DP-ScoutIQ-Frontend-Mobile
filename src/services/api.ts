@@ -28,6 +28,7 @@ export type PlayerMeta = {
   age?: number;
   roles?: string[];
   potential?: number;
+  form?: number;
   gender?: string;
   height?: number;
   weight?: number;
@@ -166,6 +167,7 @@ export type FavoritePlayer = {
   nationality?: string;
   age?: number;
   potential?: number;
+  form?: number;
   gender?: string;
   height?: number;
   weight?: number;
@@ -201,6 +203,13 @@ export type PlayerPoolPotentialResponse = {
   player_id: string;
   status: 'ready';
   potential: number;
+  source: 'db' | 'model';
+};
+
+export type PlayerPoolFormResponse = {
+  player_id: string;
+  status: 'ready';
+  form: number;
   source: 'db' | 'model';
 };
 
@@ -266,6 +275,7 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
       age: toFiniteNumber(raw.age),
       roles,
       potential: toFiniteNumber(raw.potential),
+      form: toFiniteNumber(raw.form),
       gender: typeof raw.gender === 'string' ? raw.gender : undefined,
       height: toFiniteNumber(raw.height),
       weight: toFiniteNumber(raw.weight),
@@ -310,6 +320,14 @@ export async function revealPlayerPoolPotential(
   });
 }
 
+export async function revealPlayerPoolForm(
+  playerId: string,
+): Promise<PlayerPoolFormResponse> {
+  return request<PlayerPoolFormResponse>(ENDPOINTS.playerPoolForm(playerId), {
+    method: 'POST',
+  });
+}
+
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
   return request<FavoritePlayer[]>('/me/favorites');
 }
@@ -319,6 +337,7 @@ type AddFavoriteIn = {
   nationality?: string;
   age?: number;
   potential?: number;
+  form?: number;
   gender?: string;
   height?: number;
   weight?: number;
@@ -498,6 +517,8 @@ export type PlayerIdentityPayload = {
   age?: number;
   height?: number;
   weight?: number;
+  potential?: number;
+  form?: number;
 };
 
 export async function getScoutingReport(

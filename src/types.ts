@@ -46,6 +46,7 @@ export type PlayerMeta = {
   age?: number;
   roles?: string[];
   potential?: number;
+  form?: number;
   gender?: string;
   height?: number;
   weight?: number;

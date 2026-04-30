@@ -60,6 +60,10 @@ function ChatVisualsBlockInner({ players }: Props) {
                       typeof player.meta?.potential === 'number'
                         ? Math.round(player.meta.potential)
                         : undefined,
+                    form:
+                      typeof player.meta?.form === 'number'
+                        ? Math.round(player.meta.form)
+                        : undefined,
                     gender: player.meta?.gender,
                     height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
                     weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,

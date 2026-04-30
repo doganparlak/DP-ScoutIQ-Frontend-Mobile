@@ -27,6 +27,7 @@ import {
   addFavoritePlayer,
   getMe,
   getPlayerPoolOptions,
+  revealPlayerPoolForm,
   revealPlayerPoolPotential,
   searchPlayerPool,
   type PlayerPoolSearchInput,
@@ -73,8 +74,10 @@ export default function PlayerPoolScreen() {
   const [selectedPlayerId, setSelectedPlayerId] = React.useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState<PlayerData | null>(null);
   const [revealedPotentialForCard, setRevealedPotentialForCard] = React.useState(false);
+  const [revealedFormForCard, setRevealedFormForCard] = React.useState(false);
   const [searching, setSearching] = React.useState(false);
   const [revealingPotential, setRevealingPotential] = React.useState(false);
+  const [revealingForm, setRevealingForm] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [positionOpen, setPositionOpen] = React.useState(false);
   const [sortOpen, setSortOpen] = React.useState(false);
@@ -196,6 +199,7 @@ export default function PlayerPoolScreen() {
     setSelectedPlayerId(null);
     setSelectedPlayer(null);
     setRevealedPotentialForCard(false);
+    setRevealedFormForCard(false);
     setError(null);
   }, []);
 
@@ -232,6 +236,7 @@ export default function PlayerPoolScreen() {
             )
           : next;
       setRevealedPotentialForCard(false);
+      setRevealedFormForCard(false);
       setResults(filteredNext);
       setSelectedPlayerId(filteredNext[0]?.id ?? null);
       setSelectedPlayer(filteredNext[0]?.player ?? null);
@@ -239,6 +244,8 @@ export default function PlayerPoolScreen() {
       setResults([]);
       setSelectedPlayerId(null);
       setSelectedPlayer(null);
+      setRevealedPotentialForCard(false);
+      setRevealedFormForCard(false);
       setError(err?.message ?? t('favoritesError', 'Favorites error'));
     } finally {
       setSearching(false);
@@ -315,20 +322,75 @@ export default function PlayerPoolScreen() {
     }
   }, [plan, revealingPotential, selectedPlayer, selectedPlayerId, t]);
 
+  const onRevealForm = React.useCallback(async () => {
+    if (!selectedPlayerId || !selectedPlayer || revealingForm) return;
+
+    try {
+      setRevealingForm(true);
+
+      if (plan === 'Free') {
+        const nextCount = await incrementPotentialRevealCount();
+        if (shouldShowPotentialInterstitial(nextCount)) {
+          const ok = showInterstitialSafely();
+          if (!ok) {
+            setProUpsellOpen(true);
+          }
+        }
+      }
+
+      const revealed = await revealPlayerPoolForm(selectedPlayerId);
+      const form = Math.round(revealed.form);
+      setRevealedFormForCard(true);
+
+      setResults((current) =>
+        current.map((row) =>
+          row.id === selectedPlayerId
+            ? {
+                ...row,
+                player: {
+                  ...row.player,
+                  meta: {
+                    ...(row.player.meta ?? {}),
+                    form,
+                  },
+                },
+              }
+            : row,
+        ),
+      );
+
+      setSelectedPlayer((current) =>
+        current
+          ? {
+              ...current,
+              meta: {
+                ...(current.meta ?? {}),
+                form,
+              },
+            }
+          : current,
+      );
+    } catch (err: any) {
+      Alert.alert(t('formRevealFailed', 'Form reveal failed'), String(err?.message || err));
+    } finally {
+      setRevealingForm(false);
+    }
+  }, [plan, revealingForm, selectedPlayer, selectedPlayerId, t]);
+
   const selectedPlayerForCard = React.useMemo(() => {
     if (!selectedPlayer) return null;
-    if (revealedPotentialForCard) return selectedPlayer;
 
     return {
       ...selectedPlayer,
       meta: selectedPlayer.meta
         ? {
             ...selectedPlayer.meta,
-            potential: undefined,
+            potential: revealedPotentialForCard ? selectedPlayer.meta.potential : undefined,
+            form: revealedFormForCard ? selectedPlayer.meta.form : undefined,
           }
         : selectedPlayer.meta,
     };
-  }, [revealedPotentialForCard, selectedPlayer]);
+  }, [revealedFormForCard, revealedPotentialForCard, selectedPlayer]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -759,6 +821,7 @@ export default function PlayerPoolScreen() {
                           <Pressable
                             onPress={() => {
                               setRevealedPotentialForCard(false);
+                              setRevealedFormForCard(false);
                               setSelectedPlayerId(row.id);
                               setSelectedPlayer(row.player);
                             }}
@@ -834,6 +897,10 @@ export default function PlayerPoolScreen() {
                       typeof player.meta?.potential === 'number'
                         ? Math.round(player.meta.potential)
                         : undefined,
+                    form:
+                      typeof player.meta?.form === 'number'
+                        ? Math.round(player.meta.form)
+                        : undefined,
                     gender: player.meta?.gender,
                     height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
                     weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
@@ -848,28 +915,53 @@ export default function PlayerPoolScreen() {
                 }
               }}
             />
-            <Pressable
-              onPress={onRevealPotential}
-              disabled={revealingPotential || revealedPotentialForCard}
-              style={({ pressed }) => [
-                styles.revealPotentialButton,
-                revealedPotentialForCard && styles.revealPotentialButtonMuted,
-                (pressed || revealingPotential) && styles.pressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.revealPotentialButtonText,
-                  revealedPotentialForCard && styles.revealPotentialButtonTextRevealed,
+            <View style={styles.revealActionsRow}>
+              <Pressable
+                onPress={onRevealPotential}
+                disabled={revealingPotential || revealedPotentialForCard}
+                style={({ pressed }) => [
+                  styles.revealScoreButton,
+                  revealedPotentialForCard && styles.revealScoreButtonMuted,
+                  (pressed || revealingPotential) && styles.pressed,
                 ]}
               >
-                {revealingPotential
-                  ? t('revealingPotential', 'Revealing potential...')
-                  : revealedPotentialForCard
-                    ? t('potentialRevealed', 'Potential is Revealed')
-                    : t('revealPotential', 'Reveal Potential')}
-              </Text>
-            </Pressable>
+                <Text
+                  style={[
+                    styles.revealScoreButtonText,
+                    revealedPotentialForCard && styles.revealScoreButtonTextRevealed,
+                  ]}
+                >
+                  {revealingPotential
+                    ? t('revealingPotential', 'Revealing potential...')
+                    : revealedPotentialForCard
+                      ? t('potentialRevealed', 'Potential is Revealed')
+                      : t('revealPotential', 'Reveal Potential')}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={onRevealForm}
+                disabled={revealingForm || revealedFormForCard}
+                style={({ pressed }) => [
+                  styles.revealScoreButton,
+                  revealedFormForCard && styles.revealScoreButtonMuted,
+                  (pressed || revealingForm) && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.revealScoreButtonText,
+                    revealedFormForCard && styles.revealScoreButtonTextRevealed,
+                  ]}
+                >
+                  {revealingForm
+                    ? t('revealingForm', 'Revealing form...')
+                    : revealedFormForCard
+                      ? t('formRevealed', 'Form is Revealed')
+                      : t('revealForm', 'Reveal Form')}
+                </Text>
+              </Pressable>
+            </View>
             </>
           ) : (
             <View style={styles.emptyCardState}>
@@ -1207,8 +1299,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  revealPotentialButton: {
+  revealActionsRow: {
     marginTop: 12,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  revealScoreButton: {
+    flex: 1,
     minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
@@ -1216,21 +1313,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(22, 163, 74, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
-  revealPotentialButtonMuted: {
+  revealScoreButtonMuted: {
     borderColor: LINE,
     backgroundColor: CARD,
   },
-  revealPotentialButtonText: {
+  revealScoreButtonText: {
     color: ACCENT,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
+    textAlign: 'center',
     textTransform: 'uppercase',
   },
-  revealPotentialButtonTextMuted: {
+  revealScoreButtonTextMuted: {
     color: MUTED,
   },
-  revealPotentialButtonTextRevealed: {
+  revealScoreButtonTextRevealed: {
     color: ACCENT,
   },
   emptyText: {
