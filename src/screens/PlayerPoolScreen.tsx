@@ -543,7 +543,7 @@ export default function PlayerPoolScreen() {
         <CandidatePlayers
           results={results}
           sortedResults={sortedResults}
-          selectedPlayer={selectedPlayer}
+          selectedPlayerId={selectedPlayerId}
           searching={searching}
           error={error}
           candidateTableHeight={candidateTableHeight}

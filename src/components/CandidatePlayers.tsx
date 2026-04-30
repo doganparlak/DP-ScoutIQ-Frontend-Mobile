@@ -39,7 +39,7 @@ export type CandidateSortKey = 'name' | 'gender' | 'nationality' | 'league' | 't
 type Props = {
   results: SearchResultRow[];
   sortedResults: SearchResultRow[];
-  selectedPlayer: PlayerData | null;
+  selectedPlayerId: string | null;
   searching: boolean;
   error: string | null;
   candidateTableHeight: number;
@@ -54,7 +54,7 @@ type Props = {
 export default function CandidatePlayers({
   results,
   sortedResults,
-  selectedPlayer,
+  selectedPlayerId,
   searching,
   error,
   candidateTableHeight,
@@ -178,7 +178,7 @@ export default function CandidatePlayers({
                         onPress={() => onSelectRow(row)}
                         style={({ pressed }) => [
                           styles.row,
-                          selectedPlayer?.name === row.player.name && styles.dataRowActive,
+                          selectedPlayerId === row.id && styles.dataRowActive,
                           pressed && styles.pressed,
                         ]}
                       >

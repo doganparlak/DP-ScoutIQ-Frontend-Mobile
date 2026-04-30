@@ -180,6 +180,8 @@ const HIDDEN_LEAGUE_NAMES = new Set([
   'uefa europa conference league',
   'conference league',
   'fa cup',
+  'the fa cup',
+  'emirates fa cup',
   'coupe de france',
   'copa del rey',
   'knvb beker',
