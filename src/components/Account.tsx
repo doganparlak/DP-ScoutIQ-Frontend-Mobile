@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { ActivityIndicator, Alert, View, Text, StyleSheet, Pressable } from 'react-native';
 import { PANEL, LINE, TEXT, MUTED, ACCENT, ACCENT_DARK, CARD } from '../theme';
-import { getMe, type Profile } from '../services/api';
+import { getMe, updateMe, type Profile, type UILang } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import type { Plan } from '@/services/api';
+import { useLanguage } from '@/context/LanguageProvider';
 
 type Props = {
   plan: Plan;
@@ -14,20 +15,27 @@ type Props = {
 
 export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Props) {
   const [email, setEmail] = React.useState<string>('—');
+  const [savingLanguage, setSavingLanguage] = React.useState(false);
+  const [languageOpen, setLanguageOpen] = React.useState(false);
   const { t } = useTranslation();
+  const { lang, setLang } = useLanguage();
 
   React.useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const me: Profile = await getMe();
-        if (alive) setEmail(me?.email ?? '—');
+        if (!alive) return;
+        setEmail(me?.email ?? '—');
+        if (me?.uiLanguage && me.uiLanguage !== lang) {
+          await setLang(me.uiLanguage);
+        }
       } catch {
         // keep placeholder on error
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [lang, setLang]);
 
   // Map plan code to localized label, e.g. plan_Pro
   const planLabel =
@@ -49,6 +57,63 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
       <View style={styles.kv}>
         <Text style={styles.k}>{t('currentPlan', 'Current plan')}</Text>
         <Text style={styles.v}>{planLabel}</Text>
+      </View>
+
+      <View style={styles.kv}>
+        <Text style={styles.k}>{t('language', 'Language')}</Text>
+        <View style={styles.languageWrap}>
+          <Pressable
+            disabled={savingLanguage}
+            onPress={() => setLanguageOpen((open) => !open)}
+            style={({ pressed }) => [styles.languagePill, pressed && { opacity: 0.86 }]}
+          >
+            {savingLanguage ? (
+              <ActivityIndicator size="small" color={ACCENT} />
+            ) : (
+              <Text style={styles.languagePillText}>
+                {lang === 'tr' ? t('turkish', 'Turkish') : t('english', 'English')} ▾
+              </Text>
+            )}
+          </Pressable>
+
+          {languageOpen && (
+            <View style={styles.languageDropdown}>
+              {([
+                ['en', t('english', 'English')],
+                ['tr', t('turkish', 'Turkish')],
+              ] as Array<[UILang, string]>).map(([code, label]) => (
+                <Pressable
+                  key={code}
+                  disabled={savingLanguage || lang === code}
+                  onPress={async () => {
+                    try {
+                      setSavingLanguage(true);
+                      await updateMe({ uiLanguage: code });
+                      await setLang(code);
+                      setLanguageOpen(false);
+                    } catch (e: any) {
+                      Alert.alert(
+                        t('languageUpdateFailed', 'Language update failed'),
+                        String(e?.message || e),
+                      );
+                    } finally {
+                      setSavingLanguage(false);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.languageOption,
+                    lang === code && styles.languageOptionActive,
+                    pressed && lang !== code && { opacity: 0.86 },
+                  ]}
+                >
+                  <Text style={[styles.languageOptionText, lang === code && styles.languageOptionTextActive]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.btnRow}>
@@ -101,6 +166,44 @@ const styles = StyleSheet.create({
   kv: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   k: { color: MUTED },
   v: { color: TEXT, fontWeight: '600' },
+
+  languageWrap: {
+    alignItems: 'flex-end',
+    position: 'relative',
+    zIndex: 2,
+  },
+  languagePill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  languagePillText: { color: TEXT, fontWeight: '700', fontSize: 13 },
+  languageDropdown: {
+    position: 'absolute',
+    top: 32,
+    right: 0,
+    minWidth: 132,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    padding: 4,
+    zIndex: 5,
+  },
+  languageOption: {
+    borderRadius: 9,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  languageOptionActive: {
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+  },
+  languageOptionText: { color: MUTED, fontWeight: '800', fontSize: 14 },
+  languageOptionTextActive: { color: ACCENT },
 
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   primaryBtn: { flex: 1, borderRadius: 12, alignItems: 'center', paddingVertical: 12 },
