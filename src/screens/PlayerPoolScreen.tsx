@@ -475,17 +475,15 @@ export default function PlayerPoolScreen() {
     const base =
       sortKey === 'name'
         ? t('tblName', 'Name')
-        : sortKey === 'gender'
-          ? t('tblGender', 'Gen.')
-            : sortKey === 'nationality'
-              ? t('tblNat', 'Nat.')
-              : sortKey === 'league'
-                ? t('tblLeague', 'League')
-                : sortKey === 'team'
-                  ? t('tblTeam', 'Team')
-                  : sortKey === 'age'
-                    ? t('tblAge', 'Age')
-                    : t('tblRoles', 'Role');
+        : sortKey === 'nationality'
+          ? t('tblNat', 'Nat.')
+          : sortKey === 'league'
+            ? t('tblLeague', 'League')
+            : sortKey === 'team'
+              ? t('tblTeam', 'Team')
+              : sortKey === 'age'
+                ? t('tblAge', 'Age')
+                : t('tblRoles', 'Role');
     return `${base} (${sortDir === 'asc' ? 'A-Z' : 'Z-A'})`;
   }, [sortDir, sortKey, t]);
 
@@ -510,28 +508,24 @@ export default function PlayerPoolScreen() {
       const aVal =
         sortKey === 'name'
           ? a.player.name
-          : sortKey === 'gender'
-            ? a.player.meta?.gender ?? ''
-            : sortKey === 'role'
-              ? a.player.meta?.roles?.[0] ?? ''
-              : sortKey === 'nationality'
-                ? a.player.meta?.nationality ?? ''
-                : sortKey === 'league'
-                  ? a.player.meta?.league ?? ''
-                  : a.player.meta?.team ?? '';
+          : sortKey === 'role'
+            ? a.player.meta?.roles?.[0] ?? ''
+            : sortKey === 'nationality'
+              ? a.player.meta?.nationality ?? ''
+              : sortKey === 'league'
+                ? a.player.meta?.league ?? ''
+                : a.player.meta?.team ?? '';
 
       const bVal =
         sortKey === 'name'
           ? b.player.name
-          : sortKey === 'gender'
-            ? b.player.meta?.gender ?? ''
-            : sortKey === 'role'
-              ? b.player.meta?.roles?.[0] ?? ''
-              : sortKey === 'nationality'
-                ? b.player.meta?.nationality ?? ''
-                : sortKey === 'league'
-                  ? b.player.meta?.league ?? ''
-                  : b.player.meta?.team ?? '';
+          : sortKey === 'role'
+            ? b.player.meta?.roles?.[0] ?? ''
+            : sortKey === 'nationality'
+              ? b.player.meta?.nationality ?? ''
+              : sortKey === 'league'
+                ? b.player.meta?.league ?? ''
+                : b.player.meta?.team ?? '';
 
       const aMissing = !aVal.trim();
       const bMissing = !bVal.trim();

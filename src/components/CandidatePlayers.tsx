@@ -21,8 +21,8 @@ export const ROW_HEIGHT = 48;
 export const CANDIDATE_TABLE_VISIBLE_ROWS = 5;
 
 const COL = {
+  index: 0.45,
   name: 0.93,
-  gen: 0.9,
   nat: 0.93,
   team: 1.0,
   league: 0.95,
@@ -35,7 +35,7 @@ export type SearchResultRow = {
   player: PlayerData;
 };
 
-export type CandidateSortKey = 'name' | 'gender' | 'nationality' | 'league' | 'team' | 'age' | 'role';
+export type CandidateSortKey = 'name' | 'nationality' | 'league' | 'team' | 'age' | 'role';
 
 type Props = {
   results: SearchResultRow[];
@@ -102,14 +102,7 @@ export default function CandidatePlayers({
       );
     }
 
-    return rows.map((row) => {
-      const genderValue = row.player.meta?.gender?.toLowerCase();
-      const genderLabel =
-        genderValue === 'male'
-          ? t('genderMaleShort', 'M')
-          : genderValue === 'female'
-            ? t('genderFemaleShort', 'F')
-            : '—';
+    return rows.map((row, index) => {
       const nationalityShort = row.player.meta?.nationality
         ? row.player.meta.nationality
             .normalize('NFKD')
@@ -134,12 +127,12 @@ export default function CandidatePlayers({
         : '—';
       const rowContent = (
         <>
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
-            {row.player.name.split(/\s+/)[0] || row.player.name}
+          <Text style={[styles.td, styles.cell, styles.indexCell, { flex: COL.index }]}>
+            {index + 1}
           </Text>
           <View style={styles.vsep} />
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}>
-            {genderLabel}
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+            {row.player.name.split(/\s+/)[0] || row.player.name}
           </Text>
           <View style={styles.vsep} />
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
@@ -217,12 +210,12 @@ export default function CandidatePlayers({
 
           <View style={styles.tableHeaderWrap}>
             <View style={styles.row}>
-              <View style={[styles.cell, { flex: COL.name }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+              <View style={[styles.cell, { flex: COL.index }]}>
+                <Text style={[styles.thText, styles.indexCell]}>#</Text>
               </View>
               <View style={styles.vsep} />
-              <View style={[styles.cell, { flex: COL.gen }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
+              <View style={[styles.cell, { flex: COL.name }]}>
+                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
               </View>
               <View style={styles.vsep} />
               <View style={[styles.cell, { flex: COL.nat }]}>
@@ -299,7 +292,6 @@ export default function CandidatePlayers({
             <ScrollView showsVerticalScrollIndicator={false}>
               {([
                 ['name', t('tblName', 'Name')],
-                ['gender', t('tblGender', 'Gen.')],
                 ['nationality', t('tblNat', 'Nat.')],
                 ['league', t('tblLeague', 'League')],
                 ['team', t('tblTeam', 'Team')],
@@ -352,12 +344,12 @@ export default function CandidatePlayers({
                 <View style={styles.tableTopBorder} />
                 <View style={styles.tableHeaderWrap}>
                   <View style={styles.row}>
-                    <View style={[styles.cell, { flex: COL.name }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+                    <View style={[styles.cell, { flex: COL.index }]}>
+                      <Text style={[styles.thText, styles.indexCell]}>#</Text>
                     </View>
                     <View style={styles.vsep} />
-                    <View style={[styles.cell, { flex: COL.gen }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
+                    <View style={[styles.cell, { flex: COL.name }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
                     </View>
                     <View style={styles.vsep} />
                     <View style={[styles.cell, { flex: COL.nat }]}>
@@ -515,6 +507,7 @@ const styles = StyleSheet.create({
   cell: { paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },
   td: { color: TEXT, flex: 1, fontSize: 12.5 },
+  indexCell: { textAlign: 'center' },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
   dataRowActive: {
     backgroundColor: 'rgba(22, 163, 74, 0.10)',
