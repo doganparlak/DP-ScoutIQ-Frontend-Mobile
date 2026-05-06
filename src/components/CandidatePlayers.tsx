@@ -10,8 +10,9 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, X } from 'lucide-react-native';
+import { ChevronDown, Eye, X } from 'lucide-react-native';
 
+import PlayerCard from '@/components/PlayerCard';
 import { ROLE_LONG_TO_SHORT } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -49,6 +50,11 @@ type Props = {
   sortKey: CandidateSortKey;
   cycleSort: (key: CandidateSortKey) => void;
   onSelectRow: (row: SearchResultRow) => void;
+  weeklyPopularRows: SearchResultRow[];
+  weeklyPopularOpen: boolean;
+  weeklyPopularLoading: boolean;
+  onRevealWeeklyPopular: () => void;
+  onCloseWeeklyPopular: () => void;
 };
 
 export default function CandidatePlayers({
@@ -64,22 +70,139 @@ export default function CandidatePlayers({
   sortKey,
   cycleSort,
   onSelectRow,
+  weeklyPopularRows,
+  weeklyPopularOpen,
+  weeklyPopularLoading,
+  onRevealWeeklyPopular,
+  onCloseWeeklyPopular,
 }: Props) {
   const { t } = useTranslation();
+  const [popularPreviewPlayer, setPopularPreviewPlayer] = React.useState<PlayerData | null>(null);
+
+  React.useEffect(() => {
+    if (!weeklyPopularOpen) {
+      setPopularPreviewPlayer(null);
+    }
+  }, [weeklyPopularOpen]);
+
+  const renderRows = React.useCallback((
+    rows: SearchResultRow[],
+    onPress?: (row: SearchResultRow) => void,
+    activeId?: string | null,
+    emptyMessage?: string,
+  ) => {
+    const displayEmptyMessage =
+      emptyMessage ?? t('playerPoolEmptyBody', 'Run a search to see matching players from your database.');
+
+    if (rows.length === 0) {
+      return (
+        <View style={styles.emptyRow}>
+          <Text style={styles.emptyText}>{displayEmptyMessage}</Text>
+        </View>
+      );
+    }
+
+    return rows.map((row) => {
+      const genderValue = row.player.meta?.gender?.toLowerCase();
+      const genderLabel =
+        genderValue === 'male'
+          ? t('genderMaleShort', 'M')
+          : genderValue === 'female'
+            ? t('genderFemaleShort', 'F')
+            : '—';
+      const nationalityShort = row.player.meta?.nationality
+        ? row.player.meta.nationality
+            .normalize('NFKD')
+            .replace(/[^\p{Letter}\s]/gu, '')
+            .trim()
+            .split(/\s+/)[0]
+            ?.slice(0, 3)
+            .toUpperCase() || '—'
+        : '—';
+      const roleValue = row.player.meta?.roles?.[0];
+      const roleShort =
+        (roleValue && ROLE_LONG_TO_SHORT[roleValue]) ||
+        roleValue ||
+        '—';
+      const leagueShort = row.player.meta?.league
+        ? row.player.meta.league
+            .split(/\s+/)
+            .map((part) => part[0])
+            .join('')
+            .slice(0, 5)
+            .toUpperCase() || row.player.meta.league
+        : '—';
+      const rowContent = (
+        <>
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+            {row.player.name.split(/\s+/)[0] || row.player.name}
+          </Text>
+          <View style={styles.vsep} />
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}>
+            {genderLabel}
+          </Text>
+          <View style={styles.vsep} />
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
+            {nationalityShort}
+          </Text>
+          <View style={styles.vsep} />
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
+            {leagueShort}
+          </Text>
+          <View style={styles.vsep} />
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
+            {row.player.meta?.team || '—'}
+          </Text>
+          <View style={styles.vsep} />
+          <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
+            {row.player.meta?.age ?? '—'}
+          </Text>
+          <View style={styles.vsep} />
+          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
+            {roleShort}
+          </Text>
+        </>
+      );
+
+      return (
+        <View key={row.id}>
+          {onPress ? (
+            <Pressable
+              onPress={() => onPress(row)}
+              style={({ pressed }) => [
+                styles.row,
+                activeId === row.id && styles.dataRowActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              {rowContent}
+            </Pressable>
+          ) : (
+            <View style={[styles.row, activeId === row.id && styles.dataRowActive]}>
+              {rowContent}
+            </View>
+          )}
+          <View style={styles.hsepThick} />
+        </View>
+      );
+    });
+  }, [t]);
 
   return (
     <View style={styles.panel}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>{t('playerPoolCandidates', 'Candidate players')}</Text>
-        <Pressable
-          onPress={() => setSortOpen(true)}
-          style={({ pressed }) => [styles.sortByButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.sortByButtonText}>
-            {t('sortBy', 'Sort by')}: {sortLabel}
-          </Text>
-          <ChevronDown size={15} color={MUTED} strokeWidth={2.2} />
-        </Pressable>
+        <View>
+          <Pressable
+            onPress={() => setSortOpen(true)}
+            style={({ pressed }) => [styles.sortByButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.sortByButtonText}>
+              {t('sortBy', 'Sort by')}: {sortLabel}
+            </Text>
+            <ChevronDown size={15} color={MUTED} strokeWidth={2.2} />
+          </Pressable>
+        </View>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -134,93 +257,27 @@ export default function CandidatePlayers({
               bounces={false}
               showsVerticalScrollIndicator
             >
-              {results.length === 0 ? (
-                <View style={styles.emptyRow}>
-                  <Text style={styles.emptyText}>
-                    {t('playerPoolEmptyBody', 'Run a search to see matching players from your database.')}
-                  </Text>
-                </View>
-              ) : (
-                sortedResults.map((row) => {
-                  const genderValue = row.player.meta?.gender?.toLowerCase();
-                  const genderLabel =
-                    genderValue === 'male'
-                      ? t('genderMaleShort', 'M')
-                      : genderValue === 'female'
-                        ? t('genderFemaleShort', 'F')
-                        : '—';
-                  const nationalityShort = row.player.meta?.nationality
-                    ? row.player.meta.nationality
-                        .normalize('NFKD')
-                        .replace(/[^\p{Letter}\s]/gu, '')
-                        .trim()
-                        .split(/\s+/)[0]
-                        ?.slice(0, 3)
-                        .toUpperCase() || '—'
-                    : '—';
-                  const roleValue = row.player.meta?.roles?.[0];
-                  const roleShort =
-                    (roleValue && ROLE_LONG_TO_SHORT[roleValue]) ||
-                    roleValue ||
-                    '—';
-                  const leagueShort = row.player.meta?.league
-                    ? row.player.meta.league
-                        .split(/\s+/)
-                        .map((part) => part[0])
-                        .join('')
-                        .slice(0, 5)
-                        .toUpperCase() || row.player.meta.league
-                    : '—';
-
-                  return (
-                    <View key={row.id}>
-                      <Pressable
-                        onPress={() => onSelectRow(row)}
-                        style={({ pressed }) => [
-                          styles.row,
-                          selectedPlayerId === row.id && styles.dataRowActive,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
-                          {row.player.name.split(/\s+/)[0] || row.player.name}
-                        </Text>
-                        <View style={styles.vsep} />
-                        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.gen, textAlign: 'center' }]}>
-                          {genderLabel}
-                        </Text>
-                        <View style={styles.vsep} />
-                        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
-                          {nationalityShort}
-                        </Text>
-                        <View style={styles.vsep} />
-                        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
-                          {leagueShort}
-                        </Text>
-                        <View style={styles.vsep} />
-                        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
-                          {row.player.meta?.team || '—'}
-                        </Text>
-                        <View style={styles.vsep} />
-                        <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
-                          {row.player.meta?.age ?? '—'}
-                        </Text>
-                        <View style={styles.vsep} />
-                        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
-                          {roleShort}
-                        </Text>
-                      </Pressable>
-                      <View style={styles.hsepThick} />
-                    </View>
-                  );
-                })
-              )}
+              {renderRows(sortedResults, onSelectRow, selectedPlayerId)}
             </ScrollView>
           </View>
 
           <View style={styles.tableBottomBorder} />
         </View>
       )}
+
+      <Pressable
+        onPress={onRevealWeeklyPopular}
+        style={({ pressed }) => [styles.popularButton, pressed && styles.pressed]}
+      >
+        {weeklyPopularLoading ? (
+          <ActivityIndicator size="small" color={ACCENT} />
+        ) : (
+          <Eye size={18} color={ACCENT} strokeWidth={2.2} />
+        )}
+        <Text numberOfLines={2} style={styles.popularButtonText}>
+          {t('revealWeeklyPopularPlayers', "Reveal this week's popular players")}
+        </Text>
+      </Pressable>
 
       <Modal
         transparent
@@ -266,6 +323,110 @@ export default function CandidatePlayers({
           </View>
         </View>
       </Modal>
+
+      <Modal
+        transparent
+        visible={weeklyPopularOpen}
+        animationType="fade"
+        onRequestClose={onCloseWeeklyPopular}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.popularModalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, styles.popularModalTitle]}>
+                {t('weeklyPopularPlayers', "This week's popular players")}
+              </Text>
+              <Pressable onPress={onCloseWeeklyPopular}>
+                {({ pressed }) => (
+                  <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
+                )}
+              </Pressable>
+            </View>
+
+            {weeklyPopularLoading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator color={ACCENT} />
+              </View>
+            ) : (
+              <View style={styles.table}>
+                <View style={styles.tableTopBorder} />
+                <View style={styles.tableHeaderWrap}>
+                  <View style={styles.row}>
+                    <View style={[styles.cell, { flex: COL.name }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+                    </View>
+                    <View style={styles.vsep} />
+                    <View style={[styles.cell, { flex: COL.gen }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblGender', 'Gen.')}</Text>
+                    </View>
+                    <View style={styles.vsep} />
+                    <View style={[styles.cell, { flex: COL.nat }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
+                    </View>
+                    <View style={styles.vsep} />
+                    <View style={[styles.cell, { flex: COL.league }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
+                    </View>
+                    <View style={styles.vsep} />
+                    <View style={[styles.cell, { flex: COL.team }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
+                    </View>
+                    <View style={styles.vsep} />
+                    <View style={[styles.cell, { flex: COL.age }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
+                    </View>
+                    <View style={styles.vsep} />
+                    <View style={[styles.cell, { flex: COL.roles }]}>
+                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.hsepThick} />
+                </View>
+                <ScrollView
+                  style={styles.popularScroll}
+                  contentContainerStyle={{ paddingRight: 5 }}
+                  nestedScrollEnabled
+                  bounces={false}
+                  showsVerticalScrollIndicator
+                >
+                  {renderRows(
+                    weeklyPopularRows,
+                    (row) => setPopularPreviewPlayer(row.player),
+                    undefined,
+                    t('weeklyPopularEmpty', 'No popular players have been recorded this week yet.'),
+                  )}
+                </ScrollView>
+                <View style={styles.tableBottomBorder} />
+              </View>
+            )}
+          </View>
+        </View>
+
+        <Modal
+          transparent
+          visible={!!popularPreviewPlayer}
+          animationType="fade"
+          onRequestClose={() => setPopularPreviewPlayer(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCardWrap}>
+              {popularPreviewPlayer ? (
+                <PlayerCard player={popularPreviewPlayer} titleAlign="center" />
+              ) : null}
+              <Pressable
+                onPress={() => setPopularPreviewPlayer(null)}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                style={({ pressed }) => [styles.closeInsideCard, { opacity: pressed ? 0.9 : 1 }]}
+                accessibilityLabel={t('closePlayerCard', 'Close player card')}
+              >
+                {({ pressed }) => (
+                  <X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </Modal>
     </View>
   );
 }
@@ -290,6 +451,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     marginBottom: 10,
+  },
+  popularButton: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    marginTop: 12,
+  },
+  popularButtonText: {
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   sortByButton: {
     flexDirection: 'row',
@@ -364,6 +545,17 @@ const styles = StyleSheet.create({
     padding: 16,
     maxHeight: '70%',
   },
+  popularModalCard: {
+    backgroundColor: PANEL,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: LINE,
+    padding: 16,
+    maxHeight: '78%',
+  },
+  popularScroll: {
+    maxHeight: ROW_HEIGHT * 8,
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -375,6 +567,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
+  popularModalTitle: {
+    color: ACCENT,
+  },
+  modalCardWrap: {
+    width: '100%',
+    maxWidth: 560,
+    borderRadius: 16,
+    overflow: 'visible',
+    padding: 2,
+    position: 'relative',
+  },
+  closeInsideCard: { position: 'absolute', top: 6, right: 6, zIndex: 10, padding: 6 },
   optionRow: {
     borderRadius: 12,
     borderWidth: 1,

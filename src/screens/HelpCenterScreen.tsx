@@ -277,6 +277,15 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
+              <Text style={styles.h3}>{t('howWeeklyTopSearchesTitle', 'Weekly Top Searches')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howWeeklyTopSearches1', 'Weekly Top Searches reveals the 10 players users showed the strongest interest in during the current week.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
               <Text style={styles.h3}>{t('howCardTitle', 'Player Card')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each player card encapsulates essential identity (age, gender, nationality), team identity (team name, league), technical identity (role), physical identity (weight, height), and potential/form values.')}

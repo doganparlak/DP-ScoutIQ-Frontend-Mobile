@@ -9,7 +9,12 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { incrementPotentialRevealCount, shouldShowPotentialInterstitial } from '@/ads/adGating';
+import {
+  incrementPotentialRevealCount,
+  incrementWeeklyPopularRevealCount,
+  shouldShowPotentialInterstitial,
+  shouldShowWeeklyPopularInterstitial,
+} from '@/ads/adGating';
 import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
 import { ProNotReadyScreen } from '@/ads/pro';
 import CandidatePlayers, {
@@ -27,6 +32,8 @@ import {
   ROLE_SHORT_TO_LONG,
   getMe,
   getPlayerPoolOptions,
+  getWeeklyPopularPlayers,
+  recordPlayerPoolSearchHit,
   revealPlayerPoolForm,
   revealPlayerPoolPotential,
   searchPlayerPool,
@@ -67,12 +74,17 @@ export default function PlayerPoolScreen() {
   const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
+  const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
+  const [weeklyPopularLoading, setWeeklyPopularLoading] = React.useState(false);
+  const [weeklyPopularRows, setWeeklyPopularRows] = React.useState<SearchResultRow[]>([]);
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
   const [positionOptions, setPositionOptions] = React.useState<string[]>(
     [...PLAYER_POOL_POSITION_OPTIONS],
   );
+  const currentCardRenderIdRef = React.useRef<string | null>(null);
+  const countedCardRenderIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     setInterstitialFailureHandler(() => setProUpsellOpen(true));
@@ -180,6 +192,8 @@ export default function PlayerPoolScreen() {
     setResults([]);
     setSelectedPlayerId(null);
     setSelectedPlayer(null);
+    currentCardRenderIdRef.current = null;
+    countedCardRenderIdRef.current = null;
     setRevealedPotentialForCard(false);
     setRevealedFormForCard(false);
     setError(null);
@@ -219,13 +233,18 @@ export default function PlayerPoolScreen() {
           : next;
       setRevealedPotentialForCard(false);
       setRevealedFormForCard(false);
+      const firstRow = filteredNext[0];
+      currentCardRenderIdRef.current = firstRow ? `${firstRow.id}:${Date.now()}` : null;
+      countedCardRenderIdRef.current = null;
       setResults(filteredNext);
-      setSelectedPlayerId(filteredNext[0]?.id ?? null);
-      setSelectedPlayer(filteredNext[0]?.player ?? null);
+      setSelectedPlayerId(firstRow?.id ?? null);
+      setSelectedPlayer(firstRow?.player ?? null);
     } catch (err: any) {
       setResults([]);
       setSelectedPlayerId(null);
       setSelectedPlayer(null);
+      currentCardRenderIdRef.current = null;
+      countedCardRenderIdRef.current = null;
       setRevealedPotentialForCard(false);
       setRevealedFormForCard(false);
       setError(err?.message ?? t('favoritesError', 'Favorites error'));
@@ -249,6 +268,14 @@ export default function PlayerPoolScreen() {
     team,
   ]);
 
+  const recordSelectedCardInterestOnce = React.useCallback(() => {
+    const renderId = currentCardRenderIdRef.current;
+    if (!selectedPlayerId || !renderId || countedCardRenderIdRef.current === renderId) return;
+
+    countedCardRenderIdRef.current = renderId;
+    recordPlayerPoolSearchHit(selectedPlayerId).catch(() => {});
+  }, [selectedPlayerId]);
+
   const onRevealPotential = React.useCallback(async () => {
     if (!selectedPlayerId || !selectedPlayer || revealingPotential) return;
 
@@ -268,6 +295,7 @@ export default function PlayerPoolScreen() {
       const revealed = await revealPlayerPoolPotential(selectedPlayerId);
       const potential = Math.round(revealed.potential);
       setRevealedPotentialForCard(true);
+      recordSelectedCardInterestOnce();
 
       setResults((current) =>
         current.map((row) =>
@@ -302,7 +330,7 @@ export default function PlayerPoolScreen() {
     } finally {
       setRevealingPotential(false);
     }
-  }, [plan, revealingPotential, selectedPlayer, selectedPlayerId, t]);
+  }, [plan, recordSelectedCardInterestOnce, revealingPotential, selectedPlayer, selectedPlayerId, t]);
 
   const onRevealForm = React.useCallback(async () => {
     if (!selectedPlayerId || !selectedPlayer || revealingForm) return;
@@ -323,6 +351,7 @@ export default function PlayerPoolScreen() {
       const revealed = await revealPlayerPoolForm(selectedPlayerId);
       const form = Math.round(revealed.form);
       setRevealedFormForCard(true);
+      recordSelectedCardInterestOnce();
 
       setResults((current) =>
         current.map((row) =>
@@ -357,7 +386,37 @@ export default function PlayerPoolScreen() {
     } finally {
       setRevealingForm(false);
     }
-  }, [plan, revealingForm, selectedPlayer, selectedPlayerId, t]);
+  }, [plan, recordSelectedCardInterestOnce, revealingForm, selectedPlayer, selectedPlayerId, t]);
+
+  const onRevealWeeklyPopular = React.useCallback(async () => {
+    if (weeklyPopularLoading) return;
+
+    try {
+      setWeeklyPopularLoading(true);
+      setWeeklyPopularOpen(true);
+
+      if (plan === 'Free') {
+        const nextCount = await incrementWeeklyPopularRevealCount();
+        if (shouldShowWeeklyPopularInterstitial(nextCount)) {
+          const ok = showInterstitialSafely();
+          if (!ok) {
+            setProUpsellOpen(true);
+          }
+        }
+      }
+
+      const nextRows = await getWeeklyPopularPlayers(10);
+      setWeeklyPopularRows(nextRows);
+    } catch (err: any) {
+      setWeeklyPopularOpen(false);
+      Alert.alert(
+        t('weeklyPopularRevealFailed', 'Popular players failed'),
+        String(err?.message || err),
+      );
+    } finally {
+      setWeeklyPopularLoading(false);
+    }
+  }, [plan, t, weeklyPopularLoading]);
 
   const selectedPlayerForCard = React.useMemo(() => {
     if (!selectedPlayer) return null;
@@ -552,9 +611,16 @@ export default function PlayerPoolScreen() {
           setSortOpen={setSortOpen}
           sortKey={sortKey}
           cycleSort={cycleSort}
+          weeklyPopularRows={weeklyPopularRows}
+          weeklyPopularOpen={weeklyPopularOpen}
+          weeklyPopularLoading={weeklyPopularLoading}
+          onRevealWeeklyPopular={onRevealWeeklyPopular}
+          onCloseWeeklyPopular={() => setWeeklyPopularOpen(false)}
           onSelectRow={(row) => {
             setRevealedPotentialForCard(false);
             setRevealedFormForCard(false);
+            currentCardRenderIdRef.current = `${row.id}:${Date.now()}`;
+            countedCardRenderIdRef.current = null;
             setSelectedPlayerId(row.id);
             setSelectedPlayer(row.player);
           }}
@@ -565,6 +631,7 @@ export default function PlayerPoolScreen() {
           selectedPlayerForCard={selectedPlayerForCard}
           onRevealPotential={onRevealPotential}
           onRevealForm={onRevealForm}
+          onAddFavoriteSuccess={recordSelectedCardInterestOnce}
           revealingPotential={revealingPotential}
           revealingForm={revealingForm}
           revealedPotentialForCard={revealedPotentialForCard}

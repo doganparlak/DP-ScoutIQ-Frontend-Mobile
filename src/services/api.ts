@@ -349,6 +349,33 @@ export async function searchPlayerPool(
     .filter(Boolean) as Array<{ id: string; player: PlayerData }>;
 }
 
+export async function getWeeklyPopularPlayers(
+  limit = 10,
+): Promise<Array<{ id: string; player: PlayerData }>> {
+  const rows = await request<PlayerPoolRawRow[]>(ENDPOINTS.playerPoolWeeklyPopular, {
+    method: 'POST',
+    body: JSON.stringify({ limit }),
+  });
+
+  return (rows || [])
+    .map((row, index) => {
+      const id = String(row.id ?? `weekly-popular-${index}`);
+      const player = normalizePlayerPoolContent(row.content ?? row, id);
+      if (player?.meta) {
+        delete player.meta.potential;
+        delete player.meta.form;
+      }
+      return player ? { id, player } : null;
+    })
+    .filter(Boolean) as Array<{ id: string; player: PlayerData }>;
+}
+
+export async function recordPlayerPoolSearchHit(playerId: string): Promise<void> {
+  await request<{ ok: boolean }>(ENDPOINTS.playerPoolSearchHit(playerId), {
+    method: 'POST',
+  });
+}
+
 export async function getPlayerPoolOptions(): Promise<PlayerPoolFilterOptions> {
   const options = await request<PlayerPoolFilterOptions>(ENDPOINTS.playerPoolOptions);
   return {

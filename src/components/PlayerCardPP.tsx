@@ -18,6 +18,7 @@ type Props = {
   selectedPlayerForCard: PlayerData | null;
   onRevealPotential: () => void;
   onRevealForm: () => void;
+  onAddFavoriteSuccess?: () => void;
   revealingPotential: boolean;
   revealingForm: boolean;
   revealedPotentialForCard: boolean;
@@ -29,6 +30,7 @@ export default function PlayerCardPP({
   selectedPlayerForCard,
   onRevealPotential,
   onRevealForm,
+  onAddFavoriteSuccess,
   revealingPotential,
   revealingForm,
   revealedPotentialForCard,
@@ -73,6 +75,7 @@ export default function PlayerCardPP({
                   league: player.meta?.league,
                   roles: player.meta?.roles ?? [],
                 });
+                onAddFavoriteSuccess?.();
                 return true;
               } catch (e: any) {
                 Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
