@@ -50,6 +50,26 @@ const ALL_ROLE_SHORTS = [
   'GK','LB','RB','LCB','RCB','CB','LWB','RWB','LM','RM','LDM','RDM','LCM','RCM','LAM','RAM','CDM','CM','CAM','LW','RW','LCF','RCF','CF',
 ] as const;
 
+const COMPATIBLE_SHORT_ROLES: Record<string, string[]> = {
+  LCB: ['LCB', 'CB'],
+  RCB: ['RCB', 'CB'],
+  LWB: ['LWB', 'LB', 'LM'],
+  RWB: ['RWB', 'RB', 'RM'],
+  LDM: ['LDM', 'CDM'],
+  RDM: ['RDM', 'CDM'],
+  LCM: ['LCM', 'CM'],
+  RCM: ['RCM', 'CM'],
+  LAM: ['LAM', 'CAM'],
+  RAM: ['RAM', 'CAM'],
+  LCF: ['LCF', 'CF'],
+  RCF: ['RCF', 'CF'],
+};
+
+function roleMatchesSelection(playerRoles: string[], selectedRole: string) {
+  const compatibleRoles = COMPATIBLE_SHORT_ROLES[selectedRole] ?? [selectedRole];
+  return compatibleRoles.some((role) => playerRoles.includes(role));
+}
+
 const ROW_HEIGHT = 48;
 const COL = {
   rep: 0.55,
@@ -243,7 +263,12 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       if (minF !== undefined && (p.form ?? -Infinity) < minF) return false;
       if (maxF !== undefined && (p.form ?? Infinity) > maxF) return false;
 
-      if (selectedRoles.length > 0 && !selectedRoles.some((r) => p.rolesShort.includes(r))) return false;
+      if (
+        selectedRoles.length > 0 &&
+        !selectedRoles.some((role) => roleMatchesSelection(p.rolesShort, role))
+      ) {
+        return false;
+      }
 
       return true;
     });
