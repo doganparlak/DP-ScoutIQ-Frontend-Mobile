@@ -80,7 +80,7 @@ export default function WelcomeCard() {
         />
         <Row
           Icon={SquareChevronUp}
-          text={t('wcPotential', 'Discover the quantified potential of players.')}
+          text={t('wcPotential', 'Discover the quantified potential and form of players.')}
         />
         <Row
           Icon={Database}

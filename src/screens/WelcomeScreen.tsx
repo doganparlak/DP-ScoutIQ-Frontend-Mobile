@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BG, TEXT, ACCENT, ACCENT_DARK, LINE, PANEL } from '@/theme';
+import { BG, TEXT, ACCENT, LINE, PANEL } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { useLanguage } from '@/context/LanguageProvider';
 import { useTranslation } from 'react-i18next';
@@ -90,7 +90,7 @@ export default function WelcomeScreen() {
         onPress={() => navigation.navigate('Login')}
         style={({ pressed }) => [
           styles.primaryBtn,
-          { backgroundColor: pressed ? ACCENT_DARK : ACCENT },
+          pressed && { opacity: 0.9 },
         ]}
       >
         <Text style={styles.primaryBtnText}>{t('login')}</Text>
@@ -191,8 +191,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     marginBottom: 14,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
   },
-  primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 17 },
+  primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 17 },
   secondaryBtn: {
     width: '80%',
     borderRadius: 14,

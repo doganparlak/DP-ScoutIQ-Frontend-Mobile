@@ -123,8 +123,8 @@ export default function StrategyCard({ onSaved, disabled = false }: Props) {
             accessibilityRole="button"
             accessibilityLabel={t('setStrategy', 'Set Strategy')}
 >
-            <Save size={18} color="white" />
-            <Text style={styles.btnText}>{t('setStrategy', 'Set Strategy')}</Text>
+            <Save size={18} color={ACCENT} />
+            <Text style={[styles.btnText, styles.btnTextAccent]}>{t('setStrategy', 'Set Strategy')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -195,9 +195,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  btnPrimary: { backgroundColor: ACCENT },
+  btnPrimary: {
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+  },
   btnOutline: { borderWidth: 1.5, borderColor: LINE, backgroundColor: 'transparent' },
   btnText: { color: 'white', fontWeight: '800', marginLeft: 8 },
+  btnTextAccent: { color: ACCENT },
   pressed: { opacity: 0.9 },
   btnDisabled: { opacity: 0.45 },
 });

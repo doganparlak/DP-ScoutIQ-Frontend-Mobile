@@ -17,7 +17,7 @@ import { Eye, EyeOff } from 'lucide-react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
+import { BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE } from '@/theme';
 import { RootStackParamList } from '@/types';
 import { setNewPassword } from '@/services/api';
 import { useTranslation } from 'react-i18next';
@@ -179,8 +179,7 @@ export default function NewPasswordScreen() {
                 style={({ pressed }) => [
                   styles.primaryBtn,
                   {
-                    backgroundColor: pressed ? ACCENT_DARK : ACCENT,
-                    opacity: !isValid || submitting ? 0.6 : 1,
+                    opacity: !isValid || submitting ? 0.6 : pressed ? 0.9 : 1,
                   },
                 ]}
               >
@@ -277,8 +276,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
   },
-  primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 16 },
+  primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 16 },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',

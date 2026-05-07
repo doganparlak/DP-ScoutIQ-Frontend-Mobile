@@ -665,9 +665,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     paddingVertical: 12,
-    backgroundColor: ACCENT,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
   },
-  primaryBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 16 },
 
   cancelNote: {
     marginTop: 8,

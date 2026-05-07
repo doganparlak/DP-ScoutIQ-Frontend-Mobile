@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Alert, View, Text, StyleSheet, Pressable } from 'react-native';
-import { PANEL, LINE, TEXT, MUTED, ACCENT, ACCENT_DARK, CARD } from '../theme';
+import { PANEL, LINE, TEXT, MUTED, ACCENT, CARD } from '../theme';
 import { getMe, updateMe, type Profile, type UILang } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import type { Plan } from '@/services/api';
@@ -121,7 +121,7 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
           onPress={onOpenPlans}
           accessibilityRole="button"
           accessibilityLabel={t('managePlan', 'Manage plan')}
-          style={({ pressed }) => [styles.primaryBtn, { backgroundColor: pressed ? ACCENT_DARK : ACCENT }]}
+          style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
         >
           <Text style={styles.primaryBtnText}>{t('managePlan', 'Manage plan')}</Text>
         </Pressable>
@@ -206,8 +206,16 @@ const styles = StyleSheet.create({
   languageOptionTextActive: { color: ACCENT },
 
   btnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  primaryBtn: { flex: 1, borderRadius: 12, alignItems: 'center', paddingVertical: 12 },
-  primaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
+  primaryBtn: {
+    flex: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+  },
+  primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 15 },
   outlineBtn: {
     flex: 1,
     borderRadius: 12,

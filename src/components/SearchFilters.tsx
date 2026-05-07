@@ -377,6 +377,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
+    letterSpacing: 0,
   },
   centeredInput: {
     justifyContent: 'center',

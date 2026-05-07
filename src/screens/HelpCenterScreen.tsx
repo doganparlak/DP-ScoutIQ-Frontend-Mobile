@@ -220,46 +220,23 @@ export default function HelpCenter() {
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerPool1', 'Player Pool is a dedicated search space where you can discover players directly from your database.')}
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {i18n.language?.startsWith('tr') ? (
-                  <>
-                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
-                      .split('Oyuncu Arama')[0]}
-                    <Text style={styles.bold}>Oyuncu Arama</Text>
-                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
-                      .split('Oyuncu Arama')[1]
-                      ?.split('Oyuncu Adayları')[0]}
-                    <Text style={styles.bold}>Oyuncu Adayları</Text>
-                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
-                      .split('Oyuncu Adayları')[1]
-                      ?.split('Oyuncu Kartı')[0]}
-                    <Text style={styles.bold}>Oyuncu Kartı</Text>
-                    {t('howPlayerPool2', 'Oyuncu keşfi akışı için Oyuncu Arama, Oyuncu Adayları ve Oyuncu Kartı bölümlerinden oluşur.')
-                      .split('Oyuncu Kartı')[1]}
-                  </>
-                ) : (
-                  <>
-                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
-                      .split('Player Search')[0]}
-                    <Text style={styles.bold}>Player Search</Text>
-                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
-                      .split('Player Search')[1]
-                      ?.split('Candidate Players')[0]}
-                    <Text style={styles.bold}>Candidate Players</Text>
-                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
-                      .split('Candidate Players')[1]
-                      ?.split('Player Card')[0]}
-                    <Text style={styles.bold}>Player Card</Text>
-                    {t('howPlayerPool2', 'It is organized into Player Search, Candidate Players, and Player Card sections for scouting workflow.')
-                      .split('Player Card')[1]}
-                  </>
-                )}
+                {t('howPlayerPool2', 'It is organized into Search Filters, Candidate Players, Player Card, and Matchup Center sections for scouting workflow.')}
               </Text>
             </View>
 
             <View style={styles.line} />
 
             <View style={styles.block}>
-              <Text style={styles.h3}>{t('howPlayerSearchTitle', 'Player Search')}</Text>
+              <Text style={styles.h3}>{t('howWeeklyTopSearchesTitle', 'Weekly Top Searches')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howWeeklyTopSearches1', 'Weekly Top Searches reveals the 10 players users showed the strongest interest in during the current week.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
+              <Text style={styles.h3}>{t('howPlayerSearchTitle', 'Search Filters')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerSearch1', 'Use the search filters to narrow players by identity, team, league, nationality, role, age, and physical profile.')}
               </Text>
@@ -277,20 +254,20 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
-              <Text style={styles.h3}>{t('howWeeklyTopSearchesTitle', 'Weekly Top Searches')}</Text>
+              <Text style={styles.h3}>{t('howCardTitle', 'Player Card')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howWeeklyTopSearches1', 'Weekly Top Searches reveals the 10 players users showed the strongest interest in during the current week.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each player card encapsulates essential identity (age, gender, nationality), team identity (team name, league), technical identity (role), physical identity (weight, height), and potential/form values.')}
+                {'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard2', 'Allows you to add the player to your portfolio.')}
               </Text>
             </View>
 
             <View style={styles.line} />
 
             <View style={styles.block}>
-              <Text style={styles.h3}>{t('howCardTitle', 'Player Card')}</Text>
+              <Text style={styles.h3}>{t('howMatchupCenterTitle', 'Matchup Center')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each player card encapsulates essential identity (age, gender, nationality), team identity (team name, league), technical identity (role), physical identity (weight, height), and potential/form values.')}
-                {'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard2', 'Allows you to add the player to your portfolio.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howMatchupCenter1', 'Matchup Center lets you place two selected players side by side, launch a comparison, and review shared metrics with tables, charts, and discipline tiles.')}
               </Text>
             </View>
 
@@ -412,7 +389,7 @@ export default function HelpCenter() {
               disabled={hasSentThisLogin}
               style={({ pressed }) => [
                 styles.sendBtn,
-                { backgroundColor: hasSentThisLogin ? MUTED : (pressed ? ACCENT_DARK : ACCENT) },
+                pressed && !hasSentThisLogin ? { opacity: 0.9 } : null,
                 hasSentThisLogin && { opacity: 0.7 },
               ]}
               accessibilityLabel={hasSentThisLogin ? t('sent', 'Sent') : t('send', 'Send')}
@@ -502,9 +479,9 @@ const styles = StyleSheet.create({
   segmentWrap: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 12, marginBottom: 14 },
   segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
   segmentBtnIdle: { backgroundColor: CARD, borderColor: LINE },
-  segmentBtnActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+  segmentBtnActive: { backgroundColor: 'rgba(22, 163, 74, 0.12)', borderColor: ACCENT },
   segmentText: { fontWeight: '800', color: TEXT },
-  segmentTextActive: { color: '#fff' },
+  segmentTextActive: { color: ACCENT },
 
   card: {
     backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE,
@@ -523,8 +500,16 @@ const styles = StyleSheet.create({
     minHeight: 120, textAlignVertical: 'top', color: TEXT, backgroundColor: CARD,
     borderColor: LINE, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
   },
-  sendBtn: { marginTop: 10, borderRadius: 12, alignItems: 'center', paddingVertical: 12 },
-  sendText: { color: '#fff', fontWeight: '800' },
+  sendBtn: {
+    marginTop: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+  },
+  sendText: { color: ACCENT, fontWeight: '900' },
   sentNote: { color: MUTED, marginTop: 8, textAlign: 'center' },
 
   deleteBtn: { marginTop: 6, borderRadius: 10, alignItems: 'center', paddingVertical: 12 },

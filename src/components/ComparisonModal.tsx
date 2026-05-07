@@ -9,7 +9,19 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { List, Medal, Radar, ShieldAlert, X } from 'lucide-react-native';
+import {
+  BrickWall,
+  Bug,
+  DraftingCompass,
+  List,
+  LogIn,
+  Medal,
+  LineChart,
+  ShieldAlert,
+  ShieldCheck,
+  Star,
+  X,
+} from 'lucide-react-native';
 import {
   VictoryArea,
   VictoryChart,
@@ -66,21 +78,23 @@ type PartialMetricRow = {
 };
 
 const GROUPS = [
-  { key: 'goalkeeping', fallbackTitle: 'Goalkeeping', metrics: GK_METRICS, lowerIsBetter: false },
+  { key: 'goalkeeping', fallbackTitle: 'Goalkeeping', metrics: GK_METRICS, lowerIsBetter: false, Icon: ShieldCheck },
   {
     key: 'contribution_impact',
     fallbackTitle: 'Contribution & Impact',
     metrics: CONTRIBUTION_IMPACT_METRICS,
     lowerIsBetter: false,
+    Icon: Star,
   },
-  { key: 'shooting', fallbackTitle: 'Shooting & Finishing', metrics: SHOOTING_METRICS, lowerIsBetter: false },
-  { key: 'passing', fallbackTitle: 'Passing & Delivery', metrics: PASSING_METRICS, lowerIsBetter: false },
-  { key: 'defending', fallbackTitle: 'Defending', metrics: DEFENDING_METRICS, lowerIsBetter: false },
+  { key: 'shooting', fallbackTitle: 'Shooting & Finishing', metrics: SHOOTING_METRICS, lowerIsBetter: false, Icon: LogIn },
+  { key: 'passing', fallbackTitle: 'Passing & Delivery', metrics: PASSING_METRICS, lowerIsBetter: false, Icon: DraftingCompass },
+  { key: 'defending', fallbackTitle: 'Defending', metrics: DEFENDING_METRICS, lowerIsBetter: false, Icon: BrickWall },
   {
     key: 'errors_discipline',
     fallbackTitle: 'Errors & Discipline',
     metrics: ERRORS_DISCIPLINE_METRICS,
     lowerIsBetter: true,
+    Icon: Bug,
   },
 ] as const;
 
@@ -337,6 +351,82 @@ export default function ComparisonModal({
     );
   };
 
+  const renderDualErrorTiles = (rows: MetricRow[], player1Name: string, player2Name: string) => {
+    const riskFor = (point: SpiderPoint, value?: number) => {
+      const min = Number(point.min);
+      const max = Number(point.max);
+      const v = Number(value);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min || !Number.isFinite(v)) return 0;
+      return Math.max(0, Math.min(1, (v - min) / (max - min)));
+    };
+
+    const severityColor = (risk: number) => {
+      if (risk < 0.33) return ACCENT;
+      if (risk < 0.66) return '#F59E0B';
+      return DANGER;
+    };
+
+    return (
+      <View style={styles.dualTilesCard}>
+        <View style={styles.dualTilesHintRow}>
+          <Text style={styles.dualTilesHint}>{t('riskBetter', 'Better')}</Text>
+          <Text style={styles.dualTilesHint}>{t('riskWorse', 'Worse')}</Text>
+        </View>
+
+        {rows.map((row) => {
+          const p1Risk = riskFor(row.point1, row.value1);
+          const p2Risk = riskFor(row.point2, row.value2);
+          const p1Better = typeof row.value1 === 'number' && typeof row.value2 === 'number' && row.value1 < row.value2;
+          const p2Better = typeof row.value1 === 'number' && typeof row.value2 === 'number' && row.value2 < row.value1;
+
+          return (
+            <View key={row.metric} style={styles.dualTileRow}>
+              <Text numberOfLines={2} style={styles.dualTileMetric}>
+                {t(`metric.${row.metric}`, row.metric)}
+              </Text>
+
+              <View style={styles.dualRiskStack}>
+                <View style={[styles.dualRiskCell, p1Better && styles.dualRiskCellWinner]}>
+                  <View style={styles.dualRiskTopLine}>
+                    <Text style={[styles.dualRiskValue, p1Better && styles.dualRiskValueWinner]}>
+                      {formatValue(row.value1)}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.dualRiskLabel}>{compactPlayerName(player1Name)}</Text>
+                  </View>
+                  <View style={styles.dualRiskTrack}>
+                    <View
+                      style={[
+                        styles.dualRiskFill,
+                        { width: `${p1Risk * 100}%`, backgroundColor: severityColor(p1Risk) },
+                      ]}
+                    />
+                  </View>
+                </View>
+
+                <View style={[styles.dualRiskCell, p2Better && styles.dualRiskCellWinner]}>
+                  <View style={styles.dualRiskTopLine}>
+                    <Text style={[styles.dualRiskValue, p2Better && styles.dualRiskValueWinner]}>
+                      {formatValue(row.value2)}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.dualRiskLabel}>{compactPlayerName(player2Name)}</Text>
+                  </View>
+                  <View style={styles.dualRiskTrack}>
+                    <View
+                      style={[
+                        styles.dualRiskFill,
+                        { width: `${p2Risk * 100}%`, backgroundColor: severityColor(p2Risk) },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   return (
     <>
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
@@ -385,8 +475,11 @@ export default function ComparisonModal({
                 groups.map((group) => (
                   <View key={group.key} style={styles.groupBlock}>
                     <View style={styles.groupHeader}>
-                      <Text style={styles.groupTitle}>{t(group.key, group.fallbackTitle)}</Text>
-                      {!group.lowerIsBetter && group.rows.length >= 5 ? (
+                      <View style={styles.groupTitleRow}>
+                        <group.Icon size={16} color={ACCENT} strokeWidth={2.2} />
+                        <Text style={styles.groupTitle}>{t(group.key, group.fallbackTitle)}</Text>
+                      </View>
+                      {group.rows.length >= 5 ? (
                         <Pressable
                           onPress={() => toggleChartGroup(group.key)}
                           style={({ pressed }) => [styles.chartToggle, pressed && styles.pressed]}
@@ -394,7 +487,7 @@ export default function ComparisonModal({
                           {chartGroups[group.key] ? (
                             <List size={14} color={ACCENT} strokeWidth={2.2} />
                           ) : (
-                            <Radar size={14} color={ACCENT} strokeWidth={2.2} />
+                            <LineChart size={14} color={ACCENT} strokeWidth={2.2} />
                           )}
                           <Text style={styles.chartToggleText}>
                             {chartGroups[group.key]
@@ -409,13 +502,19 @@ export default function ComparisonModal({
                       ) : null}
                     </View>
 
-                    {chartGroups[group.key] && !group.lowerIsBetter ? (
-                      renderDualSpiderChart(
-                        t(group.key, group.fallbackTitle),
-                        group.rows,
-                        player1?.player.name ?? t('matchupPlayer1Placeholder', 'Player 1'),
-                        player2?.player.name ?? t('matchupPlayer2Placeholder', 'Player 2'),
-                      )
+                    {chartGroups[group.key] ? (
+                      group.lowerIsBetter
+                        ? renderDualErrorTiles(
+                            group.rows,
+                            player1?.player.name ?? t('matchupPlayer1Placeholder', 'Player 1'),
+                            player2?.player.name ?? t('matchupPlayer2Placeholder', 'Player 2'),
+                          )
+                        : renderDualSpiderChart(
+                            t(group.key, group.fallbackTitle),
+                            group.rows,
+                            player1?.player.name ?? t('matchupPlayer1Placeholder', 'Player 1'),
+                            player2?.player.name ?? t('matchupPlayer2Placeholder', 'Player 2'),
+                          )
                     ) : (
                       group.rows.map((row) => (
                         <View key={row.metric} style={styles.metricRow}>
@@ -555,6 +654,13 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     flex: 1,
   },
+  groupTitleRow: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   groupHint: {
     color: MUTED,
     fontSize: 11,
@@ -609,6 +715,90 @@ const styles = StyleSheet.create({
     color: TEXT,
     fontSize: 12,
     fontWeight: '800',
+  },
+  dualTilesCard: {
+    backgroundColor: CARD,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: LINE,
+    margin: 10,
+    padding: 12,
+    gap: 12,
+  },
+  dualTilesLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  dualTileRow: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(26, 29, 26, 0.72)',
+    padding: 10,
+    gap: 9,
+  },
+  dualTileMetric: {
+    color: TEXT,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  dualRiskStack: {
+    gap: 8,
+  },
+  dualRiskCell: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(31, 34, 32, 0.78)',
+    padding: 8,
+    gap: 7,
+  },
+  dualRiskCellWinner: {
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+  },
+  dualRiskTopLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  dualRiskValue: {
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  dualRiskValueWinner: {
+    color: ACCENT,
+  },
+  dualRiskLabel: {
+    color: MUTED,
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  dualRiskTrack: {
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: '#272a2a',
+    overflow: 'hidden',
+  },
+  dualRiskFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  dualTilesHintRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dualTilesHint: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: '700',
   },
   metricRow: {
     minHeight: 44,

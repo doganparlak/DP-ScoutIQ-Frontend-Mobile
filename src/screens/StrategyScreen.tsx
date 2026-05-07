@@ -258,13 +258,15 @@ const styles = StyleSheet.create({
   },
 
   startBtn: {
-    backgroundColor: ACCENT,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderRadius: 12,
     padding: 14,
   },
 
   startBtnPressed: {
-    backgroundColor: ACCENT_DARK,
+    opacity: 0.9,
   },
 
   startBtnDisabled: {
@@ -272,8 +274,8 @@ const styles = StyleSheet.create({
   },
 
   startBtnText: {
-    color: 'white',
-    fontWeight: '700',
+    color: ACCENT,
+    fontWeight: '900',
     fontSize: 18,
     textAlign: 'center',
   },

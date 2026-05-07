@@ -2,7 +2,7 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet, Pressable, Image, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BG, PANEL, TEXT, ACCENT, MUTED, LINE, ACCENT_DARK } from '../theme';
+import { BG, PANEL, TEXT, ACCENT, MUTED, LINE } from '../theme';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
@@ -459,12 +459,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderWidth: 1,
     borderColor: ACCENT,
   },
   buyButtonText: {
-    color: TEXT,
+    color: ACCENT,
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 0.3,

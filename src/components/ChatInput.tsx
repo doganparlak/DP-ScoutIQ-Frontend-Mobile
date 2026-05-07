@@ -80,12 +80,14 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   btn: {
-    backgroundColor: ACCENT,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     height: 44,
     justifyContent: 'center',
   },
-  btnText: { color: 'white', fontWeight: '700' },
+  btnText: { color: ACCENT, fontWeight: '900' },
 });
