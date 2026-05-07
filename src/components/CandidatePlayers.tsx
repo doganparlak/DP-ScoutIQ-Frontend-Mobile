@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Eye, X } from 'lucide-react-native';
+import { ChevronDown, X } from 'lucide-react-native';
 
 import PlayerCard from '@/components/PlayerCard';
 import { ROLE_LONG_TO_SHORT } from '@/services/api';
@@ -53,7 +53,6 @@ type Props = {
   weeklyPopularRows: SearchResultRow[];
   weeklyPopularOpen: boolean;
   weeklyPopularLoading: boolean;
-  onRevealWeeklyPopular: () => void;
   onCloseWeeklyPopular: () => void;
 };
 
@@ -73,7 +72,6 @@ export default function CandidatePlayers({
   weeklyPopularRows,
   weeklyPopularOpen,
   weeklyPopularLoading,
-  onRevealWeeklyPopular,
   onCloseWeeklyPopular,
 }: Props) {
   const { t } = useTranslation();
@@ -258,20 +256,6 @@ export default function CandidatePlayers({
         </View>
       )}
 
-      <Pressable
-        onPress={onRevealWeeklyPopular}
-        style={({ pressed }) => [styles.popularButton, pressed && styles.pressed]}
-      >
-        {weeklyPopularLoading ? (
-          <ActivityIndicator size="small" color={ACCENT} />
-        ) : (
-          <Eye size={18} color={ACCENT} strokeWidth={2.2} />
-        )}
-        <Text numberOfLines={2} style={styles.popularButtonText}>
-          {t('revealWeeklyPopularPlayers', "Reveal this week's popular players")}
-        </Text>
-      </Pressable>
-
       <Modal
         transparent
         visible={sortOpen}
@@ -443,26 +427,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     marginBottom: 10,
-  },
-  popularButton: {
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderRadius: 14,
-    paddingHorizontal: 8,
-    marginTop: 12,
-  },
-  popularButtonText: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: '900',
-    textAlign: 'center',
-    textTransform: 'uppercase',
   },
   sortByButton: {
     flexDirection: 'row',

@@ -1,17 +1,23 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Eye } from 'lucide-react-native';
 
 import {
   incrementPotentialRevealCount,
+  incrementMatchupLaunchCount,
   incrementWeeklyPopularRevealCount,
+  shouldShowMatchupLaunchInterstitial,
   shouldShowPotentialInterstitial,
   shouldShowWeeklyPopularInterstitial,
 } from '@/ads/adGating';
@@ -24,6 +30,7 @@ import CandidatePlayers, {
   type SearchResultRow,
 } from '@/components/CandidatePlayers';
 import Header from '@/components/Header';
+import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
 import SearchFilters from '@/components/SearchFilters';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
@@ -39,13 +46,13 @@ import {
   searchPlayerPool,
   type PlayerPoolSearchInput,
 } from '@/services/api';
-import { BG } from '@/theme';
+import { ACCENT, BG } from '@/theme';
 import type { PlayerData } from '@/types';
 
 type SortDir = 'asc' | 'desc';
 
 export default function PlayerPoolScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [name, setName] = React.useState('');
   const [gender, setGender] = React.useState<'' | 'male' | 'female'>('');
   const [nationality, setNationality] = React.useState('');
@@ -77,6 +84,8 @@ export default function PlayerPoolScreen() {
   const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
   const [weeklyPopularLoading, setWeeklyPopularLoading] = React.useState(false);
   const [weeklyPopularRows, setWeeklyPopularRows] = React.useState<SearchResultRow[]>([]);
+  const [matchupRow1, setMatchupRow1] = React.useState<SearchResultRow | null>(null);
+  const [matchupRow2, setMatchupRow2] = React.useState<SearchResultRow | null>(null);
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
@@ -433,6 +442,42 @@ export default function PlayerPoolScreen() {
     };
   }, [revealedFormForCard, revealedPotentialForCard, selectedPlayer]);
 
+  const selectedPlayerForMatchup = React.useMemo<SearchResultRow | null>(() => {
+    if (!selectedPlayerId || !selectedPlayerForCard) return null;
+
+    return {
+      id: selectedPlayerId,
+      player: selectedPlayerForCard,
+    };
+  }, [selectedPlayerForCard, selectedPlayerId]);
+
+  const addSelectedPlayerToMatchup = React.useCallback(() => {
+    if (!selectedPlayerForMatchup) return;
+
+    if (!matchupRow1) {
+      setMatchupRow1(selectedPlayerForMatchup);
+      recordSelectedCardInterestOnce();
+      return;
+    }
+
+    if (!matchupRow2) {
+      setMatchupRow2(selectedPlayerForMatchup);
+      recordSelectedCardInterestOnce();
+    }
+  }, [matchupRow1, matchupRow2, recordSelectedCardInterestOnce, selectedPlayerForMatchup]);
+
+  const onLaunchMatchup = React.useCallback(async () => {
+    if (plan !== 'Free') return;
+
+    const nextCount = await incrementMatchupLaunchCount();
+    if (shouldShowMatchupLaunchInterstitial(nextCount)) {
+      const ok = showInterstitialSafely();
+      if (!ok) {
+        setProUpsellOpen(true);
+      }
+    }
+  }, [plan]);
+
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
       return ROW_HEIGHT * 3;
@@ -539,6 +584,11 @@ export default function PlayerPoolScreen() {
     return list;
   }, [results, sortDir, sortKey]);
 
+  const weeklyPopularLabel = t('revealWeeklyPopularPlayers', 'Reveal Weekly Top Searches');
+  const weeklyPopularLabelUpper = weeklyPopularLabel.toLocaleUpperCase(
+    i18n.language?.startsWith('tr') ? 'tr-TR' : undefined,
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.safe}
@@ -553,6 +603,20 @@ export default function PlayerPoolScreen() {
               'Discover 52,000+ players from 113 leagues worldwide.',
             )}
           />
+
+        <Pressable
+          onPress={onRevealWeeklyPopular}
+          style={({ pressed }) => [styles.popularButton, pressed && styles.pressed]}
+        >
+          {weeklyPopularLoading ? (
+            <ActivityIndicator size="small" color={ACCENT} />
+          ) : (
+            <Eye size={18} color={ACCENT} strokeWidth={2.2} />
+          )}
+          <Text numberOfLines={2} style={styles.popularButtonText}>
+            {weeklyPopularLabelUpper}
+          </Text>
+        </Pressable>
 
         <SearchFilters
           name={name}
@@ -608,7 +672,6 @@ export default function PlayerPoolScreen() {
           weeklyPopularRows={weeklyPopularRows}
           weeklyPopularOpen={weeklyPopularOpen}
           weeklyPopularLoading={weeklyPopularLoading}
-          onRevealWeeklyPopular={onRevealWeeklyPopular}
           onCloseWeeklyPopular={() => setWeeklyPopularOpen(false)}
           onSelectRow={(row) => {
             setRevealedPotentialForCard(false);
@@ -630,6 +693,16 @@ export default function PlayerPoolScreen() {
           revealingForm={revealingForm}
           revealedPotentialForCard={revealedPotentialForCard}
           revealedFormForCard={revealedFormForCard}
+        />
+
+        <MatchupCenter
+          selectedPlayer={selectedPlayerForMatchup}
+          row1={matchupRow1}
+          row2={matchupRow2}
+          onAddSelectedPlayer={addSelectedPlayerToMatchup}
+          onLaunchMatchup={onLaunchMatchup}
+          onRemoveRow1={() => setMatchupRow1(null)}
+          onRemoveRow2={() => setMatchupRow2(null)}
         />
         <ProNotReadyScreen
           visible={proUpsellOpen}
@@ -658,5 +731,26 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 32,
     gap: 16,
+  },
+  popularButton: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderRadius: 14,
+    paddingHorizontal: 8,
+  },
+  popularButtonText: {
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  pressed: {
+    opacity: 0.92,
   },
 });

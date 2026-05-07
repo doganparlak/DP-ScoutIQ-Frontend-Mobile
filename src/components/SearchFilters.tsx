@@ -283,7 +283,7 @@ export default function SearchFilters({
           onPress={onSearch}
           style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
         >
-          <Search size={16} color={TEXT} strokeWidth={2.2} />
+          <Search size={16} color={ACCENT} strokeWidth={2.2} />
           <Text style={styles.primaryButtonText}>{t('playerPoolSearchButton', 'Search')}</Text>
         </Pressable>
       </View>
@@ -435,15 +435,17 @@ const styles = StyleSheet.create({
     flex: 1.25,
     minHeight: 46,
     borderRadius: 14,
-    backgroundColor: ACCENT,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
   },
   primaryButtonText: {
-    color: TEXT,
-    fontSize: 14,
+    color: ACCENT,
+    fontSize: 12,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
