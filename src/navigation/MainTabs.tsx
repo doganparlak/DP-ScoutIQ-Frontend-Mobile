@@ -24,11 +24,8 @@ import type {
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import {
-  ChartColumnIncreasing,
-  Crown,
-  Database,
-  MessageCircleMore,
   MessageSquareMore,
   ChartSpline,
 } from 'lucide-react-native';
@@ -36,6 +33,18 @@ import { getMe, type Plan } from '@/services/api';
 
 const TAB_BASE_HEIGHT = 70;
 const TAB_ICON_SIZE = 24;
+const MAIN_TAB_ICON_SIZE = 30;
+const MAIN_TAB_ICON_LABEL_GAP = 8;
+const SCOUTWISE_PRO_TAB_VERTICAL_OFFSET = 12;
+const SIDE_TAB_VERTICAL_OFFSET = -4;
+
+type MainTabIconSlotProps = {
+  children: React.ReactNode;
+};
+
+function MainTabIconSlot({ children }: MainTabIconSlotProps) {
+  return <View style={styles.mainTabIconSlot}>{children}</View>;
+}
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 const ProfileStack = createNativeStackNavigator<RootStackParamList>();
@@ -58,6 +67,100 @@ function ScoutWiseProStackScreen() {
       <ScoutWiseProStack.Screen name="LegacyStrategy" component={StrategyScreen} />
       <ScoutWiseProStack.Screen name="LegacyChat" component={ChatScreen} />
     </ScoutWiseProStack.Navigator>
+  );
+}
+
+type FootballJerseyIconProps = {
+  size: number;
+  color: string;
+  strokeWidth?: number;
+};
+
+function FootballJerseyIcon({ size, color, strokeWidth = 2.2 }: FootballJerseyIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M8.2 3.5 4.1 5.2 2.5 10l3.4 1.3 1-2.1v11.4h10.2V9.2l1 2.1 3.4-1.3-1.6-4.8-4.1-1.7a4 4 0 0 1-7.6 0Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <SvgText
+        x="12"
+        y="15"
+        fill={color}
+        fontSize="5.6"
+        fontWeight="800"
+        textAnchor="middle"
+      >
+        10
+      </SvgText>
+    </Svg>
+  );
+}
+
+type TacticsBoardIconProps = {
+  size: number;
+  color: string;
+  strokeWidth?: number;
+};
+
+function TacticsBoardIcon({ size, color, strokeWidth = 2.2 }: TacticsBoardIconProps) {
+  const pitchStrokeWidth = strokeWidth * 0.5;
+  const pitchOpacity = 0.75;
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x="4"
+        y="4.2"
+        width="16"
+        height="16.8"
+        rx="2.2"
+        stroke={color}
+        strokeWidth={strokeWidth}
+      />
+      <Path
+        d="M9.2 4.2V3.3h5.6v.9M9.4 20.9v-.9h5.2v.9"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M10.1 3.3c.4-.7 1-.9 1.9-.9s1.5.2 1.9.9"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <Line
+        x1="6.2"
+        y1="12"
+        x2="17.8"
+        y2="12"
+        stroke={color}
+        strokeWidth={pitchStrokeWidth}
+        strokeOpacity={pitchOpacity}
+        strokeLinecap="round"
+      />
+      <Circle
+        cx="12"
+        cy="12"
+        r="2.1"
+        stroke={color}
+        strokeWidth={pitchStrokeWidth}
+        strokeOpacity={pitchOpacity}
+      />
+      <Path
+        d="M8 5.9v2.7h8V5.9M8 18.1v-2.7h8v2.7"
+        stroke={color}
+        strokeWidth={pitchStrokeWidth}
+        strokeOpacity={pitchOpacity}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
   );
 }
 
@@ -116,6 +219,7 @@ type ScoutWiseProTabButtonProps = BottomTabBarButtonProps & {
 function ScoutWiseProTabButton({
   accessibilityState,
   children,
+  style,
   hasAiConsent,
   isConsentLoading,
   isMenuOpen,
@@ -127,7 +231,7 @@ function ScoutWiseProTabButton({
   const navigation = useNavigation<any>();
 
   return (
-    <View style={styles.tabButtonWrap} pointerEvents="box-none">
+    <View style={[style, styles.tabButtonWrap]} pointerEvents="box-none">
       {isMenuOpen ? (
         <View style={styles.shortcutMenu} pointerEvents="box-none">
           <ShortcutButton
@@ -180,7 +284,11 @@ function ScoutWiseProTabButton({
             screen: isFreePlan ? 'ProHome' : 'LegacyStrategy',
           });
         }}
-        style={({ pressed }) => [styles.tabButton, pressed && styles.tabButtonPressed]}
+        style={({ pressed }) => [
+          styles.tabButton,
+          styles.scoutWiseProTabOffset,
+          pressed && styles.tabButtonPressed,
+        ]}
       >
         {children}
       </Pressable>
@@ -244,7 +352,7 @@ export default function MainTabs() {
         },
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
-        tabBarLabelStyle: { fontWeight: '800', fontSize: 10, marginTop: 4 },
+        tabBarItemStyle: styles.mainTabItem,
       }}
     >
       <Tab.Screen
@@ -254,9 +362,16 @@ export default function MainTabs() {
           tabPress: closeProMenu,
         }}
         options={{
-          tabBarLabel: t('tabPlayerPool', 'Player Pool'),
+          tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
+          tabBarLabel: ({ color }) => (
+            <Text style={[styles.mainTabLabel, { color }]}>
+              {t('tabPlayerPool', 'Player Pool')}
+            </Text>
+          ),
           tabBarIcon: ({ color }) => (
-            <Database size={TAB_ICON_SIZE} color={color} strokeWidth={2.2} />
+            <MainTabIconSlot>
+              <FootballJerseyIcon size={MAIN_TAB_ICON_SIZE} color={color} strokeWidth={2.2} />
+            </MainTabIconSlot>
           ),
         }}
       />
@@ -268,9 +383,19 @@ export default function MainTabs() {
           tabPress: closeProMenu,
         }}
         options={{
-          tabBarLabel: t('tabScoutWisePro', 'ScoutWise Pro'),
+          tabBarLabel: ({ color }) => (
+            <Text style={[styles.mainTabLabel, { color }]}>
+              {t('tabScoutWisePro', 'ScoutWise Pro')}
+            </Text>
+          ),
           tabBarIcon: ({ color }) => (
-            <Crown size={TAB_ICON_SIZE} color={color} strokeWidth={2.2} />
+            <MainTabIconSlot>
+              <TacticsBoardIcon
+                size={MAIN_TAB_ICON_SIZE}
+                color={color}
+                strokeWidth={2.2}
+              />
+            </MainTabIconSlot>
           ),
           tabBarButton: (props) => (
             <ScoutWiseProTabButton
@@ -297,9 +422,16 @@ export default function MainTabs() {
           tabPress: closeProMenu,
         }}
         options={{
-          tabBarLabel: t('tabProfile', 'My Profile'),
+          tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
+          tabBarLabel: ({ color }) => (
+            <Text style={[styles.mainTabLabel, { color }]}>
+              {t('tabProfile', 'My Profile')}
+            </Text>
+          ),
           tabBarIcon: ({ color }) => (
-            <Ionicons name="person-circle-outline" size={24} color={color} />
+            <MainTabIconSlot>
+              <Ionicons name="person-circle-outline" size={MAIN_TAB_ICON_SIZE} color={color} />
+            </MainTabIconSlot>
           ),
         }}
       />
@@ -308,6 +440,29 @@ export default function MainTabs() {
 }
 
 const styles = StyleSheet.create({
+  mainTabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  sideTabOffset: {
+    transform: [{ translateY: SIDE_TAB_VERTICAL_OFFSET }],
+  },
+  mainTabIconSlot: {
+    width: MAIN_TAB_ICON_SIZE,
+    height: MAIN_TAB_ICON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mainTabLabel: {
+    height: 12,
+    lineHeight: 12,
+    marginTop: MAIN_TAB_ICON_LABEL_GAP,
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   tabButtonWrap: {
     flex: 1,
     overflow: 'visible',
@@ -316,7 +471,10 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignItems: 'center',
-    paddingTop: 6,
+    justifyContent: 'center',
+  },
+  scoutWiseProTabOffset: {
+    transform: [{ translateY: SCOUTWISE_PRO_TAB_VERTICAL_OFFSET }],
   },
   tabButtonPressed: {
     opacity: 0.92,
