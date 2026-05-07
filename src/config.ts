@@ -37,5 +37,6 @@ export const ENDPOINTS = {
   playerPoolSearchHit: (playerId: string) => `/player-pool/${playerId}/search-hit`,
   playerPoolPotential: (playerId: string) => `/player-pool/${playerId}/potential`,
   playerPoolForm: (playerId: string) => `/player-pool/${playerId}/form`,
+  playerPoolMatchupComparison: '/player-pool/matchup/comparison',
   favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
 };

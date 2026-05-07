@@ -257,11 +257,43 @@ export type PlayerPoolFormResponse = {
   source: 'db' | 'model';
 };
 
+export type MatchupComparisonResponse = {
+  player1: { id: string; player: PlayerData };
+  player2: { id: string; player: PlayerData };
+};
+
 type PlayerPoolRawRow = {
   id?: string | number;
   content?: unknown;
   [key: string]: unknown;
 };
+
+const PLAYER_POOL_METADATA_SKIP_KEYS = new Set([
+  'id',
+  'name',
+  'player_name',
+  'player_name_norm',
+  'player_key',
+  'player_key_norm',
+  'nationality',
+  'nationality_name',
+  'team',
+  'team_name',
+  'team_name_norm',
+  'league',
+  'league_name',
+  'league_name_norm',
+  'position_name',
+  'roles',
+  'positions',
+  'gender',
+  'age',
+  'height',
+  'weight',
+  'potential',
+  'form',
+  'match_count',
+]);
 
 function normalizeRole(role: unknown): string | null {
   if (typeof role !== 'string') return null;
@@ -308,9 +340,17 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
 
   const roles = rawRoles.map(normalizeRole).filter(Boolean) as string[];
 
+  const stats = Object.entries(raw)
+    .filter(([metric]) => !PLAYER_POOL_METADATA_SKIP_KEYS.has(metric))
+    .map(([metric, value]) => {
+      const numericValue = toFiniteNumber(value);
+      return numericValue === undefined ? null : { metric, value: numericValue };
+    })
+    .filter(Boolean) as PlayerData['stats'];
+
   return {
     name,
-    stats: [],
+    stats,
     meta: {
       nationality:
         (typeof raw.nationality === 'string' && raw.nationality) ||
@@ -398,6 +438,33 @@ export async function revealPlayerPoolForm(
   return request<PlayerPoolFormResponse>(ENDPOINTS.playerPoolForm(playerId), {
     method: 'POST',
   });
+}
+
+export async function getMatchupComparison(
+  player1Id: string,
+  player2Id: string,
+): Promise<MatchupComparisonResponse> {
+  const row = await request<{
+    player1: PlayerPoolRawRow;
+    player2: PlayerPoolRawRow;
+  }>(ENDPOINTS.playerPoolMatchupComparison, {
+    method: 'POST',
+    body: JSON.stringify({ player1Id, player2Id }),
+  });
+
+  const player1IdOut = String(row.player1.id ?? player1Id);
+  const player2IdOut = String(row.player2.id ?? player2Id);
+  const player1 = normalizePlayerPoolContent(row.player1.content ?? row.player1, player1IdOut);
+  const player2 = normalizePlayerPoolContent(row.player2.content ?? row.player2, player2IdOut);
+
+  if (!player1 || !player2) {
+    throw new Error('Could not load matchup comparison.');
+  }
+
+  return {
+    player1: { id: player1IdOut, player: player1 },
+    player2: { id: player2IdOut, player: player2 },
+  };
 }
 
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {

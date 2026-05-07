@@ -29,6 +29,7 @@ import CandidatePlayers, {
   type CandidateSortKey,
   type SearchResultRow,
 } from '@/components/CandidatePlayers';
+import ComparisonModal from '@/components/ComparisonModal';
 import Header from '@/components/Header';
 import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
@@ -37,6 +38,7 @@ import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_N
 import {
   ROLE_LONG_TO_SHORT,
   ROLE_SHORT_TO_LONG,
+  getMatchupComparison,
   getMe,
   getPlayerPoolOptions,
   getWeeklyPopularPlayers,
@@ -45,6 +47,7 @@ import {
   revealPlayerPoolPotential,
   searchPlayerPool,
   type PlayerPoolSearchInput,
+  type MatchupComparisonResponse,
 } from '@/services/api';
 import { ACCENT, BG } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -86,6 +89,10 @@ export default function PlayerPoolScreen() {
   const [weeklyPopularRows, setWeeklyPopularRows] = React.useState<SearchResultRow[]>([]);
   const [matchupRow1, setMatchupRow1] = React.useState<SearchResultRow | null>(null);
   const [matchupRow2, setMatchupRow2] = React.useState<SearchResultRow | null>(null);
+  const [comparisonOpen, setComparisonOpen] = React.useState(false);
+  const [comparisonLoading, setComparisonLoading] = React.useState(false);
+  const [comparisonError, setComparisonError] = React.useState<string | null>(null);
+  const [comparisonData, setComparisonData] = React.useState<MatchupComparisonResponse | null>(null);
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
@@ -467,16 +474,32 @@ export default function PlayerPoolScreen() {
   }, [matchupRow1, matchupRow2, recordSelectedCardInterestOnce, selectedPlayerForMatchup]);
 
   const onLaunchMatchup = React.useCallback(async () => {
-    if (plan !== 'Free') return;
+    if (!matchupRow1 || !matchupRow2 || comparisonLoading) return;
 
-    const nextCount = await incrementMatchupLaunchCount();
-    if (shouldShowMatchupLaunchInterstitial(nextCount)) {
-      const ok = showInterstitialSafely();
-      if (!ok) {
-        setProUpsellOpen(true);
+    try {
+      setComparisonOpen(true);
+      setComparisonLoading(true);
+      setComparisonError(null);
+      setComparisonData(null);
+
+      if (plan === 'Free') {
+        const nextCount = await incrementMatchupLaunchCount();
+        if (shouldShowMatchupLaunchInterstitial(nextCount)) {
+          const ok = showInterstitialSafely();
+          if (!ok) {
+            setProUpsellOpen(true);
+          }
+        }
       }
+
+      const nextComparison = await getMatchupComparison(matchupRow1.id, matchupRow2.id);
+      setComparisonData(nextComparison);
+    } catch (err: any) {
+      setComparisonError(err?.message ?? t('matchupComparisonFailed', 'Matchup comparison failed'));
+    } finally {
+      setComparisonLoading(false);
     }
-  }, [plan]);
+  }, [comparisonLoading, matchupRow1, matchupRow2, plan, t]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -701,8 +724,18 @@ export default function PlayerPoolScreen() {
           row2={matchupRow2}
           onAddSelectedPlayer={addSelectedPlayerToMatchup}
           onLaunchMatchup={onLaunchMatchup}
+          launchDisabled={!matchupRow1 || !matchupRow2}
+          launchLoading={comparisonLoading}
           onRemoveRow1={() => setMatchupRow1(null)}
           onRemoveRow2={() => setMatchupRow2(null)}
+        />
+        <ComparisonModal
+          visible={comparisonOpen}
+          loading={comparisonLoading}
+          error={comparisonError}
+          player1={comparisonData?.player1 ?? (matchupRow1 ? { id: matchupRow1.id, player: matchupRow1.player } : null)}
+          player2={comparisonData?.player2 ?? (matchupRow2 ? { id: matchupRow2.id, player: matchupRow2.player } : null)}
+          onClose={() => setComparisonOpen(false)}
         />
         <ProNotReadyScreen
           visible={proUpsellOpen}

@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -31,6 +32,8 @@ type Props = {
   row2: MatchupSlot;
   onAddSelectedPlayer: () => void;
   onLaunchMatchup: () => void;
+  launchDisabled?: boolean;
+  launchLoading?: boolean;
   onRemoveRow1: () => void;
   onRemoveRow2: () => void;
 };
@@ -88,6 +91,8 @@ export default function MatchupCenter({
   row2,
   onAddSelectedPlayer,
   onLaunchMatchup,
+  launchDisabled = false,
+  launchLoading = false,
   onRemoveRow1,
   onRemoveRow2,
 }: Props) {
@@ -268,11 +273,20 @@ export default function MatchupCenter({
 
         <Pressable
           onPress={onLaunchMatchup}
-          style={({ pressed }) => [styles.launchButton, pressed && styles.pressed]}
+          disabled={launchDisabled || launchLoading}
+          style={({ pressed }) => [
+            styles.launchButton,
+            (launchDisabled || launchLoading) && styles.launchButtonMuted,
+            pressed && styles.pressed,
+          ]}
           accessibilityLabel={t('launchMatchup', 'Launch Matchup')}
         >
-          <Radar size={17} color={ACCENT} strokeWidth={2.2} />
-          <Text style={styles.launchButtonText}>
+          {launchLoading ? (
+            <ActivityIndicator size="small" color={ACCENT} />
+          ) : (
+            <Radar size={17} color={launchDisabled ? MUTED : ACCENT} strokeWidth={2.2} />
+          )}
+          <Text style={[styles.launchButtonText, launchDisabled && styles.launchButtonTextMuted]}>
             {launchMatchupLabelUpper}
           </Text>
         </Pressable>
@@ -432,11 +446,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginTop: 12,
   },
+  launchButtonMuted: {
+    borderColor: LINE,
+    backgroundColor: CARD,
+    opacity: 0.72,
+  },
   launchButtonText: {
     color: ACCENT,
     fontSize: 12,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  launchButtonTextMuted: {
+    color: MUTED,
   },
   pressed: {
     opacity: 0.9,
