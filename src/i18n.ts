@@ -126,7 +126,7 @@ export const resources = {
       phSearchName: 'Search name',
       phSearchNationality: 'Search nationality',
       phMin: 'Min',
-      phMax: 'Maks',
+      phMax: 'Max',
       clearFilters: 'Clear filters',
       loadingFavorites: 'Loading favorites…',
       tblName: 'Name',
