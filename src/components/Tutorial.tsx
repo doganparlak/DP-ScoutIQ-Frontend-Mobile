@@ -43,6 +43,7 @@ type TutorialContextValue = {
   setScoutWiseStep: (step: ScoutWiseTutorialStep) => void;
   moveToProfile: () => void;
   moveToScoutWise: () => void;
+  activateTutorial: () => Promise<void>;
   completeTutorial: () => Promise<void>;
   skipTutorial: () => Promise<void>;
 };
@@ -99,7 +100,19 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setActive(true);
     setStage('playerPool');
     setPlayerPoolStep('weeklyPopularButton');
+    setProfileStep('intro');
+    setScoutWiseStep('setStrategy');
   }, []);
+
+  const activateTutorial = React.useCallback(async () => {
+    try {
+      await updateTutorialCompletion(false);
+    } catch (e: any) {
+      console.log('ACTIVATE TUTORIAL ERROR:', e?.message ?? e);
+    }
+    loadedRef.current = true;
+    startTutorial();
+  }, [startTutorial]);
 
   const value = React.useMemo<TutorialContextValue>(
     () => ({
@@ -119,10 +132,11 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         setStage('scoutwise');
         setScoutWiseStep('setStrategy');
       },
+      activateTutorial,
       completeTutorial: finish,
       skipTutorial: finish,
     }),
-    [active, finish, playerPoolStep, profileStep, scoutWiseStep, stage],
+    [activateTutorial, active, finish, playerPoolStep, profileStep, scoutWiseStep, stage],
   );
 
   return (

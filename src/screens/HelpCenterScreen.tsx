@@ -15,6 +15,7 @@ import {
 import type { RootStackParamList } from '@/types';
 import { deleteAccount as apiDeleteAccount } from '@/services/api';
 import { sendReachOut } from '@/services/api';
+import { useTutorial } from '@/components/Tutorial';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
@@ -35,6 +36,7 @@ const LEGAL_URLS = {
 export default function HelpCenter() {
   const nav = useNavigation<RootNav>();
   const { t, i18n } = useTranslation();
+  const tutorial = useTutorial();
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
   const privacyUrl = LEGAL_URLS[lang].privacy;
   const termsUrl =
@@ -45,6 +47,7 @@ export default function HelpCenter() {
   const [sentMessage, setSentMessage] = useState<string | null>(null);
   const [hasSentThisLogin, setHasSentThisLogin] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activatingTutorial, setActivatingTutorial] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -137,6 +140,27 @@ export default function HelpCenter() {
     }
   };
 
+  const onActivateTutorial = async () => {
+    if (activatingTutorial) return;
+
+    try {
+      setActivatingTutorial(true);
+      await tutorial.activateTutorial();
+
+      const currentNav = nav as any;
+      const parentNav = currentNav.getParent?.();
+      if (parentNav?.navigate) {
+        parentNav.navigate('Strategy');
+      } else {
+        currentNav.navigate('MainTabs', { screen: 'Strategy' });
+      }
+    } catch (e: any) {
+      Alert.alert(t('tutorialActivateFailed', 'Could not start tutorial'), String(e?.message || t('tryAgain', 'Please try again.')));
+    } finally {
+      setActivatingTutorial(false);
+    }
+  };
+
   const tabs = useMemo(
     () => [
       { key: 'how' as const, label: t('tabHowTo', 'How to use') },
@@ -187,6 +211,24 @@ export default function HelpCenter() {
         {selected === 'how' && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>{t('guidebook', 'Guidebook')}</Text>
+
+            <Pressable
+              onPress={onActivateTutorial}
+              disabled={activatingTutorial}
+              style={({ pressed }) => [
+                styles.activateTutorialBtn,
+                (pressed && !activatingTutorial) ? styles.activateTutorialBtnPressed : null,
+                activatingTutorial ? styles.activateTutorialBtnDisabled : null,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('activateTutorial', 'Activate tutorial')}
+            >
+              <Text style={styles.activateTutorialText}>
+                {activatingTutorial
+                  ? t('startingTutorial', 'Starting tutorial...')
+                  : t('activateTutorial', 'Activate tutorial')}
+              </Text>
+            </Pressable>
 
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howStrategyTitle', 'Team strategy & scouting philosophy')}</Text>
@@ -489,6 +531,20 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+  activateTutorialBtn: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.14)',
+    marginBottom: 14,
+    paddingHorizontal: 16,
+  },
+  activateTutorialBtnPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  activateTutorialBtnDisabled: { opacity: 0.55 },
+  activateTutorialText: { color: ACCENT, fontWeight: '900', fontSize: 14 },
   block: { gap: 6 },
   h3: { color: ACCENT, fontSize: 14, fontWeight: '800' },
   p: { color: TEXT, opacity: 0.9, lineHeight: 20, flexShrink: 1, width: '100%' },

@@ -215,6 +215,9 @@ export const resources = {
       tutorialGyokeresInterpretation:
         'Viktor Gyokeres is a strong center-forward profile for a team that wants a direct outlet, penalty-box presence, and repeated threat in transition. His scoring output, carrying power, and ability to attack space make him especially useful when your strategy asks the striker to stretch the back line while still receiving under pressure. The main scouting question is how cleanly that physical dominance translates against deeper blocks, but his recent data suggests a forward who can turn volume into high-impact chances.',
       tutorialEndTutorial: 'End tutorial',
+      activateTutorial: 'Activate tutorial',
+      startingTutorial: 'Starting tutorial...',
+      tutorialActivateFailed: 'Could not start tutorial',
       loadingFavorites: 'Loading favorites…',
       tblName: 'Name',
       tblNat: 'Nat.',
@@ -888,7 +891,10 @@ export const resources = {
       tutorialChatResponseBody: 'Oyuncu kartını, grafikleri ve ScoutWise analizini kaydırarak inceleyebilirsin.',
       tutorialGyokeresInterpretation:
         'Viktor Gyökeres, direkt bağlantı noktası, ceza sahası varlığı ve geçiş hücumlarında sürekli tehdit isteyen takımlar için güçlü bir santrfor profilidir. Gol üretimi, top taşıma gücü ve alanı tehdit etme becerisi; forvetten savunma hattını geriye koşturmasını ama baskı altında da top almasını bekleyen stratejilerde onu özellikle değerli kılar. Temel keşif sorusu, bu fiziksel üstünlüğün daha kapalı savunmalara karşı ne kadar temiz aktarılacağıdır; ancak güncel verileri, yüksek hacmi yüksek etkili şanslara çevirebilen bir forvete işaret eder.',
-      tutorialEndTutorial: 'Turu bitir',
+      tutorialEndTutorial: 'Hızlı turu bitir',
+      activateTutorial: 'Hızlı turu başlat',
+      startingTutorial: 'Hızlı tur başlatılıyor...',
+      tutorialActivateFailed: 'Tur başlatılamadı',
       loadingFavorites: 'Favoriler yükleniyor…',
       tblName: 'İsim',
       tblNat: 'Ülke',
