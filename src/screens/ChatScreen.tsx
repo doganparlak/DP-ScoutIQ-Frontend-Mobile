@@ -19,6 +19,7 @@ import ChatInput from '@/components/ChatInput';
 import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
+import { TutorialHint, useTutorial } from '@/components/Tutorial';
 
 import type { Plan } from '@/services/api';
 import { healthcheck, sendChat, resetSession, getMe } from '@/services/api';
@@ -47,6 +48,8 @@ type ChatPayloadItem = { role: ChatPayloadRole; content: string };
 export default function ChatScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const tutorial = useTutorial();
+  const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
@@ -134,6 +137,12 @@ export default function ChatScreen() {
   }, [t]);
 
   useEffect(() => {
+    if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput') {
+      setInputText('find me a center forward');
+    }
+  }, [isScoutWiseTutorial, tutorial.scoutWiseStep]);
+
+  useEffect(() => {
     setInterstitialFailureHandler(() => setProUpsellOpen(true));
     return () => setInterstitialFailureHandler(null);
   }, []);
@@ -182,7 +191,7 @@ export default function ChatScreen() {
 
   async function performChatRequest(payload: ChatPayloadItem[], sid: string, attemptKey: number) {
     const currentStrategy = await loadStrategy();
-    const res = await sendChat(payload, sid, currentStrategy);
+    const res = await sendChat(payload, sid, currentStrategy, isScoutWiseTutorial);
 
     // If a newer attempt started while we were waiting, ignore this result completely.
     if (attemptKey !== inFlightAttemptRef.current) {
@@ -210,6 +219,9 @@ export default function ChatScreen() {
     }
 
     clearAttemptFlags(attemptKey);
+    if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput') {
+      tutorial.setScoutWiseStep('chatResponse');
+    }
     return res;
   }
 
@@ -304,13 +316,17 @@ export default function ChatScreen() {
     try {
       const nextCount = await incrementChatQueryCount();
 
-      if (!sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
+      if (!isScoutWiseTutorial && !sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
         const ok = showInterstitialSafely();
         if (!ok) {
           setProUpsellOpen(true);
         }
       }
-    } catch (e) {setProUpsellOpen(true);}
+    } catch (e) {
+      if (!isScoutWiseTutorial) {
+        setProUpsellOpen(true);
+      }
+    }
     //*/
     // 4) Build payload (text-only)
     const textOnly = messages
@@ -415,9 +431,37 @@ export default function ChatScreen() {
           windowSize={7}
           updateCellsBatchingPeriod={50}
           scrollEventThrottle={16}
+          scrollEnabled={!(isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse')}
         />
 
-        <ChatInput value={inputText} onChangeText={setInputText} onSend={send} disabled={sending} />
+        <TutorialHint
+          visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse'}
+          title={t('tutorialChatResponseTitle', 'Review the response')}
+          body={t('tutorialChatResponseBody', 'Scroll through the player card and charts. End the tutorial when you are ready.')}
+          actionLabel={t('tutorialEndTutorial', 'End tutorial')}
+          onAction={() => {
+            tutorial.completeTutorial();
+            navigation.navigate('Strategy');
+          }}
+          onSkipAll={() => {
+            tutorial.skipTutorial();
+            navigation.navigate('Strategy');
+          }}
+          arrow="down"
+        />
+
+        <ChatInput
+          value={inputText}
+          onChangeText={setInputText}
+          onSend={send}
+          disabled={sending}
+          tutorialActive={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'}
+          tutorialVisible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'}
+          onTutorialSkipAll={() => {
+            tutorial.skipTutorial();
+            navigation.navigate('Strategy');
+          }}
+        />
         <ProNotReadyScreen
           visible={proUpsellOpen}
           onClose={() => setProUpsellOpen(false)}

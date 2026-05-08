@@ -9,6 +9,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ArrowDownCircle, Radar, Swords, X } from 'lucide-react-native';
 
+import { TutorialHint, type PlayerPoolTutorialStep } from '@/components/Tutorial';
 import { ROLE_LONG_TO_SHORT } from '@/services/api';
 import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
 import type { SearchResultRow } from '@/components/CandidatePlayers';
@@ -36,6 +37,9 @@ type Props = {
   launchLoading?: boolean;
   onRemoveRow1: () => void;
   onRemoveRow2: () => void;
+  tutorialStep?: PlayerPoolTutorialStep | null;
+  onTutorialSkipAll?: () => void;
+  tutorialActive?: boolean;
 };
 
 function shortNationality(value?: string) {
@@ -95,10 +99,18 @@ export default function MatchupCenter({
   launchLoading = false,
   onRemoveRow1,
   onRemoveRow2,
+  tutorialStep = null,
+  onTutorialSkipAll,
+  tutorialActive = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const isFull = !!row1 && !!row2;
   const canAdd = !!selectedPlayer && !isFull;
+  const addEnabled =
+    !tutorialActive ||
+    tutorialStep === 'addYamalToMatchup' ||
+    tutorialStep === 'addViniciusToMatchup';
+  const launchEnabled = !tutorialActive || tutorialStep === 'launchMatchup';
   const player1Label = row1
     ? matchupNameLabel(row1.player.name)
     : t('matchupPlayer1Placeholder', 'Player 1');
@@ -165,8 +177,14 @@ export default function MatchupCenter({
         <View style={styles.vsep} />
         <Pressable
           onPress={onRemove}
+          disabled={tutorialActive}
           hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-          style={({ pressed }) => [styles.actionCell, { flex: COL.action }, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.actionCell,
+            { flex: COL.action },
+            tutorialActive && styles.lockedAction,
+            pressed && styles.pressed,
+          ]}
           accessibilityLabel={t('removeMatchupPlayer', 'Remove comparison player')}
         >
           {({ pressed }) => (
@@ -175,16 +193,40 @@ export default function MatchupCenter({
         </Pressable>
       </View>
     );
-  }, [t]);
+  }, [t, tutorialActive]);
 
   return (
     <>
+      <TutorialHint
+        visible={tutorialStep === 'addYamalToMatchup'}
+        title={t('tutorialAddYamalMatchupTitle', 'Add Lamine Yamal to Matchup Center')}
+        body={t(
+          'tutorialAddYamalMatchupBody',
+          'Tap this to place Yamal into a player slot.',
+        )}
+        onSkipAll={onTutorialSkipAll}
+        targetLabel={t('tutorialPressAddMatchup', 'Press Add player')}
+        arrow="down"
+      />
+
+      <TutorialHint
+        visible={tutorialStep === 'addViniciusToMatchup'}
+        title={t('tutorialAddViniciusMatchupTitle', 'Add Vinicius Junior')}
+        body={t(
+          'tutorialAddViniciusMatchupBody',
+          'Tap this to place Vinicius into a player slot.',
+        )}
+        onSkipAll={onTutorialSkipAll}
+        targetLabel={t('tutorialPressAddMatchup', 'Press Add player')}
+        arrow="down"
+      />
+
       <Pressable
         onPress={onAddSelectedPlayer}
-        disabled={!canAdd}
+        disabled={!canAdd || !addEnabled}
         style={({ pressed }) => [
           styles.addBridge,
-          !canAdd && styles.addBridgeMuted,
+          (!canAdd || !addEnabled) && styles.addBridgeMuted,
           pressed && styles.pressed,
         ]}
         accessibilityLabel={t('addPlayerToMatchupCenter', 'Add player to Matchup Center')}
@@ -271,12 +313,24 @@ export default function MatchupCenter({
           <View style={styles.tableBottomBorder} />
         </View>
 
+        <TutorialHint
+          visible={tutorialStep === 'launchMatchup'}
+          title={t('tutorialLaunchMatchupTitle', 'Launch the matchup')}
+          body={t(
+            'tutorialLaunchMatchupBody',
+            'Both players are ready. Launch the comparison.',
+          )}
+          onSkipAll={onTutorialSkipAll}
+          targetLabel={t('tutorialPressLaunchMatchup', 'Press Launch Matchup')}
+          arrow="down"
+        />
+
         <Pressable
           onPress={onLaunchMatchup}
-          disabled={launchDisabled || launchLoading}
+          disabled={!launchEnabled || launchDisabled || launchLoading}
           style={({ pressed }) => [
             styles.launchButton,
-            (launchDisabled || launchLoading) && styles.launchButtonMuted,
+            (!launchEnabled || launchDisabled || launchLoading) && styles.launchButtonMuted,
             pressed && styles.pressed,
           ]}
           accessibilityLabel={t('launchMatchup', 'Launch Matchup')}
@@ -389,6 +443,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  lockedAction: {
+    opacity: 0.45,
   },
   emptySlot: {
     backgroundColor: 'rgba(31, 34, 32, 0.58)',

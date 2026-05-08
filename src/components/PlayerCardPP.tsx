@@ -9,6 +9,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import PlayerCard from '@/components/PlayerCard';
+import { TutorialHint, TutorialStrong, type PlayerPoolTutorialStep } from '@/components/Tutorial';
 import { addFavoritePlayer } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -23,6 +24,9 @@ type Props = {
   revealingForm: boolean;
   revealedPotentialForCard: boolean;
   revealedFormForCard: boolean;
+  tutorialStep?: PlayerPoolTutorialStep | null;
+  onTutorialContinue?: () => void;
+  onTutorialSkipAll?: () => void;
 };
 
 export default function PlayerCardPP({
@@ -35,8 +39,15 @@ export default function PlayerCardPP({
   revealingForm,
   revealedPotentialForCard,
   revealedFormForCard,
+  tutorialStep = null,
+  onTutorialContinue,
+  onTutorialSkipAll,
 }: Props) {
   const { t } = useTranslation();
+  const tutorialActive = !!tutorialStep;
+  const canPressPotential = !tutorialActive || tutorialStep === 'revealPotential';
+  const canPressForm = !tutorialActive || tutorialStep === 'revealForm';
+  const canPressPortfolio = !tutorialActive || tutorialStep === 'addPortfolio';
 
   return (
     <View style={styles.panel}>
@@ -51,9 +62,23 @@ export default function PlayerCardPP({
       </View>
       {selectedPlayer ? (
         <>
+          <TutorialHint
+            visible={tutorialStep === 'card'}
+            title={t('tutorialPlayerCardTitle', 'Player card')}
+            body={t(
+              'tutorialPlayerCardBody',
+              'Review the selected player here. Potential and form can be revealed below.',
+            )}
+            actionLabel={t('tutorialContinueToPotential', 'Reveal potential next')}
+            onAction={onTutorialContinue}
+            onSkipAll={onTutorialSkipAll}
+            targetLabel={t('tutorialPressContinue', 'Press continue')}
+            arrow="down"
+          />
           <PlayerCard
             player={selectedPlayerForCard ?? selectedPlayer}
             titleAlign="center"
+            addFavoriteDisabled={!canPressPortfolio}
             onAddFavorite={async (player) => {
               try {
                 await addFavoritePlayer({
@@ -78,17 +103,65 @@ export default function PlayerCardPP({
                 onAddFavoriteSuccess?.();
                 return true;
               } catch (e: any) {
+                if (tutorialStep === 'addPortfolio') {
+                  onAddFavoriteSuccess?.();
+                  return true;
+                }
                 Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
                 return false;
               }
             }}
           />
+          <TutorialHint
+            visible={tutorialStep === 'addPortfolio'}
+            title={t('tutorialAddPortfolioTitle', 'Add to player portfolio')}
+            body={t(
+              'tutorialAddPortfolioBody',
+              'Tap the plus button to save this player to your portfolio.',
+            )}
+            onSkipAll={onTutorialSkipAll}
+            targetLabel={t('tutorialPressPlus', 'Press +')}
+            arrow="up"
+          />
+          <TutorialHint
+            visible={tutorialStep === 'revealPotential'}
+            title={t('tutorialRevealPotentialTitle', 'Reveal potential')}
+            body={
+              <>
+                {t('tutorialRevealPotentialBodyLead', 'Potential projects future performance from last year’s match data, ')}
+                <TutorialStrong>
+                  {t('tutorialRelativeTeamLeague', 'relative to the player’s team and league')}
+                </TutorialStrong>
+                .
+              </>
+            }
+            onSkipAll={onTutorialSkipAll}
+            targetLabel={t('tutorialPressRevealPotential', 'Press Reveal Potential')}
+            arrow="down"
+          />
+          <TutorialHint
+            visible={tutorialStep === 'revealForm'}
+            title={t('tutorialRevealFormTitle', 'Reveal form')}
+            body={
+              <>
+                {t('tutorialRevealFormBodyLead', 'Form is the current performance score from last year’s data, ')}
+                <TutorialStrong>
+                  {t('tutorialRelativeTeamLeague', 'relative to the player’s team and league')}
+                </TutorialStrong>
+                .
+              </>
+            }
+            onSkipAll={onTutorialSkipAll}
+            targetLabel={t('tutorialPressRevealForm', 'Press Reveal Form')}
+            arrow="down"
+          />
           <View style={styles.revealActionsRow}>
             <Pressable
               onPress={onRevealPotential}
-              disabled={revealingPotential || revealedPotentialForCard}
+              disabled={!canPressPotential || revealingPotential || revealedPotentialForCard}
               style={({ pressed }) => [
                 styles.revealScoreButton,
+                !canPressPotential && styles.revealScoreButtonLocked,
                 revealedPotentialForCard && styles.revealScoreButtonMuted,
                 (pressed || revealingPotential) && styles.pressed,
               ]}
@@ -109,9 +182,10 @@ export default function PlayerCardPP({
 
             <Pressable
               onPress={onRevealForm}
-              disabled={revealingForm || revealedFormForCard}
+              disabled={!canPressForm || revealingForm || revealedFormForCard}
               style={({ pressed }) => [
                 styles.revealScoreButton,
+                !canPressForm && styles.revealScoreButtonLocked,
                 revealedFormForCard && styles.revealScoreButtonMuted,
                 (pressed || revealingForm) && styles.pressed,
               ]}
@@ -215,6 +289,9 @@ const styles = StyleSheet.create({
   revealScoreButtonMuted: {
     borderColor: LINE,
     backgroundColor: CARD,
+  },
+  revealScoreButtonLocked: {
+    opacity: 0.45,
   },
   revealScoreButtonText: {
     color: ACCENT,

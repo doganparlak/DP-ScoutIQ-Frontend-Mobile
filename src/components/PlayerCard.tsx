@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 type Props = {
   player: PlayerData;
   onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
+  addFavoriteDisabled?: boolean;
   titleAlign?: 'left' | 'center';
 };
 
@@ -61,7 +62,7 @@ function ScoreBar({
   );
 }
 
-export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' }: Props) {
+export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled = false, titleAlign = 'left' }: Props) {
   const { t } = useTranslation();
   const { name, meta } = player;
   const roles = meta?.roles ?? [];
@@ -97,7 +98,7 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
     }
   };
 
-  const disabled = !onAddFavorite || isAdding || isAdded;
+  const disabled = !onAddFavorite || addFavoriteDisabled || isAdding || isAdded;
   const potentialInt = Math.round(isValidPotential(potential) ? potential : 0);
   const formInt = Math.round(isValidPotential(form) ? form : 0);
 
@@ -159,7 +160,7 @@ export default function PlayerCard({ player, onAddFavorite, titleAlign = 'left' 
               borderRadius: 999,
               paddingHorizontal: 10,
               paddingVertical: 2,
-              opacity: (isAdding || !onAddFavorite) ? 0.5 : 1,
+              opacity: (addFavoriteDisabled || isAdding || !onAddFavorite) ? 0.5 : 1,
             }}
           >
             <Text

@@ -11,9 +11,16 @@ const MAX_HEIGHT = 560;
 interface Props {
   onSaved?: (value: string) => void;
   disabled?: boolean;
+  tutorialPresetText?: string;
+  setButtonDisabled?: boolean;
 }
 
-export default function StrategyCard({ onSaved, disabled = false }: Props) {
+export default function StrategyCard({
+  onSaved,
+  disabled = false,
+  tutorialPresetText,
+  setButtonDisabled = false,
+}: Props) {
   const { t } = useTranslation();
 
   const [text, setText] = useState('');                 // empty => show placeholder
@@ -26,6 +33,12 @@ export default function StrategyCard({ onSaved, disabled = false }: Props) {
 
   useEffect(() => {
     (async () => {
+      if (tutorialPresetText) {
+        setText(tutorialPresetText);
+        setShowSetButton(true);
+        setPhMode('initial');
+        return;
+      }
       const existing = (await loadStrategy()) ?? '';
       if (existing.trim().length) {
         setText(existing);
@@ -37,7 +50,7 @@ export default function StrategyCard({ onSaved, disabled = false }: Props) {
         setPhMode('initial');    // default initial placeholder
       }
     })();
-  }, []);
+  }, [tutorialPresetText]);
 
 
 
@@ -113,12 +126,12 @@ export default function StrategyCard({ onSaved, disabled = false }: Props) {
 
           <Pressable
             onPress={handleSet}
-            disabled={disabled}
+            disabled={disabled || setButtonDisabled}
             style={({ pressed }) => [
               styles.btnHalf,
               styles.btnPrimary,
-              disabled && styles.btnDisabled,
-              pressed && !disabled && styles.pressed,
+              (disabled || setButtonDisabled) && styles.btnDisabled,
+              pressed && !disabled && !setButtonDisabled && styles.pressed,
             ]}
             accessibilityRole="button"
             accessibilityLabel={t('setStrategy', 'Set Strategy')}

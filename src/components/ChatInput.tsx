@@ -3,15 +3,27 @@ import React, { useRef } from 'react';
 import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
 import { ACCENT, BG, PANEL, MUTED, LINE } from '@/theme';
 import { useTranslation } from 'react-i18next';
+import { TutorialHint } from '@/components/Tutorial';
 
 type Props = {
   value: string;
   onChangeText: (t: string) => void;
   onSend: (text: string) => void;
   disabled?: boolean;
+  tutorialActive?: boolean;
+  tutorialVisible?: boolean;
+  onTutorialSkipAll?: () => void;
 };
 
-export default function ChatInput({ value, onChangeText, onSend, disabled }: Props) {
+export default function ChatInput({
+  value,
+  onChangeText,
+  onSend,
+  disabled,
+  tutorialActive = false,
+  tutorialVisible = false,
+  onTutorialSkipAll,
+}: Props) {
   const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const canSend = value.trim().length > 0 && !disabled;
@@ -27,35 +39,48 @@ export default function ChatInput({ value, onChangeText, onSend, disabled }: Pro
   }
 
   return (
-    <View style={styles.wrap}>
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={t('chatPlaceholder', 'Type your message…')}
-        placeholderTextColor={MUTED}
-        style={styles.input}
-        multiline
-        editable={!disabled}
-        accessibilityLabel={t('chatInputAL', 'Message input')}
-        onSubmitEditing={handleSend}
-        blurOnSubmit={false}
+    <View style={styles.outer}>
+      <TutorialHint
+        visible={tutorialVisible}
+        title={t('tutorialChatInputTitle', 'Ask ScoutWise')}
+        body={t('tutorialChatInputBody', 'We filled in a sample request. Press Send.')}
+        targetLabel={t('tutorialPressSend', 'Press Send')}
+        onSkipAll={onTutorialSkipAll}
+        arrow="up"
       />
-      <Pressable
-        onPress={handleSend}
-        disabled={!canSend}
-        accessibilityRole="button"
-        accessibilityLabel={t('send', 'Send')}
-        style={({ pressed }) => [styles.btn, { opacity: canSend ? (pressed ? 0.9 : 1) : 0.5 }]}
-      >
-        <Text style={styles.btnText}>{t('send', 'Send')}</Text>
-      </Pressable>
+      <View style={styles.wrap}>
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={tutorialActive ? undefined : onChangeText}
+          placeholder={t('chatPlaceholder', 'Type your message…')}
+          placeholderTextColor={MUTED}
+          style={styles.input}
+          multiline
+          editable={!disabled && !tutorialActive}
+          accessibilityLabel={t('chatInputAL', 'Message input')}
+          onSubmitEditing={handleSend}
+          blurOnSubmit={false}
+        />
+        <Pressable
+          onPress={handleSend}
+          disabled={!canSend}
+          accessibilityRole="button"
+          accessibilityLabel={t('send', 'Send')}
+          style={({ pressed }) => [styles.btn, { opacity: canSend ? (pressed ? 0.9 : 1) : 0.5 }]}
+        >
+          <Text style={styles.btnText}>{t('send', 'Send')}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   // ⬇️ Add marginBottom to lift the bar up a bit, and slightly reduce padding
+  outer: {
+    backgroundColor: BG,
+  },
   wrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',

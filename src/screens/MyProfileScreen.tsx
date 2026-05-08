@@ -4,7 +4,6 @@ import { StyleSheet, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE } from '../theme';
 import type { RootStackParamList, MainTabsParamList } from '../types';
@@ -13,6 +12,7 @@ import type { Plan } from '@/services/api';
 
 import FavoritePlayers from '@/components/FavoritePlayers';
 import Account from '@/components/Account';
+import { ProfileTutorialModal, useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
@@ -20,6 +20,7 @@ type RootNav = NativeStackNavigationProp<RootStackParamList>;
 export default function MyProfileScreen() {
   const rootNav = useNavigation<RootNav>();
   const { t } = useTranslation();
+  const tutorial = useTutorial();
 
   const [plan, setPlan] = useState<Plan>('Free');
 
@@ -44,6 +45,11 @@ export default function MyProfileScreen() {
 
   const openPlans = () => rootNav.navigate('ManagePlan');
   const openHelp = () => rootNav.navigate('HelpCenter');
+
+  const moveToScoutWiseTutorial = () => {
+    tutorial.moveToScoutWise();
+    rootNav.getParent()?.navigate('Chat', { screen: 'LegacyStrategy' } as never);
+  };
 
   const handleLogout = async () => {
     try {
@@ -71,6 +77,15 @@ export default function MyProfileScreen() {
 
         <FavoritePlayers plan={plan} />
       </ScrollView>
+
+      <ProfileTutorialModal
+        visible={tutorial.active && tutorial.stage === 'profile'}
+        onDone={moveToScoutWiseTutorial}
+        onSkip={() => {
+          tutorial.skipTutorial();
+          rootNav.getParent()?.navigate('Strategy' as never);
+        }}
+      />
     </SafeAreaView>
   );
 }

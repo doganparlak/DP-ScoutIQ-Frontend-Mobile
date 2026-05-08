@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Search, X } from 'lucide-react-native';
 
+import { TutorialHint } from '@/components/Tutorial';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 
 type Props = {
@@ -50,6 +51,10 @@ type Props = {
   setMaxHeight: (value: string) => void;
   clearFilters: () => void;
   onSearch: () => void;
+  tutorialStep?: 'filters' | 'search' | null;
+  onTutorialContinue?: () => void;
+  onTutorialSkipAll?: () => void;
+  tutorialActive?: boolean;
 };
 
 export default function SearchFilters({
@@ -89,19 +94,38 @@ export default function SearchFilters({
   setMaxHeight,
   clearFilters,
   onSearch,
+  tutorialStep = null,
+  onTutorialContinue,
+  onTutorialSkipAll,
+  tutorialActive = false,
 }: Props) {
   const { t } = useTranslation();
+  const controlsLocked = tutorialActive;
+  const searchEnabled = !tutorialActive || tutorialStep === 'search';
 
   return (
     <View style={styles.panel}>
       <Text style={styles.sectionTitle}>{t('playerPoolFilters', 'Search filters')}</Text>
+
+      <TutorialHint
+        visible={tutorialStep === 'filters'}
+        title={t('tutorialSearchFiltersTitle', 'Start with search filters')}
+        body={t(
+          'tutorialSearchFiltersBody',
+          'Filters narrow the database. We filled in Lamine Yamal as an example.',
+        )}
+        actionLabel={t('tutorialPointToSearch', 'Point me to Search')}
+        onAction={onTutorialContinue}
+        onSkipAll={onTutorialSkipAll}
+      />
 
       <View style={styles.filters}>
         <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
           <TextInput
             value={name}
-            onChangeText={setName}
+            onChangeText={controlsLocked ? undefined : setName}
+            editable={!controlsLocked}
             placeholder={t('phSearchName', 'Search name')}
             placeholderTextColor={MUTED}
             style={styles.input}
@@ -112,6 +136,7 @@ export default function SearchFilters({
           <Text style={styles.filterLabel}>{t('fltGender', 'Gender')}</Text>
           <Pressable
             onPress={cycleGender}
+            disabled={controlsLocked}
             style={({ pressed }) => [styles.input, styles.centeredInput, pressed && styles.pressed]}
           >
             <Text style={{ color: gender ? TEXT : MUTED, fontSize: 14 }}>{renderGenderLabel()}</Text>
@@ -122,7 +147,9 @@ export default function SearchFilters({
           <Text style={styles.filterLabel}>{t('fltNationality', 'Country')}</Text>
           <TextInput
             value={nationality}
+            editable={!controlsLocked}
             onChangeText={(value) => {
+              if (controlsLocked) return;
               setNationality(value);
               setSelectedNationality(
                 selectedNationality && selectedNationality === value ? selectedNationality : null,
@@ -139,6 +166,7 @@ export default function SearchFilters({
                 <Pressable
                   key={item}
                   onPress={() => {
+                    if (controlsLocked) return;
                     setNationality(item);
                     setSelectedNationality(item);
                   }}
@@ -155,7 +183,9 @@ export default function SearchFilters({
           <Text style={styles.filterLabel}>{t('fltLeague', 'League')}</Text>
           <TextInput
             value={league}
+            editable={!controlsLocked}
             onChangeText={(value) => {
+              if (controlsLocked) return;
               setLeague(value);
               setSelectedLeague(selectedLeague && selectedLeague === value ? selectedLeague : null);
             }}
@@ -170,6 +200,7 @@ export default function SearchFilters({
                 <Pressable
                   key={item}
                   onPress={() => {
+                    if (controlsLocked) return;
                     setLeague(item);
                     setSelectedLeague(item);
                   }}
@@ -186,7 +217,9 @@ export default function SearchFilters({
           <Text style={styles.filterLabel}>{t('fltTeam', 'Team')}</Text>
           <TextInput
             value={team}
+            editable={!controlsLocked}
             onChangeText={(value) => {
+              if (controlsLocked) return;
               setTeam(value);
               setSelectedTeam(selectedTeam && selectedTeam === value ? selectedTeam : null);
             }}
@@ -201,6 +234,7 @@ export default function SearchFilters({
                 <Pressable
                   key={item}
                   onPress={() => {
+                    if (controlsLocked) return;
                     setTeam(item);
                     setSelectedTeam(item);
                   }}
@@ -217,6 +251,7 @@ export default function SearchFilters({
           <Text style={styles.filterLabel}>{t('tblRoles', 'Role')}</Text>
           <Pressable
             onPress={() => setPositionOpen(true)}
+            disabled={controlsLocked}
             style={({ pressed }) => [styles.input, styles.dropdownInput, pressed && styles.pressed]}
           >
             <Text style={{ color: position ? TEXT : MUTED, fontSize: 14 }}>
@@ -231,6 +266,7 @@ export default function SearchFilters({
           <View style={styles.rangeRow}>
             <TextInput
               value={minAge}
+              editable={!controlsLocked}
               onChangeText={(value) => setMinAge(value.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMin', 'Min')}
@@ -239,6 +275,7 @@ export default function SearchFilters({
             />
             <TextInput
               value={maxAge}
+              editable={!controlsLocked}
               onChangeText={(value) => setMaxAge(value.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMax', 'Max')}
@@ -253,6 +290,7 @@ export default function SearchFilters({
           <View style={styles.rangeRow}>
             <TextInput
               value={minHeight}
+              editable={!controlsLocked}
               onChangeText={(value) => setMinHeight(value.replace(/[^\d.]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMin', 'Min')}
@@ -261,6 +299,7 @@ export default function SearchFilters({
             />
             <TextInput
               value={maxHeight}
+              editable={!controlsLocked}
               onChangeText={(value) => setMaxHeight(value.replace(/[^\d.]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMax', 'Max')}
@@ -274,6 +313,7 @@ export default function SearchFilters({
       <View style={styles.actionsRow}>
         <Pressable
           onPress={clearFilters}
+          disabled={controlsLocked}
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryButtonText}>{t('clearFilters', 'Clear filters')}</Text>
@@ -281,12 +321,29 @@ export default function SearchFilters({
 
         <Pressable
           onPress={onSearch}
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+          disabled={!searchEnabled}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            !searchEnabled && styles.disabledButton,
+            pressed && styles.pressed,
+          ]}
         >
           <Search size={16} color={ACCENT} strokeWidth={2.2} />
           <Text style={styles.primaryButtonText}>{t('playerPoolSearchButton', 'Search')}</Text>
         </Pressable>
       </View>
+
+      <TutorialHint
+        visible={tutorialStep === 'search'}
+        title={t('tutorialSearchButtonTitle', 'Run the search')}
+        body={t(
+          'tutorialSearchButtonBody',
+          'Tap Search to list matching players.',
+        )}
+        onSkipAll={onTutorialSkipAll}
+        targetLabel={t('tutorialPressSearch', 'Press Search')}
+        arrow="up"
+      />
 
       <Modal
         transparent
@@ -443,6 +500,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
+  },
+  disabledButton: {
+    opacity: 0.45,
   },
   primaryButtonText: {
     color: ACCENT,

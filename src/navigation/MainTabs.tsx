@@ -25,18 +25,16 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
-import {
-  MessageSquareMore,
-  ChartSpline,
-} from 'lucide-react-native';
+import { TutorialProvider, useTutorial } from '@/components/Tutorial';
 import { getMe, type Plan } from '@/services/api';
 
 const TAB_BASE_HEIGHT = 70;
-const TAB_ICON_SIZE = 24;
 const MAIN_TAB_ICON_SIZE = 30;
 const MAIN_TAB_ICON_LABEL_GAP = 8;
 const SCOUTWISE_PRO_TAB_VERTICAL_OFFSET = 12;
 const SIDE_TAB_VERTICAL_OFFSET = -4;
+
+const isFreePlan = (plan: Plan | null) => plan === 'Free';
 
 type MainTabIconSlotProps = {
   children: React.ReactNode;
@@ -164,55 +162,8 @@ function TacticsBoardIcon({ size, color, strokeWidth = 2.2 }: TacticsBoardIconPr
   );
 }
 
-type ShortcutButtonProps = {
-  label: string;
-  disabled?: boolean;
-  onPress: () => void;
-  children: React.ReactNode;
-  subtitle: string;
-};
-
-function ShortcutButton({
-  label,
-  disabled = false,
-  onPress,
-  children,
-  subtitle,
-}: ShortcutButtonProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.shortcutButton,
-        disabled && styles.shortcutButtonDisabled,
-        pressed && !disabled && styles.shortcutButtonPressed,
-      ]}
-    >
-      <View style={styles.shortcutInner}>
-        <View style={[styles.shortcutIconWrap, disabled && styles.shortcutIconWrapDisabled]}>
-          {children}
-        </View>
-        <Text style={[styles.shortcutLabel, disabled && styles.shortcutLabelDisabled]}>
-          {label}
-        </Text>
-        <Text style={[styles.shortcutSubtitle, disabled && styles.shortcutSubtitleDisabled]}>
-          {subtitle}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 type ScoutWiseProTabButtonProps = BottomTabBarButtonProps & {
-  hasAiConsent: boolean;
-  isConsentLoading: boolean;
-  isMenuOpen: boolean;
-  isFreePlan: boolean;
-  onCloseMenu: () => void;
-  onOpenMenu: () => void;
+  onResolvePlan: () => Promise<Plan | null>;
   t: TFunction;
 };
 
@@ -220,68 +171,24 @@ function ScoutWiseProTabButton({
   accessibilityState,
   children,
   style,
-  hasAiConsent,
-  isConsentLoading,
-  isMenuOpen,
-  isFreePlan,
-  onCloseMenu,
-  onOpenMenu,
+  onResolvePlan,
   t,
 }: ScoutWiseProTabButtonProps) {
   const navigation = useNavigation<any>();
+  const tutorial = useTutorial();
+  const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
 
   return (
     <View style={[style, styles.tabButtonWrap]} pointerEvents="box-none">
-      {isMenuOpen ? (
-        <View style={styles.shortcutMenu} pointerEvents="box-none">
-          <ShortcutButton
-            label={t('tabStrategy', 'Strategy')}
-            subtitle={t('setStrategy', 'Set Strategy')}
-            onPress={() => {
-              onCloseMenu();
-              navigation.navigate('Chat', { screen: 'LegacyStrategy' });
-            }}
-          >
-            <ChartSpline size={TAB_ICON_SIZE} color={ACCENT} strokeWidth={2.2} />
-          </ShortcutButton>
-
-          <ShortcutButton
-            label={t('tabChat', 'Chat')}
-            subtitle={t('startChatting', 'Start Chatting')}
-            disabled={!hasAiConsent || isConsentLoading}
-            onPress={() => {
-              if (!hasAiConsent || isConsentLoading) return;
-              onCloseMenu();
-              navigation.navigate('Chat', { screen: 'LegacyChat' });
-            }}
-          >
-            <MessageSquareMore
-              size={TAB_ICON_SIZE}
-              color={hasAiConsent && !isConsentLoading ? ACCENT : MUTED}
-              strokeWidth={2.2}
-            />
-          </ShortcutButton>
-        </View>
-      ) : null}
-
       <Pressable
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         accessibilityLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
-        onLongPress={() => {
-          if (isFreePlan) {
-            return;
-          }
-          if (isMenuOpen) {
-            onCloseMenu();
-            return;
-          }
-          onOpenMenu();
-        }}
-        onPress={() => {
-          onCloseMenu();
+        onPress={async () => {
+          const latestPlan = await onResolvePlan();
+
           navigation.navigate('Chat', {
-            screen: isFreePlan ? 'ProHome' : 'LegacyStrategy',
+            screen: isScoutWiseTutorial || !isFreePlan(latestPlan) ? 'LegacyStrategy' : 'ProHome',
           });
         }}
         style={({ pressed }) => [
@@ -302,140 +209,128 @@ export default function MainTabs() {
   const androidBottom = Platform.OS === 'android' ? insets.bottom : 0;
   const tabHeight = TAB_BASE_HEIGHT + androidBottom;
 
-  const [hasAiConsent, setHasAiConsent] = React.useState(false);
-  const [loadingConsent, setLoadingConsent] = React.useState(true);
-  const [proMenuOpen, setProMenuOpen] = React.useState(false);
-  const [plan, setPlan] = React.useState<Plan>('Free');
+  const [plan, setPlan] = React.useState<Plan | null>(null);
 
-  const closeProMenu = React.useCallback(() => {
-    setProMenuOpen(false);
-  }, []);
-
-  const loadConsent = React.useCallback(async () => {
+  const loadPlan = React.useCallback(async () => {
     try {
-      setLoadingConsent(true);
       const me = await getMe();
-      setHasAiConsent(!!me.consent);
       if (me?.plan) {
         setPlan(me.plan as Plan);
       }
     } catch (e: any) {
-      console.log('LOAD CONSENT ERROR:', e?.message ?? e);
-      setHasAiConsent(false);
-      setPlan('Free');
-    } finally {
-      setLoadingConsent(false);
+      console.log('LOAD PLAN ERROR:', e?.message ?? e);
+      setPlan(null);
     }
   }, []);
 
+  const resolvePlan = React.useCallback(async () => {
+    try {
+      const me = await getMe();
+      if (me?.plan) {
+        const latestPlan = me.plan as Plan;
+        setPlan(latestPlan);
+        return latestPlan;
+      }
+    } catch (e: any) {
+      console.log('RESOLVE PLAN ERROR:', e?.message ?? e);
+    }
+
+    return plan;
+  }, [plan]);
+
   React.useEffect(() => {
-    loadConsent();
-  }, [loadConsent]);
+    loadPlan();
+  }, [loadPlan]);
 
   useFocusEffect(
     React.useCallback(() => {
-      loadConsent();
-    }, [loadConsent]),
+      loadPlan();
+    }, [loadPlan]),
   );
 
   return (
-    <Tab.Navigator
-      initialRouteName="Strategy"
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: PANEL,
-          borderTopColor: LINE,
-          borderTopWidth: 1,
-          height: tabHeight,
-          overflow: 'visible',
-        },
-        tabBarActiveTintColor: ACCENT,
-        tabBarInactiveTintColor: MUTED,
-        tabBarItemStyle: styles.mainTabItem,
-      }}
-    >
-      <Tab.Screen
-        name="Strategy"
-        component={PlayerPoolScreen}
-        listeners={{
-          tabPress: closeProMenu,
+    <TutorialProvider>
+      <Tab.Navigator
+        initialRouteName="Strategy"
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: PANEL,
+            borderTopColor: LINE,
+            borderTopWidth: 1,
+            height: tabHeight,
+            overflow: 'visible',
+          },
+          tabBarActiveTintColor: ACCENT,
+          tabBarInactiveTintColor: MUTED,
+          tabBarItemStyle: styles.mainTabItem,
         }}
-        options={{
-          tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
-          tabBarLabel: ({ color }) => (
-            <Text style={[styles.mainTabLabel, { color }]}>
-              {t('tabPlayerPool', 'Player Pool')}
-            </Text>
-          ),
-          tabBarIcon: ({ color }) => (
-            <MainTabIconSlot>
-              <FootballJerseyIcon size={MAIN_TAB_ICON_SIZE} color={color} strokeWidth={2.2} />
-            </MainTabIconSlot>
-          ),
-        }}
-      />
+      >
+        <Tab.Screen
+          name="Strategy"
+          component={PlayerPoolScreen}
+          options={{
+            tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
+            tabBarLabel: ({ color }) => (
+              <Text style={[styles.mainTabLabel, { color }]}>
+                {t('tabPlayerPool', 'Player Pool')}
+              </Text>
+            ),
+            tabBarIcon: ({ color }) => (
+              <MainTabIconSlot>
+                <FootballJerseyIcon size={MAIN_TAB_ICON_SIZE} color={color} strokeWidth={2.2} />
+              </MainTabIconSlot>
+            ),
+          }}
+        />
 
-      <Tab.Screen
-        name="Chat"
-        component={ScoutWiseProStackScreen}
-        listeners={{
-          tabPress: closeProMenu,
-        }}
-        options={{
-          tabBarLabel: ({ color }) => (
-            <Text style={[styles.mainTabLabel, { color }]}>
-              {t('tabScoutWisePro', 'ScoutWise Pro')}
-            </Text>
-          ),
-          tabBarIcon: ({ color }) => (
-            <MainTabIconSlot>
-              <TacticsBoardIcon
-                size={MAIN_TAB_ICON_SIZE}
-                color={color}
-                strokeWidth={2.2}
+        <Tab.Screen
+          name="Chat"
+          component={ScoutWiseProStackScreen}
+          options={{
+            tabBarLabel: ({ color }) => (
+              <Text style={[styles.mainTabLabel, { color }]}>
+                {t('tabScoutWisePro', 'ScoutWise Pro')}
+              </Text>
+            ),
+            tabBarIcon: ({ color }) => (
+              <MainTabIconSlot>
+                <TacticsBoardIcon
+                  size={MAIN_TAB_ICON_SIZE}
+                  color={color}
+                  strokeWidth={2.2}
+                />
+              </MainTabIconSlot>
+            ),
+            tabBarButton: (props) => (
+              <ScoutWiseProTabButton
+                {...props}
+                onResolvePlan={resolvePlan}
+                t={t}
               />
-            </MainTabIconSlot>
-          ),
-          tabBarButton: (props) => (
-            <ScoutWiseProTabButton
-              {...props}
-              hasAiConsent={hasAiConsent}
-              isConsentLoading={loadingConsent}
-              isMenuOpen={proMenuOpen}
-              isFreePlan={plan === 'Free'}
-              onCloseMenu={closeProMenu}
-              onOpenMenu={() => {
-                loadConsent();
-                setProMenuOpen(true);
-              }}
-              t={t}
-            />
-          ),
-        }}
-      />
+            ),
+          }}
+        />
 
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStackScreen}
-        listeners={{
-          tabPress: closeProMenu,
-        }}
-        options={{
-          tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
-          tabBarLabel: ({ color }) => (
-            <Text style={[styles.mainTabLabel, { color }]}>
-              {t('tabProfile', 'My Profile')}
-            </Text>
-          ),
-          tabBarIcon: ({ color }) => (
-            <MainTabIconSlot>
-              <Ionicons name="person-circle-outline" size={MAIN_TAB_ICON_SIZE} color={color} />
-            </MainTabIconSlot>
-          ),
-        }}
-      />
-    </Tab.Navigator>
+        <Tab.Screen
+          name="Profile"
+          component={ProfileStackScreen}
+          options={{
+            tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
+            tabBarLabel: ({ color }) => (
+              <Text style={[styles.mainTabLabel, { color }]}>
+                {t('tabProfile', 'My Profile')}
+              </Text>
+            ),
+            tabBarIcon: ({ color }) => (
+              <MainTabIconSlot>
+                <Ionicons name="person-circle-outline" size={MAIN_TAB_ICON_SIZE} color={color} />
+              </MainTabIconSlot>
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    </TutorialProvider>
   );
 }
 
@@ -478,80 +373,5 @@ const styles = StyleSheet.create({
   },
   tabButtonPressed: {
     opacity: 0.92,
-  },
-  shortcutMenu: {
-    position: 'absolute',
-    left: '50%',
-    bottom: TAB_BASE_HEIGHT + 14,
-    transform: [{ translateX: -118 }],
-    zIndex: 40,
-    elevation: 40,
-    width: 236,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: LINE,
-    borderRadius: 24,
-    backgroundColor: '#161917',
-    flexDirection: 'row',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-  },
-  shortcutButton: {
-    flex: 1,
-    minHeight: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1D211F',
-    borderWidth: 1,
-    borderColor: '#2A302C',
-    borderRadius: 18,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-  },
-  shortcutButtonDisabled: {
-    opacity: 0.45,
-  },
-  shortcutButtonPressed: {
-    backgroundColor: '#232826',
-    transform: [{ translateY: 1 }],
-  },
-  shortcutInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shortcutIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.28)',
-    marginBottom: 10,
-  },
-  shortcutIconWrapDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.10)',
-  },
-  shortcutLabel: {
-    color: ACCENT,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  shortcutSubtitle: {
-    marginTop: 3,
-    color: '#98A29B',
-    fontWeight: '600',
-    fontSize: 11,
-  },
-  shortcutLabelDisabled: {
-    color: MUTED,
-  },
-  shortcutSubtitleDisabled: {
-    color: MUTED,
   },
 });

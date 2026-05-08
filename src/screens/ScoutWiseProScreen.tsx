@@ -2,19 +2,41 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { BG, PANEL, TEXT, ACCENT, MUTED, LINE } from '@/theme';
-import type { MainTabsParamList } from '@/types';
+import { getMe, type Plan } from '@/services/api';
 
 const SHIFT_UP = 14;
 const SHIFT_UP_ANDROID = 44;
 const isAndroid = Platform.OS === 'android';
+const isProPlan = (plan: Plan | string | undefined | null) =>
+  plan === 'Pro Monthly' || plan === 'Pro Yearly';
 
 export default function ScoutWiseProScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
+  const navigation = useNavigation<any>();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let alive = true;
+
+      (async () => {
+        try {
+          const me = await getMe();
+          if (alive && isProPlan(me?.plan)) {
+            navigation.navigate('LegacyStrategy');
+          }
+        } catch (e: any) {
+          console.log('PRO SCREEN PLAN CHECK ERROR:', e?.message ?? e);
+        }
+      })();
+
+      return () => {
+        alive = false;
+      };
+    }, [navigation]),
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>

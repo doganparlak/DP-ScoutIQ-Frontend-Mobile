@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Eye } from 'lucide-react-native';
 
@@ -34,6 +35,7 @@ import Header from '@/components/Header';
 import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
 import SearchFilters from '@/components/SearchFilters';
+import { useTutorial } from '@/components/Tutorial';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
@@ -56,6 +58,8 @@ type SortDir = 'asc' | 'desc';
 
 export default function PlayerPoolScreen() {
   const { t, i18n } = useTranslation();
+  const navigation = useNavigation<any>();
+  const tutorial = useTutorial();
   const [name, setName] = React.useState('');
   const [gender, setGender] = React.useState<'' | 'male' | 'female'>('');
   const [nationality, setNationality] = React.useState('');
@@ -99,13 +103,77 @@ export default function PlayerPoolScreen() {
   const [positionOptions, setPositionOptions] = React.useState<string[]>(
     [...PLAYER_POOL_POSITION_OPTIONS],
   );
+  const scrollRef = React.useRef<ScrollView | null>(null);
   const currentCardRenderIdRef = React.useRef<string | null>(null);
   const countedCardRenderIdRef = React.useRef<string | null>(null);
+  const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
+
+  const scrollToTutorialArea = React.useCallback((area: 'filters' | 'candidates' | 'card' | 'matchup') => {
+    const y =
+      area === 'filters'
+        ? 120
+        : area === 'candidates'
+          ? 520
+          : area === 'card'
+            ? 820
+            : 1160;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y, animated: true });
+    });
+  }, []);
+
+  React.useEffect(() => {
+    if (!isPlayerPoolTutorialActive || tutorial.playerPoolStep !== 'filters') return;
+
+    setName('Lamine Yamal');
+    setGender('');
+    setNationality('');
+    setLeague('');
+    setTeam('');
+    setSelectedNationality(null);
+    setSelectedLeague(null);
+    setSelectedTeam(null);
+    setPosition('');
+    setMinAge('');
+    setMaxAge('');
+    setMinHeight('');
+    setMaxHeight('');
+    scrollToTutorialArea('filters');
+  }, [isPlayerPoolTutorialActive, scrollToTutorialArea, tutorial.playerPoolStep]);
+
+  React.useEffect(() => {
+    if (!isPlayerPoolTutorialActive) return;
+
+    if (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady') {
+      scrollToTutorialArea('candidates');
+    } else if (
+      tutorial.playerPoolStep === 'card' ||
+      tutorial.playerPoolStep === 'revealPotential' ||
+      tutorial.playerPoolStep === 'revealForm' ||
+      tutorial.playerPoolStep === 'addPortfolio'
+    ) {
+      scrollToTutorialArea('card');
+    } else if (
+      tutorial.playerPoolStep === 'addYamalToMatchup' ||
+      tutorial.playerPoolStep === 'addViniciusToMatchup' ||
+      tutorial.playerPoolStep === 'launchMatchup'
+    ) {
+      scrollToTutorialArea('matchup');
+    }
+  }, [isPlayerPoolTutorialActive, scrollToTutorialArea, tutorial.playerPoolStep]);
 
   React.useEffect(() => {
     setInterstitialFailureHandler(() => setProUpsellOpen(true));
     return () => setInterstitialFailureHandler(null);
   }, []);
+
+  const skipPlayerPoolTutorial = React.useCallback(() => {
+    setComparisonOpen(false);
+    setWeeklyPopularOpen(false);
+    setProUpsellOpen(false);
+    tutorial.skipTutorial();
+    navigation.navigate('Strategy');
+  }, [navigation, tutorial]);
 
   React.useEffect(() => {
     let alive = true;
@@ -215,10 +283,11 @@ export default function PlayerPoolScreen() {
     setError(null);
   }, []);
 
-  const onSearch = React.useCallback(async () => {
+  const onSearch = React.useCallback(async (tutorialName?: string) => {
+    const searchName = tutorialName ?? name;
     const isShortRoleSelection = !!ROLE_SHORT_TO_LONG[position];
     const payload: PlayerPoolSearchInput = {
-      name: name.trim() || undefined,
+      name: searchName.trim() || undefined,
       gender: gender || undefined,
       nationality: nationality.trim() || undefined,
       nationalityExact:
@@ -255,6 +324,14 @@ export default function PlayerPoolScreen() {
       setResults(filteredNext);
       setSelectedPlayerId(firstRow?.id ?? null);
       setSelectedPlayer(firstRow?.player ?? null);
+
+      if (isPlayerPoolTutorialActive) {
+        if (tutorialName === 'Vinicius Junior') {
+          tutorial.setPlayerPoolStep('viniciusReady');
+        } else if (tutorial.playerPoolStep === 'filters' || tutorial.playerPoolStep === 'search') {
+          tutorial.setPlayerPoolStep('candidates');
+        }
+      }
     } catch (err: any) {
       setResults([]);
       setSelectedPlayerId(null);
@@ -269,6 +346,7 @@ export default function PlayerPoolScreen() {
     }
   }, [
     gender,
+    isPlayerPoolTutorialActive,
     maxAge,
     maxHeight,
     minAge,
@@ -282,6 +360,7 @@ export default function PlayerPoolScreen() {
     position,
     t,
     team,
+    tutorial,
   ]);
 
   const recordSelectedCardInterestOnce = React.useCallback(() => {
@@ -298,7 +377,7 @@ export default function PlayerPoolScreen() {
     try {
       setRevealingPotential(true);
 
-      if (plan === 'Free') {
+      if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementPotentialRevealCount();
         if (shouldShowPotentialInterstitial(nextCount)) {
           const ok = showInterstitialSafely();
@@ -341,12 +420,25 @@ export default function PlayerPoolScreen() {
             }
           : current,
       );
+
+      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'revealPotential') {
+        tutorial.setPlayerPoolStep('revealForm');
+      }
     } catch (err: any) {
       Alert.alert(t('potentialRevealFailed', 'Potential reveal failed'), String(err?.message || err));
     } finally {
       setRevealingPotential(false);
     }
-  }, [plan, recordSelectedCardInterestOnce, revealingPotential, selectedPlayer, selectedPlayerId, t]);
+  }, [
+    isPlayerPoolTutorialActive,
+    plan,
+    recordSelectedCardInterestOnce,
+    revealingPotential,
+    selectedPlayer,
+    selectedPlayerId,
+    t,
+    tutorial,
+  ]);
 
   const onRevealForm = React.useCallback(async () => {
     if (!selectedPlayerId || !selectedPlayer || revealingForm) return;
@@ -354,7 +446,7 @@ export default function PlayerPoolScreen() {
     try {
       setRevealingForm(true);
 
-      if (plan === 'Free') {
+      if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementPotentialRevealCount();
         if (shouldShowPotentialInterstitial(nextCount)) {
           const ok = showInterstitialSafely();
@@ -397,12 +489,25 @@ export default function PlayerPoolScreen() {
             }
           : current,
       );
+
+      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'revealForm') {
+        tutorial.setPlayerPoolStep('addPortfolio');
+      }
     } catch (err: any) {
       Alert.alert(t('formRevealFailed', 'Form reveal failed'), String(err?.message || err));
     } finally {
       setRevealingForm(false);
     }
-  }, [plan, recordSelectedCardInterestOnce, revealingForm, selectedPlayer, selectedPlayerId, t]);
+  }, [
+    isPlayerPoolTutorialActive,
+    plan,
+    recordSelectedCardInterestOnce,
+    revealingForm,
+    selectedPlayer,
+    selectedPlayerId,
+    t,
+    tutorial,
+  ]);
 
   const onRevealWeeklyPopular = React.useCallback(async () => {
     if (weeklyPopularLoading) return;
@@ -464,14 +569,29 @@ export default function PlayerPoolScreen() {
     if (!matchupRow1) {
       setMatchupRow1(selectedPlayerForMatchup);
       recordSelectedCardInterestOnce();
+      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addYamalToMatchup') {
+        setName('Vinicius Junior');
+        onSearch('Vinicius Junior');
+      }
       return;
     }
 
     if (!matchupRow2) {
       setMatchupRow2(selectedPlayerForMatchup);
       recordSelectedCardInterestOnce();
+      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addViniciusToMatchup') {
+        tutorial.setPlayerPoolStep('launchMatchup');
+      }
     }
-  }, [matchupRow1, matchupRow2, recordSelectedCardInterestOnce, selectedPlayerForMatchup]);
+  }, [
+    isPlayerPoolTutorialActive,
+    matchupRow1,
+    matchupRow2,
+    onSearch,
+    recordSelectedCardInterestOnce,
+    selectedPlayerForMatchup,
+    tutorial,
+  ]);
 
   const onLaunchMatchup = React.useCallback(async () => {
     if (!matchupRow1 || !matchupRow2 || comparisonLoading) return;
@@ -482,7 +602,7 @@ export default function PlayerPoolScreen() {
       setComparisonError(null);
       setComparisonData(null);
 
-      if (plan === 'Free') {
+      if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementMatchupLaunchCount();
         if (shouldShowMatchupLaunchInterstitial(nextCount)) {
           const ok = showInterstitialSafely();
@@ -494,12 +614,15 @@ export default function PlayerPoolScreen() {
 
       const nextComparison = await getMatchupComparison(matchupRow1.id, matchupRow2.id);
       setComparisonData(nextComparison);
+      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'launchMatchup') {
+        tutorial.setPlayerPoolStep('comparison');
+      }
     } catch (err: any) {
       setComparisonError(err?.message ?? t('matchupComparisonFailed', 'Matchup comparison failed'));
     } finally {
       setComparisonLoading(false);
     }
-  }, [comparisonLoading, matchupRow1, matchupRow2, plan, t]);
+  }, [comparisonLoading, isPlayerPoolTutorialActive, matchupRow1, matchupRow2, plan, t, tutorial]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -619,7 +742,12 @@ export default function PlayerPoolScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.screen}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          scrollEnabled={!isPlayerPoolTutorialActive}
+        >
           <Header
             subtitle={t(
               'playerPoolHeaderSubtitle',
@@ -629,7 +757,12 @@ export default function PlayerPoolScreen() {
 
         <Pressable
           onPress={onRevealWeeklyPopular}
-          style={({ pressed }) => [styles.popularButton, pressed && styles.pressed]}
+          disabled={isPlayerPoolTutorialActive}
+          style={({ pressed }) => [
+            styles.popularButton,
+            isPlayerPoolTutorialActive && styles.popularButtonLocked,
+            pressed && styles.pressed,
+          ]}
         >
           {weeklyPopularLoading ? (
             <ActivityIndicator size="small" color={ACCENT} />
@@ -677,7 +810,16 @@ export default function PlayerPoolScreen() {
           maxHeight={maxHeight}
           setMaxHeight={setMaxHeight}
           clearFilters={clearFilters}
-          onSearch={onSearch}
+          onSearch={() => onSearch()}
+          tutorialStep={
+            isPlayerPoolTutorialActive &&
+            (tutorial.playerPoolStep === 'filters' || tutorial.playerPoolStep === 'search')
+              ? tutorial.playerPoolStep
+              : null
+          }
+          onTutorialContinue={() => tutorial.setPlayerPoolStep('search')}
+          onTutorialSkipAll={skipPlayerPoolTutorial}
+          tutorialActive={isPlayerPoolTutorialActive}
         />
 
         <CandidatePlayers
@@ -704,6 +846,22 @@ export default function PlayerPoolScreen() {
             setSelectedPlayerId(row.id);
             setSelectedPlayer(row.player);
           }}
+          tutorialStep={
+            isPlayerPoolTutorialActive &&
+            (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady')
+              ? tutorial.playerPoolStep
+              : null
+          }
+          onTutorialContinue={() => {
+            if (tutorial.playerPoolStep === 'candidates') {
+              tutorial.setPlayerPoolStep('card');
+            } else if (tutorial.playerPoolStep === 'viniciusReady') {
+              tutorial.setPlayerPoolStep('addViniciusToMatchup');
+            }
+          }}
+          onTutorialSkipAll={skipPlayerPoolTutorial}
+          rowsLocked={isPlayerPoolTutorialActive}
+          scrollLocked={isPlayerPoolTutorialActive}
         />
 
         <PlayerCardPP
@@ -711,11 +869,19 @@ export default function PlayerPoolScreen() {
           selectedPlayerForCard={selectedPlayerForCard}
           onRevealPotential={onRevealPotential}
           onRevealForm={onRevealForm}
-          onAddFavoriteSuccess={recordSelectedCardInterestOnce}
+          onAddFavoriteSuccess={() => {
+            recordSelectedCardInterestOnce();
+            if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addPortfolio') {
+              tutorial.setPlayerPoolStep('addYamalToMatchup');
+            }
+          }}
           revealingPotential={revealingPotential}
           revealingForm={revealingForm}
           revealedPotentialForCard={revealedPotentialForCard}
           revealedFormForCard={revealedFormForCard}
+          tutorialStep={isPlayerPoolTutorialActive ? tutorial.playerPoolStep : null}
+          onTutorialContinue={() => tutorial.setPlayerPoolStep('revealPotential')}
+          onTutorialSkipAll={skipPlayerPoolTutorial}
         />
 
         <MatchupCenter
@@ -728,6 +894,9 @@ export default function PlayerPoolScreen() {
           launchLoading={comparisonLoading}
           onRemoveRow1={() => setMatchupRow1(null)}
           onRemoveRow2={() => setMatchupRow2(null)}
+          tutorialStep={isPlayerPoolTutorialActive ? tutorial.playerPoolStep : null}
+          onTutorialSkipAll={skipPlayerPoolTutorial}
+          tutorialActive={isPlayerPoolTutorialActive}
         />
         <ComparisonModal
           visible={comparisonOpen}
@@ -735,7 +904,15 @@ export default function PlayerPoolScreen() {
           error={comparisonError}
           player1={comparisonData?.player1 ?? (matchupRow1 ? { id: matchupRow1.id, player: matchupRow1.player } : null)}
           player2={comparisonData?.player2 ?? (matchupRow2 ? { id: matchupRow2.id, player: matchupRow2.player } : null)}
-          onClose={() => setComparisonOpen(false)}
+          onClose={() => {
+            setComparisonOpen(false);
+            if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison') {
+              tutorial.moveToProfile();
+              navigation.navigate('Profile');
+            }
+          }}
+          tutorialVisible={isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison'}
+          onTutorialSkipAll={skipPlayerPoolTutorial}
         />
         <ProNotReadyScreen
           visible={proUpsellOpen}
@@ -776,6 +953,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderRadius: 14,
     paddingHorizontal: 8,
+  },
+  popularButtonLocked: {
+    opacity: 0.45,
   },
   popularButtonText: {
     color: ACCENT,

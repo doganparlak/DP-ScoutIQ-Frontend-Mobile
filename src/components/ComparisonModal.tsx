@@ -30,6 +30,7 @@ import {
   VictoryPolarAxis,
 } from 'victory-native';
 
+import { TutorialHint } from '@/components/Tutorial';
 import {
   CONTRIBUTION_IMPACT_METRICS,
   DEFENDING_METRICS,
@@ -59,6 +60,8 @@ type Props = {
   player1: ComparisonPlayer | null;
   player2: ComparisonPlayer | null;
   onClose: () => void;
+  tutorialVisible?: boolean;
+  onTutorialSkipAll?: () => void;
 };
 
 type MetricRow = {
@@ -167,6 +170,8 @@ export default function ComparisonModal({
   player1,
   player2,
   onClose,
+  tutorialVisible = false,
+  onTutorialSkipAll,
 }: Props) {
   const { t } = useTranslation();
   const [chartGroups, setChartGroups] = React.useState<Record<string, boolean>>({});
@@ -193,7 +198,7 @@ export default function ComparisonModal({
 
     return (
       <Pressable
-        disabled={!player}
+        disabled={!player || tutorialVisible}
         onPress={() => player && setPreviewPlayer(player)}
         style={({ pressed }) => [styles.playerHeader, pressed && styles.pressed]}
       >
@@ -460,6 +465,16 @@ export default function ComparisonModal({
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
+              <TutorialHint
+                visible={tutorialVisible}
+                title={t('tutorialComparisonTitle', 'Matchup comparison')}
+                body={t(
+                  'tutorialComparisonBody',
+                  'Compare both players by shared metrics. Close this modal when you are done.',
+                )}
+                onSkipAll={onTutorialSkipAll}
+                arrow="down"
+              />
               <View style={styles.playersRow}>
                 {renderPlayerHeader(t('matchupPlayer1Placeholder', 'Player 1'), player1)}
                 {renderPlayerHeader(t('matchupPlayer2Placeholder', 'Player 2'), player2)}

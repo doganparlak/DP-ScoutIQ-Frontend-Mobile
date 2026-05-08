@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, X } from 'lucide-react-native';
 
 import PlayerCard from '@/components/PlayerCard';
+import { TutorialHint } from '@/components/Tutorial';
 import { ROLE_LONG_TO_SHORT } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -54,6 +55,11 @@ type Props = {
   weeklyPopularOpen: boolean;
   weeklyPopularLoading: boolean;
   onCloseWeeklyPopular: () => void;
+  tutorialStep?: 'candidates' | 'viniciusReady' | null;
+  onTutorialContinue?: () => void;
+  onTutorialSkipAll?: () => void;
+  rowsLocked?: boolean;
+  scrollLocked?: boolean;
 };
 
 export default function CandidatePlayers({
@@ -73,6 +79,11 @@ export default function CandidatePlayers({
   weeklyPopularOpen,
   weeklyPopularLoading,
   onCloseWeeklyPopular,
+  tutorialStep = null,
+  onTutorialContinue,
+  onTutorialSkipAll,
+  rowsLocked = false,
+  scrollLocked = false,
 }: Props) {
   const { t } = useTranslation();
   const [popularPreviewPlayer, setPopularPreviewPlayer] = React.useState<PlayerData | null>(null);
@@ -159,10 +170,15 @@ export default function CandidatePlayers({
         <View key={row.id}>
           {onPress ? (
             <Pressable
-              onPress={() => onPress(row)}
+              onPress={() => {
+                if (rowsLocked) return;
+                onPress(row);
+              }}
+              disabled={rowsLocked}
               style={({ pressed }) => [
                 styles.row,
                 activeId === row.id && styles.dataRowActive,
+                rowsLocked && styles.rowLocked,
                 pressed && styles.pressed,
               ]}
             >
@@ -246,6 +262,7 @@ export default function CandidatePlayers({
               scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
               nestedScrollEnabled
               bounces={false}
+              scrollEnabled={!scrollLocked}
               showsVerticalScrollIndicator
             >
               {renderRows(sortedResults, onSelectRow, selectedPlayerId)}
@@ -255,6 +272,34 @@ export default function CandidatePlayers({
           <View style={styles.tableBottomBorder} />
         </View>
       )}
+
+      <TutorialHint
+        visible={tutorialStep === 'candidates'}
+        title={t('tutorialCandidatesTitle', 'Candidate players')}
+        body={t(
+          'tutorialCandidatesBody',
+          'Search results appear here. The first player is selected automatically.',
+        )}
+        actionLabel={t('tutorialContinueToCard', 'Continue to player card')}
+        onAction={onTutorialContinue}
+        onSkipAll={onTutorialSkipAll}
+        targetLabel={t('tutorialPressContinue', 'Press continue')}
+        arrow="down"
+      />
+
+      <TutorialHint
+        visible={tutorialStep === 'viniciusReady'}
+        title={t('tutorialViniciusReadyTitle', 'Second player found')}
+        body={t(
+          'tutorialViniciusReadyBody',
+          'Vinicius Junior is selected. Add him as the second matchup player.',
+        )}
+        actionLabel={t('tutorialShowMatchupCenter', 'Show Matchup Center')}
+        onAction={onTutorialContinue}
+        onSkipAll={onTutorialSkipAll}
+        targetLabel={t('tutorialPressShowMatchup', 'Press Show Matchup Center')}
+        arrow="down"
+      />
 
       <Modal
         transparent
@@ -467,6 +512,7 @@ const styles = StyleSheet.create({
     paddingRight: 1,
   },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
+  rowLocked: { opacity: 0.62 },
   hsepThick: { height: 2, backgroundColor: LINE },
   cell: { paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },

@@ -77,6 +77,7 @@ export async function sendChat(
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>,
   sessionId: string,
   strategy?: string,
+  tutorialMode = false,
 ): Promise<ChatBackendResponse> {
   const message = extractMessage(messages);
 
@@ -87,6 +88,7 @@ export async function sendChat(
       question: message,          // legacy, fine to keep
       strategy: strategy || null,
       session_id: sessionId,
+      tutorial_mode: tutorialMode,
     }),
   });
 
@@ -514,6 +516,7 @@ export type Profile = {
   uiLanguage?: UILang;
   subscriptionEndAt?: string | null;
   consent?: boolean;
+  tutorialCompleted?: boolean;
 };
 
 // --- Teach request() to forward language on every call ---
@@ -608,6 +611,13 @@ export async function updateConsent(consent: boolean): Promise<Profile> {
   return request<Profile>('/me/consent', {
     method: 'PATCH',
     body: JSON.stringify({ consent }),
+  });
+}
+
+export async function updateTutorialCompletion(tutorialCompleted = true): Promise<Profile> {
+  return request<Profile>('/me/tutorial', {
+    method: 'PATCH',
+    body: JSON.stringify({ tutorialCompleted }),
   });
 }
 

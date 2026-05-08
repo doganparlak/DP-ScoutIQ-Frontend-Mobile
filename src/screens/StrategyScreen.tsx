@@ -15,9 +15,11 @@ import {
 import { getMe, updateConsent } from '@/services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
 import DataUsage from '@/components/DataUsage';
+import { TutorialHint, useTutorial } from '@/components/Tutorial';
 import { BG, ACCENT, ACCENT_DARK, MUTED, TEXT, PANEL, LINE } from '@/theme';
 import type { MainTabsParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +28,12 @@ type Nav = BottomTabNavigationProp<MainTabsParamList, 'Strategy'>;
 
 export default function StrategyScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const tutorial = useTutorial();
+  const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
+  const tutorialStrategy =
+    'We play in a 4-3-3 formation with pressing high on the pitch when out of possession.';
 
   const [dataUsageOpen, setDataUsageOpen] = React.useState(false);
   const [aiConsent, setAiConsent] = React.useState(false);
@@ -69,12 +76,15 @@ export default function StrategyScreen() {
 
   const handleStart = () => {
     if (loadingConsent || savingConsent) return;
-    if (!aiConsent) return;
+    if (!aiConsent && !isScoutWiseTutorial) return;
+    if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'startChat') {
+      tutorial.setScoutWiseStep('chatInput');
+    }
     navigation.getParent()?.navigate('Chat', { screen: 'LegacyChat' } as never);
   };
 
-  const buttonsDisabled = loadingConsent || savingConsent || !aiConsent;
-  const showConsentUI = !loadingConsent && !savingConsent && !aiConsent;
+  const buttonsDisabled = isScoutWiseTutorial ? false : loadingConsent || savingConsent || !aiConsent;
+  const showConsentUI = !isScoutWiseTutorial && !loadingConsent && !savingConsent && !aiConsent;
 
   return (
     <KeyboardAvoidingView
@@ -90,7 +100,27 @@ export default function StrategyScreen() {
             contentContainerStyle={{ paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
           >
-            <StrategyCard disabled={buttonsDisabled} />
+            <TutorialHint
+              visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy'}
+              title={t('tutorialSetStrategyTitle', 'Set your strategy')}
+              body={t('tutorialSetStrategyBody', 'We filled a sample 4-3-3 high-press strategy. Press Set Strategy.')}
+              targetLabel={t('tutorialPressSetStrategy', 'Press Set Strategy')}
+              onSkipAll={() => {
+                tutorial.skipTutorial();
+                navigation.getParent()?.navigate('Strategy' as never);
+              }}
+            />
+
+            <StrategyCard
+              disabled={isScoutWiseTutorial ? false : buttonsDisabled}
+              setButtonDisabled={isScoutWiseTutorial && tutorial.scoutWiseStep !== 'setStrategy'}
+              tutorialPresetText={isScoutWiseTutorial ? tutorialStrategy : undefined}
+              onSaved={() => {
+                if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy') {
+                  tutorial.setScoutWiseStep('startChat');
+                }
+              }}
+            />
 
             <View style={{ paddingHorizontal: 16 }}>
               {showConsentUI && (
@@ -119,12 +149,12 @@ export default function StrategyScreen() {
 
               <Pressable
                 onPress={handleStart}
-                disabled={buttonsDisabled}
+                disabled={buttonsDisabled || (isScoutWiseTutorial && tutorial.scoutWiseStep !== 'startChat')}
                 accessibilityRole="button"
                 accessibilityLabel={t('startChatting', 'Start Chatting')}
                 style={({ pressed }) => [
                   styles.startBtn,
-                  buttonsDisabled && styles.startBtnDisabled,
+                  (buttonsDisabled || (isScoutWiseTutorial && tutorial.scoutWiseStep !== 'startChat')) && styles.startBtnDisabled,
                   pressed && !buttonsDisabled ? styles.startBtnPressed : null,
                 ]}
               >
@@ -132,6 +162,18 @@ export default function StrategyScreen() {
                   {t('startChatting', 'Start Chatting')}
                 </Text>
               </Pressable>
+
+              <TutorialHint
+                visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'startChat'}
+                title={t('tutorialStartChatTitle', 'Open chat')}
+                body={t('tutorialStartChatBody', 'Now start chatting with ScoutWise using this strategy.')}
+                targetLabel={t('tutorialPressStartChatting', 'Press Start Chatting')}
+                onSkipAll={() => {
+                  tutorial.skipTutorial();
+                  navigation.getParent()?.navigate('Strategy' as never);
+                }}
+                arrow="up"
+              />
 
               {showConsentUI && (
                 <Text style={styles.aiDisclosureText}>
@@ -152,6 +194,31 @@ export default function StrategyScreen() {
               </Text>
             </View>
           </ScrollView>
+
+          <View
+            pointerEvents={isScoutWiseTutorial && tutorial.scoutWiseStep === 'strategyIntro' ? 'auto' : 'none'}
+            style={[
+              styles.bottomTutorialWrap,
+              { bottom: 84 + (Platform.OS === 'android' ? insets.bottom : 0) },
+            ]}
+          >
+            <TutorialHint
+              visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'strategyIntro'}
+              title={t('tutorialScoutWiseLongPressTitle', 'ScoutWise Pro shortcuts')}
+              body={t(
+                'tutorialScoutWiseStrategyIntroBody',
+                'This tab opens ScoutWise Pro. Start with Strategy, then continue to Chat from this screen.',
+              )}
+              targetLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
+              actionLabel={t('continue', 'Continue')}
+              onAction={() => tutorial.setScoutWiseStep('setStrategy')}
+              onSkipAll={() => {
+                tutorial.skipTutorial();
+                navigation.getParent()?.navigate('Strategy' as never);
+              }}
+              arrow="down"
+            />
+          </View>
 
           <Modal
             visible={dataUsageOpen}
@@ -189,6 +256,14 @@ export default function StrategyScreen() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: BG },
+
+  bottomTutorialWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    zIndex: 30,
+    elevation: 30,
+  },
 
   aiDisclosureText: {
     color: TEXT,
