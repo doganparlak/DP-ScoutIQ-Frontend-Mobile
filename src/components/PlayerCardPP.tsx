@@ -72,8 +72,7 @@ export default function PlayerCardPP({
             actionLabel={t('tutorialContinueToPotential', 'Reveal potential next')}
             onAction={onTutorialContinue}
             onSkipAll={onTutorialSkipAll}
-            targetLabel={t('tutorialPressContinue', 'Press continue')}
-            arrow="down"
+            arrow="none"
           />
           <PlayerCard
             player={selectedPlayerForCard ?? selectedPlayer}
@@ -117,10 +116,14 @@ export default function PlayerCardPP({
             title={t('tutorialAddPortfolioTitle', 'Add to player portfolio')}
             body={t(
               'tutorialAddPortfolioBody',
-              'Tap the plus button to save this player to your portfolio.',
+              'Tap the plus button inside the player card, on the top right, to save this player to your portfolio.',
             )}
             onSkipAll={onTutorialSkipAll}
-            targetLabel={t('tutorialPressPlus', 'Press +')}
+            targetContent={
+              <View style={styles.plusTargetPill}>
+                <Text style={styles.plusTargetText}>＋</Text>
+              </View>
+            }
             arrow="up"
           />
           <TutorialHint
@@ -128,7 +131,7 @@ export default function PlayerCardPP({
             title={t('tutorialRevealPotentialTitle', 'Reveal potential')}
             body={
               <>
-                {t('tutorialRevealPotentialBodyLead', 'Potential projects future performance from last year’s match data, ')}
+                {t('tutorialRevealPotentialBodyLead', 'Potential projects future performance from the last one year’s match performance data, ')}
                 <TutorialStrong>
                   {t('tutorialRelativeTeamLeague', 'relative to the player’s team and league')}
                 </TutorialStrong>
@@ -144,7 +147,7 @@ export default function PlayerCardPP({
             title={t('tutorialRevealFormTitle', 'Reveal form')}
             body={
               <>
-                {t('tutorialRevealFormBodyLead', 'Form is the current performance score from last year’s data, ')}
+                {t('tutorialRevealFormBodyLead', 'Form is the current performance score from the last one year’s match performance data, ')}
                 <TutorialStrong>
                   {t('tutorialRelativeTeamLeague', 'relative to the player’s team and league')}
                 </TutorialStrong>
@@ -247,6 +250,18 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   curatePlusText: {
+    color: ACCENT,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  plusTargetPill: {
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  plusTargetText: {
     color: ACCENT,
     fontWeight: '800',
     fontSize: 14,

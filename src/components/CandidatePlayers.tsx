@@ -55,6 +55,8 @@ type Props = {
   weeklyPopularOpen: boolean;
   weeklyPopularLoading: boolean;
   onCloseWeeklyPopular: () => void;
+  weeklyPopularTutorialVisible?: boolean;
+  onWeeklyPopularTutorialSkipAll?: () => void;
   tutorialStep?: 'candidates' | 'viniciusReady' | null;
   onTutorialContinue?: () => void;
   onTutorialSkipAll?: () => void;
@@ -79,6 +81,8 @@ export default function CandidatePlayers({
   weeklyPopularOpen,
   weeklyPopularLoading,
   onCloseWeeklyPopular,
+  weeklyPopularTutorialVisible = false,
+  onWeeklyPopularTutorialSkipAll,
   tutorialStep = null,
   onTutorialContinue,
   onTutorialSkipAll,
@@ -278,27 +282,25 @@ export default function CandidatePlayers({
         title={t('tutorialCandidatesTitle', 'Candidate players')}
         body={t(
           'tutorialCandidatesBody',
-          'Search results appear here. The first player is selected automatically.',
+          'Search results appear here. You can sort the candidate players however you prefer and select the player who interests you.',
         )}
         actionLabel={t('tutorialContinueToCard', 'Continue to player card')}
         onAction={onTutorialContinue}
         onSkipAll={onTutorialSkipAll}
-        targetLabel={t('tutorialPressContinue', 'Press continue')}
-        arrow="down"
+        arrow="none"
       />
 
       <TutorialHint
         visible={tutorialStep === 'viniciusReady'}
-        title={t('tutorialViniciusReadyTitle', 'Second player found')}
+        title={t('tutorialViniciusReadyTitle', 'Candidate players')}
         body={t(
           'tutorialViniciusReadyBody',
-          'Vinicius Junior is selected. Add him as the second matchup player.',
+          'Search results appear here. You can sort the candidate players however you prefer and select the player who interests you. We selected Vinicius Junior as the second example.',
         )}
         actionLabel={t('tutorialShowMatchupCenter', 'Show Matchup Center')}
         onAction={onTutorialContinue}
         onSkipAll={onTutorialSkipAll}
-        targetLabel={t('tutorialPressShowMatchup', 'Press Show Matchup Center')}
-        arrow="down"
+        arrow="none"
       />
 
       <Modal
@@ -362,6 +364,18 @@ export default function CandidatePlayers({
                   <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
                 )}
               </Pressable>
+            </View>
+            <View style={weeklyPopularTutorialVisible && styles.weeklyTutorialGap}>
+              <TutorialHint
+                visible={weeklyPopularTutorialVisible}
+                title={t('tutorialWeeklyPopularListTitle', 'Weekly popular players')}
+                body={t(
+                  'tutorialWeeklyPopularListBody',
+                  'You can view the 10 most searched players each week. Close this list when you are done.',
+                )}
+                onSkipAll={onWeeklyPopularTutorialSkipAll}
+                arrow="none"
+              />
             </View>
 
             {weeklyPopularLoading ? (
@@ -558,6 +572,9 @@ const styles = StyleSheet.create({
   },
   popularScroll: {
     maxHeight: ROW_HEIGHT * 8,
+  },
+  weeklyTutorialGap: {
+    marginBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',

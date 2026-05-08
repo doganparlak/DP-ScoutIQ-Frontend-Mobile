@@ -40,14 +40,20 @@ export default function ChatInput({
 
   return (
     <View style={styles.outer}>
-      <TutorialHint
-        visible={tutorialVisible}
-        title={t('tutorialChatInputTitle', 'Ask ScoutWise')}
-        body={t('tutorialChatInputBody', 'We filled in a sample request. Press Send.')}
-        targetLabel={t('tutorialPressSend', 'Press Send')}
-        onSkipAll={onTutorialSkipAll}
-        arrow="up"
-      />
+      <View style={styles.tutorialCardWidth}>
+        <TutorialHint
+          visible={tutorialVisible}
+          title={t('tutorialChatInputTitle', 'Ask ScoutWise')}
+          body={t(
+            'tutorialChatInputBody',
+            'You can ask for specific players in natural language. We filled in a sample request.',
+          )}
+          targetLabel={t('tutorialPressSend', 'Press Send')}
+          targetArrow="down"
+          onSkipAll={onTutorialSkipAll}
+          arrow="up"
+        />
+      </View>
       <View style={styles.wrap}>
         <TextInput
           ref={inputRef}
@@ -80,6 +86,9 @@ const styles = StyleSheet.create({
   // ⬇️ Add marginBottom to lift the bar up a bit, and slightly reduce padding
   outer: {
     backgroundColor: BG,
+  },
+  tutorialCardWidth: {
+    marginHorizontal: 16,
   },
   wrap: {
     flexDirection: 'row',

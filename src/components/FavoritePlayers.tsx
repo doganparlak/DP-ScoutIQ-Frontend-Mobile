@@ -30,6 +30,7 @@ import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
 import { ensureRewardedLoaded, showRewardedSafely } from '../ads/rewarded';
 import { ProNotReadyScreen } from '../ads/pro';
+import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
 
 type PlayerRow = {
   id: string;
@@ -111,8 +112,21 @@ function compareWithMissingLast<T>(
   return comparePresent(aValue as NonNullable<T>, bValue as NonNullable<T>) * dir;
 }
 
-export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
+type FavoritePlayersProps = {
+  plan?: Plan;
+  profileTutorialStep?: ProfileTutorialStep | null;
+  onProfileTutorialNext?: () => void;
+  onProfileTutorialSkip?: () => void;
+};
+
+export default function FavoritePlayers({
+  plan = 'Free',
+  profileTutorialStep = null,
+  onProfileTutorialNext,
+  onProfileTutorialSkip,
+}: FavoritePlayersProps) {
   const { t } = useTranslation();
+  const tutorialLocked = profileTutorialStep === 'watchlist' || profileTutorialStep === 'filters';
 
   const [rows, setRows] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -317,6 +331,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   ]);
 
   const clearFilters = () => {
+    if (tutorialLocked) return;
     setQName('');
     setGenderFilter('');
     setQNat('');
@@ -504,6 +519,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   }, [queuedReportPlayer, t]);
 
   const handleReportPress = async (player: PlayerRow) => {
+    if (tutorialLocked) return;
+
     // Already unlocked and ready -> open immediately
     if (reportAccessGranted.has(player.id)) {
       const existing = readyReports.get(player.id);
@@ -566,6 +583,8 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
   };
 
   const handleDelete = async (id: string) => {
+    if (tutorialLocked) return;
+
     try {
       await deleteFavoritePlayer(id);
       setRows((s) => s.filter((x) => x.id !== id));
@@ -593,7 +612,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
               onPressIn={(e) => {
                 e?.stopPropagation?.();
               }}
-              disabled={processingReports.has((item as PlayerRow).id)}
+              disabled={tutorialLocked || processingReports.has((item as PlayerRow).id)}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
               accessibilityLabel={
                 processingReports.has((item as PlayerRow).id)
@@ -601,7 +620,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
                   : t('openScoutingReport', 'Open scouting report')
               }
               style={({ pressed }) => [
-                pressed && !processingReports.has((item as PlayerRow).id) && { opacity: 0.85 },
+                pressed && !tutorialLocked && !processingReports.has((item as PlayerRow).id) && { opacity: 0.85 },
               ]}
             >
               {() => {
@@ -627,6 +646,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('name')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.name },
@@ -650,6 +670,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('nationality')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.nat },
@@ -673,6 +694,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('team')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.team },
@@ -696,6 +718,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('age')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.age },
@@ -719,6 +742,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('roles')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.roles },
@@ -745,6 +769,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('form')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.form },
@@ -768,6 +793,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
         {isHeader ? (
           <Pressable
             onPress={() => cycleSort('potential')}
+            disabled={tutorialLocked}
             style={({ pressed }) => [
               styles.cell,
               { flex: COL.pot },
@@ -794,6 +820,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <View style={[styles.cell, { flex: COL.del }, styles.iconCellRight]}>
             <Pressable
               onPress={() => handleDelete((item as PlayerRow).id)}
+              disabled={tutorialLocked}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
               accessibilityLabel={t('removeFromFavorites', 'Remove from favorites')}
             >
@@ -808,7 +835,16 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 
     return (
       <View key={isHeader ? 'header' : (item as PlayerRow).id}>
-        {isHeader ? RowInner : <Pressable onPress={() => setPreviewPlayer(toPlayerData(item as PlayerRow))}>{RowInner}</Pressable>}
+        {isHeader ? (
+          RowInner
+        ) : (
+          <Pressable
+            disabled={tutorialLocked}
+            onPress={() => setPreviewPlayer(toPlayerData(item as PlayerRow))}
+          >
+            {RowInner}
+          </Pressable>
+        )}
         <View style={styles.hsepThick} />
       </View>
     );
@@ -820,12 +856,28 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
 
       <View style={{ height: 8 }} />
 
+      <View style={profileTutorialStep === 'filters' ? styles.profileTutorialHint : undefined}>
+        <TutorialHint
+          visible={profileTutorialStep === 'filters'}
+          title={t('tutorialProfileFiltersTitle', 'Portfolio filters')}
+          body={t(
+            'tutorialProfileFiltersBody',
+            'This is the area where you can filter your portfolio by player details and scouting values.',
+          )}
+          actionLabel={t('next', 'Next')}
+          onAction={onProfileTutorialNext}
+          onSkipAll={onProfileTutorialSkip}
+          arrow="none"
+        />
+      </View>
+
       <View style={styles.filters}>
         <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
           <TextInput
             value={qName}
             onChangeText={setQName}
+            editable={!tutorialLocked}
             placeholder={t('phSearchName', 'Search name')}
             placeholderTextColor={MUTED}
             style={styles.input}
@@ -836,6 +888,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <Text style={styles.filterLabel}>{t('fltGender', 'Gender')}</Text>
           <Pressable
             onPress={cycleGender}
+            disabled={tutorialLocked}
             style={({ pressed }) => [styles.input, { justifyContent: 'center' }, pressed && { opacity: 0.9 }]}
             accessibilityLabel={t('fltGender', 'Gender')}
           >
@@ -848,6 +901,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <TextInput
             value={qNat}
             onChangeText={setQNat}
+            editable={!tutorialLocked}
             placeholder={t('phSearchNationality', 'Search nationality')}
             placeholderTextColor={MUTED}
             style={styles.input}
@@ -859,6 +913,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <TextInput
             value={qLeague}
             onChangeText={setQLeague}
+            editable={!tutorialLocked}
             placeholder={t('phSearchLeague', 'Search league')}
             placeholderTextColor={MUTED}
             style={styles.input}
@@ -870,6 +925,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
           <TextInput
             value={qTeam}
             onChangeText={setQTeam}
+            editable={!tutorialLocked}
             placeholder={t('phSearchTeam', 'Search team')}
             placeholderTextColor={MUTED}
             style={styles.input}
@@ -882,6 +938,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <TextInput
               value={minAge}
               onChangeText={(t_) => setMinAge(t_.replace(/[^\d]/g, ''))}
+              editable={!tutorialLocked}
               keyboardType="numeric"
               placeholder={t('phMin', 'min')}
               placeholderTextColor={MUTED}
@@ -890,6 +947,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <TextInput
               value={maxAge}
               onChangeText={(t_) => setMaxAge(t_.replace(/[^\d]/g, ''))}
+              editable={!tutorialLocked}
               keyboardType="numeric"
               placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}
@@ -904,6 +962,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <TextInput
               value={minPot}
               onChangeText={(t_) => setMinPot(t_.replace(/[^\d]/g, '').slice(0, 3))}
+              editable={!tutorialLocked}
               keyboardType="numeric"
               placeholder={t('phMin', 'min')}
               placeholderTextColor={MUTED}
@@ -912,6 +971,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <TextInput
               value={maxPot}
               onChangeText={(t_) => setMaxPot(t_.replace(/[^\d]/g, '').slice(0, 3))}
+              editable={!tutorialLocked}
               keyboardType="numeric"
               placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}
@@ -926,6 +986,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <TextInput
               value={minForm}
               onChangeText={(t_) => setMinForm(t_.replace(/[^\d]/g, '').slice(0, 3))}
+              editable={!tutorialLocked}
               keyboardType="numeric"
               placeholder={t('phMin', 'min')}
               placeholderTextColor={MUTED}
@@ -934,6 +995,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <TextInput
               value={maxForm}
               onChangeText={(t_) => setMaxForm(t_.replace(/[^\d]/g, '').slice(0, 3))}
+              editable={!tutorialLocked}
               keyboardType="numeric"
               placeholder={t('phMax', 'max')}
               placeholderTextColor={MUTED}
@@ -951,6 +1013,7 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
             <Pressable
               key={r}
               onPress={() => toggleRole(r)}
+              disabled={tutorialLocked}
               style={[styles.chip, active ? styles.chipActive : styles.chipInactive]}
               accessibilityLabel={`${t('role', 'Role')} ${r}`}
             >
@@ -963,11 +1026,27 @@ export default function FavoritePlayers({ plan = 'Free' }: { plan?: Plan }) {
       <View style={{ alignItems: 'center' }}>
         <Pressable
           onPress={clearFilters}
+          disabled={tutorialLocked}
           style={({ pressed }) => [{ paddingVertical: 8, paddingHorizontal: 12, opacity: pressed ? 0.8 : 1 }]}
           accessibilityLabel={t('clearFilters', 'Clear filters')}
         >
           <Text style={{ color: DANGER_DARK }}>{t('clearFilters', 'Clear filters')}</Text>
         </Pressable>
+      </View>
+
+      <View style={profileTutorialStep === 'watchlist' ? styles.profileTutorialHint : undefined}>
+        <TutorialHint
+          visible={profileTutorialStep === 'watchlist'}
+          title={t('tutorialProfileWatchlistTitle', 'Player portfolio')}
+          body={t(
+            'tutorialProfileWatchlistBody',
+            'This is your watchlist. Saved players appear here so you can revisit and evaluate them later.',
+          )}
+          actionLabel={t('next', 'Next')}
+          onAction={onProfileTutorialNext}
+          onSkipAll={onProfileTutorialSkip}
+          arrow="none"
+        />
       </View>
 
       <View style={styles.table}>
@@ -1065,6 +1144,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
 
+  profileTutorialHint: { marginBottom: 12 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   filterCol: { flexBasis: '48%', flexGrow: 1, gap: 6 },
   filterLabel: { color: MUTED, fontSize: 12 },

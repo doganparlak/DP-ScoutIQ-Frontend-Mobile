@@ -105,7 +105,9 @@ export default function MatchupCenter({
 }: Props) {
   const { t, i18n } = useTranslation();
   const isFull = !!row1 && !!row2;
-  const canAdd = !!selectedPlayer && !isFull;
+  const isSelectedAlreadyInMatchup =
+    !!selectedPlayer && (row1?.id === selectedPlayer.id || row2?.id === selectedPlayer.id);
+  const canAdd = !!selectedPlayer && !isFull && !isSelectedAlreadyInMatchup;
   const addEnabled =
     !tutorialActive ||
     tutorialStep === 'addYamalToMatchup' ||
@@ -199,10 +201,10 @@ export default function MatchupCenter({
     <>
       <TutorialHint
         visible={tutorialStep === 'addYamalToMatchup'}
-        title={t('tutorialAddYamalMatchupTitle', 'Add Lamine Yamal to Matchup Center')}
+        title={t('tutorialAddYamalMatchupTitle', 'Add a player to Matchup Center')}
         body={t(
           'tutorialAddYamalMatchupBody',
-          'Tap this to place Yamal into a player slot.',
+          'Tap this to place a player in the Matchup Center.',
         )}
         onSkipAll={onTutorialSkipAll}
         targetLabel={t('tutorialPressAddMatchup', 'Press Add player')}
@@ -211,10 +213,10 @@ export default function MatchupCenter({
 
       <TutorialHint
         visible={tutorialStep === 'addViniciusToMatchup'}
-        title={t('tutorialAddViniciusMatchupTitle', 'Add Vinicius Junior')}
+        title={t('tutorialAddViniciusMatchupTitle', 'Add a player to Matchup Center')}
         body={t(
           'tutorialAddViniciusMatchupBody',
-          'Tap this to place Vinicius into a player slot.',
+          'Tap this to place a player in the Matchup Center.',
         )}
         onSkipAll={onTutorialSkipAll}
         targetLabel={t('tutorialPressAddMatchup', 'Press Add player')}

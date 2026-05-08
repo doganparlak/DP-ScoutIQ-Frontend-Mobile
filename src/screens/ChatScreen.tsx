@@ -45,6 +45,9 @@ type ChatMessageExt = ChatMessage & {
 type ChatPayloadRole = 'user' | 'assistant';
 type ChatPayloadItem = { role: ChatPayloadRole; content: string };
 
+const TUTORIAL_GYOKERES_INTERPRETATION =
+  'Viktor Gyokeres is a strong center-forward profile for a team that wants a direct outlet, penalty-box presence, and repeated threat in transition. His scoring output, carrying power, and ability to attack space make him especially useful when your strategy asks the striker to stretch the back line while still receiving under pressure. The main scouting question is how cleanly that physical dominance translates against deeper blocks, but his recent data suggests a forward who can turn volume into high-impact chances.';
+
 export default function ChatScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -138,9 +141,9 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput') {
-      setInputText('find me a center forward');
+      setInputText(t('tutorialChatSampleQuery', 'find me a center forward'));
     }
-  }, [isScoutWiseTutorial, tutorial.scoutWiseStep]);
+  }, [isScoutWiseTutorial, t, tutorial.scoutWiseStep]);
 
   useEffect(() => {
     setInterstitialFailureHandler(() => setProUpsellOpen(true));
@@ -206,7 +209,10 @@ export default function ChatScreen() {
     removePendingBubbleIfCurrentAttempt(attemptKey);
 
     const players = Array.isArray(res?.data?.players) ? (res.data.players as PlayerData[]) : [];
-    const narrative = String(res?.response ?? '');
+    const narrative =
+      isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'
+        ? t('tutorialGyokeresInterpretation', TUTORIAL_GYOKERES_INTERPRETATION)
+        : String(res?.response ?? '');
 
     // 1) Append visuals as a dedicated history item (persists forever)
     if (players.length > 0) {
@@ -431,24 +437,28 @@ export default function ChatScreen() {
           windowSize={7}
           updateCellsBatchingPeriod={50}
           scrollEventThrottle={16}
-          scrollEnabled={!(isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse')}
         />
 
-        <TutorialHint
-          visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse'}
-          title={t('tutorialChatResponseTitle', 'Review the response')}
-          body={t('tutorialChatResponseBody', 'Scroll through the player card and charts. End the tutorial when you are ready.')}
-          actionLabel={t('tutorialEndTutorial', 'End tutorial')}
-          onAction={() => {
-            tutorial.completeTutorial();
-            navigation.navigate('Strategy');
-          }}
-          onSkipAll={() => {
-            tutorial.skipTutorial();
-            navigation.navigate('Strategy');
-          }}
-          arrow="down"
-        />
+        <View style={styles.visualCardWidth}>
+          <TutorialHint
+            visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse'}
+            title={t('tutorialChatResponseTitle', 'Review the response')}
+            body={t(
+              'tutorialChatResponseBody',
+              'Scroll through the player card, charts, and interpretation.',
+            )}
+            actionLabel={t('tutorialEndTutorial', 'End tutorial')}
+            onAction={() => {
+              tutorial.completeTutorial();
+              navigation.navigate('Strategy');
+            }}
+            onSkipAll={() => {
+              tutorial.skipTutorial();
+              navigation.navigate('Strategy');
+            }}
+            arrow="down"
+          />
+        </View>
 
         <ChatInput
           value={inputText}
@@ -480,6 +490,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  visualCardWidth: {
+    marginHorizontal: 12,
   },
   newChatBtn: {
     flexDirection: 'row',

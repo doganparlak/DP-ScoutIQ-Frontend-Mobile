@@ -107,17 +107,19 @@ export default function SearchFilters({
     <View style={styles.panel}>
       <Text style={styles.sectionTitle}>{t('playerPoolFilters', 'Search filters')}</Text>
 
-      <TutorialHint
-        visible={tutorialStep === 'filters'}
+      <View style={styles.tutorialGap}>
+        <TutorialHint
+          visible={tutorialStep === 'filters'}
         title={t('tutorialSearchFiltersTitle', 'Start with search filters')}
         body={t(
           'tutorialSearchFiltersBody',
-          'Filters narrow the database. We filled in Lamine Yamal as an example.',
+          'Distinct filter options narrow the player pool. We picked Lamine Yamal as an example.',
         )}
-        actionLabel={t('tutorialPointToSearch', 'Point me to Search')}
-        onAction={onTutorialContinue}
-        onSkipAll={onTutorialSkipAll}
-      />
+          actionLabel={t('tutorialPointToSearch', 'Point me to Search')}
+          onAction={onTutorialContinue}
+          onSkipAll={onTutorialSkipAll}
+        />
+      </View>
 
       <View style={styles.filters}>
         <View style={styles.filterCol}>
@@ -410,6 +412,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 10,
+  },
+  tutorialGap: {
+    marginBottom: 12,
   },
   filters: {
     flexDirection: 'row',

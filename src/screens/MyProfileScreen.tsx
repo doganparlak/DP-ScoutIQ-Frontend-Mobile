@@ -21,6 +21,7 @@ export default function MyProfileScreen() {
   const rootNav = useNavigation<RootNav>();
   const { t } = useTranslation();
   const tutorial = useTutorial();
+  const scrollRef = React.useRef<ScrollView | null>(null);
 
   const [plan, setPlan] = useState<Plan>('Free');
 
@@ -51,6 +52,24 @@ export default function MyProfileScreen() {
     rootNav.getParent()?.navigate('Chat', { screen: 'LegacyStrategy' } as never);
   };
 
+  const isProfileTutorial = tutorial.active && tutorial.stage === 'profile';
+  const profileTutorialStep = isProfileTutorial ? tutorial.profileStep : null;
+
+  React.useEffect(() => {
+    if (!isProfileTutorial) return;
+
+    const timer = setTimeout(() => {
+      if (tutorial.profileStep === 'watchlist') {
+        scrollRef.current?.scrollTo({ y: 430, animated: true });
+      }
+      if (tutorial.profileStep === 'filters') {
+        scrollRef.current?.scrollTo({ y: 170, animated: true });
+      }
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [isProfileTutorial, tutorial.profileStep]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -65,6 +84,7 @@ export default function MyProfileScreen() {
       accessibilityLabel={t('profileScreenAL', 'Profile screen')}
     >
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingTop: -10, paddingBottom: 50 }}
         accessibilityLabel={t('profileScrollAL', 'Profile content')}
       >
@@ -75,12 +95,26 @@ export default function MyProfileScreen() {
           onLogout={handleLogout}
         />
 
-        <FavoritePlayers plan={plan} />
+        <FavoritePlayers
+          plan={plan}
+          profileTutorialStep={profileTutorialStep}
+          onProfileTutorialNext={() => {
+            if (tutorial.profileStep === 'watchlist') {
+              tutorial.setProfileStep('filters');
+              return;
+            }
+            moveToScoutWiseTutorial();
+          }}
+          onProfileTutorialSkip={() => {
+            tutorial.skipTutorial();
+            rootNav.getParent()?.navigate('Strategy' as never);
+          }}
+        />
       </ScrollView>
 
       <ProfileTutorialModal
-        visible={tutorial.active && tutorial.stage === 'profile'}
-        onDone={moveToScoutWiseTutorial}
+        visible={isProfileTutorial && tutorial.profileStep === 'intro'}
+        onDone={() => tutorial.setProfileStep('watchlist')}
         onSkip={() => {
           tutorial.skipTutorial();
           rootNav.getParent()?.navigate('Strategy' as never);

@@ -15,7 +15,6 @@ import {
 import { getMe, updateConsent } from '@/services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
 import DataUsage from '@/components/DataUsage';
@@ -28,12 +27,14 @@ type Nav = BottomTabNavigationProp<MainTabsParamList, 'Strategy'>;
 
 export default function StrategyScreen() {
   const navigation = useNavigation<Nav>();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const tutorial = useTutorial();
   const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
-  const tutorialStrategy =
-    'We play in a 4-3-3 formation with pressing high on the pitch when out of possession.';
+  const tutorialStrategy = t(
+    'tutorialStrategyPresetText',
+    'We play in a 4-3-3 formation with pressing high on the pitch when out of possession.',
+  );
+  const scrollRef = React.useRef<ScrollView | null>(null);
 
   const [dataUsageOpen, setDataUsageOpen] = React.useState(false);
   const [aiConsent, setAiConsent] = React.useState(false);
@@ -53,6 +54,16 @@ export default function StrategyScreen() {
   React.useEffect(() => {
     loadConsent();
   }, [loadConsent]);
+
+  React.useEffect(() => {
+    if (!isScoutWiseTutorial || tutorial.scoutWiseStep !== 'startChat') return;
+
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [isScoutWiseTutorial, tutorial.scoutWiseStep]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -97,24 +108,32 @@ export default function StrategyScreen() {
           <Header />
 
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={{ paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
           >
-            <TutorialHint
-              visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy'}
-              title={t('tutorialSetStrategyTitle', 'Set your strategy')}
-              body={t('tutorialSetStrategyBody', 'We filled a sample 4-3-3 high-press strategy. Press Set Strategy.')}
-              targetLabel={t('tutorialPressSetStrategy', 'Press Set Strategy')}
-              onSkipAll={() => {
-                tutorial.skipTutorial();
-                navigation.getParent()?.navigate('Strategy' as never);
-              }}
-            />
+            <View style={styles.tutorialCardWidth}>
+              <TutorialHint
+                visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy'}
+                title={t('tutorialSetStrategyTitle', 'Set your strategy')}
+                body={t(
+                  'tutorialSetStrategyBody',
+                  'Your strategy and scouting philosophy give ScoutWise your perspective to consider in every response.',
+                )}
+                targetLabel={t('tutorialPressSetStrategy', 'Press Set Strategy')}
+                arrow="none"
+                onSkipAll={() => {
+                  tutorial.skipTutorial();
+                  navigation.getParent()?.navigate('Strategy' as never);
+                }}
+              />
+            </View>
 
             <StrategyCard
               disabled={isScoutWiseTutorial ? false : buttonsDisabled}
               setButtonDisabled={isScoutWiseTutorial && tutorial.scoutWiseStep !== 'setStrategy'}
               tutorialPresetText={isScoutWiseTutorial ? tutorialStrategy : undefined}
+              textEditingDisabled={isScoutWiseTutorial}
               onSaved={() => {
                 if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy') {
                   tutorial.setScoutWiseStep('startChat');
@@ -195,31 +214,6 @@ export default function StrategyScreen() {
             </View>
           </ScrollView>
 
-          <View
-            pointerEvents={isScoutWiseTutorial && tutorial.scoutWiseStep === 'strategyIntro' ? 'auto' : 'none'}
-            style={[
-              styles.bottomTutorialWrap,
-              { bottom: 84 + (Platform.OS === 'android' ? insets.bottom : 0) },
-            ]}
-          >
-            <TutorialHint
-              visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'strategyIntro'}
-              title={t('tutorialScoutWiseLongPressTitle', 'ScoutWise Pro shortcuts')}
-              body={t(
-                'tutorialScoutWiseStrategyIntroBody',
-                'This tab opens ScoutWise Pro. Start with Strategy, then continue to Chat from this screen.',
-              )}
-              targetLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
-              actionLabel={t('continue', 'Continue')}
-              onAction={() => tutorial.setScoutWiseStep('setStrategy')}
-              onSkipAll={() => {
-                tutorial.skipTutorial();
-                navigation.getParent()?.navigate('Strategy' as never);
-              }}
-              arrow="down"
-            />
-          </View>
-
           <Modal
             visible={dataUsageOpen}
             animationType="slide"
@@ -257,12 +251,8 @@ export default function StrategyScreen() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: BG },
 
-  bottomTutorialWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    zIndex: 30,
-    elevation: 30,
+  tutorialCardWidth: {
+    marginHorizontal: 16,
   },
 
   aiDisclosureText: {

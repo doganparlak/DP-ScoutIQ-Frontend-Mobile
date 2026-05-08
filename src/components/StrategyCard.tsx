@@ -13,6 +13,7 @@ interface Props {
   disabled?: boolean;
   tutorialPresetText?: string;
   setButtonDisabled?: boolean;
+  textEditingDisabled?: boolean;
 }
 
 export default function StrategyCard({
@@ -20,6 +21,7 @@ export default function StrategyCard({
   disabled = false,
   tutorialPresetText,
   setButtonDisabled = false,
+  textEditingDisabled = false,
 }: Props) {
   const { t } = useTranslation();
 
@@ -30,6 +32,8 @@ export default function StrategyCard({
 
   const locked = !showSetButton;
   const isDisabled = disabled || locked;
+  const resetDisabled = disabled || textEditingDisabled;
+  const inputEditable = !locked && !textEditingDisabled;
 
   useEffect(() => {
     (async () => {
@@ -77,7 +81,7 @@ export default function StrategyCard({
   }
 
   async function handleReset() {
-    if (disabled) return;
+    if (resetDisabled) return;
 
     setText('');
     setPhMode('initial');
@@ -96,11 +100,11 @@ export default function StrategyCard({
       </Text>
 
       <TextInput
-        style={[styles.input, locked && styles.inputDisabled, { height: inputHeight }]}
+        style={[styles.input, (!inputEditable || locked) && styles.inputDisabled, { height: inputHeight }]}
         value={text}
-        onChangeText={setText}
-        editable={!locked}
-        selectTextOnFocus={!locked}
+        onChangeText={inputEditable ? setText : undefined}
+        editable={inputEditable}
+        selectTextOnFocus={inputEditable}
         placeholder={placeholder}
         placeholderTextColor={MUTED}
         multiline
@@ -116,7 +120,13 @@ export default function StrategyCard({
         <View style={styles.actionsRow}>
           <Pressable
             onPress={handleReset}
-            style={({ pressed }) => [styles.btnHalf, styles.btnOutline, pressed && styles.pressed]}
+            disabled={resetDisabled}
+            style={({ pressed }) => [
+              styles.btnHalf,
+              styles.btnOutline,
+              resetDisabled && styles.btnDisabled,
+              pressed && !resetDisabled && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t('resetStrategy', 'Reset Strategy')}
           >
@@ -145,7 +155,13 @@ export default function StrategyCard({
         <View style={styles.singleWrap}>
           <Pressable
             onPress={handleReset}
-            style={({ pressed }) => [styles.singleBtn, styles.btnOutline, pressed && styles.pressed]}
+            disabled={resetDisabled}
+            style={({ pressed }) => [
+              styles.singleBtn,
+              styles.btnOutline,
+              resetDisabled && styles.btnDisabled,
+              pressed && !resetDisabled && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t('resetStrategy', 'Reset Strategy')}
           >

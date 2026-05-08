@@ -473,7 +473,7 @@ export default function ComparisonModal({
                   'Compare both players by shared metrics. Close this modal when you are done.',
                 )}
                 onSkipAll={onTutorialSkipAll}
-                arrow="down"
+                arrow="none"
               />
               <View style={styles.playersRow}>
                 {renderPlayerHeader(t('matchupPlayer1Placeholder', 'Player 1'), player1)}

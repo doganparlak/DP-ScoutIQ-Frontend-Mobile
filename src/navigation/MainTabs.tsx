@@ -48,6 +48,32 @@ const Tab = createBottomTabNavigator<MainTabsParamList>();
 const ProfileStack = createNativeStackNavigator<RootStackParamList>();
 const ScoutWiseProStack = createNativeStackNavigator<ScoutWiseProStackParamList>();
 
+function TutorialLockedTabButton({
+  accessibilityState,
+  children,
+  onPress,
+  style,
+}: BottomTabBarButtonProps) {
+  const tutorial = useTutorial();
+  const locked = tutorial.active;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ ...accessibilityState, disabled: locked }}
+      disabled={locked}
+      onPress={onPress}
+      style={({ pressed }) => [
+        style,
+        locked && styles.tabButtonLocked,
+        pressed && !locked && styles.tabButtonPressed,
+      ]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 function ProfileStackScreen() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -177,13 +203,15 @@ function ScoutWiseProTabButton({
   const navigation = useNavigation<any>();
   const tutorial = useTutorial();
   const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
+  const locked = tutorial.active;
 
   return (
     <View style={[style, styles.tabButtonWrap]} pointerEvents="box-none">
       <Pressable
         accessibilityRole="button"
-        accessibilityState={accessibilityState}
+        accessibilityState={{ ...accessibilityState, disabled: locked }}
         accessibilityLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
+        disabled={locked}
         onPress={async () => {
           const latestPlan = await onResolvePlan();
 
@@ -194,7 +222,8 @@ function ScoutWiseProTabButton({
         style={({ pressed }) => [
           styles.tabButton,
           styles.scoutWiseProTabOffset,
-          pressed && styles.tabButtonPressed,
+          locked && styles.tabButtonLocked,
+          pressed && !locked && styles.tabButtonPressed,
         ]}
       >
         {children}
@@ -271,6 +300,7 @@ export default function MainTabs() {
           component={PlayerPoolScreen}
           options={{
             tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
+            tabBarButton: (props) => <TutorialLockedTabButton {...props} />,
             tabBarLabel: ({ color }) => (
               <Text style={[styles.mainTabLabel, { color }]}>
                 {t('tabPlayerPool', 'Player Pool')}
@@ -317,6 +347,7 @@ export default function MainTabs() {
           component={ProfileStackScreen}
           options={{
             tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
+            tabBarButton: (props) => <TutorialLockedTabButton {...props} />,
             tabBarLabel: ({ color }) => (
               <Text style={[styles.mainTabLabel, { color }]}>
                 {t('tabProfile', 'My Profile')}
@@ -373,5 +404,8 @@ const styles = StyleSheet.create({
   },
   tabButtonPressed: {
     opacity: 0.92,
+  },
+  tabButtonLocked: {
+    opacity: 0.55,
   },
 });

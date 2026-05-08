@@ -35,7 +35,7 @@ import Header from '@/components/Header';
 import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
 import SearchFilters from '@/components/SearchFilters';
-import { useTutorial } from '@/components/Tutorial';
+import { TutorialHint, useTutorial } from '@/components/Tutorial';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
@@ -108,9 +108,11 @@ export default function PlayerPoolScreen() {
   const countedCardRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
 
-  const scrollToTutorialArea = React.useCallback((area: 'filters' | 'candidates' | 'card' | 'matchup') => {
+  const scrollToTutorialArea = React.useCallback((area: 'weekly' | 'filters' | 'candidates' | 'card' | 'matchup') => {
     const y =
-      area === 'filters'
+      area === 'weekly'
+        ? 80
+        : area === 'filters'
         ? 120
         : area === 'candidates'
           ? 520
@@ -144,7 +146,9 @@ export default function PlayerPoolScreen() {
   React.useEffect(() => {
     if (!isPlayerPoolTutorialActive) return;
 
-    if (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady') {
+    if (tutorial.playerPoolStep === 'weeklyPopularButton') {
+      scrollToTutorialArea('weekly');
+    } else if (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady') {
       scrollToTutorialArea('candidates');
     } else if (
       tutorial.playerPoolStep === 'card' ||
@@ -282,6 +286,34 @@ export default function PlayerPoolScreen() {
     setRevealedFormForCard(false);
     setError(null);
   }, []);
+
+  const resetPlayerPoolState = React.useCallback(() => {
+    clearFilters();
+    setMatchupRow1(null);
+    setMatchupRow2(null);
+    setComparisonOpen(false);
+    setComparisonLoading(false);
+    setComparisonError(null);
+    setComparisonData(null);
+    setWeeklyPopularOpen(false);
+    setWeeklyPopularRows([]);
+    setWeeklyPopularLoading(false);
+    setProUpsellOpen(false);
+  }, [clearFilters]);
+
+  const wasTutorialActiveRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (isPlayerPoolTutorialActive) {
+      wasTutorialActiveRef.current = true;
+      return;
+    }
+
+    if (wasTutorialActiveRef.current && !tutorial.active) {
+      wasTutorialActiveRef.current = false;
+      resetPlayerPoolState();
+    }
+  }, [isPlayerPoolTutorialActive, resetPlayerPoolState, tutorial.active]);
 
   const onSearch = React.useCallback(async (tutorialName?: string) => {
     const searchName = tutorialName ?? name;
@@ -516,7 +548,7 @@ export default function PlayerPoolScreen() {
       setWeeklyPopularLoading(true);
       setWeeklyPopularOpen(true);
 
-      if (plan === 'Free') {
+      if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementWeeklyPopularRevealCount();
         if (shouldShowWeeklyPopularInterstitial(nextCount)) {
           const ok = showInterstitialSafely();
@@ -528,6 +560,9 @@ export default function PlayerPoolScreen() {
 
       const nextRows = await getWeeklyPopularPlayers(10);
       setWeeklyPopularRows(nextRows);
+      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularButton') {
+        tutorial.setPlayerPoolStep('weeklyPopularList');
+      }
     } catch (err: any) {
       setWeeklyPopularOpen(false);
       Alert.alert(
@@ -537,7 +572,14 @@ export default function PlayerPoolScreen() {
     } finally {
       setWeeklyPopularLoading(false);
     }
-  }, [plan, t, weeklyPopularLoading]);
+  }, [isPlayerPoolTutorialActive, plan, t, tutorial, weeklyPopularLoading]);
+
+  const closeWeeklyPopular = React.useCallback(() => {
+    setWeeklyPopularOpen(false);
+    if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularList') {
+      tutorial.setPlayerPoolStep('filters');
+    }
+  }, [isPlayerPoolTutorialActive, tutorial]);
 
   const selectedPlayerForCard = React.useMemo(() => {
     if (!selectedPlayer) return null;
@@ -565,6 +607,9 @@ export default function PlayerPoolScreen() {
 
   const addSelectedPlayerToMatchup = React.useCallback(() => {
     if (!selectedPlayerForMatchup) return;
+    if (matchupRow1?.id === selectedPlayerForMatchup.id || matchupRow2?.id === selectedPlayerForMatchup.id) {
+      return;
+    }
 
     if (!matchupRow1) {
       setMatchupRow1(selectedPlayerForMatchup);
@@ -755,12 +800,26 @@ export default function PlayerPoolScreen() {
             )}
           />
 
+        <TutorialHint
+          visible={isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularButton'}
+          title={t('tutorialWeeklyPopularButtonTitle', 'Weekly popular players')}
+          body={t(
+            'tutorialWeeklyPopularButtonBody',
+            'This button reveals the most searched players of the week.',
+          )}
+          targetLabel={t('tutorialPressWeeklyPopular', 'Press Weekly Top Searches')}
+          onSkipAll={skipPlayerPoolTutorial}
+          arrow="none"
+        />
+
         <Pressable
           onPress={onRevealWeeklyPopular}
-          disabled={isPlayerPoolTutorialActive}
+          disabled={isPlayerPoolTutorialActive && tutorial.playerPoolStep !== 'weeklyPopularButton'}
           style={({ pressed }) => [
             styles.popularButton,
-            isPlayerPoolTutorialActive && styles.popularButtonLocked,
+            isPlayerPoolTutorialActive &&
+              tutorial.playerPoolStep !== 'weeklyPopularButton' &&
+              styles.popularButtonLocked,
             pressed && styles.pressed,
           ]}
         >
@@ -837,7 +896,11 @@ export default function PlayerPoolScreen() {
           weeklyPopularRows={weeklyPopularRows}
           weeklyPopularOpen={weeklyPopularOpen}
           weeklyPopularLoading={weeklyPopularLoading}
-          onCloseWeeklyPopular={() => setWeeklyPopularOpen(false)}
+          onCloseWeeklyPopular={closeWeeklyPopular}
+          weeklyPopularTutorialVisible={
+            isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularList'
+          }
+          onWeeklyPopularTutorialSkipAll={skipPlayerPoolTutorial}
           onSelectRow={(row) => {
             setRevealedPotentialForCard(false);
             setRevealedFormForCard(false);
