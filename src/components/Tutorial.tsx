@@ -28,7 +28,7 @@ export type ScoutWiseTutorialStep =
   | 'chatInput'
   | 'chatResponse';
 
-export type ProfileTutorialStep = 'intro' | 'watchlist' | 'filters';
+export type ProfileTutorialStep = 'intro' | 'watchlist' | 'report' | 'filters';
 
 type TutorialStage = 'playerPool' | 'profile' | 'scoutwise' | 'done';
 

@@ -189,6 +189,10 @@ export const resources = {
       tutorialProfileWatchlistTitle: 'Player portfolio',
       tutorialProfileWatchlistBody:
         'This is your watchlist. Saved players appear here so you can revisit and evaluate them later.',
+      tutorialProfileReportTitle: 'Create a scouting report',
+      tutorialProfileReportBody:
+        'Tap Lamine Yamal’s report icon to open a predefined scouting report with player data, role usage, strengths, and concerns.',
+      tutorialPressYamalReport: 'Press Lamine Yamal report icon',
       tutorialProfileFiltersTitle: 'Portfolio filters',
       tutorialProfileFiltersBody:
         'This is the area where you can filter your portfolio by player details and scouting values.',
@@ -859,6 +863,10 @@ export const resources = {
       tutorialProfileWatchlistTitle: 'Oyuncu portföyü',
       tutorialProfileWatchlistBody:
         'Burası takip listen. Kaydettiğin oyuncular burada görünür; daha sonra tekrar inceleyip değerlendirebilirsin.',
+      tutorialProfileReportTitle: 'Keşif raporu oluştur',
+      tutorialProfileReportBody:
+        'Oyuncu verileri, rol kullanımı, güçlü yönler ve dikkat edilmesi gereken noktalarla hazırlanmış örnek keşif raporunu açmak için Lamine Yamal’ın rapor ikonuna bas.',
+      tutorialPressYamalReport: 'Lamine Yamal rapor ikonuna basabilirsin',
       tutorialProfileFiltersTitle: 'Portföy filtreleri',
       tutorialProfileFiltersBody:
         'Burası portföyünü oyuncu bilgilerine ve keşif değerlerine göre filtreleyebileceğin alandır.',

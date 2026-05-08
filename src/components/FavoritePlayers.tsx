@@ -112,6 +112,14 @@ function compareWithMissingLast<T>(
   return comparePresent(aValue as NonNullable<T>, bValue as NonNullable<T>) * dir;
 }
 
+function isLamineYamalName(name: string) {
+  return name
+    .toLocaleLowerCase('en-US')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .includes('lamine yamal');
+}
+
 type FavoritePlayersProps = {
   plan?: Plan;
   profileTutorialStep?: ProfileTutorialStep | null;
@@ -126,7 +134,10 @@ export default function FavoritePlayers({
   onProfileTutorialSkip,
 }: FavoritePlayersProps) {
   const { t } = useTranslation();
-  const tutorialLocked = profileTutorialStep === 'watchlist' || profileTutorialStep === 'filters';
+  const tutorialLocked =
+    profileTutorialStep === 'watchlist' ||
+    profileTutorialStep === 'report' ||
+    profileTutorialStep === 'filters';
 
   const [rows, setRows] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -519,6 +530,34 @@ export default function FavoritePlayers({
   }, [queuedReportPlayer, t]);
 
   const handleReportPress = async (player: PlayerRow) => {
+    if (profileTutorialStep === 'report') {
+      if (!isLamineYamalName(player.name)) return;
+
+      try {
+        const res = await getScoutingReport(player.id, {
+          name: player.name,
+          gender: player.gender,
+          nationality: player.nationality,
+          team: player.team,
+          age: player.age,
+          height: player.height,
+          weight: player.weight,
+          potential: player.potential,
+          form: player.form,
+          tutorial_mode: true,
+        });
+
+        if (res.status === 'ready') {
+          setScoutPlayer(toPlayerData(player));
+          setScoutReport(res);
+          setScoutOpen(true);
+        }
+      } catch (e: any) {
+        Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
+      }
+      return;
+    }
+
     if (tutorialLocked) return;
 
     // Already unlocked and ready -> open immediately
@@ -597,6 +636,10 @@ export default function FavoritePlayers({
     const isHeader = item === 'HEADER';
     const pressedStyle = { opacity: 0.9 };
     const chevron = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '');
+    const canPressTutorialReport =
+      !isHeader &&
+      profileTutorialStep === 'report' &&
+      isLamineYamalName((item as PlayerRow).name);
 
     const RowInner = (
       <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
@@ -612,7 +655,10 @@ export default function FavoritePlayers({
               onPressIn={(e) => {
                 e?.stopPropagation?.();
               }}
-              disabled={tutorialLocked || processingReports.has((item as PlayerRow).id)}
+              disabled={
+                processingReports.has((item as PlayerRow).id) ||
+                (tutorialLocked && !canPressTutorialReport)
+              }
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
               accessibilityLabel={
                 processingReports.has((item as PlayerRow).id)
@@ -620,7 +666,10 @@ export default function FavoritePlayers({
                   : t('openScoutingReport', 'Open scouting report')
               }
               style={({ pressed }) => [
-                pressed && !tutorialLocked && !processingReports.has((item as PlayerRow).id) && { opacity: 0.85 },
+                pressed &&
+                  (!tutorialLocked || canPressTutorialReport) &&
+                  !processingReports.has((item as PlayerRow).id) &&
+                  { opacity: 0.85 },
               ]}
             >
               {() => {
@@ -1049,6 +1098,21 @@ export default function FavoritePlayers({
         />
       </View>
 
+      <View style={profileTutorialStep === 'report' ? styles.profileTutorialHint : undefined}>
+        <TutorialHint
+          visible={profileTutorialStep === 'report'}
+          title={t('tutorialProfileReportTitle', 'Create a scouting report')}
+          body={t(
+            'tutorialProfileReportBody',
+            'Tap Lamine Yamal’s report icon to open a predefined scouting report with player data, role usage, strengths, and concerns.',
+          )}
+          targetLabel={t('tutorialPressYamalReport', 'Press Lamine Yamal report icon')}
+          onSkipAll={onProfileTutorialSkip}
+          arrow="none"
+          targetArrow="down"
+        />
+      </View>
+
       <View style={styles.table}>
         <View style={styles.tableTopBorder} />
 
@@ -1115,6 +1179,9 @@ export default function FavoritePlayers({
             setScoutOpen(false);
             setScoutPlayer(null);
             setScoutReport(null);
+            if (profileTutorialStep === 'report') {
+              onProfileTutorialNext?.();
+            }
           }}
           player={scoutPlayer}
           report={scoutReport}

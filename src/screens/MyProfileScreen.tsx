@@ -62,6 +62,9 @@ export default function MyProfileScreen() {
       if (tutorial.profileStep === 'watchlist') {
         scrollRef.current?.scrollTo({ y: 430, animated: true });
       }
+      if (tutorial.profileStep === 'report') {
+        scrollRef.current?.scrollTo({ y: 520, animated: true });
+      }
       if (tutorial.profileStep === 'filters') {
         scrollRef.current?.scrollTo({ y: 170, animated: true });
       }
@@ -100,6 +103,10 @@ export default function MyProfileScreen() {
           profileTutorialStep={profileTutorialStep}
           onProfileTutorialNext={() => {
             if (tutorial.profileStep === 'watchlist') {
+              tutorial.setProfileStep('report');
+              return;
+            }
+            if (tutorial.profileStep === 'report') {
               tutorial.setProfileStep('filters');
               return;
             }

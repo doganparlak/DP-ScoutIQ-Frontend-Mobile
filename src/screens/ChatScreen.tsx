@@ -209,14 +209,32 @@ export default function ChatScreen() {
     removePendingBubbleIfCurrentAttempt(attemptKey);
 
     const players = Array.isArray(res?.data?.players) ? (res.data.players as PlayerData[]) : [];
+    const visualPlayers =
+      isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'
+        ? players.map((player) => {
+            const normalizedName = player.name.toLocaleLowerCase('en-US');
+            if (!normalizedName.includes('gyokeres') && !normalizedName.includes('gyökeres')) {
+              return player;
+            }
+
+            return {
+              ...player,
+              meta: {
+                ...player.meta,
+                potential: 82,
+                form: 78,
+              },
+            };
+          })
+        : players;
     const narrative =
       isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'
         ? t('tutorialGyokeresInterpretation', TUTORIAL_GYOKERES_INTERPRETATION)
         : String(res?.response ?? '');
 
     // 1) Append visuals as a dedicated history item (persists forever)
-    if (players.length > 0) {
-      append({ role: 'assistant', content: '', kind: 'visuals', players });
+    if (visualPlayers.length > 0) {
+      append({ role: 'assistant', content: '', kind: 'visuals', players: visualPlayers });
     }
 
     // 2) Append the interpretation as a normal assistant bubble
@@ -464,8 +482,11 @@ export default function ChatScreen() {
           value={inputText}
           onChangeText={setInputText}
           onSend={send}
-          disabled={sending}
-          tutorialActive={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'}
+          disabled={sending || (isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse')}
+          tutorialActive={
+            isScoutWiseTutorial &&
+            (tutorial.scoutWiseStep === 'chatInput' || tutorial.scoutWiseStep === 'chatResponse')
+          }
           tutorialVisible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatInput'}
           onTutorialSkipAll={() => {
             tutorial.skipTutorial();

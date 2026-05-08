@@ -672,6 +672,7 @@ export type PlayerIdentityPayload = {
   weight?: number;
   potential?: number;
   form?: number;
+  tutorial_mode?: boolean;
 };
 
 export async function getScoutingReport(
