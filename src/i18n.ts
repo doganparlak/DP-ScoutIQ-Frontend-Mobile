@@ -155,7 +155,7 @@ export const resources = {
       tutorialContinueToCard: 'Continue to player card',
       tutorialViniciusReadyTitle: 'Candidate players',
       tutorialViniciusReadyBody:
-        'Search results appear here. You can sort the candidate players however you prefer and select the player who interests you. We selected Vinicius Junior as the second example.',
+        'We selected Vinicius Junior as the second example.',
       tutorialShowMatchupCenter: 'Show Matchup Center',
       tutorialPlayerCardTitle: 'Player card',
       tutorialPlayerCardBody: 'Review the selected player here. Potential and form can be revealed below.',

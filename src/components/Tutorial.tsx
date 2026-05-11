@@ -38,6 +38,7 @@ type TutorialContextValue = {
   playerPoolStep: PlayerPoolTutorialStep;
   profileStep: ProfileTutorialStep;
   scoutWiseStep: ScoutWiseTutorialStep;
+  activationKey: number;
   setPlayerPoolStep: (step: PlayerPoolTutorialStep) => void;
   setProfileStep: (step: ProfileTutorialStep) => void;
   setScoutWiseStep: (step: ScoutWiseTutorialStep) => void;
@@ -57,6 +58,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const [playerPoolStep, setPlayerPoolStep] = React.useState<PlayerPoolTutorialStep>('weeklyPopularButton');
   const [profileStep, setProfileStep] = React.useState<ProfileTutorialStep>('intro');
   const [scoutWiseStep, setScoutWiseStep] = React.useState<ScoutWiseTutorialStep>('setStrategy');
+  const [activationKey, setActivationKey] = React.useState(0);
   const loadedRef = React.useRef(false);
   const { t } = useTranslation();
 
@@ -102,6 +104,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setPlayerPoolStep('weeklyPopularButton');
     setProfileStep('intro');
     setScoutWiseStep('setStrategy');
+    setActivationKey((key) => key + 1);
   }, []);
 
   const activateTutorial = React.useCallback(async () => {
@@ -121,6 +124,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       playerPoolStep,
       profileStep,
       scoutWiseStep,
+      activationKey,
       setPlayerPoolStep,
       setProfileStep,
       setScoutWiseStep,
@@ -136,7 +140,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       completeTutorial: finish,
       skipTutorial: finish,
     }),
-    [activateTutorial, active, finish, playerPoolStep, profileStep, scoutWiseStep, stage],
+    [activateTutorial, activationKey, active, finish, playerPoolStep, profileStep, scoutWiseStep, stage],
   );
 
   return (

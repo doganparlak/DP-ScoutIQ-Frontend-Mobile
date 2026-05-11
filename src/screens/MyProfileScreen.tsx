@@ -96,6 +96,7 @@ export default function MyProfileScreen() {
           onOpenPlans={openPlans}
           onOpenHelp={openHelp}
           onLogout={handleLogout}
+          navigationLocked={isProfileTutorial}
         />
 
         <FavoritePlayers

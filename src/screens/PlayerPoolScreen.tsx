@@ -302,6 +302,18 @@ export default function PlayerPoolScreen() {
   }, [clearFilters]);
 
   const wasTutorialActiveRef = React.useRef(false);
+  const handledTutorialActivationKeyRef = React.useRef(tutorial.activationKey);
+
+  React.useEffect(() => {
+    if (
+      tutorial.active &&
+      tutorial.stage === 'playerPool' &&
+      handledTutorialActivationKeyRef.current !== tutorial.activationKey
+    ) {
+      handledTutorialActivationKeyRef.current = tutorial.activationKey;
+      resetPlayerPoolState();
+    }
+  }, [resetPlayerPoolState, tutorial.activationKey, tutorial.active, tutorial.stage]);
 
   React.useEffect(() => {
     if (isPlayerPoolTutorialActive) {
@@ -312,6 +324,9 @@ export default function PlayerPoolScreen() {
     if (wasTutorialActiveRef.current && !tutorial.active) {
       wasTutorialActiveRef.current = false;
       resetPlayerPoolState();
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+      });
     }
   }, [isPlayerPoolTutorialActive, resetPlayerPoolState, tutorial.active]);
 
@@ -396,12 +411,14 @@ export default function PlayerPoolScreen() {
   ]);
 
   const recordSelectedCardInterestOnce = React.useCallback(() => {
+    if (isPlayerPoolTutorialActive) return;
+
     const renderId = currentCardRenderIdRef.current;
     if (!selectedPlayerId || !renderId || countedCardRenderIdRef.current === renderId) return;
 
     countedCardRenderIdRef.current = renderId;
     recordPlayerPoolSearchHit(selectedPlayerId).catch(() => {});
-  }, [selectedPlayerId]);
+  }, [isPlayerPoolTutorialActive, selectedPlayerId]);
 
   const onRevealPotential = React.useCallback(async () => {
     if (!selectedPlayerId || !selectedPlayer || revealingPotential) return;
@@ -971,7 +988,7 @@ export default function PlayerPoolScreen() {
             setComparisonOpen(false);
             if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison') {
               tutorial.moveToProfile();
-              navigation.navigate('Profile');
+              navigation.navigate('Profile', { screen: 'MyProfile' });
             }
           }}
           tutorialVisible={isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison'}

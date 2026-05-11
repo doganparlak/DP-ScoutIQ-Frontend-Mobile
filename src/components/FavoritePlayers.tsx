@@ -340,6 +340,7 @@ export default function FavoritePlayers({
     sortKey,
     sortDir,
   ]);
+  const tableNeedsInnerScroll = filtered.length > 4;
 
   const clearFilters = () => {
     if (tutorialLocked) return;
@@ -1126,9 +1127,10 @@ export default function FavoritePlayers({
               style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
               contentContainerStyle={{ paddingRight: 5 }}
               scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
-              nestedScrollEnabled
+              nestedScrollEnabled={tableNeedsInnerScroll}
               bounces={false}
-              showsVerticalScrollIndicator
+              scrollEnabled={tableNeedsInnerScroll}
+              showsVerticalScrollIndicator={tableNeedsInnerScroll}
             >
               {renderUnifiedRow('HEADER')}
               {filtered.map((item) => renderUnifiedRow(item))}

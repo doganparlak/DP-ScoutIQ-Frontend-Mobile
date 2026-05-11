@@ -425,8 +425,10 @@ export default function ChatScreen() {
 
           <TouchableOpacity
             onPress={() => navigation.navigate('LegacyStrategy')}
-            style={styles.strategyBtn}
+            disabled={isScoutWiseTutorial}
+            style={[styles.strategyBtn, isScoutWiseTutorial && styles.toolbarBtnDisabled]}
             accessibilityRole="button"
+            accessibilityState={{ disabled: isScoutWiseTutorial }}
             accessibilityLabel={t('tabStrategy', 'Strategy')}
           >
             <Text style={styles.strategyBtnText}>{t('tabStrategy', 'Strategy')}</Text>
@@ -540,6 +542,7 @@ const styles = StyleSheet.create({
     borderColor: ACCENT,
     backgroundColor: 'transparent',
   },
+  toolbarBtnDisabled: { opacity: 0.45 },
   strategyBtnText: {
     color: ACCENT,
     fontWeight: '500',

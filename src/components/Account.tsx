@@ -11,9 +11,10 @@ type Props = {
   onOpenPlans: () => void;
   onOpenHelp: () => void;
   onLogout: () => void;
+  navigationLocked?: boolean;
 };
 
-export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Props) {
+export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout, navigationLocked = false }: Props) {
   const [email, setEmail] = React.useState<string>('—');
   const [savingLanguage, setSavingLanguage] = React.useState(false);
   const [languageOpen, setLanguageOpen] = React.useState(false);
@@ -119,18 +120,30 @@ export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout }: Pro
       <View style={styles.btnRow}>
         <Pressable
           onPress={onOpenPlans}
+          disabled={navigationLocked}
           accessibilityRole="button"
+          accessibilityState={{ disabled: navigationLocked }}
           accessibilityLabel={t('managePlan', 'Manage plan')}
-          style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [
+            styles.primaryBtn,
+            navigationLocked && styles.actionBtnLocked,
+            pressed && !navigationLocked && { opacity: 0.9 },
+          ]}
         >
           <Text style={styles.primaryBtnText}>{t('managePlan', 'Manage plan')}</Text>
         </Pressable>
 
         <Pressable
           onPress={onOpenHelp}
+          disabled={navigationLocked}
           accessibilityRole="button"
+          accessibilityState={{ disabled: navigationLocked }}
           accessibilityLabel={t('helpCenter', 'Help Center')}
-          style={({ pressed }) => [styles.outlineBtn, { opacity: pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [
+            styles.outlineBtn,
+            navigationLocked && styles.actionBtnLocked,
+            { opacity: pressed && !navigationLocked ? 0.85 : 1 },
+          ]}
         >
           <Text style={styles.outlineBtnText}>{t('helpCenter', 'Help Center')}</Text>
         </Pressable>
@@ -226,6 +239,7 @@ const styles = StyleSheet.create({
     backgroundColor: CARD,
   },
   outlineBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
+  actionBtnLocked: { opacity: 0.45 },
 
   logoutLinkWrap: {
     alignSelf: 'center',
