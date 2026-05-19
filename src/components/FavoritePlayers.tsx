@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { X, UserX, FileText } from 'lucide-react-native';
+import { X, UserX, FileText, FileClock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
@@ -28,7 +28,7 @@ import {
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
-import { ensureRewardedLoaded, showRewardedSafely } from '../ads/rewarded';
+import { showInterstitialAndWaitSafely } from '../ads/interstitial';
 import { ProNotReadyScreen } from '../ads/pro';
 import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
 
@@ -175,7 +175,7 @@ export default function FavoritePlayers({
   // This means: user is allowed to open the report
   // It can happen because:
   // - Pro user
-  // - rewarded ad completed
+  // - interstitial ad closed
   // - upsell was shown and then closed
   const [reportAccessGranted, setReportAccessGranted] = useState<Set<string>>(new Set());
 
@@ -385,6 +385,11 @@ export default function FavoritePlayers({
     setScoutReport(ready);
     setScoutOpen(true);
 
+    setReportAccessGranted((prev) => {
+      const next = new Set(prev);
+      next.delete(activeReportPlayerId);
+      return next;
+    });
     setActiveReportPlayerId(null);
   }, [activeReportPlayerId, reportAccessGranted, readyReports, rows]);
 
@@ -561,9 +566,41 @@ export default function FavoritePlayers({
 
     if (tutorialLocked) return;
 
+    const isPro = plan === 'Pro Monthly' || plan === 'Pro Yearly';
+    const existing = readyReports.get(player.id);
+
+    // Pro: cached reports open immediately, free users see an interstitial on each click.
+    if (isPro && existing) {
+      setScoutPlayer(toPlayerData(player));
+      setScoutReport(existing);
+      setScoutOpen(true);
+      return;
+    }
+
+    if (!isPro && existing) {
+      setActiveReportPlayerId(player.id);
+
+      try {
+        const shown = await showInterstitialAndWaitSafely();
+
+        if (shown) {
+          setReportAccessGranted((prev) => {
+            const next = new Set(prev);
+            next.add(player.id);
+            return next;
+          });
+          return;
+        }
+
+        setProUpsellOpen(true);
+      } catch {
+        setProUpsellOpen(true);
+      }
+      return;
+    }
+
     // Already unlocked and ready -> open immediately
     if (reportAccessGranted.has(player.id)) {
-      const existing = readyReports.get(player.id);
       if (existing) {
         setScoutPlayer(toPlayerData(player));
         setScoutReport(existing);
@@ -576,8 +613,6 @@ export default function FavoritePlayers({
     if (processingReports.has(player.id) || queuedReportPlayer?.id === player.id) {
       return;
     }
-
-    const isPro = plan === 'Pro Monthly' || plan === 'Pro Yearly';
 
     // Start backend immediately
     setActiveReportPlayerId(player.id);
@@ -593,20 +628,11 @@ export default function FavoritePlayers({
       return;
     }
 
-    // Free: try rewarded ad while backend works
+    // Free: try interstitial ad while backend works
     try {
-      const timeoutMs = 1000;
-      const ready = await ensureRewardedLoaded(timeoutMs);
+      const shown = await showInterstitialAndWaitSafely();
 
-      // If ad not ready, show upsell. When user closes it, access is granted.
-      if (!ready) {
-        setProUpsellOpen(true);
-        return;
-      }
-
-      const { shown, rewarded } = await showRewardedSafely();
-
-      if (shown && rewarded) {
+      if (shown) {
         setReportAccessGranted((prev) => {
           const next = new Set(prev);
           next.add(player.id);
@@ -678,11 +704,7 @@ export default function FavoritePlayers({
                 const isProcessing = processingReports.has(rowId);
 
                 if (isProcessing) {
-                  return (
-                    <Text style={{ color: MUTED, fontSize: 16, fontWeight: '900' }}>
-                      …
-                    </Text>
-                  );
+                  return <FileClock size={20} color={ACCENT} strokeWidth={2.2} />;
                 }
 
                 return <FileText size={20} color={ACCENT} strokeWidth={2.2} />;

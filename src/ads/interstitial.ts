@@ -82,3 +82,52 @@ export function showInterstitialSafely(): boolean {
   });
   return true
 }
+
+export function showInterstitialAndWaitSafely(): Promise<boolean> {
+  if (showing || pendingShow) return Promise.resolve(false);
+
+  const a = getAd();
+
+  if (!loaded) {
+    a.load();
+    return Promise.resolve(false);
+  }
+
+  pendingShow = true;
+  Keyboard.dismiss();
+
+  return new Promise((resolve) => {
+    let finished = false;
+
+    const cleanup = () => {
+      subClosed?.();
+      subError?.();
+    };
+
+    const finish = (shown: boolean) => {
+      if (finished) return;
+      finished = true;
+      pendingShow = false;
+      cleanup();
+      resolve(shown);
+    };
+
+    const subClosed = a.addAdEventListener(AdEventType.CLOSED, () => {
+      finish(true);
+    });
+
+    const subError = a.addAdEventListener(AdEventType.ERROR, () => {
+      finish(false);
+    });
+
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        if (!loaded || showing) {
+          finish(false);
+          return;
+        }
+        a.show();
+      }, 400);
+    });
+  });
+}
