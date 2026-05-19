@@ -49,7 +49,7 @@ export async function incrementWeeklyPopularRevealCount(): Promise<number> {
 }
 
 export function shouldShowMatchupLaunchInterstitial(launchCount: number) {
-  return launchCount > 0 && launchCount % 2 === 0;
+  return launchCount > 0;
 }
 
 export async function incrementMatchupLaunchCount(): Promise<number> {
