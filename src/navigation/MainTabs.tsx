@@ -31,8 +31,8 @@ import { getMe, type Plan } from '@/services/api';
 const TAB_BASE_HEIGHT = 70;
 const MAIN_TAB_ICON_SIZE = 30;
 const MAIN_TAB_ICON_LABEL_GAP = 8;
-const SCOUTWISE_PRO_TAB_VERTICAL_OFFSET = 12;
 const SIDE_TAB_VERTICAL_OFFSET = -4;
+const SCOUTWISE_PRO_TAB_VERTICAL_OFFSET = Platform.OS === 'android' ? SIDE_TAB_VERTICAL_OFFSET : 12;
 
 const isFreePlan = (plan: Plan | null) => plan === 'Free';
 
