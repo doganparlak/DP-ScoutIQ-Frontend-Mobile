@@ -25,6 +25,8 @@ import { useTranslation } from 'react-i18next';
 
 type Nav = BottomTabNavigationProp<MainTabsParamList, 'Strategy'>;
 
+const ANDROID_SET_STRATEGY_TUTORIAL_SCROLL = 0;
+
 export default function StrategyScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
@@ -54,6 +56,22 @@ export default function StrategyScreen() {
   React.useEffect(() => {
     loadConsent();
   }, [loadConsent]);
+
+  React.useEffect(() => {
+    if (
+      Platform.OS !== 'android' ||
+      !isScoutWiseTutorial ||
+      tutorial.scoutWiseStep !== 'setStrategy'
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: ANDROID_SET_STRATEGY_TUTORIAL_SCROLL, animated: true });
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [isScoutWiseTutorial, tutorial.scoutWiseStep]);
 
   React.useEffect(() => {
     if (!isScoutWiseTutorial || tutorial.scoutWiseStep !== 'startChat') return;
@@ -103,7 +121,11 @@ export default function StrategyScreen() {
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <TouchableWithoutFeedback
+        onPress={Keyboard.dismiss}
+        accessible={false}
+        disabled={Platform.OS === 'android' && isScoutWiseTutorial}
+      >
         <View style={styles.wrap}>
           <Header />
 
@@ -134,6 +156,7 @@ export default function StrategyScreen() {
               setButtonDisabled={isScoutWiseTutorial && tutorial.scoutWiseStep !== 'setStrategy'}
               tutorialPresetText={isScoutWiseTutorial ? tutorialStrategy : undefined}
               textEditingDisabled={isScoutWiseTutorial}
+              allowParentScrollThroughInput={Platform.OS === 'android' && isScoutWiseTutorial}
               onSaved={() => {
                 if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy') {
                   tutorial.setScoutWiseStep('startChat');

@@ -14,6 +14,7 @@ interface Props {
   tutorialPresetText?: string;
   setButtonDisabled?: boolean;
   textEditingDisabled?: boolean;
+  allowParentScrollThroughInput?: boolean;
 }
 
 export default function StrategyCard({
@@ -22,6 +23,7 @@ export default function StrategyCard({
   tutorialPresetText,
   setButtonDisabled = false,
   textEditingDisabled = false,
+  allowParentScrollThroughInput = false,
 }: Props) {
   const { t } = useTranslation();
 
@@ -101,6 +103,7 @@ export default function StrategyCard({
 
       <TextInput
         style={[styles.input, (!inputEditable || locked) && styles.inputDisabled, { height: inputHeight }]}
+        pointerEvents={allowParentScrollThroughInput ? 'none' : 'auto'}
         value={text}
         onChangeText={inputEditable ? setText : undefined}
         editable={inputEditable}
