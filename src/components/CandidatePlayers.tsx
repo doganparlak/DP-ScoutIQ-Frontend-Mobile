@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, X } from 'lucide-react-native';
@@ -90,7 +91,12 @@ export default function CandidatePlayers({
   scrollLocked = false,
 }: Props) {
   const { t } = useTranslation();
+  const { height: windowHeight } = useWindowDimensions();
   const [popularPreviewPlayer, setPopularPreviewPlayer] = React.useState<PlayerData | null>(null);
+  const androidTutorialPopularCardHeight =
+    Platform.OS === 'android' && weeklyPopularTutorialVisible
+      ? windowHeight * 0.78 + ROW_HEIGHT / 2
+      : undefined;
 
   React.useEffect(() => {
     if (!weeklyPopularOpen) {
@@ -354,7 +360,17 @@ export default function CandidatePlayers({
         onRequestClose={onCloseWeeklyPopular}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.popularModalCard}>
+          <View
+            style={[
+              styles.popularModalCard,
+              androidTutorialPopularCardHeight
+                ? {
+                    height: androidTutorialPopularCardHeight,
+                    maxHeight: androidTutorialPopularCardHeight,
+                  }
+                : null,
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, styles.popularModalTitle]}>
                 {t('weeklyPopularPlayers', "This week's popular players")}
