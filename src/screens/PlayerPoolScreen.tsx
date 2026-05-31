@@ -56,6 +56,9 @@ import type { PlayerData } from '@/types';
 
 type SortDir = 'asc' | 'desc';
 
+const ANDROID_REVEAL_FORM_EXTRA_SCROLL = 100;
+const ANDROID_ADD_MATCHUP_EXTRA_SCROLL = 100;
+
 export default function PlayerPoolScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
@@ -108,7 +111,7 @@ export default function PlayerPoolScreen() {
   const countedCardRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
 
-  const scrollToTutorialArea = React.useCallback((area: 'weekly' | 'filters' | 'candidates' | 'card' | 'matchup') => {
+  const scrollToTutorialArea = React.useCallback((area: 'weekly' | 'filters' | 'candidates' | 'card' | 'form' | 'matchupAdd' | 'matchup') => {
     const y =
       area === 'weekly'
         ? 80
@@ -116,8 +119,12 @@ export default function PlayerPoolScreen() {
         ? 120
         : area === 'candidates'
           ? 520
+          : area === 'form'
+            ? 820 + (Platform.OS === 'android' ? ANDROID_REVEAL_FORM_EXTRA_SCROLL : 0)
           : area === 'card'
             ? 820
+            : area === 'matchupAdd'
+              ? 1160 + (Platform.OS === 'android' ? ANDROID_ADD_MATCHUP_EXTRA_SCROLL : 0)
             : 1160;
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ y, animated: true });
@@ -153,15 +160,17 @@ export default function PlayerPoolScreen() {
     } else if (
       tutorial.playerPoolStep === 'card' ||
       tutorial.playerPoolStep === 'revealPotential' ||
-      tutorial.playerPoolStep === 'revealForm' ||
       tutorial.playerPoolStep === 'addPortfolio'
     ) {
       scrollToTutorialArea('card');
+    } else if (tutorial.playerPoolStep === 'revealForm') {
+      scrollToTutorialArea('form');
     } else if (
       tutorial.playerPoolStep === 'addYamalToMatchup' ||
-      tutorial.playerPoolStep === 'addViniciusToMatchup' ||
-      tutorial.playerPoolStep === 'launchMatchup'
+      tutorial.playerPoolStep === 'addViniciusToMatchup'
     ) {
+      scrollToTutorialArea('matchupAdd');
+    } else if (tutorial.playerPoolStep === 'launchMatchup') {
       scrollToTutorialArea('matchup');
     }
   }, [isPlayerPoolTutorialActive, scrollToTutorialArea, tutorial.playerPoolStep]);
