@@ -817,7 +817,7 @@ export default function PlayerPoolScreen() {
           ref={scrollRef}
           style={styles.container}
           contentContainerStyle={styles.content}
-          scrollEnabled={!isPlayerPoolTutorialActive}
+          scrollEnabled
         >
           <Header
             subtitle={t(
@@ -950,7 +950,7 @@ export default function PlayerPoolScreen() {
           }}
           onTutorialSkipAll={skipPlayerPoolTutorial}
           rowsLocked={isPlayerPoolTutorialActive}
-          scrollLocked={isPlayerPoolTutorialActive}
+          scrollLocked={false}
         />
 
         <PlayerCardPP
