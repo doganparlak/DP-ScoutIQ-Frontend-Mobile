@@ -14,6 +14,16 @@ import { ROLE_LONG_TO_SHORT } from '@/services/api';
 import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
 import type { SearchResultRow } from '@/components/CandidatePlayers';
 
+type PlayerPoolComponentTheme = {
+  panel: string;
+  card: string;
+  line: string;
+  accent: string;
+  accent2: string;
+  accentSoft: string;
+  muted: string;
+};
+
 const COL = {
   index: 0.45,
   name: 0.93,
@@ -40,6 +50,8 @@ type Props = {
   tutorialStep?: PlayerPoolTutorialStep | null;
   onTutorialSkipAll?: () => void;
   tutorialActive?: boolean;
+  theme?: PlayerPoolComponentTheme;
+  worldCupMode?: boolean;
 };
 
 function shortNationality(value?: string) {
@@ -102,6 +114,8 @@ export default function MatchupCenter({
   tutorialStep = null,
   onTutorialSkipAll,
   tutorialActive = false,
+  theme,
+  worldCupMode = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const isFull = !!row1 && !!row2;
@@ -113,6 +127,10 @@ export default function MatchupCenter({
     tutorialStep === 'addYamalToMatchup' ||
     tutorialStep === 'addViniciusToMatchup';
   const launchEnabled = !tutorialActive || tutorialStep === 'launchMatchup';
+  const addBridgeDisabled = !canAdd || !addEnabled;
+  const themedMutedAccent = theme ? 'rgba(227, 0, 11, 0.42)' : MUTED;
+  const themedMutedAccentBg = theme ? 'rgba(227, 0, 11, 0.08)' : undefined;
+  const themedMutedAccentBorder = theme ? 'rgba(227, 0, 11, 0.28)' : undefined;
   const player1Label = row1
     ? matchupNameLabel(row1.player.name)
     : t('matchupPlayer1Placeholder', 'Player 1');
@@ -135,10 +153,10 @@ export default function MatchupCenter({
   ) => {
     if (!row) {
       return (
-        <View style={[styles.row, styles.emptySlot]}>
+        <View style={[styles.row, styles.emptySlot, theme && { backgroundColor: theme.card }]}>
           <Text style={[styles.td, styles.slotLabel, { flex: COL.index }]}>{label}</Text>
           <View style={styles.vsep} />
-          <Text style={styles.emptyText} numberOfLines={1}>
+          <Text style={[styles.emptyText, theme && { color: theme.muted }]} numberOfLines={1}>
             {t('matchupCenterEmptySlot', 'Player slot')}
           </Text>
           <View style={styles.vsep} />
@@ -151,19 +169,23 @@ export default function MatchupCenter({
 
     return (
       <View style={styles.row}>
-        <Text style={[styles.td, styles.slotLabel, { flex: COL.index }]}>{label}</Text>
+        <Text style={[styles.td, styles.slotLabel, theme && { color: theme.accent }, { flex: COL.index }]}>{label}</Text>
         <View style={styles.vsep} />
         <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
           {row.player.name.split(/\s+/)[0] || row.player.name}
         </Text>
-        <View style={styles.vsep} />
-        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
-          {shortNationality(row.player.meta?.nationality)}
-        </Text>
-        <View style={styles.vsep} />
-        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
-          {shortLeague(row.player.meta?.league)}
-        </Text>
+        {!worldCupMode ? (
+          <>
+            <View style={styles.vsep} />
+            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
+              {shortNationality(row.player.meta?.nationality)}
+            </Text>
+            <View style={styles.vsep} />
+            <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
+              {shortLeague(row.player.meta?.league)}
+            </Text>
+          </>
+        ) : null}
         <View style={styles.vsep} />
         <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
           {row.player.meta?.team || '-'}
@@ -195,7 +217,7 @@ export default function MatchupCenter({
         </Pressable>
       </View>
     );
-  }, [t, tutorialActive]);
+  }, [t, theme, tutorialActive, worldCupMode]);
 
   return (
     <>
@@ -228,91 +250,112 @@ export default function MatchupCenter({
         disabled={!canAdd || !addEnabled}
         style={({ pressed }) => [
           styles.addBridge,
-          (!canAdd || !addEnabled) && styles.addBridgeMuted,
+          theme && { backgroundColor: theme.accentSoft, borderColor: theme.line },
+          addBridgeDisabled && styles.addBridgeMuted,
+          addBridgeDisabled && theme && { backgroundColor: themedMutedAccentBg, borderColor: themedMutedAccentBorder },
           pressed && styles.pressed,
         ]}
         accessibilityLabel={t('addPlayerToMatchupCenter', 'Add player to Matchup Center')}
       >
         <ArrowDownCircle
           size={24}
-          color={canAdd ? ACCENT : MUTED}
+          color={addBridgeDisabled ? themedMutedAccent : (theme?.accent ?? ACCENT)}
           strokeWidth={2.2}
         />
-        <Text style={[styles.addBridgeText, !canAdd && styles.addBridgeTextMuted]}>
+        <Text
+          style={[
+            styles.addBridgeText,
+            theme && { color: theme.accent },
+            addBridgeDisabled && (theme ? { color: themedMutedAccent } : styles.addBridgeTextMuted),
+          ]}
+        >
           {addPlayerLabelUpper}
         </Text>
         <ArrowDownCircle
           size={24}
-          color={canAdd ? ACCENT : MUTED}
+          color={addBridgeDisabled ? themedMutedAccent : (theme?.accent ?? ACCENT)}
           strokeWidth={2.2}
         />
       </Pressable>
 
-      <View style={styles.panel}>
+      <View style={[styles.panel, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
+        <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>{t('matchupCenterTitle', 'Matchup Center')}</Text>
-          <View style={[styles.capacityPill, isFull && styles.capacityPillFull]}>
-            <Text style={[styles.capacityText, isFull && styles.capacityTextFull]}>
+          <Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
+            {t('matchupCenterTitle', 'Matchup Center')}
+          </Text>
+          <View
+            style={[
+              styles.capacityPill,
+              theme && { backgroundColor: theme.card, borderColor: theme.line },
+              isFull && (theme ? { backgroundColor: theme.accentSoft, borderColor: theme.accent } : styles.capacityPillFull),
+            ]}
+          >
+            <Text style={[styles.capacityText, theme && { color: theme.muted }, isFull && (theme ? { color: theme.accent } : styles.capacityTextFull)]}>
               {(row1 ? 1 : 0) + (row2 ? 1 : 0)}/2
             </Text>
           </View>
         </View>
 
         <View style={styles.table}>
-          <View style={styles.tableTopBorder} />
+          <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
           <View style={styles.tableHeaderWrap}>
             <View style={styles.row}>
               <View style={[styles.cell, { flex: COL.index }]}>
                 <Text style={[styles.thText, styles.indexCell]}>#</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.name }]}>
                 <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
               </View>
-              <View style={styles.vsep} />
-              <View style={[styles.cell, { flex: COL.nat }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-              </View>
-              <View style={styles.vsep} />
-              <View style={[styles.cell, { flex: COL.league }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
-              </View>
-              <View style={styles.vsep} />
+              {!worldCupMode ? (
+                <>
+                  <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
+                  <View style={[styles.cell, { flex: COL.nat }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
+                  </View>
+                  <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
+                  <View style={[styles.cell, { flex: COL.league }]}>
+                    <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
+                  </View>
+                </>
+              ) : null}
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.team }]}>
                 <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.age }]}>
                 <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.roles }]}>
                 <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.action }]} />
             </View>
-            <View style={styles.hsepThick} />
+            <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
           </View>
 
           {renderSlot('1', row1, onRemoveRow1)}
-          <View style={styles.hsepThick} />
+          <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
 
-          <View style={styles.vsBand}>
-            <View style={styles.vsLine} />
-            <View style={styles.vsBadge}>
-              <Swords size={15} color={ACCENT} strokeWidth={2.2} />
+          <View style={[styles.vsBand, theme && { backgroundColor: theme.accentSoft }]}>
+            <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
+            <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}>
+              <Swords size={15} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
               <Text style={styles.vsText}>
-                {player1Label} <Text style={styles.vsAccent}>{t('matchupVs', 'vs')}</Text> {player2Label}
+                {player1Label} <Text style={[styles.vsAccent, theme && { color: theme.accent }]}>{t('matchupVs', 'vs')}</Text> {player2Label}
               </Text>
-              <Swords size={15} color={ACCENT} strokeWidth={2.2} />
+              <Swords size={15} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
             </View>
-            <View style={styles.vsLine} />
+            <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
           </View>
 
-          <View style={styles.hsepThick} />
+          <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
           {renderSlot('2', row2, onRemoveRow2)}
-          <View style={styles.tableBottomBorder} />
+          <View style={[styles.tableBottomBorder, theme && { backgroundColor: theme.line }]} />
         </View>
 
         <TutorialHint
@@ -332,17 +375,18 @@ export default function MatchupCenter({
           disabled={!launchEnabled || launchDisabled || launchLoading}
           style={({ pressed }) => [
             styles.launchButton,
+            theme && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
             (!launchEnabled || launchDisabled || launchLoading) && styles.launchButtonMuted,
             pressed && styles.pressed,
           ]}
           accessibilityLabel={t('launchMatchup', 'Launch Matchup')}
         >
           {launchLoading ? (
-            <ActivityIndicator size="small" color={ACCENT} />
+            <ActivityIndicator size="small" color={theme?.accent ?? ACCENT} />
           ) : (
-            <Radar size={17} color={launchDisabled ? MUTED : ACCENT} strokeWidth={2.2} />
+            <Radar size={17} color={launchDisabled ? MUTED : (theme?.accent ?? ACCENT)} strokeWidth={2.2} />
           )}
-          <Text style={[styles.launchButtonText, launchDisabled && styles.launchButtonTextMuted]}>
+          <Text style={[styles.launchButtonText, theme && { color: theme.accent }, launchDisabled && styles.launchButtonTextMuted]}>
             {launchMatchupLabelUpper}
           </Text>
         </Pressable>
@@ -366,7 +410,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   addBridgeMuted: {
-    borderColor: LINE,
+    borderColor: ACCENT,
     backgroundColor: CARD,
     opacity: 0.7,
   },
@@ -382,7 +426,7 @@ const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: ACCENT,
     backgroundColor: PANEL,
     padding: 16,
   },
@@ -397,6 +441,12 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 16,
     fontWeight: '800',
+  },
+  worldCupTopStripe: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#FF3D00',
+    marginBottom: 10,
   },
   capacityPill: {
     borderRadius: 999,

@@ -7,14 +7,24 @@ const scoutwiseLogo = require('../../assets/scoutwise_logo.png');
 
 type HeaderProps = {
   subtitle?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  accentColor?: string;
+  lineColor?: string;
 };
 
-export default function Header({ subtitle }: HeaderProps) {
+export default function Header({
+  subtitle,
+  backgroundColor = BG,
+  textColor = TEXT,
+  accentColor = ACCENT,
+  lineColor = LINE,
+}: HeaderProps) {
   const { t } = useTranslation();
 
   return (
     <View
-      style={styles.wrap}
+      style={[styles.wrap, { backgroundColor }]}
       accessible
       accessibilityRole="header"
       accessibilityLabel={t('appName', 'ScoutWise')}
@@ -32,17 +42,17 @@ export default function Header({ subtitle }: HeaderProps) {
         />
 
         <Text style={styles.title}>
-          <Text style={styles.main}>SCOUT</Text>
-          <Text style={styles.accent}>WISE</Text>
+          <Text style={[styles.main, { color: textColor }]}>SCOUT</Text>
+          <Text style={[styles.accent, { color: accentColor }]}>WISE</Text>
         </Text>
         
       </View>
 
       {/* Divider line */}
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: lineColor }]} />
 
       {/* Subtitle (localized) */}
-      <Text style={styles.subtitle}>
+      <Text style={[styles.subtitle, { color: accentColor }]}>
         {subtitle ?? t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
       </Text>
     </View>

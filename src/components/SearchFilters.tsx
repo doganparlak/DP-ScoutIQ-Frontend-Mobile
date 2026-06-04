@@ -14,6 +14,15 @@ import { ChevronDown, Search, X } from 'lucide-react-native';
 import { TutorialHint } from '@/components/Tutorial';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 
+type PlayerPoolComponentTheme = {
+  panel: string;
+  card: string;
+  line: string;
+  accent: string;
+  accentSoft: string;
+  muted: string;
+};
+
 type Props = {
   name: string;
   setName: (value: string) => void;
@@ -55,6 +64,8 @@ type Props = {
   onTutorialContinue?: () => void;
   onTutorialSkipAll?: () => void;
   tutorialActive?: boolean;
+  theme?: PlayerPoolComponentTheme;
+  worldCupMode?: boolean;
 };
 
 export default function SearchFilters({
@@ -98,14 +109,25 @@ export default function SearchFilters({
   onTutorialContinue,
   onTutorialSkipAll,
   tutorialActive = false,
+  theme,
+  worldCupMode = false,
 }: Props) {
   const { t } = useTranslation();
   const controlsLocked = tutorialActive;
   const searchEnabled = !tutorialActive || tutorialStep === 'search';
+  const inputStyle = theme
+    ? [styles.input, { backgroundColor: theme.card, borderColor: theme.line }]
+    : styles.input;
+  const rangeInputStyle = theme
+    ? [styles.input, styles.rangeInput, { backgroundColor: theme.card, borderColor: theme.line }]
+    : [styles.input, styles.rangeInput];
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.sectionTitle}>{t('playerPoolFilters', 'Search filters')}</Text>
+    <View style={[styles.panel, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
+      <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
+      <Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
+        {t('playerPoolFilters', 'Search filters')}
+      </Text>
 
       <View style={styles.tutorialGap}>
         <TutorialHint
@@ -123,100 +145,112 @@ export default function SearchFilters({
 
       <View style={styles.filters}>
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
+          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltName', 'Name')}</Text>
           <TextInput
             value={name}
             onChangeText={controlsLocked ? undefined : setName}
             editable={!controlsLocked}
             placeholder={t('phSearchName', 'Search name')}
-            placeholderTextColor={MUTED}
-            style={styles.input}
+            placeholderTextColor={theme?.muted ?? MUTED}
+            style={inputStyle}
           />
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltGender', 'Gender')}</Text>
+          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltGender', 'Gender')}</Text>
           <Pressable
             onPress={cycleGender}
             disabled={controlsLocked}
-            style={({ pressed }) => [styles.input, styles.centeredInput, pressed && styles.pressed]}
+            style={({ pressed }) => [inputStyle, styles.centeredInput, pressed && styles.pressed]}
           >
-            <Text style={{ color: gender ? TEXT : MUTED, fontSize: 14 }}>{renderGenderLabel()}</Text>
+            <Text style={{ color: gender ? TEXT : (theme?.muted ?? MUTED), fontSize: 14 }}>{renderGenderLabel()}</Text>
           </Pressable>
         </View>
 
-        <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltNationality', 'Country')}</Text>
-          <TextInput
-            value={nationality}
-            editable={!controlsLocked}
-            onChangeText={(value) => {
-              if (controlsLocked) return;
-              setNationality(value);
-              setSelectedNationality(
-                selectedNationality && selectedNationality === value ? selectedNationality : null,
-              );
-            }}
-            placeholder={t('phSearchNationality', 'Search nationality')}
-            placeholderTextColor={MUTED}
-            style={styles.input}
-          />
-          {nationalitySuggestions.length > 0 &&
-          nationality.trim().toLowerCase() !== selectedNationality?.trim().toLowerCase() ? (
-            <View style={styles.suggestions}>
-              {nationalitySuggestions.map((item) => (
-                <Pressable
-                  key={item}
-                  onPress={() => {
-                    if (controlsLocked) return;
-                    setNationality(item);
-                    setSelectedNationality(item);
-                  }}
-                  style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
-                >
-                  <Text style={styles.suggestionText}>{item}</Text>
-                </Pressable>
-              ))}
+        {!worldCupMode ? (
+          <>
+            <View style={styles.filterCol}>
+              <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltNationality', 'Country')}</Text>
+              <TextInput
+                value={nationality}
+                editable={!controlsLocked}
+                onChangeText={(value) => {
+                  if (controlsLocked) return;
+                  setNationality(value);
+                  setSelectedNationality(
+                    selectedNationality && selectedNationality === value ? selectedNationality : null,
+                  );
+                }}
+                placeholder={t('phSearchNationality', 'Search nationality')}
+                placeholderTextColor={theme?.muted ?? MUTED}
+                style={inputStyle}
+              />
+              {nationalitySuggestions.length > 0 &&
+              nationality.trim().toLowerCase() !== selectedNationality?.trim().toLowerCase() ? (
+                <View style={styles.suggestions}>
+                  {nationalitySuggestions.map((item) => (
+                    <Pressable
+                      key={item}
+                      onPress={() => {
+                        if (controlsLocked) return;
+                        setNationality(item);
+                        setSelectedNationality(item);
+                      }}
+                      style={({ pressed }) => [
+                        styles.suggestionChip,
+                        theme && { backgroundColor: theme.card, borderColor: theme.line },
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Text style={[styles.suggestionText, theme && { color: theme.muted }]}>{item}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
-          ) : null}
-        </View>
+
+            <View style={styles.filterCol}>
+              <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltLeague', 'League')}</Text>
+              <TextInput
+                value={league}
+                editable={!controlsLocked}
+                onChangeText={(value) => {
+                  if (controlsLocked) return;
+                  setLeague(value);
+                  setSelectedLeague(selectedLeague && selectedLeague === value ? selectedLeague : null);
+                }}
+                placeholder={t('phSearchLeague', 'Search league')}
+                placeholderTextColor={theme?.muted ?? MUTED}
+                style={inputStyle}
+              />
+              {leagueSuggestions.length > 0 &&
+              league.trim().toLowerCase() !== selectedLeague?.trim().toLowerCase() ? (
+                <View style={styles.suggestions}>
+                  {leagueSuggestions.map((item) => (
+                    <Pressable
+                      key={item}
+                      onPress={() => {
+                        if (controlsLocked) return;
+                        setLeague(item);
+                        setSelectedLeague(item);
+                      }}
+                      style={({ pressed }) => [
+                        styles.suggestionChip,
+                        theme && { backgroundColor: theme.card, borderColor: theme.line },
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Text style={[styles.suggestionText, theme && { color: theme.muted }]}>{item}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltLeague', 'League')}</Text>
-          <TextInput
-            value={league}
-            editable={!controlsLocked}
-            onChangeText={(value) => {
-              if (controlsLocked) return;
-              setLeague(value);
-              setSelectedLeague(selectedLeague && selectedLeague === value ? selectedLeague : null);
-            }}
-            placeholder={t('phSearchLeague', 'Search league')}
-            placeholderTextColor={MUTED}
-            style={styles.input}
-          />
-          {leagueSuggestions.length > 0 &&
-          league.trim().toLowerCase() !== selectedLeague?.trim().toLowerCase() ? (
-            <View style={styles.suggestions}>
-              {leagueSuggestions.map((item) => (
-                <Pressable
-                  key={item}
-                  onPress={() => {
-                    if (controlsLocked) return;
-                    setLeague(item);
-                    setSelectedLeague(item);
-                  }}
-                  style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
-                >
-                  <Text style={styles.suggestionText}>{item}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltTeam', 'Team')}</Text>
+          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltTeam', 'Team')}</Text>
           <TextInput
             value={team}
             editable={!controlsLocked}
@@ -226,8 +260,8 @@ export default function SearchFilters({
               setSelectedTeam(selectedTeam && selectedTeam === value ? selectedTeam : null);
             }}
             placeholder={t('phSearchTeam', 'Search team')}
-            placeholderTextColor={MUTED}
-            style={styles.input}
+            placeholderTextColor={theme?.muted ?? MUTED}
+            style={inputStyle}
           />
           {teamSuggestions.length > 0 &&
           team.trim().toLowerCase() !== selectedTeam?.trim().toLowerCase() ? (
@@ -240,9 +274,13 @@ export default function SearchFilters({
                     setTeam(item);
                     setSelectedTeam(item);
                   }}
-                  style={({ pressed }) => [styles.suggestionChip, pressed && styles.pressed]}
+                  style={({ pressed }) => [
+                    styles.suggestionChip,
+                    theme && { backgroundColor: theme.card, borderColor: theme.line },
+                    pressed && styles.pressed,
+                  ]}
                 >
-                  <Text style={styles.suggestionText}>{item}</Text>
+                  <Text style={[styles.suggestionText, theme && { color: theme.muted }]}>{item}</Text>
                 </Pressable>
               ))}
             </View>
@@ -250,13 +288,13 @@ export default function SearchFilters({
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('tblRoles', 'Role')}</Text>
+          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('tblRoles', 'Role')}</Text>
           <Pressable
             onPress={() => setPositionOpen(true)}
             disabled={controlsLocked}
-            style={({ pressed }) => [styles.input, styles.dropdownInput, pressed && styles.pressed]}
+            style={({ pressed }) => [inputStyle, styles.dropdownInput, pressed && styles.pressed]}
           >
-            <Text style={{ color: position ? TEXT : MUTED, fontSize: 14 }}>
+            <Text style={{ color: position ? TEXT : (theme?.muted ?? MUTED), fontSize: 14 }}>
               {position ? roleDisplayLabel(position) : t('tblRoles', 'Role')}
             </Text>
             <ChevronDown size={16} color={MUTED} strokeWidth={2.2} />
@@ -264,7 +302,7 @@ export default function SearchFilters({
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltAge', 'Age (min / max)')}</Text>
+          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltAge', 'Age (min / max)')}</Text>
           <View style={styles.rangeRow}>
             <TextInput
               value={minAge}
@@ -272,8 +310,8 @@ export default function SearchFilters({
               onChangeText={(value) => setMinAge(value.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMin', 'Min')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, styles.rangeInput]}
+              placeholderTextColor={theme?.muted ?? MUTED}
+              style={rangeInputStyle}
             />
             <TextInput
               value={maxAge}
@@ -281,14 +319,14 @@ export default function SearchFilters({
               onChangeText={(value) => setMaxAge(value.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMax', 'Max')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, styles.rangeInput]}
+              placeholderTextColor={theme?.muted ?? MUTED}
+              style={rangeInputStyle}
             />
           </View>
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={styles.filterLabel}>{t('fltHeight', 'Height (min / max)')}</Text>
+          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltHeight', 'Height (min / max)')}</Text>
           <View style={styles.rangeRow}>
             <TextInput
               value={minHeight}
@@ -296,8 +334,8 @@ export default function SearchFilters({
               onChangeText={(value) => setMinHeight(value.replace(/[^\d.]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMin', 'Min')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, styles.rangeInput]}
+              placeholderTextColor={theme?.muted ?? MUTED}
+              style={rangeInputStyle}
             />
             <TextInput
               value={maxHeight}
@@ -305,8 +343,8 @@ export default function SearchFilters({
               onChangeText={(value) => setMaxHeight(value.replace(/[^\d.]/g, ''))}
               keyboardType="numeric"
               placeholder={t('phMax', 'Max')}
-              placeholderTextColor={MUTED}
-              style={[styles.input, styles.rangeInput]}
+              placeholderTextColor={theme?.muted ?? MUTED}
+              style={rangeInputStyle}
             />
           </View>
         </View>
@@ -316,9 +354,15 @@ export default function SearchFilters({
         <Pressable
           onPress={clearFilters}
           disabled={controlsLocked}
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            theme && { backgroundColor: theme.card, borderColor: theme.line },
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={styles.secondaryButtonText}>{t('clearFilters', 'Clear filters')}</Text>
+          <Text style={[styles.secondaryButtonText, theme && { color: theme.muted }]}>
+            {t('clearFilters', 'Clear filters')}
+          </Text>
         </Pressable>
 
         <Pressable
@@ -326,12 +370,18 @@ export default function SearchFilters({
           disabled={!searchEnabled}
           style={({ pressed }) => [
             styles.primaryButton,
+            theme && {
+              backgroundColor: theme.accentSoft,
+              borderColor: theme.accent,
+            },
             !searchEnabled && styles.disabledButton,
             pressed && styles.pressed,
           ]}
         >
-          <Search size={16} color={ACCENT} strokeWidth={2.2} />
-          <Text style={styles.primaryButtonText}>{t('playerPoolSearchButton', 'Search')}</Text>
+          <Search size={16} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
+          <Text style={[styles.primaryButtonText, theme && { color: theme.accent }]}>
+            {t('playerPoolSearchButton', 'Search')}
+          </Text>
         </Pressable>
       </View>
 
@@ -403,7 +453,7 @@ const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: ACCENT,
     backgroundColor: PANEL,
     padding: 16,
   },
@@ -415,6 +465,12 @@ const styles = StyleSheet.create({
   },
   tutorialGap: {
     marginBottom: 12,
+  },
+  worldCupTopStripe: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#FF3D00',
+    marginBottom: 10,
   },
   filters: {
     flexDirection: 'row',

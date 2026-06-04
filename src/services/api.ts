@@ -236,6 +236,7 @@ export type PlayerPoolSearchInput = {
   minHeight?: number;
   maxHeight?: number;
   position?: string;
+  worldCupMode?: boolean;
 };
 
 export type PlayerPoolFilterOptions = {
@@ -393,10 +394,11 @@ export async function searchPlayerPool(
 
 export async function getWeeklyPopularPlayers(
   limit = 10,
+  worldCupMode = false,
 ): Promise<Array<{ id: string; player: PlayerData }>> {
   const rows = await request<PlayerPoolRawRow[]>(ENDPOINTS.playerPoolWeeklyPopular, {
     method: 'POST',
-    body: JSON.stringify({ limit }),
+    body: JSON.stringify({ limit, worldCupMode }),
   });
 
   return (rows || [])
@@ -412,14 +414,18 @@ export async function getWeeklyPopularPlayers(
     .filter(Boolean) as Array<{ id: string; player: PlayerData }>;
 }
 
-export async function recordPlayerPoolSearchHit(playerId: string): Promise<void> {
-  await request<{ ok: boolean }>(ENDPOINTS.playerPoolSearchHit(playerId), {
+function withWorldCupQuery(path: string, worldCupMode = false) {
+  return worldCupMode ? `${path}?worldCupMode=true` : path;
+}
+
+export async function recordPlayerPoolSearchHit(playerId: string, worldCupMode = false): Promise<void> {
+  await request<{ ok: boolean }>(withWorldCupQuery(ENDPOINTS.playerPoolSearchHit(playerId), worldCupMode), {
     method: 'POST',
   });
 }
 
-export async function getPlayerPoolOptions(): Promise<PlayerPoolFilterOptions> {
-  const options = await request<PlayerPoolFilterOptions>(ENDPOINTS.playerPoolOptions);
+export async function getPlayerPoolOptions(worldCupMode = false): Promise<PlayerPoolFilterOptions> {
+  const options = await request<PlayerPoolFilterOptions>(withWorldCupQuery(ENDPOINTS.playerPoolOptions, worldCupMode));
   return {
     ...options,
     leagues: (options.leagues || []).filter((league) => !!normalizeLeagueName(league)),
@@ -428,16 +434,18 @@ export async function getPlayerPoolOptions(): Promise<PlayerPoolFilterOptions> {
 
 export async function revealPlayerPoolPotential(
   playerId: string,
+  worldCupMode = false,
 ): Promise<PlayerPoolPotentialResponse> {
-  return request<PlayerPoolPotentialResponse>(ENDPOINTS.playerPoolPotential(playerId), {
+  return request<PlayerPoolPotentialResponse>(withWorldCupQuery(ENDPOINTS.playerPoolPotential(playerId), worldCupMode), {
     method: 'POST',
   });
 }
 
 export async function revealPlayerPoolForm(
   playerId: string,
+  worldCupMode = false,
 ): Promise<PlayerPoolFormResponse> {
-  return request<PlayerPoolFormResponse>(ENDPOINTS.playerPoolForm(playerId), {
+  return request<PlayerPoolFormResponse>(withWorldCupQuery(ENDPOINTS.playerPoolForm(playerId), worldCupMode), {
     method: 'POST',
   });
 }
@@ -445,13 +453,14 @@ export async function revealPlayerPoolForm(
 export async function getMatchupComparison(
   player1Id: string,
   player2Id: string,
+  worldCupMode = false,
 ): Promise<MatchupComparisonResponse> {
   const row = await request<{
     player1: PlayerPoolRawRow;
     player2: PlayerPoolRawRow;
   }>(ENDPOINTS.playerPoolMatchupComparison, {
     method: 'POST',
-    body: JSON.stringify({ player1Id, player2Id }),
+    body: JSON.stringify({ player1Id, player2Id, worldCupMode }),
   });
 
   const player1IdOut = String(row.player1.id ?? player1Id);
@@ -488,6 +497,8 @@ type AddFavoriteIn = {
   weight?: number;
   team?: string;
   league?: string;
+  worldCupMode?: boolean;
+  formRevealed?: boolean;
   // can be SHORT or LONG – we’ll normalize to LONG before sending
   roles: string[];
 };

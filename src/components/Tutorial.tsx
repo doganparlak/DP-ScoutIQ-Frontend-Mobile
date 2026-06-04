@@ -7,6 +7,7 @@ import { getMe, updateTutorialCompletion } from '@/services/api';
 import { ACCENT, LINE, MUTED, PANEL, TEXT } from '@/theme';
 
 export type PlayerPoolTutorialStep =
+  | 'worldCupMode'
   | 'weeklyPopularButton'
   | 'weeklyPopularList'
   | 'filters'
@@ -55,7 +56,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const [active, setActive] = React.useState(false);
   const [introVisible, setIntroVisible] = React.useState(false);
   const [stage, setStage] = React.useState<TutorialStage>('done');
-  const [playerPoolStep, setPlayerPoolStep] = React.useState<PlayerPoolTutorialStep>('weeklyPopularButton');
+  const [playerPoolStep, setPlayerPoolStep] = React.useState<PlayerPoolTutorialStep>('worldCupMode');
   const [profileStep, setProfileStep] = React.useState<ProfileTutorialStep>('intro');
   const [scoutWiseStep, setScoutWiseStep] = React.useState<ScoutWiseTutorialStep>('setStrategy');
   const [activationKey, setActivationKey] = React.useState(0);
@@ -74,7 +75,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         if (!me.tutorialCompleted) {
           setIntroVisible(true);
           setStage('done');
-          setPlayerPoolStep('weeklyPopularButton');
+          setPlayerPoolStep('worldCupMode');
         }
       } catch {}
     })();
@@ -101,7 +102,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setIntroVisible(false);
     setActive(true);
     setStage('playerPool');
-    setPlayerPoolStep('weeklyPopularButton');
+    setPlayerPoolStep('worldCupMode');
     setProfileStep('intro');
     setScoutWiseStep('setStrategy');
     setActivationKey((key) => key + 1);

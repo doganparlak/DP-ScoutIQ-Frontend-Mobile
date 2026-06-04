@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createBottomTabNavigator,
@@ -235,8 +235,12 @@ function ScoutWiseProTabButton({
 export default function MainTabs() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
   const androidBottom = Platform.OS === 'android' ? insets.bottom : 0;
-  const tabHeight = TAB_BASE_HEIGHT + androidBottom;
+  const tabHeight = TAB_BASE_HEIGHT + androidBottom + (androidCompact ? 14 : 0);
+  const tabIconSize = androidCompact ? 26 : MAIN_TAB_ICON_SIZE;
+  const tabLabelMaxScale = Platform.OS === 'android' ? 1.08 : undefined;
 
   const [plan, setPlan] = React.useState<Plan | null>(null);
 
@@ -302,13 +306,19 @@ export default function MainTabs() {
             tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
             tabBarButton: (props) => <TutorialLockedTabButton {...props} />,
             tabBarLabel: ({ color }) => (
-              <Text style={[styles.mainTabLabel, { color }]}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit={androidCompact}
+                minimumFontScale={0.7}
+                maxFontSizeMultiplier={tabLabelMaxScale}
+                style={[styles.mainTabLabel, androidCompact && styles.mainTabLabelCompact, { color }]}
+              >
                 {t('tabPlayerPool', 'Player Pool')}
               </Text>
             ),
             tabBarIcon: ({ color }) => (
               <MainTabIconSlot>
-                <FootballJerseyIcon size={MAIN_TAB_ICON_SIZE} color={color} strokeWidth={2.2} />
+                <FootballJerseyIcon size={tabIconSize} color={color} strokeWidth={2.2} />
               </MainTabIconSlot>
             ),
           }}
@@ -319,14 +329,20 @@ export default function MainTabs() {
           component={ScoutWiseProStackScreen}
           options={{
             tabBarLabel: ({ color }) => (
-              <Text style={[styles.mainTabLabel, { color }]}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit={androidCompact}
+                minimumFontScale={0.7}
+                maxFontSizeMultiplier={tabLabelMaxScale}
+                style={[styles.mainTabLabel, androidCompact && styles.mainTabLabelCompact, { color }]}
+              >
                 {t('tabScoutWisePro', 'ScoutWise Pro')}
               </Text>
             ),
             tabBarIcon: ({ color }) => (
               <MainTabIconSlot>
                 <TacticsBoardIcon
-                  size={MAIN_TAB_ICON_SIZE}
+                  size={tabIconSize}
                   color={color}
                   strokeWidth={2.2}
                 />
@@ -349,13 +365,19 @@ export default function MainTabs() {
             tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
             tabBarButton: (props) => <TutorialLockedTabButton {...props} />,
             tabBarLabel: ({ color }) => (
-              <Text style={[styles.mainTabLabel, { color }]}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit={androidCompact}
+                minimumFontScale={0.7}
+                maxFontSizeMultiplier={tabLabelMaxScale}
+                style={[styles.mainTabLabel, androidCompact && styles.mainTabLabelCompact, { color }]}
+              >
                 {t('tabProfile', 'My Profile')}
               </Text>
             ),
             tabBarIcon: ({ color }) => (
               <MainTabIconSlot>
-                <Ionicons name="person-circle-outline" size={MAIN_TAB_ICON_SIZE} color={color} />
+                <Ionicons name="person-circle-outline" size={tabIconSize} color={color} />
               </MainTabIconSlot>
             ),
           }}
@@ -388,6 +410,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  mainTabLabelCompact: {
+    height: 14,
+    lineHeight: 14,
+    marginTop: 6,
+    fontSize: 9.5,
+    maxWidth: 112,
   },
   tabButtonWrap: {
     flex: 1,

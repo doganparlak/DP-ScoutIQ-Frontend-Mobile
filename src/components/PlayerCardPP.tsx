@@ -1,9 +1,11 @@
 import React from 'react';
 import {
   Alert,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +15,15 @@ import { TutorialHint, TutorialStrong, type PlayerPoolTutorialStep } from '@/com
 import { addFavoritePlayer } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
+
+type PlayerPoolComponentTheme = {
+  panel: string;
+  card: string;
+  line: string;
+  accent: string;
+  accentSoft: string;
+  muted: string;
+};
 
 type Props = {
   selectedPlayer: PlayerData | null;
@@ -27,6 +38,8 @@ type Props = {
   tutorialStep?: PlayerPoolTutorialStep | null;
   onTutorialContinue?: () => void;
   onTutorialSkipAll?: () => void;
+  theme?: PlayerPoolComponentTheme;
+  worldCupMode?: boolean;
 };
 
 export default function PlayerCardPP({
@@ -42,21 +55,35 @@ export default function PlayerCardPP({
   tutorialStep = null,
   onTutorialContinue,
   onTutorialSkipAll,
+  theme,
+  worldCupMode = false,
 }: Props) {
   const { t } = useTranslation();
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
+  const androidTextScale = Platform.OS === 'android' ? 1.15 : undefined;
   const tutorialActive = !!tutorialStep;
   const canPressPotential = !tutorialActive || tutorialStep === 'revealPotential';
   const canPressForm = !tutorialActive || tutorialStep === 'revealForm';
   const canPressPortfolio = !tutorialActive || tutorialStep === 'addPortfolio';
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.sectionTitle}>{t('playerCard', 'Player Card')}</Text>
-      <View style={styles.curateRow}>
-        <View style={styles.curatePlusWrap}>
-          <Text style={styles.curatePlusText}>＋</Text>
+    <View style={[styles.panel, androidCompact && styles.panelCompact, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
+      <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit={androidCompact}
+        minimumFontScale={0.78}
+        maxFontSizeMultiplier={androidTextScale}
+        style={[styles.sectionTitle, androidCompact && styles.sectionTitleCompact, theme && { color: theme.accent }]}
+      >
+        {t('playerCard', 'Player Card')}
+      </Text>
+      <View style={[styles.curateRow, androidCompact && styles.curateRowCompact]}>
+        <View style={[styles.curatePlusWrap, theme && { borderColor: theme.accent, backgroundColor: theme.accentSoft }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.curatePlusText, theme && { color: theme.accent }]}>＋</Text>
         </View>
-        <Text style={styles.curateText}>
+        <Text maxFontSizeMultiplier={androidTextScale} style={[styles.curateText, androidCompact && styles.curateTextCompact, theme && { color: theme.muted }]}>
           {t('wcCurate', 'Curate your dream squad in your portfolio.')}
         </Text>
       </View>
@@ -78,6 +105,11 @@ export default function PlayerCardPP({
             player={selectedPlayerForCard ?? selectedPlayer}
             titleAlign="center"
             addFavoriteDisabled={!canPressPortfolio}
+            hideNationalityLeague={worldCupMode}
+            visualTheme={theme ? {
+              cardBackground: 'rgba(167, 132, 244, 0.16)',
+              accent: theme.accent,
+            } : undefined}
             onAddFavorite={async (player) => {
               try {
                 await addFavoritePlayer({
@@ -97,6 +129,8 @@ export default function PlayerCardPP({
                   weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
                   team: player.meta?.team,
                   league: player.meta?.league,
+                  worldCupMode,
+                  formRevealed: worldCupMode ? revealedFormForCard : undefined,
                   roles: player.meta?.roles ?? [],
                 });
                 onAddFavoriteSuccess?.();
@@ -127,7 +161,7 @@ export default function PlayerCardPP({
             arrow="up"
           />
           <TutorialHint
-            visible={tutorialStep === 'revealPotential'}
+            visible={!worldCupMode && tutorialStep === 'revealPotential'}
             title={t('tutorialRevealPotentialTitle', 'Reveal potential')}
             body={
               <>
@@ -159,44 +193,52 @@ export default function PlayerCardPP({
             arrow="down"
           />
           <View style={styles.revealActionsRow}>
-            <Pressable
-              onPress={onRevealPotential}
-              disabled={!canPressPotential || revealingPotential || revealedPotentialForCard}
-              style={({ pressed }) => [
-                styles.revealScoreButton,
-                !canPressPotential && styles.revealScoreButtonLocked,
-                revealedPotentialForCard && styles.revealScoreButtonMuted,
-                (pressed || revealingPotential) && styles.pressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.revealScoreButtonText,
-                  revealedPotentialForCard && styles.revealScoreButtonTextRevealed,
+            {!worldCupMode ? (
+              <Pressable
+                onPress={onRevealPotential}
+                disabled={!canPressPotential || revealingPotential || revealedPotentialForCard}
+                style={({ pressed }) => [
+                  styles.revealScoreButton,
+                  theme && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
+                  !canPressPotential && styles.revealScoreButtonLocked,
+                  revealedPotentialForCard && (theme ? { backgroundColor: theme.card, borderColor: theme.line } : styles.revealScoreButtonMuted),
+                  (pressed || revealingPotential) && styles.pressed,
                 ]}
               >
-                {revealingPotential
-                  ? t('revealingPotential', 'Revealing potential...')
-                  : revealedPotentialForCard
-                    ? t('potentialRevealed', 'Potential is Revealed')
-                    : t('revealPotential', 'Reveal Potential')}
-              </Text>
-            </Pressable>
+                <Text
+                  maxFontSizeMultiplier={androidTextScale}
+                  style={[
+                    styles.revealScoreButtonText,
+                    theme && { color: theme.accent },
+                    revealedPotentialForCard && styles.revealScoreButtonTextRevealed,
+                  ]}
+                >
+                  {revealingPotential
+                    ? t('revealingPotential', 'Revealing potential...')
+                    : revealedPotentialForCard
+                      ? t('potentialRevealed', 'Potential is Revealed')
+                      : t('revealPotential', 'Reveal Potential')}
+                </Text>
+              </Pressable>
+            ) : null}
 
             <Pressable
               onPress={onRevealForm}
               disabled={!canPressForm || revealingForm || revealedFormForCard}
               style={({ pressed }) => [
                 styles.revealScoreButton,
+                theme && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
                 !canPressForm && styles.revealScoreButtonLocked,
-                revealedFormForCard && styles.revealScoreButtonMuted,
+                revealedFormForCard && (theme ? { backgroundColor: theme.card, borderColor: theme.line } : styles.revealScoreButtonMuted),
                 (pressed || revealingForm) && styles.pressed,
               ]}
             >
               <Text
+                maxFontSizeMultiplier={androidTextScale}
                 style={[
                   styles.revealScoreButtonText,
-                  revealedFormForCard && styles.revealScoreButtonTextRevealed,
+                  theme && { color: theme.accent },
+                  revealedFormForCard && (theme ? { color: theme.accent } : styles.revealScoreButtonTextRevealed),
                 ]}
               >
                 {revealingForm
@@ -209,8 +251,8 @@ export default function PlayerCardPP({
           </View>
         </>
       ) : (
-        <View style={styles.emptyCardState}>
-          <Text style={styles.emptyText}>
+        <View style={[styles.emptyCardState, theme && { backgroundColor: theme.card, borderColor: theme.line }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.emptyText, androidCompact && styles.emptyTextCompact, theme && { color: theme.muted }]}>
             {t(
               'playerPoolEmptyTitle',
               'Select a player from the search results to render the card here.',
@@ -226,9 +268,12 @@ const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: ACCENT,
     backgroundColor: PANEL,
     padding: 16,
+  },
+  panelCompact: {
+    paddingHorizontal: 12,
   },
   sectionTitle: {
     color: ACCENT,
@@ -236,11 +281,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 10,
   },
+  sectionTitleCompact: {
+    fontSize: 15,
+  },
+  worldCupTopStripe: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#E40000',
+    marginBottom: 10,
+  },
   curateRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
     marginBottom: 12,
+  },
+  curateRowCompact: {
+    gap: 8,
   },
   curatePlusWrap: {
     borderWidth: 1,
@@ -271,6 +328,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 21,
+  },
+  curateTextCompact: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   pressed: {
     opacity: 0.92,
@@ -323,5 +384,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
+  },
+  emptyTextCompact: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

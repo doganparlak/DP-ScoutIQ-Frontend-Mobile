@@ -7,8 +7,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View,
   useWindowDimensions,
+  View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, X } from 'lucide-react-native';
@@ -18,6 +18,16 @@ import { TutorialHint } from '@/components/Tutorial';
 import { ROLE_LONG_TO_SHORT } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
+
+type PlayerPoolComponentTheme = {
+  panel: string;
+  card: string;
+  line: string;
+  accent: string;
+  accentSoft: string;
+  activeRow: string;
+  muted: string;
+};
 
 export const ROW_HEIGHT = 48;
 export const CANDIDATE_TABLE_VISIBLE_ROWS = 5;
@@ -63,6 +73,13 @@ type Props = {
   onTutorialSkipAll?: () => void;
   rowsLocked?: boolean;
   scrollLocked?: boolean;
+  theme?: PlayerPoolComponentTheme;
+  weeklyPopularTheme?: PlayerPoolComponentTheme;
+  previewPlayerCardTheme?: {
+    cardBackground: string;
+    accent: string;
+  };
+  worldCupMode?: boolean;
 };
 
 export default function CandidatePlayers({
@@ -89,12 +106,19 @@ export default function CandidatePlayers({
   onTutorialSkipAll,
   rowsLocked = false,
   scrollLocked = false,
+  theme,
+  weeklyPopularTheme,
+  previewPlayerCardTheme,
+  worldCupMode = false,
 }: Props) {
   const { t } = useTranslation();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth, fontScale } = useWindowDimensions();
   const [popularPreviewPlayer, setPopularPreviewPlayer] = React.useState<PlayerData | null>(null);
-  const androidTutorialPopularCardHeight =
-    Platform.OS === 'android' && weeklyPopularTutorialVisible
+  const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
+  const androidTextScale = Platform.OS === 'android' ? 1.15 : undefined;
+  const popularTheme = weeklyPopularTheme ?? theme;
+  const popularModalMaxHeight =
+    weeklyPopularTutorialVisible && Platform.OS === 'android'
       ? windowHeight * 0.78 + ROW_HEIGHT / 2
       : undefined;
 
@@ -109,14 +133,19 @@ export default function CandidatePlayers({
     onPress?: (row: SearchResultRow) => void,
     activeId?: string | null,
     emptyMessage?: string,
+    rowTheme?: PlayerPoolComponentTheme,
   ) => {
+    const activeTheme = rowTheme ?? theme;
+    const verticalSeparatorStyle = [styles.vsep, activeTheme && { backgroundColor: activeTheme.line }];
     const displayEmptyMessage =
       emptyMessage ?? t('playerPoolEmptyBody', 'Run a search to see matching players from your database.');
 
     if (rows.length === 0) {
       return (
         <View style={styles.emptyRow}>
-          <Text style={styles.emptyText}>{displayEmptyMessage}</Text>
+          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.emptyText, activeTheme && { color: activeTheme.muted }]}>
+            {displayEmptyMessage}
+          </Text>
         </View>
       );
     }
@@ -146,31 +175,35 @@ export default function CandidatePlayers({
         : '—';
       const rowContent = (
         <>
-          <Text style={[styles.td, styles.cell, styles.indexCell, { flex: COL.index }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.cell, styles.indexCell, androidCompact && styles.tdCompact, { flex: COL.index }]}>
             {index + 1}
           </Text>
-          <View style={styles.vsep} />
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+          <View style={verticalSeparatorStyle} />
+          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.name, textAlign: 'center' }]}>
             {row.player.name.split(/\s+/)[0] || row.player.name}
           </Text>
-          <View style={styles.vsep} />
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.nat, textAlign: 'center' }]}>
-            {nationalityShort}
-          </Text>
-          <View style={styles.vsep} />
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.league, textAlign: 'center' }]}>
-            {leagueShort}
-          </Text>
-          <View style={styles.vsep} />
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
+          {!worldCupMode ? (
+            <>
+              <View style={verticalSeparatorStyle} />
+              <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.nat, textAlign: 'center' }]}>
+                {nationalityShort}
+              </Text>
+              <View style={verticalSeparatorStyle} />
+              <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.league, textAlign: 'center' }]}>
+                {leagueShort}
+              </Text>
+            </>
+          ) : null}
+          <View style={verticalSeparatorStyle} />
+          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.team, textAlign: 'center' }]}>
             {row.player.meta?.team || '—'}
           </Text>
-          <View style={styles.vsep} />
-          <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
+          <View style={verticalSeparatorStyle} />
+          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.age, textAlign: 'center' }]}>
             {row.player.meta?.age ?? '—'}
           </Text>
-          <View style={styles.vsep} />
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
+          <View style={verticalSeparatorStyle} />
+          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.roles, textAlign: 'center' }]}>
             {roleShort}
           </Text>
         </>
@@ -187,7 +220,7 @@ export default function CandidatePlayers({
               disabled={rowsLocked}
               style={({ pressed }) => [
                 styles.row,
-                activeId === row.id && styles.dataRowActive,
+                activeId === row.id && (activeTheme ? { backgroundColor: activeTheme.activeRow } : styles.dataRowActive),
                 rowsLocked && styles.rowLocked,
                 pressed && styles.pressed,
               ]}
@@ -195,74 +228,102 @@ export default function CandidatePlayers({
               {rowContent}
             </Pressable>
           ) : (
-            <View style={[styles.row, activeId === row.id && styles.dataRowActive]}>
+            <View style={[styles.row, activeId === row.id && (activeTheme ? { backgroundColor: activeTheme.activeRow } : styles.dataRowActive)]}>
               {rowContent}
             </View>
           )}
-          <View style={styles.hsepThick} />
+          <View style={[styles.hsepThick, activeTheme && { backgroundColor: activeTheme.line }]} />
         </View>
       );
     });
-  }, [t]);
+  }, [androidCompact, androidTextScale, t, theme, rowsLocked, worldCupMode]);
+
+  const headerTextProps = androidCompact
+    ? { adjustsFontSizeToFit: true, minimumFontScale: 0.58, numberOfLines: 1 as const, maxFontSizeMultiplier: 1.12 }
+    : {};
 
   return (
-    <View style={styles.panel}>
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>{t('playerPoolCandidates', 'Candidate players')}</Text>
+    <View style={[styles.panel, androidCompact && styles.panelCompact, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
+      <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
+      <View style={[styles.sectionHeaderRow, androidCompact && styles.sectionHeaderRowCompact]}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit={androidCompact}
+          minimumFontScale={0.75}
+          maxFontSizeMultiplier={Platform.OS === 'android' ? 1.15 : undefined}
+          style={[styles.sectionTitle, androidCompact && styles.sectionTitleCompact, theme && { color: theme.accent }]}
+        >
+          {t('playerPoolCandidates', 'Candidate players')}
+        </Text>
         <View>
           <Pressable
             onPress={() => setSortOpen(true)}
-            style={({ pressed }) => [styles.sortByButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.sortByButton,
+              androidCompact && styles.sortByButtonCompact,
+              theme && { backgroundColor: theme.card, borderColor: theme.line },
+              pressed && styles.pressed,
+            ]}
           >
-            <Text style={styles.sortByButtonText}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit={androidCompact}
+              minimumFontScale={0.72}
+              maxFontSizeMultiplier={Platform.OS === 'android' ? 1.1 : undefined}
+              style={[styles.sortByButtonText, androidCompact && styles.sortByButtonTextCompact, theme && { color: theme.muted }]}
+            >
               {t('sortBy', 'Sort by')}: {sortLabel}
             </Text>
-            <ChevronDown size={15} color={MUTED} strokeWidth={2.2} />
+            <ChevronDown size={15} color={theme?.muted ?? MUTED} strokeWidth={2.2} />
           </Pressable>
         </View>
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text maxFontSizeMultiplier={androidTextScale} style={styles.errorText}>{error}</Text> : null}
 
       {searching ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color={ACCENT} />
+          <ActivityIndicator color={theme?.accent ?? ACCENT} />
         </View>
       ) : (
         <View style={styles.table}>
-          <View style={styles.tableTopBorder} />
+          <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
 
           <View style={styles.tableHeaderWrap}>
             <View style={styles.row}>
               <View style={[styles.cell, { flex: COL.index }]}>
-                <Text style={[styles.thText, styles.indexCell]}>#</Text>
+                <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.name }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+                <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
               </View>
-              <View style={styles.vsep} />
-              <View style={[styles.cell, { flex: COL.nat }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-              </View>
-              <View style={styles.vsep} />
-              <View style={[styles.cell, { flex: COL.league }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
-              </View>
-              <View style={styles.vsep} />
+              {!worldCupMode ? (
+                <>
+                  <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
+                  <View style={[styles.cell, { flex: COL.nat }]}>
+                    <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
+                  </View>
+                  <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
+                  <View style={[styles.cell, { flex: COL.league }]}>
+                    <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
+                  </View>
+                </>
+              ) : null}
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.team }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
+                <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.age }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
+                <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
               </View>
-              <View style={styles.vsep} />
+              <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.roles }]}>
-                <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
+                <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
               </View>
             </View>
-            <View style={styles.hsepThick} />
+            <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
           </View>
 
           <View style={[styles.tableScrollWrap, { minHeight: candidateTableHeight }]}>
@@ -279,7 +340,7 @@ export default function CandidatePlayers({
             </ScrollView>
           </View>
 
-          <View style={styles.tableBottomBorder} />
+          <View style={[styles.tableBottomBorder, theme && { backgroundColor: theme.line }]} />
         </View>
       )}
 
@@ -316,7 +377,7 @@ export default function CandidatePlayers({
         onRequestClose={() => setSortOpen(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t('sortBy', 'Sort by')}</Text>
               <Pressable onPress={() => setSortOpen(false)}>
@@ -329,8 +390,10 @@ export default function CandidatePlayers({
             <ScrollView showsVerticalScrollIndicator={false}>
               {([
                 ['name', t('tblName', 'Name')],
-                ['nationality', t('tblNat', 'Nat.')],
-                ['league', t('tblLeague', 'League')],
+                ...(worldCupMode ? [] : [
+                  ['nationality', t('tblNat', 'Nat.')],
+                  ['league', t('tblLeague', 'League')],
+                ] as Array<[CandidateSortKey, string]>),
                 ['team', t('tblTeam', 'Team')],
                 ['age', t('tblAge', 'Age')],
                 ['role', t('tblRoles', 'Role')],
@@ -360,20 +423,16 @@ export default function CandidatePlayers({
         onRequestClose={onCloseWeeklyPopular}
       >
         <View style={styles.modalBackdrop}>
-          <View
-            style={[
-              styles.popularModalCard,
-              androidTutorialPopularCardHeight
-                ? {
-                    height: androidTutorialPopularCardHeight,
-                    maxHeight: androidTutorialPopularCardHeight,
-                  }
-                : null,
-            ]}
-          >
+          <View style={[
+            styles.popularModalCard,
+            popularTheme && { backgroundColor: popularTheme.panel, borderColor: popularTheme.line },
+            popularModalMaxHeight ? { maxHeight: popularModalMaxHeight } : null,
+          ]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, styles.popularModalTitle]}>
-                {t('weeklyPopularPlayers', "This week's popular players")}
+              <Text style={[styles.modalTitle, styles.popularModalTitle, popularTheme && { color: popularTheme.accent }]}>
+                {worldCupMode
+                  ? t('worldCupTopSearches', 'World Cup Top Searches')
+                  : t('weeklyPopularPlayers', "This week's popular players")}
               </Text>
               <Pressable onPress={onCloseWeeklyPopular}>
                 {({ pressed }) => (
@@ -396,42 +455,46 @@ export default function CandidatePlayers({
 
             {weeklyPopularLoading ? (
               <View style={styles.loadingWrap}>
-                <ActivityIndicator color={ACCENT} />
+                <ActivityIndicator color={popularTheme?.accent ?? ACCENT} />
               </View>
             ) : (
               <View style={styles.table}>
-                <View style={styles.tableTopBorder} />
+                <View style={[styles.tableTopBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
                 <View style={styles.tableHeaderWrap}>
                   <View style={styles.row}>
                     <View style={[styles.cell, { flex: COL.index }]}>
-                      <Text style={[styles.thText, styles.indexCell]}>#</Text>
+                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
                     </View>
-                    <View style={styles.vsep} />
+                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
                     <View style={[styles.cell, { flex: COL.name }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
+                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
                     </View>
-                    <View style={styles.vsep} />
-                    <View style={[styles.cell, { flex: COL.nat }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-                    </View>
-                    <View style={styles.vsep} />
-                    <View style={[styles.cell, { flex: COL.league }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
-                    </View>
-                    <View style={styles.vsep} />
+                    {!worldCupMode ? (
+                      <>
+                        <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
+                        <View style={[styles.cell, { flex: COL.nat }]}>
+                          <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
+                        </View>
+                        <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
+                        <View style={[styles.cell, { flex: COL.league }]}>
+                          <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
+                        </View>
+                      </>
+                    ) : null}
+                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
                     <View style={[styles.cell, { flex: COL.team }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
+                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
                     </View>
-                    <View style={styles.vsep} />
+                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
                     <View style={[styles.cell, { flex: COL.age }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
+                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
                     </View>
-                    <View style={styles.vsep} />
+                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
                     <View style={[styles.cell, { flex: COL.roles }]}>
-                      <Text style={[styles.thText, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
+                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
                     </View>
                   </View>
-                  <View style={styles.hsepThick} />
+                  <View style={[styles.hsepThick, popularTheme && { backgroundColor: popularTheme.line }]} />
                 </View>
                 <ScrollView
                   style={styles.popularScroll}
@@ -444,10 +507,13 @@ export default function CandidatePlayers({
                     weeklyPopularRows,
                     (row) => setPopularPreviewPlayer(row.player),
                     undefined,
-                    t('weeklyPopularEmpty', 'No popular players have been recorded this week yet.'),
+                    worldCupMode
+                      ? t('worldCupTopSearchesEmpty', 'No World Cup top searches have been recorded yet.')
+                      : t('weeklyPopularEmpty', 'No popular players have been recorded this week yet.'),
+                    popularTheme,
                   )}
                 </ScrollView>
-                <View style={styles.tableBottomBorder} />
+                <View style={[styles.tableBottomBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
               </View>
             )}
           </View>
@@ -462,7 +528,12 @@ export default function CandidatePlayers({
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCardWrap}>
               {popularPreviewPlayer ? (
-                <PlayerCard player={popularPreviewPlayer} titleAlign="center" />
+                <PlayerCard
+                  player={popularPreviewPlayer}
+                  titleAlign="center"
+                  visualTheme={previewPlayerCardTheme}
+                  hideNationalityLeague={worldCupMode}
+                />
               ) : null}
               <Pressable
                 onPress={() => setPopularPreviewPlayer(null)}
@@ -486,9 +557,12 @@ const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: ACCENT,
     backgroundColor: PANEL,
     padding: 16,
+  },
+  panelCompact: {
+    paddingHorizontal: 12,
   },
   sectionTitle: {
     color: ACCENT,
@@ -503,6 +577,22 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
+  sectionHeaderRowCompact: {
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sectionTitleCompact: {
+    flexShrink: 1,
+    minWidth: 0,
+    marginBottom: 0,
+  },
+  worldCupTopStripe: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: '#5C00E6',
+    marginBottom: 10,
+  },
   sortByButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -514,10 +604,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
+  sortByButtonCompact: {
+    maxWidth: 220,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
   sortByButtonText: {
     color: MUTED,
     fontSize: 12,
     fontWeight: '700',
+  },
+  sortByButtonTextCompact: {
+    flexShrink: 1,
+    fontSize: 11,
   },
   pressed: {
     opacity: 0.92,
@@ -546,7 +645,9 @@ const styles = StyleSheet.create({
   hsepThick: { height: 2, backgroundColor: LINE },
   cell: { paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },
+  thTextCompact: { fontSize: 11, lineHeight: 13 },
   td: { color: TEXT, flex: 1, fontSize: 12.5 },
+  tdCompact: { fontSize: 11.2, lineHeight: 15 },
   indexCell: { textAlign: 'center' },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
   dataRowActive: {

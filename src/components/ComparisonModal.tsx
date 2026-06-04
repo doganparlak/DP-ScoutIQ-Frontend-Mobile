@@ -62,6 +62,17 @@ type Props = {
   onClose: () => void;
   tutorialVisible?: boolean;
   onTutorialSkipAll?: () => void;
+  worldCupMode?: boolean;
+  theme?: {
+    panel: string;
+    card: string;
+    line: string;
+    accent: string;
+    accentSoft: string;
+    winnerAccent?: string;
+    winnerSoft?: string;
+    muted: string;
+  };
 };
 
 type MetricRow = {
@@ -172,6 +183,8 @@ export default function ComparisonModal({
   onClose,
   tutorialVisible = false,
   onTutorialSkipAll,
+  worldCupMode = false,
+  theme,
 }: Props) {
   const { t } = useTranslation();
   const [chartGroups, setChartGroups] = React.useState<Record<string, boolean>>({});
@@ -200,7 +213,11 @@ export default function ComparisonModal({
       <Pressable
         disabled={!player || tutorialVisible}
         onPress={() => player && setPreviewPlayer(player)}
-        style={({ pressed }) => [styles.playerHeader, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.playerHeader,
+          theme && { backgroundColor: theme.card, borderColor: theme.line },
+          pressed && styles.pressed,
+        ]}
       >
         <Text style={styles.playerSlotLabel}>{label}</Text>
         <Text numberOfLines={1} style={styles.playerName}>
@@ -208,8 +225,12 @@ export default function ComparisonModal({
         </Text>
         <View style={styles.identityGrid}>
           <Text numberOfLines={1} style={styles.identityText}>{player?.meta?.team ?? '-'}</Text>
-          <Text numberOfLines={1} style={styles.identityText}>{player?.meta?.league ?? '-'}</Text>
-          <Text numberOfLines={1} style={styles.identityText}>{player?.meta?.nationality ?? '-'}</Text>
+          {!worldCupMode ? (
+            <>
+              <Text numberOfLines={1} style={styles.identityText}>{player?.meta?.league ?? '-'}</Text>
+              <Text numberOfLines={1} style={styles.identityText}>{player?.meta?.nationality ?? '-'}</Text>
+            </>
+          ) : null}
           <Text numberOfLines={1} style={styles.identityText}>
             {player?.meta?.age ? `${player.meta.age}` : '-'} | {roleLabel(player ?? { name: '', stats: [] })}
           </Text>
@@ -231,8 +252,14 @@ export default function ComparisonModal({
     const isWinner = hasBoth && value !== otherValue && (lowerIsBetter ? value < otherValue : value > otherValue);
 
     return (
-      <View style={[styles.valueCell, isWinner && styles.valueCellWinner]}>
-        <Text style={[styles.valueText, isWinner && styles.valueTextWinner]}>
+      <View style={[
+        styles.valueCell,
+        isWinner && (theme ? { backgroundColor: theme.winnerSoft ?? theme.accentSoft } : styles.valueCellWinner),
+      ]}>
+        <Text style={[
+          styles.valueText,
+          isWinner && (theme ? { color: theme.winnerAccent ?? theme.accent, fontWeight: '900' } : styles.valueTextWinner),
+        ]}>
           {formatValue(value)}
         </Text>
       </View>
@@ -436,11 +463,11 @@ export default function ComparisonModal({
     <>
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
           <View style={styles.modalHeader}>
             <View style={styles.titleRow}>
-              <Medal size={18} color={ACCENT} strokeWidth={2.2} />
-              <Text style={styles.modalTitle}>{t('matchupComparisonTitle', 'Matchup Comparison')}</Text>
+              <Medal size={18} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
+              <Text style={[styles.modalTitle, theme && { color: theme.accent }]}>{t('matchupComparisonTitle', 'Matchup Comparison')}</Text>
             </View>
             <Pressable
               onPress={onClose}
@@ -455,7 +482,7 @@ export default function ComparisonModal({
 
           {loading ? (
             <View style={styles.loadingState}>
-              <ActivityIndicator color={ACCENT} />
+              <ActivityIndicator color={theme?.accent ?? ACCENT} />
               <Text style={styles.loadingText}>{t('loadingMatchupComparison', 'Loading matchup comparison...')}</Text>
             </View>
           ) : error ? (
@@ -488,23 +515,27 @@ export default function ComparisonModal({
                 </View>
               ) : (
                 groups.map((group) => (
-                  <View key={group.key} style={styles.groupBlock}>
-                    <View style={styles.groupHeader}>
+                  <View key={group.key} style={[styles.groupBlock, theme && { borderColor: theme.line, backgroundColor: theme.accentSoft }]}>
+                    <View style={[styles.groupHeader, theme && { borderBottomColor: theme.line }]}>
                       <View style={styles.groupTitleRow}>
-                        <group.Icon size={16} color={ACCENT} strokeWidth={2.2} />
-                        <Text style={styles.groupTitle}>{t(group.key, group.fallbackTitle)}</Text>
+                        <group.Icon size={16} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
+                        <Text style={[styles.groupTitle, theme && { color: theme.accent }]}>{t(group.key, group.fallbackTitle)}</Text>
                       </View>
                       {group.rows.length >= 5 ? (
                         <Pressable
                           onPress={() => toggleChartGroup(group.key)}
-                          style={({ pressed }) => [styles.chartToggle, pressed && styles.pressed]}
+                          style={({ pressed }) => [
+                            styles.chartToggle,
+                            theme && { borderColor: theme.accent, backgroundColor: theme.accentSoft },
+                            pressed && styles.pressed,
+                          ]}
                         >
                           {chartGroups[group.key] ? (
-                            <List size={14} color={ACCENT} strokeWidth={2.2} />
+                            <List size={14} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
                           ) : (
-                            <LineChart size={14} color={ACCENT} strokeWidth={2.2} />
+                            <LineChart size={14} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
                           )}
-                          <Text style={styles.chartToggleText}>
+                          <Text style={[styles.chartToggleText, theme && { color: theme.accent }]}>
                             {chartGroups[group.key]
                               ? t('showNumbers', 'Show numbers')
                               : t('showOnChart', 'Show on chart')}

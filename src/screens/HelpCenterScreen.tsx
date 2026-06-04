@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: ACCENT },
 
   card: {
-    backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: LINE,
+    backgroundColor: PANEL, borderRadius: 20, borderWidth: 1, borderColor: ACCENT,
     padding: 16, marginHorizontal: 16, marginTop: 12,
   },
 

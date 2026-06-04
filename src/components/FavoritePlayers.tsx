@@ -1228,7 +1228,7 @@ const styles = StyleSheet.create({
     backgroundColor: PANEL,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: LINE,
+    borderColor: ACCENT,
     padding: 16,
     marginHorizontal: 16,
     marginTop: 12,

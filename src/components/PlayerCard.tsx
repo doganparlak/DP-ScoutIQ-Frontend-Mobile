@@ -10,6 +10,11 @@ type Props = {
   onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
   addFavoriteDisabled?: boolean;
   titleAlign?: 'left' | 'center';
+  hideNationalityLeague?: boolean;
+  visualTheme?: {
+    cardBackground: string;
+    accent: string;
+  };
 };
 
 function isValidPotential(x: unknown): x is number {
@@ -26,13 +31,15 @@ function ScoreBar({
   label,
   value,
   accessibilityLabel,
+  colorOverride,
 }: {
   label: string;
   value: number;
   accessibilityLabel: string;
+  colorOverride?: string;
 }) {
   const score = Math.max(0, Math.min(100, Math.round(value)));
-  const scoreColor = getScoreColor(score);
+  const scoreColor = colorOverride ?? getScoreColor(score);
 
   return (
     <View style={{ gap: 6 }}>
@@ -62,7 +69,14 @@ function ScoreBar({
   );
 }
 
-export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled = false, titleAlign = 'left' }: Props) {
+export default function PlayerCard({
+  player,
+  onAddFavorite,
+  addFavoriteDisabled = false,
+  titleAlign = 'left',
+  hideNationalityLeague = false,
+  visualTheme,
+}: Props) {
   const { t } = useTranslation();
   const { name, meta } = player;
   const roles = meta?.roles ?? [];
@@ -112,13 +126,15 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
     return g;
   }, [meta?.gender, t]);
 
+  const cardAccent = visualTheme?.accent ?? ACCENT;
+
   return (
-    <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 14, gap: 8 }}>
+    <View style={{ backgroundColor: visualTheme?.cardBackground ?? CARD, borderRadius: 16, padding: 14, gap: 8 }}>
       {showAddedMessage && (
         <View
           style={{
             alignSelf: 'center',
-            backgroundColor: ACCENT,
+            backgroundColor: cardAccent,
             borderRadius: 999,
             paddingHorizontal: 12,
             paddingVertical: 6,
@@ -156,7 +172,7 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
             disabled={disabled}
             style={{
               borderWidth: 1,
-              borderColor: isAdded ? ACCENT : (!onAddFavorite ? LINE : ACCENT),
+              borderColor: isAdded ? cardAccent : (!onAddFavorite ? LINE : cardAccent),
               borderRadius: 999,
               paddingHorizontal: 10,
               paddingVertical: 2,
@@ -165,7 +181,7 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
           >
             <Text
               style={{
-                color: isAdded ? ACCENT : (!onAddFavorite ? MUTED : ACCENT),
+                color: isAdded ? cardAccent : (!onAddFavorite ? MUTED : cardAccent),
                 fontWeight: '800',
                 fontSize: 14,
               }}
@@ -200,7 +216,7 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
         )}
 
         {/* Row 2: Nationality, League */}
-        {(meta?.nationality || meta?.league) && (
+        {!hideNationalityLeague && (meta?.nationality || meta?.league) && (
           <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
             {meta?.nationality && (
               <Text style={{ color: MUTED }}>
@@ -248,6 +264,7 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
             <ScoreBar
               label={t('potential', 'Potential')}
               value={potentialInt}
+              colorOverride={visualTheme?.accent}
               accessibilityLabel={t('potentialA11y', 'Potential {{val}} out of 100', {
                 val: potentialInt,
               })}
@@ -257,6 +274,7 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
             <ScoreBar
               label={t('form', 'Form')}
               value={formInt}
+              colorOverride={visualTheme?.accent}
               accessibilityLabel={t('formA11y', 'Form {{val}} out of 100', {
                 val: formInt,
               })}
@@ -271,7 +289,7 @@ export default function PlayerCard({ player, onAddFavorite, addFavoriteDisabled 
             <View
               key={r}
               style={{
-                backgroundColor: ACCENT,
+                backgroundColor: cardAccent,
                 paddingVertical: 4,
                 paddingHorizontal: 8,
                 borderRadius: 999,

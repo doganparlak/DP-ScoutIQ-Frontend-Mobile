@@ -180,6 +180,8 @@ export default function StrategyCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: ACCENT,
     borderRadius: 18,
     padding: 18,
     marginHorizontal: 16,

@@ -51,7 +51,7 @@ import {
   type PlayerPoolSearchInput,
   type MatchupComparisonResponse,
 } from '@/services/api';
-import { ACCENT, BG } from '@/theme';
+import { ACCENT, BG, WORLD_CUP_COLORS } from '@/theme';
 import type { PlayerData } from '@/types';
 
 type SortDir = 'asc' | 'desc';
@@ -100,6 +100,7 @@ export default function PlayerPoolScreen() {
   const [comparisonLoading, setComparisonLoading] = React.useState(false);
   const [comparisonError, setComparisonError] = React.useState<string | null>(null);
   const [comparisonData, setComparisonData] = React.useState<MatchupComparisonResponse | null>(null);
+  const [worldCupMode, setWorldCupMode] = React.useState(false);
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
@@ -111,21 +112,23 @@ export default function PlayerPoolScreen() {
   const countedCardRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
 
-  const scrollToTutorialArea = React.useCallback((area: 'weekly' | 'filters' | 'candidates' | 'card' | 'form' | 'matchupAdd' | 'matchup') => {
+  const scrollToTutorialArea = React.useCallback((area: 'worldCup' | 'weekly' | 'filters' | 'candidates' | 'card' | 'form' | 'matchupAdd' | 'matchup') => {
     const y =
-      area === 'weekly'
-        ? 80
+      area === 'worldCup'
+        ? 60
+        : area === 'weekly'
+        ? 150
         : area === 'filters'
-        ? 120
+        ? 210
         : area === 'candidates'
-          ? 520
+          ? 600
           : area === 'form'
-            ? 820 + (Platform.OS === 'android' ? ANDROID_REVEAL_FORM_EXTRA_SCROLL : 0)
+            ? 900 + (Platform.OS === 'android' ? ANDROID_REVEAL_FORM_EXTRA_SCROLL : 0)
           : area === 'card'
-            ? 820
+            ? 900
             : area === 'matchupAdd'
-              ? 1160 + (Platform.OS === 'android' ? ANDROID_ADD_MATCHUP_EXTRA_SCROLL : 0)
-            : 1160;
+              ? 1240 + (Platform.OS === 'android' ? ANDROID_ADD_MATCHUP_EXTRA_SCROLL : 0)
+            : 1240;
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ y, animated: true });
     });
@@ -153,7 +156,9 @@ export default function PlayerPoolScreen() {
   React.useEffect(() => {
     if (!isPlayerPoolTutorialActive) return;
 
-    if (tutorial.playerPoolStep === 'weeklyPopularButton') {
+    if (tutorial.playerPoolStep === 'worldCupMode') {
+      scrollToTutorialArea('worldCup');
+    } else if (tutorial.playerPoolStep === 'weeklyPopularButton') {
       scrollToTutorialArea('weekly');
     } else if (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady') {
       scrollToTutorialArea('candidates');
@@ -201,23 +206,19 @@ export default function PlayerPoolScreen() {
       }
 
       try {
-        const options = await getPlayerPoolOptions();
+        const options = await getPlayerPoolOptions(worldCupMode);
         if (!alive) return;
 
-        const nationalityFromBackend = Array.isArray(options.nationalities) && options.nationalities.length > 0;
-        const leagueFromBackend = Array.isArray(options.leagues) && options.leagues.length > 0;
-        const teamFromBackend = Array.isArray(options.teams) && options.teams.length > 0;
-
-        if (nationalityFromBackend) {
+        if (Array.isArray(options.nationalities)) {
           setCountryOptions(options.nationalities);
         }
-        if (leagueFromBackend) {
+        if (Array.isArray(options.leagues)) {
           setLeagueOptions(options.leagues);
         }
-        if (teamFromBackend) {
+        if (Array.isArray(options.teams)) {
           setTeamOptions(options.teams);
         }
-        if (Array.isArray(options.positions) && options.positions.length > 0) {
+        if (Array.isArray(options.positions)) {
           setPositionOptions(options.positions);
         }
 
@@ -229,7 +230,16 @@ export default function PlayerPoolScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [worldCupMode]);
+
+  React.useEffect(() => {
+    if (!worldCupMode) return;
+    setNationality('');
+    setSelectedNationality(null);
+    setLeague('');
+    setSelectedLeague(null);
+    setSortKey((current) => (current === 'nationality' || current === 'league' ? 'name' : current));
+  }, [worldCupMode]);
 
   const nationalitySuggestions = React.useMemo(() => {
     const q = nationality.trim().toLowerCase();
@@ -345,12 +355,15 @@ export default function PlayerPoolScreen() {
     const payload: PlayerPoolSearchInput = {
       name: searchName.trim() || undefined,
       gender: gender || undefined,
-      nationality: nationality.trim() || undefined,
-      nationalityExact:
-        !!selectedNationality &&
-        selectedNationality.trim().toLowerCase() === nationality.trim().toLowerCase(),
-      league: league.trim() || undefined,
-      leagueExact: !!selectedLeague && selectedLeague.trim().toLowerCase() === league.trim().toLowerCase(),
+      nationality: worldCupMode ? undefined : nationality.trim() || undefined,
+      nationalityExact: worldCupMode
+        ? undefined
+        : !!selectedNationality &&
+          selectedNationality.trim().toLowerCase() === nationality.trim().toLowerCase(),
+      league: worldCupMode ? undefined : league.trim() || undefined,
+      leagueExact: worldCupMode
+        ? undefined
+        : !!selectedLeague && selectedLeague.trim().toLowerCase() === league.trim().toLowerCase(),
       team: team.trim() || undefined,
       teamExact: !!selectedTeam && selectedTeam.trim().toLowerCase() === team.trim().toLowerCase(),
       position: isShortRoleSelection ? undefined : position || undefined,
@@ -358,6 +371,7 @@ export default function PlayerPoolScreen() {
       maxAge: maxAge ? Number(maxAge) : undefined,
       minHeight: minHeight ? Number(minHeight) : undefined,
       maxHeight: maxHeight ? Number(maxHeight) : undefined,
+      worldCupMode,
     };
 
     try {
@@ -417,6 +431,7 @@ export default function PlayerPoolScreen() {
     t,
     team,
     tutorial,
+    worldCupMode,
   ]);
 
   const recordSelectedCardInterestOnce = React.useCallback(() => {
@@ -426,8 +441,8 @@ export default function PlayerPoolScreen() {
     if (!selectedPlayerId || !renderId || countedCardRenderIdRef.current === renderId) return;
 
     countedCardRenderIdRef.current = renderId;
-    recordPlayerPoolSearchHit(selectedPlayerId).catch(() => {});
-  }, [isPlayerPoolTutorialActive, selectedPlayerId]);
+    recordPlayerPoolSearchHit(selectedPlayerId, worldCupMode).catch(() => {});
+  }, [isPlayerPoolTutorialActive, selectedPlayerId, worldCupMode]);
 
   const onRevealPotential = React.useCallback(async () => {
     if (!selectedPlayerId || !selectedPlayer || revealingPotential) return;
@@ -445,7 +460,7 @@ export default function PlayerPoolScreen() {
         }
       }
 
-      const revealed = await revealPlayerPoolPotential(selectedPlayerId);
+      const revealed = await revealPlayerPoolPotential(selectedPlayerId, worldCupMode);
       const potential = Math.round(revealed.potential);
       setRevealedPotentialForCard(true);
       recordSelectedCardInterestOnce();
@@ -496,6 +511,7 @@ export default function PlayerPoolScreen() {
     selectedPlayerId,
     t,
     tutorial,
+    worldCupMode,
   ]);
 
   const onRevealForm = React.useCallback(async () => {
@@ -514,7 +530,7 @@ export default function PlayerPoolScreen() {
         }
       }
 
-      const revealed = await revealPlayerPoolForm(selectedPlayerId);
+      const revealed = await revealPlayerPoolForm(selectedPlayerId, worldCupMode);
       const form = Math.round(revealed.form);
       setRevealedFormForCard(true);
       recordSelectedCardInterestOnce();
@@ -565,6 +581,7 @@ export default function PlayerPoolScreen() {
     selectedPlayerId,
     t,
     tutorial,
+    worldCupMode,
   ]);
 
   const onRevealWeeklyPopular = React.useCallback(async () => {
@@ -584,7 +601,7 @@ export default function PlayerPoolScreen() {
         }
       }
 
-      const nextRows = await getWeeklyPopularPlayers(10);
+      const nextRows = await getWeeklyPopularPlayers(10, worldCupMode);
       setWeeklyPopularRows(nextRows);
       if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularButton') {
         tutorial.setPlayerPoolStep('weeklyPopularList');
@@ -598,7 +615,7 @@ export default function PlayerPoolScreen() {
     } finally {
       setWeeklyPopularLoading(false);
     }
-  }, [isPlayerPoolTutorialActive, plan, t, tutorial, weeklyPopularLoading]);
+  }, [isPlayerPoolTutorialActive, plan, t, tutorial, weeklyPopularLoading, worldCupMode]);
 
   const closeWeeklyPopular = React.useCallback(() => {
     setWeeklyPopularOpen(false);
@@ -683,7 +700,7 @@ export default function PlayerPoolScreen() {
         }
       }
 
-      const nextComparison = await getMatchupComparison(matchupRow1.id, matchupRow2.id);
+      const nextComparison = await getMatchupComparison(matchupRow1.id, matchupRow2.id, worldCupMode);
       setComparisonData(nextComparison);
       if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'launchMatchup') {
         tutorial.setPlayerPoolStep('comparison');
@@ -693,7 +710,7 @@ export default function PlayerPoolScreen() {
     } finally {
       setComparisonLoading(false);
     }
-  }, [comparisonLoading, isPlayerPoolTutorialActive, matchupRow1, matchupRow2, plan, t, tutorial]);
+  }, [comparisonLoading, isPlayerPoolTutorialActive, matchupRow1, matchupRow2, plan, t, tutorial, worldCupMode]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -734,27 +751,32 @@ export default function PlayerPoolScreen() {
   }, []);
 
   const sortLabel = React.useMemo(() => {
+    const effectiveSortKey =
+      worldCupMode && (sortKey === 'nationality' || sortKey === 'league') ? 'name' : sortKey;
     const base =
-      sortKey === 'name'
+      effectiveSortKey === 'name'
         ? t('tblName', 'Name')
-        : sortKey === 'nationality'
+        : effectiveSortKey === 'nationality'
           ? t('tblNat', 'Nat.')
-          : sortKey === 'league'
+          : effectiveSortKey === 'league'
             ? t('tblLeague', 'League')
-            : sortKey === 'team'
+            : effectiveSortKey === 'team'
               ? t('tblTeam', 'Team')
-              : sortKey === 'age'
+              : effectiveSortKey === 'age'
                 ? t('tblAge', 'Age')
                 : t('tblRoles', 'Role');
     return `${base} (${sortDir === 'asc' ? 'A-Z' : 'Z-A'})`;
-  }, [sortDir, sortKey, t]);
+  }, [sortDir, sortKey, t, worldCupMode]);
 
   const sortedResults = React.useMemo(() => {
     const list = [...results];
     const dir = sortDir === 'asc' ? 1 : -1;
 
     list.sort((a, b) => {
-      if (sortKey === 'age') {
+      const effectiveSortKey =
+        worldCupMode && (sortKey === 'nationality' || sortKey === 'league') ? 'name' : sortKey;
+
+      if (effectiveSortKey === 'age') {
         const aAge = a.player.meta?.age;
         const bAge = b.player.meta?.age;
         const aMissing = typeof aAge !== 'number';
@@ -768,24 +790,24 @@ export default function PlayerPoolScreen() {
       }
 
       const aVal =
-        sortKey === 'name'
+        effectiveSortKey === 'name'
           ? a.player.name
-          : sortKey === 'role'
+          : effectiveSortKey === 'role'
             ? a.player.meta?.roles?.[0] ?? ''
-            : sortKey === 'nationality'
+            : effectiveSortKey === 'nationality'
               ? a.player.meta?.nationality ?? ''
-              : sortKey === 'league'
+              : effectiveSortKey === 'league'
                 ? a.player.meta?.league ?? ''
                 : a.player.meta?.team ?? '';
 
       const bVal =
-        sortKey === 'name'
+        effectiveSortKey === 'name'
           ? b.player.name
-          : sortKey === 'role'
+          : effectiveSortKey === 'role'
             ? b.player.meta?.roles?.[0] ?? ''
-            : sortKey === 'nationality'
+            : effectiveSortKey === 'nationality'
               ? b.player.meta?.nationality ?? ''
-              : sortKey === 'league'
+              : effectiveSortKey === 'league'
                 ? b.player.meta?.league ?? ''
                 : b.player.meta?.team ?? '';
 
@@ -799,20 +821,49 @@ export default function PlayerPoolScreen() {
     });
 
     return list;
-  }, [results, sortDir, sortKey]);
+  }, [results, sortDir, sortKey, worldCupMode]);
 
-  const weeklyPopularLabel = t('revealWeeklyPopularPlayers', 'Reveal Weekly Top Searches');
+  const weeklyPopularLabel = worldCupMode
+    ? t('revealWorldCupTopSearches', 'Reveal World Cup Top Searches')
+    : t('revealWeeklyPopularPlayers', 'Reveal Weekly Top Searches');
   const weeklyPopularLabelUpper = weeklyPopularLabel.toLocaleUpperCase(
     i18n.language?.startsWith('tr') ? 'tr-TR' : undefined,
   );
+  const playerPoolTheme = React.useMemo(
+    () =>
+      worldCupMode
+        ? {
+            bg: BG,
+            panel: WORLD_CUP_COLORS.panel,
+            text: WORLD_CUP_COLORS.text,
+            accent: WORLD_CUP_COLORS.mint,
+            accentDark: WORLD_CUP_COLORS.lime,
+            line: WORLD_CUP_COLORS.line,
+            glow: WORLD_CUP_COLORS.glow,
+          }
+        : {
+            bg: BG,
+            panel: 'rgba(22, 163, 74, 0.12)',
+            text: '#FFFFFF',
+            accent: ACCENT,
+            accentDark: '#15803D',
+            line: ACCENT,
+            glow: 'rgba(22, 163, 74, 0.12)',
+          },
+    [worldCupMode],
+  );
+  const worldCupTutorialStepActive =
+    isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'worldCupMode';
+  const worldCupSwitchLocked =
+    isPlayerPoolTutorialActive && tutorial.playerPoolStep !== 'worldCupMode';
 
   return (
     <KeyboardAvoidingView
-      style={styles.safe}
+      style={[styles.safe, { backgroundColor: playerPoolTheme.bg }]}
       behavior={Platform.select({ ios: 'padding', android: 'padding' })}
       keyboardVerticalOffset={0}
     >
-      <View style={styles.screen}>
+      <View style={[styles.screen, { backgroundColor: playerPoolTheme.bg }]}>
         <ScrollView
           ref={scrollRef}
           style={styles.container}
@@ -820,11 +871,118 @@ export default function PlayerPoolScreen() {
           scrollEnabled
         >
           <Header
+            backgroundColor={BG}
+            textColor={playerPoolTheme.text}
+            accentColor={ACCENT}
+            lineColor={worldCupMode ? WORLD_CUP_COLORS.mint : playerPoolTheme.line}
             subtitle={t(
               'playerPoolHeaderSubtitle',
               'Discover 52,000+ players from 113 leagues worldwide.',
             )}
           />
+
+        <TutorialHint
+          visible={worldCupTutorialStepActive}
+          title={t('tutorialWorldCupModeTitle', 'World Cup mode')}
+          body={t(
+            'tutorialWorldCupModeBody',
+            'Enable this to use the World Cup data in the player pool section. You can switch it on or off here to decide the data to be used.',
+          )}
+          actionLabel={t('tutorialContinueToWeeklyPopular', 'Continue to Weekly Top Searches')}
+          onAction={() => {
+            setWorldCupMode(false);
+            tutorial.setPlayerPoolStep('weeklyPopularButton');
+          }}
+          onSkipAll={skipPlayerPoolTutorial}
+          arrow="none"
+        />
+
+        <Pressable
+          onPress={() => {
+            if (worldCupSwitchLocked) return;
+            setWorldCupMode((value) => !value);
+          }}
+          disabled={worldCupSwitchLocked}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: worldCupMode }}
+          accessibilityLabel={t('worldCupMode', 'World Cup mode')}
+          style={({ pressed }) => [
+            styles.worldCupSwitch,
+            worldCupMode && styles.worldCupSwitchActive,
+            worldCupSwitchLocked && !worldCupMode && styles.worldCupSwitchMuted,
+            {
+              backgroundColor: worldCupMode ? WORLD_CUP_COLORS.panel : 'rgba(255,255,255,0.035)',
+              borderColor: worldCupMode ? WORLD_CUP_COLORS.mint : ACCENT,
+            },
+            pressed && !worldCupSwitchLocked && styles.pressed,
+          ]}
+        >
+          <View pointerEvents="none" style={styles.worldCupRibbon}>
+            {WORLD_CUP_COLORS.palette.map((color, index) => (
+              <View key={`${color}-${index}`} style={[styles.worldCupRibbonBand, { backgroundColor: color }]} />
+            ))}
+          </View>
+
+          <View style={styles.worldCupTextWrap}>
+            <View style={styles.worldCupBadgeRow}>
+              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.mint }]} />
+              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.lime }]} />
+              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.orange }]} />
+              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.blue }]} />
+              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.lavender }]} />
+            </View>
+            <Text
+              style={[
+                styles.worldCupTitle,
+                worldCupMode && {
+                  color: WORLD_CUP_COLORS.mint,
+                  textShadowColor: 'rgba(98, 246, 210, 0.25)',
+                  textShadowRadius: 8,
+                },
+              ]}
+            >
+              {t('worldCupModeTitle', 'World Cup Mode')}
+            </Text>
+            <Text style={[styles.worldCupSubtitle, { color: worldCupMode ? WORLD_CUP_COLORS.muted : '#7A7A85' }]}>
+              {worldCupMode
+                ? t('worldCupDataInPlace', 'World Cup data in place.')
+                : t('clubDataInPlace', 'Club data in place.')}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.worldCupStatusPill,
+              {
+                borderColor: worldCupMode ? WORLD_CUP_COLORS.purple : 'rgba(255,255,255,0.14)',
+                backgroundColor: worldCupMode ? 'rgba(92, 0, 230, 0.22)' : 'rgba(255,255,255,0.05)',
+              },
+            ]}
+          >
+            <Text style={[styles.worldCupStatusText, { color: worldCupMode ? '#FFFFFF' : '#7A7A85' }]}>
+              {worldCupMode ? t('worldCupModeOn', 'ON') : t('worldCupModeOff', 'OFF')}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.worldCupTrack,
+              {
+                backgroundColor: worldCupMode ? WORLD_CUP_COLORS.purple : 'rgba(255,255,255,0.12)',
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.worldCupKnob,
+                {
+                  transform: [{ translateX: worldCupMode ? 24 : 0 }],
+                  backgroundColor: worldCupMode ? WORLD_CUP_COLORS.darkGreen : '#FFFFFF',
+                },
+              ]}
+            />
+          </View>
+        </Pressable>
 
         <TutorialHint
           visible={isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularButton'}
@@ -843,6 +1001,10 @@ export default function PlayerPoolScreen() {
           disabled={isPlayerPoolTutorialActive && tutorial.playerPoolStep !== 'weeklyPopularButton'}
           style={({ pressed }) => [
             styles.popularButton,
+            {
+              borderColor: worldCupMode ? WORLD_CUP_COLORS.coral : playerPoolTheme.line,
+              backgroundColor: worldCupMode ? 'rgba(255, 143, 145, 0.13)' : playerPoolTheme.glow,
+            },
             isPlayerPoolTutorialActive &&
               tutorial.playerPoolStep !== 'weeklyPopularButton' &&
               styles.popularButtonLocked,
@@ -850,11 +1012,17 @@ export default function PlayerPoolScreen() {
           ]}
         >
           {weeklyPopularLoading ? (
-            <ActivityIndicator size="small" color={ACCENT} />
+            <ActivityIndicator size="small" color={playerPoolTheme.accent} />
           ) : (
-            <Eye size={18} color={ACCENT} strokeWidth={2.2} />
+            <Eye size={18} color={worldCupMode ? WORLD_CUP_COLORS.coral : playerPoolTheme.accent} strokeWidth={2.2} />
           )}
-          <Text numberOfLines={2} style={styles.popularButtonText}>
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.popularButtonText,
+              { color: worldCupMode ? WORLD_CUP_COLORS.coral : playerPoolTheme.accent },
+            ]}
+          >
             {weeklyPopularLabelUpper}
           </Text>
         </Pressable>
@@ -905,6 +1073,15 @@ export default function PlayerPoolScreen() {
           onTutorialContinue={() => tutorial.setPlayerPoolStep('search')}
           onTutorialSkipAll={skipPlayerPoolTutorial}
           tutorialActive={isPlayerPoolTutorialActive}
+          worldCupMode={worldCupMode}
+          theme={worldCupMode ? {
+            panel: WORLD_CUP_COLORS.panel,
+            card: WORLD_CUP_COLORS.card,
+            line: WORLD_CUP_COLORS.blue,
+            accent: WORLD_CUP_COLORS.blue,
+            accentSoft: 'rgba(49, 87, 246, 0.13)',
+            muted: WORLD_CUP_COLORS.muted,
+          } : undefined}
         />
 
         <CandidatePlayers
@@ -951,6 +1128,29 @@ export default function PlayerPoolScreen() {
           onTutorialSkipAll={skipPlayerPoolTutorial}
           rowsLocked={isPlayerPoolTutorialActive}
           scrollLocked={false}
+          worldCupMode={worldCupMode}
+          theme={worldCupMode ? {
+            panel: WORLD_CUP_COLORS.panel,
+            card: WORLD_CUP_COLORS.card,
+            line: WORLD_CUP_COLORS.mint,
+            accent: WORLD_CUP_COLORS.mint,
+            accentSoft: 'rgba(98, 246, 210, 0.13)',
+            activeRow: 'rgba(182, 240, 0, 0.10)',
+            muted: WORLD_CUP_COLORS.muted,
+          } : undefined}
+          weeklyPopularTheme={worldCupMode ? {
+            panel: WORLD_CUP_COLORS.panel,
+            card: WORLD_CUP_COLORS.card,
+            line: WORLD_CUP_COLORS.coral,
+            accent: WORLD_CUP_COLORS.coral,
+            accentSoft: 'rgba(255, 143, 145, 0.13)',
+            activeRow: 'rgba(255, 143, 145, 0.12)',
+            muted: WORLD_CUP_COLORS.muted,
+          } : undefined}
+          previewPlayerCardTheme={worldCupMode ? {
+            cardBackground: WORLD_CUP_COLORS.purple,
+            accent: WORLD_CUP_COLORS.lavender,
+          } : undefined}
         />
 
         <PlayerCardPP
@@ -971,6 +1171,15 @@ export default function PlayerPoolScreen() {
           tutorialStep={isPlayerPoolTutorialActive ? tutorial.playerPoolStep : null}
           onTutorialContinue={() => tutorial.setPlayerPoolStep('revealPotential')}
           onTutorialSkipAll={skipPlayerPoolTutorial}
+          worldCupMode={worldCupMode}
+          theme={worldCupMode ? {
+            panel: WORLD_CUP_COLORS.panel,
+            card: WORLD_CUP_COLORS.card,
+            line: WORLD_CUP_COLORS.lavender,
+            accent: WORLD_CUP_COLORS.lavender,
+            accentSoft: 'rgba(167, 132, 244, 0.12)',
+            muted: WORLD_CUP_COLORS.muted,
+          } : undefined}
         />
 
         <MatchupCenter
@@ -986,6 +1195,16 @@ export default function PlayerPoolScreen() {
           tutorialStep={isPlayerPoolTutorialActive ? tutorial.playerPoolStep : null}
           onTutorialSkipAll={skipPlayerPoolTutorial}
           tutorialActive={isPlayerPoolTutorialActive}
+          worldCupMode={worldCupMode}
+          theme={worldCupMode ? {
+            panel: WORLD_CUP_COLORS.panel,
+            card: WORLD_CUP_COLORS.card,
+            line: WORLD_CUP_COLORS.red,
+            accent: WORLD_CUP_COLORS.red,
+            accent2: WORLD_CUP_COLORS.red,
+            accentSoft: 'rgba(227, 0, 11, 0.13)',
+            muted: WORLD_CUP_COLORS.muted,
+          } : undefined}
         />
         <ComparisonModal
           visible={comparisonOpen}
@@ -1002,6 +1221,17 @@ export default function PlayerPoolScreen() {
           }}
           tutorialVisible={isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison'}
           onTutorialSkipAll={skipPlayerPoolTutorial}
+          worldCupMode={worldCupMode}
+          theme={worldCupMode ? {
+            panel: WORLD_CUP_COLORS.panel,
+            card: WORLD_CUP_COLORS.card,
+            line: WORLD_CUP_COLORS.red,
+            accent: WORLD_CUP_COLORS.red,
+            accentSoft: 'rgba(227, 0, 11, 0.13)',
+            winnerAccent: WORLD_CUP_COLORS.mint,
+            winnerSoft: 'rgba(98, 246, 210, 0.13)',
+            muted: WORLD_CUP_COLORS.muted,
+          } : undefined}
         />
         <ProNotReadyScreen
           visible={proUpsellOpen}
@@ -1030,6 +1260,95 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 32,
     gap: 16,
+  },
+  worldCupSwitch: {
+    minHeight: 90,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingTop: 22,
+    paddingBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    overflow: 'hidden',
+  },
+  worldCupSwitchActive: {
+    shadowColor: '#62F6D2',
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  worldCupSwitchMuted: {
+    opacity: 0.55,
+  },
+  worldCupRibbon: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 10,
+    flexDirection: 'row',
+  },
+  worldCupRibbonBand: {
+    flex: 1,
+  },
+  worldCupTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  worldCupBadgeRow: {
+    flexDirection: 'row',
+    gap: 5,
+    marginBottom: 7,
+  },
+  worldCupDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  worldCupEyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  worldCupTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  worldCupSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  worldCupStatusPill: {
+    minWidth: 48,
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  worldCupStatusText: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  worldCupTrack: {
+    width: 54,
+    height: 30,
+    borderRadius: 15,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  worldCupKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   popularButton: {
     minHeight: 46,
