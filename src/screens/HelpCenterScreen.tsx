@@ -374,6 +374,15 @@ export default function HelpCenter() {
             <View style={styles.line} />
 
             <View style={styles.block}>
+              <Text style={styles.h3}>{t('howDailyScoutChallengeTitle', 'Daily Scout Challenge')}</Text>
+              <Text style={[styles.p, styles.justify]}>
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howDailyScoutChallenge1', 'Daily Scout Challenge gives you one daily scouting strategy with three player options, lets you choose the best fit, and ranks weekly scores on the scoreboard.')}
+              </Text>
+            </View>
+
+            <View style={styles.line} />
+
+            <View style={styles.block}>
               <Text style={styles.h3}>{t('howPlayerPortfolio', 'Player Portfolio')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
