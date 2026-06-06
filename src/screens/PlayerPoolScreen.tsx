@@ -31,6 +31,7 @@ import CandidatePlayers, {
   type SearchResultRow,
 } from '@/components/CandidatePlayers';
 import ComparisonModal from '@/components/ComparisonModal';
+import { DailyScoutChallengeModal } from '@/components/DailyScoutChallenge';
 import Header from '@/components/Header';
 import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
@@ -1237,6 +1238,7 @@ export default function PlayerPoolScreen() {
           visible={proUpsellOpen}
           onClose={() => setProUpsellOpen(false)}
         />
+        <DailyScoutChallengeModal autoOpen={tutorial.postTutorialReady} />
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

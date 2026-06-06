@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Star,
+  Trophy,
   X,
 } from 'lucide-react-native';
 import {
@@ -174,6 +175,46 @@ function buildMetricRows(player1: PlayerData | null, player2: PlayerData | null)
   }).filter((group) => group.rows.length > 0);
 }
 
+function buildCategorySummaries(
+  groups: ReturnType<typeof buildMetricRows>,
+  player1Name: string,
+  player2Name: string,
+) {
+  return groups.map((group) => {
+    let player1Wins = 0;
+    let player2Wins = 0;
+
+    group.rows.forEach((row) => {
+      const v1 = row.value1;
+      const v2 = row.value2;
+      if (typeof v1 !== 'number' || typeof v2 !== 'number' || v1 === v2) return;
+
+      const player1Better = group.lowerIsBetter ? v1 < v2 : v1 > v2;
+      if (player1Better) {
+        player1Wins += 1;
+      } else {
+        player2Wins += 1;
+      }
+    });
+
+    const winner =
+      player1Wins === player2Wins
+        ? null
+        : player1Wins > player2Wins
+          ? player1Name
+          : player2Name;
+
+    return {
+      key: group.key,
+      fallbackTitle: group.fallbackTitle,
+      winner,
+      player1Wins,
+      player2Wins,
+      total: group.rows.length,
+    };
+  });
+}
+
 export default function ComparisonModal({
   visible,
   loading,
@@ -193,6 +234,15 @@ export default function ComparisonModal({
   const groups = React.useMemo(
     () => buildMetricRows(player1?.player ?? null, player2?.player ?? null),
     [player1?.player, player2?.player],
+  );
+  const categorySummaries = React.useMemo(
+    () =>
+      buildCategorySummaries(
+        groups,
+        player1?.player.name ?? t('matchupPlayer1Placeholder', 'Player 1'),
+        player2?.player.name ?? t('matchupPlayer2Placeholder', 'Player 2'),
+      ),
+    [groups, player1?.player.name, player2?.player.name, t],
   );
 
   React.useEffect(() => {
@@ -514,7 +564,40 @@ export default function ComparisonModal({
                   </Text>
                 </View>
               ) : (
-                groups.map((group) => (
+                <>
+                <View style={[styles.summaryBlock, theme && { borderColor: theme.line, backgroundColor: theme.card }]}>
+                  <View style={styles.summaryHeader}>
+                    <Trophy size={16} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
+                    <Text style={[styles.summaryTitle, theme && { color: theme.accent }]}>
+                      {t('categoryLeaders', 'Category Leaders')}
+                    </Text>
+                  </View>
+                  <View style={styles.summaryGrid}>
+                    {categorySummaries.map((item) => (
+                      <View key={item.key} style={[styles.summaryRow, theme && { borderColor: theme.line }]}>
+                        <Text numberOfLines={2} style={styles.summaryCategory}>
+                          {t(item.key, item.fallbackTitle)}
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.summaryWinner,
+                            item.winner
+                              ? { color: theme?.winnerAccent ?? theme?.accent ?? ACCENT }
+                              : { color: MUTED },
+                          ]}
+                        >
+                          {item.winner ? compactPlayerName(item.winner) : t('evenCategory', 'Even')}
+                        </Text>
+                        <Text style={styles.summaryScore}>
+                          {item.player1Wins}-{item.player2Wins}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                {groups.map((group) => (
                   <View key={group.key} style={[styles.groupBlock, theme && { borderColor: theme.line, backgroundColor: theme.accentSoft }]}>
                     <View style={[styles.groupHeader, theme && { borderBottomColor: theme.line }]}>
                       <View style={styles.groupTitleRow}>
@@ -575,7 +658,8 @@ export default function ComparisonModal({
                       ))
                     )}
                   </View>
-                ))
+                ))}
+                </>
               )}
             </ScrollView>
           )}
@@ -675,6 +759,61 @@ const styles = StyleSheet.create({
     color: MUTED,
     fontSize: 12,
     fontWeight: '700',
+  },
+  summaryBlock: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    padding: 12,
+    gap: 10,
+    marginBottom: 12,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryTitle: {
+    color: ACCENT,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  summaryGrid: {
+    gap: 8,
+  },
+  summaryRow: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(17, 19, 21, 0.42)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  summaryCategory: {
+    flex: 1,
+    minWidth: 0,
+    color: TEXT,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  summaryWinner: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: 'right',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  summaryScore: {
+    width: 34,
+    textAlign: 'right',
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: '900',
   },
   groupBlock: {
     borderRadius: 16,

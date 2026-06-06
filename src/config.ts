@@ -39,4 +39,9 @@ export const ENDPOINTS = {
   playerPoolForm: (playerId: string) => `/player-pool/${playerId}/form`,
   playerPoolMatchupComparison: '/player-pool/matchup/comparison',
   favoriteReport: (favoriteId: string) => `/me/favorites/${favoriteId}/report`,
+  dailyScoutChallenge: '/daily-scout-challenge',
+  dailyScoutChallengeSkip: '/daily-scout-challenge/skip',
+  dailyScoutChallengeAnswer: '/daily-scout-challenge/answer',
+  dailyScoutChallengeNickname: '/daily-scout-challenge/nickname',
+  dailyScoutChallengeLeaderboard: '/daily-scout-challenge/leaderboard',
 };

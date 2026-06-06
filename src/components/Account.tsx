@@ -14,7 +14,13 @@ type Props = {
   navigationLocked?: boolean;
 };
 
-export default function Account({ plan, onOpenPlans, onOpenHelp, onLogout, navigationLocked = false }: Props) {
+export default function Account({
+  plan,
+  onOpenPlans,
+  onOpenHelp,
+  onLogout,
+  navigationLocked = false,
+}: Props) {
   const [email, setEmail] = React.useState<string>('—');
   const [savingLanguage, setSavingLanguage] = React.useState(false);
   const [languageOpen, setLanguageOpen] = React.useState(false);

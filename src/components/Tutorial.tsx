@@ -36,6 +36,7 @@ type TutorialStage = 'playerPool' | 'profile' | 'scoutwise' | 'done';
 type TutorialContextValue = {
   active: boolean;
   stage: TutorialStage;
+  postTutorialReady: boolean;
   playerPoolStep: PlayerPoolTutorialStep;
   profileStep: ProfileTutorialStep;
   scoutWiseStep: ScoutWiseTutorialStep;
@@ -55,6 +56,7 @@ const TutorialContext = React.createContext<TutorialContextValue | null>(null);
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const [active, setActive] = React.useState(false);
   const [introVisible, setIntroVisible] = React.useState(false);
+  const [postTutorialReady, setPostTutorialReady] = React.useState(false);
   const [stage, setStage] = React.useState<TutorialStage>('done');
   const [playerPoolStep, setPlayerPoolStep] = React.useState<PlayerPoolTutorialStep>('worldCupMode');
   const [profileStep, setProfileStep] = React.useState<ProfileTutorialStep>('intro');
@@ -73,11 +75,16 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         loadedRef.current = true;
 
         if (!me.tutorialCompleted) {
+          setPostTutorialReady(false);
           setIntroVisible(true);
           setStage('done');
           setPlayerPoolStep('worldCupMode');
+        } else {
+          setPostTutorialReady(true);
         }
-      } catch {}
+      } catch {
+        setPostTutorialReady(true);
+      }
     })();
 
     return () => {
@@ -89,6 +96,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setIntroVisible(false);
     setActive(false);
     setStage('done');
+    setPostTutorialReady(true);
     loadedRef.current = true;
 
     try {
@@ -100,6 +108,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
 
   const startTutorial = React.useCallback(() => {
     setIntroVisible(false);
+    setPostTutorialReady(false);
     setActive(true);
     setStage('playerPool');
     setPlayerPoolStep('worldCupMode');
@@ -122,6 +131,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     () => ({
       active,
       stage,
+      postTutorialReady,
       playerPoolStep,
       profileStep,
       scoutWiseStep,
@@ -141,7 +151,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       completeTutorial: finish,
       skipTutorial: finish,
     }),
-    [activateTutorial, activationKey, active, finish, playerPoolStep, profileStep, scoutWiseStep, stage],
+    [activateTutorial, activationKey, active, finish, playerPoolStep, postTutorialReady, profileStep, scoutWiseStep, stage],
   );
 
   return (

@@ -265,6 +265,35 @@ export type MatchupComparisonResponse = {
   player2: { id: string; player: PlayerData };
 };
 
+export type DailyScoutText = { en: string; tr: string };
+export type DailyScoutAttempt = {
+  status: 'available' | 'skipped' | 'completed';
+  chosenPlayerId?: string | null;
+  isCorrect?: boolean | null;
+  score?: number | null;
+  needsNickname: boolean;
+};
+export type DailyScoutChallenge = {
+  challengeId: string;
+  challengeDate: string;
+  strategy: DailyScoutText;
+  question: DailyScoutText;
+  choices: Array<{ id: string; player: PlayerData }>;
+  winnerPlayerId?: string | null;
+  explanation?: DailyScoutText | null;
+  attempt: DailyScoutAttempt;
+};
+export type DailyScoutLeaderboardRow = {
+  nickname: string;
+  score: number;
+  played: number;
+  correct: number;
+};
+export type DailyScoutLeaderboard = {
+  weekStart: string;
+  rows: DailyScoutLeaderboardRow[];
+};
+
 type PlayerPoolRawRow = {
   id?: string | number;
   content?: unknown;
@@ -476,6 +505,70 @@ export async function getMatchupComparison(
     player1: { id: player1IdOut, player: player1 },
     player2: { id: player2IdOut, player: player2 },
   };
+}
+
+function normalizeDailyScoutChallenge(raw: any): DailyScoutChallenge {
+  return {
+    challengeId: String(raw.challengeId ?? raw.challenge_id ?? ''),
+    challengeDate: String(raw.challengeDate ?? raw.challenge_date ?? ''),
+    strategy: raw.strategy ?? { en: '', tr: '' },
+    question: raw.question ?? { en: '', tr: '' },
+    winnerPlayerId:
+      raw.winnerPlayerId === undefined || raw.winnerPlayerId === null
+        ? null
+        : String(raw.winnerPlayerId),
+    explanation: raw.explanation ?? null,
+    attempt: {
+      status: raw.attempt?.status ?? 'available',
+      chosenPlayerId:
+        raw.attempt?.chosenPlayerId === undefined || raw.attempt?.chosenPlayerId === null
+          ? null
+          : String(raw.attempt.chosenPlayerId),
+      isCorrect: raw.attempt?.isCorrect ?? null,
+      score: typeof raw.attempt?.score === 'number' ? raw.attempt.score : null,
+      needsNickname: !!raw.attempt?.needsNickname,
+    },
+    choices: (raw.choices || [])
+      .map((choice: any, index: number) => {
+        const id = String(choice.id ?? `daily-scout-${index}`);
+        const player = normalizePlayerPoolContent(choice.content ?? choice.player ?? choice, id);
+        return player ? { id, player } : null;
+      })
+      .filter(Boolean),
+  };
+}
+
+export async function getDailyScoutChallenge(): Promise<DailyScoutChallenge> {
+  return normalizeDailyScoutChallenge(await request<any>(ENDPOINTS.dailyScoutChallenge));
+}
+
+export async function skipDailyScoutChallenge(): Promise<DailyScoutChallenge> {
+  return normalizeDailyScoutChallenge(
+    await request<any>(ENDPOINTS.dailyScoutChallengeSkip, { method: 'POST' }),
+  );
+}
+
+export async function submitDailyScoutAnswer(
+  challengeId: string,
+  chosenPlayerId: string,
+): Promise<DailyScoutChallenge> {
+  return normalizeDailyScoutChallenge(
+    await request<any>(ENDPOINTS.dailyScoutChallengeAnswer, {
+      method: 'POST',
+      body: JSON.stringify({ challengeId, chosenPlayerId }),
+    }),
+  );
+}
+
+export async function setDailyScoutNickname(nickname: string): Promise<{ nickname: string }> {
+  return request<{ nickname: string }>(ENDPOINTS.dailyScoutChallengeNickname, {
+    method: 'POST',
+    body: JSON.stringify({ nickname }),
+  });
+}
+
+export async function getDailyScoutLeaderboard(limit = 20): Promise<DailyScoutLeaderboard> {
+  return request<DailyScoutLeaderboard>(`${ENDPOINTS.dailyScoutChallengeLeaderboard}?limit=${limit}`);
 }
 
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {

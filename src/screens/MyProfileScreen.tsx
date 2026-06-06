@@ -12,8 +12,15 @@ import type { Plan } from '@/services/api';
 
 import FavoritePlayers from '@/components/FavoritePlayers';
 import Account from '@/components/Account';
+import {
+  DailyScoutChallengeFrame,
+  DailyScoutChallengeModal,
+  DailyScoutLeaderboardModal,
+} from '@/components/DailyScoutChallenge';
 import { ProfileTutorialModal, useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
+import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
+import { ProNotReadyScreen } from '@/ads/pro';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -24,6 +31,9 @@ export default function MyProfileScreen() {
   const scrollRef = React.useRef<ScrollView | null>(null);
 
   const [plan, setPlan] = useState<Plan>('Free');
+  const [dailyChallengeOpen, setDailyChallengeOpen] = useState(false);
+  const [dailyLeaderboardOpen, setDailyLeaderboardOpen] = useState(false);
+  const [proUpsellOpen, setProUpsellOpen] = useState(false);
 
   const loadMe = useCallback(async () => {
     try {
@@ -80,6 +90,17 @@ export default function MyProfileScreen() {
     rootNav.reset({ index: 0, routes: [{ name: 'Auth' }] });
   };
 
+  const openDailyChallenge = async () => {
+    if (plan === 'Free') {
+      const shown = await showInterstitialAndWaitSafely();
+      if (!shown) {
+        setProUpsellOpen(true);
+        return;
+      }
+    }
+    setDailyChallengeOpen(true);
+  };
+
   return (
     <SafeAreaView
       edges={['top']}
@@ -96,6 +117,12 @@ export default function MyProfileScreen() {
           onOpenPlans={openPlans}
           onOpenHelp={openHelp}
           onLogout={handleLogout}
+          navigationLocked={isProfileTutorial}
+        />
+
+        <DailyScoutChallengeFrame
+          onOpenChallenge={openDailyChallenge}
+          onOpenLeaderboard={() => setDailyLeaderboardOpen(true)}
           navigationLocked={isProfileTutorial}
         />
 
@@ -127,6 +154,18 @@ export default function MyProfileScreen() {
           tutorial.skipTutorial();
           rootNav.getParent()?.navigate('Strategy' as never);
         }}
+      />
+      <DailyScoutChallengeModal
+        visible={dailyChallengeOpen}
+        onClose={() => setDailyChallengeOpen(false)}
+      />
+      <DailyScoutLeaderboardModal
+        visible={dailyLeaderboardOpen}
+        onClose={() => setDailyLeaderboardOpen(false)}
+      />
+      <ProNotReadyScreen
+        visible={proUpsellOpen}
+        onClose={() => setProUpsellOpen(false)}
       />
     </SafeAreaView>
   );
