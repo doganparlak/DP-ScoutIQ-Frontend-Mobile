@@ -12,6 +12,7 @@ import { ChevronDown, RefreshCcw, Shirt, Users, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { TutorialHint } from './Tutorial';
 
 export type LineUpPlayer = {
   id: string;
@@ -129,14 +130,25 @@ function playerSubtitle(player: LineUpPlayer) {
   return bits.join('  •  ');
 }
 
+function formatFormValue(form?: number) {
+  if (typeof form !== 'number' || !Number.isFinite(form)) return '-';
+  return Number.isInteger(form) ? String(form) : form.toFixed(1);
+}
+
 export default function LineUp({
   visible,
   players,
   onClose,
+  tutorialVisible = false,
+  onTutorialNext,
+  onTutorialSkip,
 }: {
   visible: boolean;
   players: LineUpPlayer[];
   onClose: () => void;
+  tutorialVisible?: boolean;
+  onTutorialNext?: () => void;
+  onTutorialSkip?: () => void;
 }) {
   const { t } = useTranslation();
   const [teamName, setTeamName] = React.useState('');
@@ -189,7 +201,17 @@ export default function LineUp({
 
   const assignPlayer = (playerId?: string) => {
     if (!activeSlotId) return;
-    setAssignments((current) => ({ ...current, [activeSlotId]: playerId }));
+    setAssignments((current) => {
+      if (
+        playerId &&
+        Object.entries(current).some(([slotId, assignedPlayerId]) => (
+          slotId !== activeSlotId && assignedPlayerId === playerId
+        ))
+      ) {
+        return current;
+      }
+      return { ...current, [activeSlotId]: playerId };
+    });
     setActiveSlotId(null);
   };
 
@@ -199,6 +221,15 @@ export default function LineUp({
     setFormation(item);
     setFormationOpen(false);
   };
+
+  const pickerPlayers = React.useMemo(() => {
+    const assignedElsewhere = new Set(
+      Object.entries(assignments)
+        .filter(([slotId, playerId]) => slotId !== activeSlotId && !!playerId)
+        .map(([, playerId]) => playerId),
+    );
+    return players.filter((player) => !assignedElsewhere.has(player.id));
+  }, [activeSlotId, assignments, players]);
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
@@ -220,6 +251,23 @@ export default function LineUp({
               {({ pressed }) => <X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.4} />}
             </Pressable>
           </View>
+
+          {tutorialVisible ? (
+            <View style={styles.tutorialWrap}>
+              <TutorialHint
+                visible
+                title={t('tutorialLineupModalTitle', 'Build your XI')}
+                body={t(
+                  'tutorialLineupModalBody',
+                  'Choose a formation, name your team, and tap pitch slots to assign players from your portfolio.',
+                )}
+                actionLabel={t('next', 'Next')}
+                onAction={onTutorialNext}
+                onSkipAll={onTutorialSkip}
+                arrow="none"
+              />
+            </View>
+          ) : null}
 
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <View style={styles.formationPanel}>
@@ -376,8 +424,8 @@ export default function LineUp({
                 </Pressable>
 
                 <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={styles.playerList}>
-                  {players.length ? (
-                    players.map((player) => {
+                  {pickerPlayers.length ? (
+                    pickerPlayers.map((player) => {
                       const selected = assignments[activeSlotId || ''] === player.id;
                       return (
                         <Pressable
@@ -392,9 +440,13 @@ export default function LineUp({
                           <View style={styles.playerOptionIcon}>
                             <Shirt size={16} color={selected ? TEXT : ACCENT} strokeWidth={2.3} />
                           </View>
-                          <View style={{ flex: 1, minWidth: 0 }}>
+                          <View style={styles.playerOptionMain}>
                             <Text numberOfLines={1} style={styles.playerOptionName}>{player.name}</Text>
                             <Text numberOfLines={1} style={styles.playerOptionMeta}>{playerSubtitle(player)}</Text>
+                          </View>
+                          <View style={styles.playerFormChip}>
+                            <Text style={styles.playerFormLabel}>{t('lineupFormShort', 'Form')}</Text>
+                            <Text style={styles.playerFormValue}>{formatFormValue(player.form)}</Text>
                           </View>
                           {selected ? <ChevronDown size={18} color={ACCENT} strokeWidth={2.4} /> : null}
                         </Pressable>
@@ -457,6 +509,13 @@ const styles = StyleSheet.create({
   title: { color: TEXT, fontSize: 18, fontWeight: '900' },
   subtitle: { color: MUTED, marginTop: 3, fontSize: 12, fontWeight: '700' },
   content: { padding: 14, gap: 14 },
+  tutorialWrap: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: LINE,
+  },
   formationPanel: {
     borderRadius: 16,
     borderWidth: 1,
@@ -847,8 +906,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(22, 163, 74, 0.12)',
   },
+  playerOptionMain: { flex: 1, minWidth: 0 },
   playerOptionName: { color: TEXT, fontWeight: '900' },
   playerOptionMeta: { color: MUTED, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  playerFormChip: {
+    minWidth: 54,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.35)',
+    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    alignItems: 'center',
+  },
+  playerFormLabel: { color: MUTED, fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
+  playerFormValue: { color: ACCENT, fontSize: 13, fontWeight: '900', marginTop: 1 },
   emptyText: { color: MUTED, textAlign: 'center', paddingVertical: 18, fontWeight: '800' },
   pressed: { opacity: 0.86 },
 });

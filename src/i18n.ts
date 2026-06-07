@@ -1,7 +1,6 @@
 // src/i18n.ts
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { updateCSSTransition } from 'react-native-reanimated/lib/typescript/css/native';
 
 export const resources = {
   en: {
@@ -254,6 +253,13 @@ export const resources = {
       tutorialProfileFiltersTitle: 'Portfolio filters',
       tutorialProfileFiltersBody:
         'This is the area where you can filter your portfolio by player details and scouting values.',
+      tutorialProfileLineupTitle: 'Lineup Builder',
+      tutorialProfileLineupBody:
+        'Use Lineup to turn your portfolio into a formation and check the squad rating.',
+      tutorialPressLineup: 'Press Lineup',
+      tutorialLineupModalTitle: 'Build your XI',
+      tutorialLineupModalBody:
+        'Choose a formation, name your team, and tap pitch slots to assign players from your portfolio.',
       tutorialSetStrategyTitle: 'Set your strategy',
       tutorialSetStrategyBody:
         'Your strategy and scouting philosophy give ScoutWise your perspective to consider in every response.',
@@ -305,6 +311,7 @@ export const resources = {
       howPlayerPortfolio1: 'The player portfolio is a watch list of players you have added for closer evaluation.',
       howPlayerPortfolio2: 'Each row represents a player and displays name, nationality, team, age, role, form, and potential.',
       howPlayerPortfolio3: 'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.',
+      howPlayerPortfolio4: 'Lineup Builder lets you turn the players in your Player Portfolio into an XI by choosing a formation, naming your team, tapping pitch slots to assign players by position, clearing slots or the full lineup when needed, and checking the squad rating based on player form and positional fit.',
       howDailyScoutChallengeTitle: 'Daily Scout Challenge',
       howDailyScoutChallenge1: 'Daily Scout Challenge gives you one daily scouting strategy with three player options, lets you choose the best fit, and ranks weekly scores on the scoreboard.',
       howChat5: '',
@@ -998,6 +1005,13 @@ export const resources = {
       tutorialProfileFiltersTitle: 'Portföy filtreleri',
       tutorialProfileFiltersBody:
         'Burası portföyünü oyuncu bilgilerine ve keşif değerlerine göre filtreleyebileceğin alandır.',
+      tutorialProfileLineupTitle: 'Kadro Oluşturucu',
+      tutorialProfileLineupBody:
+        'Kadro Oluşturucu ile portföyünü bir formasyona dönüştürebilir ve kadro skorunu görebilirsin.',
+      tutorialPressLineup: 'Kadro Oluşturucu’ya bas',
+      tutorialLineupModalTitle: 'XI’ini oluştur',
+      tutorialLineupModalBody:
+        'Bir formasyon seç, takımına isim ver ve portföyündeki oyuncuları yerleştirmek için sahadaki pozisyonlara dokun.',
       tutorialSetStrategyTitle: 'Stratejini belirle',
       tutorialSetStrategyBody:
         'Stratejin ve oyuncu keşfi felsefen, ScoutWise’ın her yanıtta dikkate alacağı perspektifi sağlar.',
@@ -1044,6 +1058,7 @@ export const resources = {
       howPlayerPortfolio1: 'Oyuncu portföyü, detaylı inceleme için eklediğiniz oyuncuların yer aldığı bir izleme listesidir.',
       howPlayerPortfolio2: 'Her satır bir oyuncuyu ifade eder ve ad, ülke, takım, yaş, rol, form ve potansiyel bilgilerini içerir.',
       howPlayerPortfolio3: 'Satırın başında yer alan rapor simgesiyle keşif raporu oluşturulabilir; oyuncular oyuncu kartı özelliklerine göre filtrelenebilir.',
+      howPlayerPortfolio4: 'Kadro Oluşturucu ile Oyuncu Portföyü’ndeki oyuncuları bir XI’e dönüştürebilir; formasyon seçebilir, takım adı verebilir, sahadaki pozisyonlara dokunarak oyuncuları pozisyona göre yerleştirebilir, gerektiğinde pozisyonları veya tüm kadroyu temizleyebilir ve oyuncu formu ile pozisyon uyumuna göre kadro skorunu kontrol edebilirsin.',
       howDailyScoutChallengeTitle: 'Günün Oyuncu Keşfi Sorusu',
       howDailyScoutChallenge1: 'Günün Oyuncu Keşfi Sorusu, her gün bir oyuncu keşfi felsefesi sunar ve buna en uygun oyuncuyu seçmeni ister; verdiğin cevaba göre diğer kullanıcılarla yarışır, puanını haftalık skor tablosundan takip edersin.',
       howChatTitle: 'Sohbet',
@@ -1477,12 +1492,14 @@ export const resources = {
       },
     },
   },
-} as const;
+};
 
 declare module 'i18next' {
   interface CustomTypeOptions {
     defaultNS: 'translation';
-    resources: typeof resources['en'];
+    resources: {
+      translation: Record<string, string>;
+    };
   }
 }
 

@@ -82,6 +82,9 @@ export default function MyProfileScreen() {
       if (tutorial.profileStep === 'filters') {
         scrollRef.current?.scrollTo({ y: 170, animated: true });
       }
+      if (tutorial.profileStep === 'lineup') {
+        scrollRef.current?.scrollTo({ y: 170, animated: true });
+      }
     }, 120);
 
     return () => clearTimeout(timer);
@@ -161,6 +164,18 @@ export default function MyProfileScreen() {
             }
             if (tutorial.profileStep === 'report') {
               tutorial.setProfileStep('filters');
+              return;
+            }
+            if (tutorial.profileStep === 'filters') {
+              tutorial.setProfileStep('lineup');
+              return;
+            }
+            if (tutorial.profileStep === 'lineup') {
+              tutorial.setProfileStep('lineupModal');
+              return;
+            }
+            if (tutorial.profileStep === 'lineupModal') {
+              moveToScoutWiseTutorial();
               return;
             }
             moveToScoutWiseTutorial();

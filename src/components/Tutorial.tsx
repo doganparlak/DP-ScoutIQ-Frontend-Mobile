@@ -29,7 +29,14 @@ export type ScoutWiseTutorialStep =
   | 'chatInput'
   | 'chatResponse';
 
-export type ProfileTutorialStep = 'intro' | 'dailyScout' | 'watchlist' | 'report' | 'filters';
+export type ProfileTutorialStep =
+  | 'intro'
+  | 'dailyScout'
+  | 'watchlist'
+  | 'report'
+  | 'filters'
+  | 'lineup'
+  | 'lineupModal';
 
 type TutorialStage = 'playerPool' | 'profile' | 'scoutwise' | 'done';
 

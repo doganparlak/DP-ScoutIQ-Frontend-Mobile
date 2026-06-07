@@ -393,6 +393,9 @@ export default function HelpCenter() {
                 {'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
                 {t('howPlayerPortfolio3', 'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.')}
+                {'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
+                {t('howPlayerPortfolio4', 'Lineup Builder lets you turn the players in your Player Portfolio into an XI by choosing a formation, naming your team, tapping pitch slots to assign players by position, clearing slots or the full lineup when needed, and checking the squad rating based on player form and positional fit.')}
               </Text>
             </View>
 

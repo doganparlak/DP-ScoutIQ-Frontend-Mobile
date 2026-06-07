@@ -30,6 +30,10 @@ import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
 import { showInterstitialAndWaitSafely } from '../ads/interstitial';
 import { ProNotReadyScreen } from '../ads/pro';
+import {
+  incrementPortfolioLineupLaunchCount,
+  shouldShowPortfolioLineupInterstitial,
+} from '../ads/adGating';
 import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
 import LineUp from './LineUp';
 
@@ -138,12 +142,16 @@ export default function FavoritePlayers({
   const tutorialLocked =
     profileTutorialStep === 'watchlist' ||
     profileTutorialStep === 'report' ||
-    profileTutorialStep === 'filters';
+    profileTutorialStep === 'filters' ||
+    profileTutorialStep === 'lineup' ||
+    profileTutorialStep === 'lineupModal';
+  const canPressTutorialLineup = profileTutorialStep === 'lineup';
 
   const [rows, setRows] = useState<PlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [proUpsellOpen, setProUpsellOpen] = useState(false);
+  const [proUpsellSource, setProUpsellSource] = useState<'report' | 'lineup' | null>(null);
   const [lineupOpen, setLineupOpen] = useState(false);
 
   const [previewPlayer, setPreviewPlayer] = useState<PlayerData | null>(null);
@@ -594,8 +602,10 @@ export default function FavoritePlayers({
           return;
         }
 
+        setProUpsellSource('report');
         setProUpsellOpen(true);
       } catch {
+        setProUpsellSource('report');
         setProUpsellOpen(true);
       }
       return;
@@ -644,8 +654,10 @@ export default function FavoritePlayers({
       }
 
       // Ad not completed -> show upsell instead
+      setProUpsellSource('report');
       setProUpsellOpen(true);
     } catch {
+      setProUpsellSource('report');
       setProUpsellOpen(true);
     }
   };
@@ -658,6 +670,34 @@ export default function FavoritePlayers({
       setRows((s) => s.filter((x) => x.id !== id));
     } catch (e: any) {
       Alert.alert(t('deleteFailed', 'Delete failed'), String(e?.message || e));
+    }
+  };
+
+  const handleLineupPress = async () => {
+    if (tutorialLocked && !canPressTutorialLineup) return;
+
+    setLineupOpen(true);
+
+    if (profileTutorialStep === 'lineup') {
+      onProfileTutorialNext?.();
+      return;
+    }
+
+    const isPro = plan === 'Pro Monthly' || plan === 'Pro Yearly';
+    if (isPro) return;
+
+    try {
+      const nextCount = await incrementPortfolioLineupLaunchCount();
+      if (!shouldShowPortfolioLineupInterstitial(nextCount)) return;
+
+      const shown = await showInterstitialAndWaitSafely();
+      if (!shown) {
+        setProUpsellSource('lineup');
+        setProUpsellOpen(true);
+      }
+    } catch {
+      setProUpsellSource('lineup');
+      setProUpsellOpen(true);
     }
   };
 
@@ -929,12 +969,13 @@ export default function FavoritePlayers({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{t('squadPortfolio', 'Squad Portfolio')}</Text>
         <Pressable
-          onPress={() => setLineupOpen(true)}
-          disabled={tutorialLocked}
+          onPress={handleLineupPress}
+          disabled={tutorialLocked && !canPressTutorialLineup}
           style={({ pressed }) => [
             styles.lineupButton,
-            tutorialLocked && styles.lineupButtonDisabled,
-            pressed && !tutorialLocked && styles.lineupButtonPressed,
+            tutorialLocked && !canPressTutorialLineup && styles.lineupButtonDisabled,
+            canPressTutorialLineup && styles.lineupButtonTutorial,
+            pressed && (!tutorialLocked || canPressTutorialLineup) && styles.lineupButtonPressed,
           ]}
           accessibilityLabel={t('openLineup', 'Open lineup')}
         >
@@ -944,6 +985,21 @@ export default function FavoritePlayers({
       </View>
 
       <View style={{ height: 8 }} />
+
+      <View style={profileTutorialStep === 'lineup' ? styles.profileTutorialHint : undefined}>
+        <TutorialHint
+          visible={profileTutorialStep === 'lineup'}
+          title={t('tutorialProfileLineupTitle', 'Lineup Builder')}
+          body={t(
+            'tutorialProfileLineupBody',
+            'Use Lineup to turn your portfolio into a formation, pick players by position, and check the squad rating.',
+          )}
+          targetLabel={t('tutorialPressLineup', 'Press Lineup')}
+          onSkipAll={onProfileTutorialSkip}
+          arrow="none"
+          targetArrow="up"
+        />
+      </View>
 
       <View style={profileTutorialStep === 'filters' ? styles.profileTutorialHint : undefined}>
         <TutorialHint
@@ -1202,8 +1258,10 @@ export default function FavoritePlayers({
         visible={proUpsellOpen}
         onClose={() => {
           setProUpsellOpen(false);
+          const source = proUpsellSource;
+          setProUpsellSource(null);
 
-          if (activeReportPlayerId) {
+          if (source === 'report' && activeReportPlayerId) {
             setReportAccessGranted((prev) => {
               const next = new Set(prev);
               next.add(activeReportPlayerId);
@@ -1216,7 +1274,21 @@ export default function FavoritePlayers({
       <LineUp
         visible={lineupOpen}
         players={rows}
-        onClose={() => setLineupOpen(false)}
+        onClose={() => {
+          setLineupOpen(false);
+          if (profileTutorialStep === 'lineupModal') {
+            onProfileTutorialNext?.();
+          }
+        }}
+        tutorialVisible={profileTutorialStep === 'lineupModal'}
+        onTutorialNext={() => {
+          setLineupOpen(false);
+          onProfileTutorialNext?.();
+        }}
+        onTutorialSkip={() => {
+          setLineupOpen(false);
+          onProfileTutorialSkip?.();
+        }}
       />
 
       {scoutOpen && scoutPlayer && scoutReport && (
@@ -1278,6 +1350,7 @@ const styles = StyleSheet.create({
   lineupButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900' },
   lineupButtonDisabled: { opacity: 0.45 },
   lineupButtonPressed: { opacity: 0.82 },
+  lineupButtonTutorial: { backgroundColor: 'rgba(22, 163, 74, 0.22)' },
 
   profileTutorialHint: { marginBottom: 12 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
