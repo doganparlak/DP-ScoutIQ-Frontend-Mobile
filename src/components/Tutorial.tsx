@@ -29,7 +29,7 @@ export type ScoutWiseTutorialStep =
   | 'chatInput'
   | 'chatResponse';
 
-export type ProfileTutorialStep = 'intro' | 'watchlist' | 'report' | 'filters';
+export type ProfileTutorialStep = 'intro' | 'dailyScout' | 'watchlist' | 'report' | 'filters';
 
 type TutorialStage = 'playerPool' | 'profile' | 'scoutwise' | 'done';
 
@@ -141,7 +141,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       setScoutWiseStep,
       moveToProfile: () => {
         setStage('profile');
-        setProfileStep('intro');
+        setProfileStep('dailyScout');
       },
       moveToScoutWise: () => {
         setStage('scoutwise');

@@ -218,6 +218,10 @@ export const resources = {
       tutorialComparisonTitle: 'Matchup comparison',
       tutorialComparisonBody: 'Compare both players by shared metrics. Close this modal when you are done.',
       tutorialProfileEyebrow: 'My Profile',
+      tutorialProfileDailyScoutTitle: 'Daily Scout Challenge',
+      tutorialProfileDailyScoutBody:
+        'This section lets you answer the daily scouting question and follow your weekly score against other users.',
+      tutorialContinueToPlayerPortfolio: 'Continue to Player Portfolio',
       tutorialProfilePortfolioTitle: 'Your player portfolio lives here',
       tutorialProfilePortfolioBody:
         'You can see the players you added to your portfolio here, filter that portfolio, and create scouting reports by pressing the report icon on a player.',
@@ -939,6 +943,10 @@ export const resources = {
       tutorialComparisonTitle: 'Eşleşme karşılaştırması',
       tutorialComparisonBody: 'İki oyuncuyu ortak metrikler üzerinden karşılaştırabilir, işin bittiğinde bu ekranı kapatabilirsin.',
       tutorialProfileEyebrow: 'PROFİLİM',
+      tutorialProfileDailyScoutTitle: 'Günün Oyuncu Keşfi Sorusu',
+      tutorialProfileDailyScoutBody:
+        'Bu bölümde günlük oyuncu keşfi sorusunu cevaplayabilir, verdiğin cevaba göre diğer kullanıcılarla yarışabilir ve haftalık skor tablosundaki puanını takip edebilirsin.',
+      tutorialContinueToPlayerPortfolio: 'Oyuncu Portföyü’ne devam et',
       tutorialProfilePortfolioTitle: 'Oyuncu portföyün burada',
       tutorialProfilePortfolioBody:
         'Portföyüne eklediğin oyuncuları burada görebilir, portföyü filtreleyebilir ve oyuncunun rapor ikonuna basarak keşif raporu oluşturabilirsin.',

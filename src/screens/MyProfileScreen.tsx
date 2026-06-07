@@ -1,6 +1,6 @@
 // MyProfileScreen.tsx
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView, View } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,10 +17,11 @@ import {
   DailyScoutChallengeModal,
   DailyScoutLeaderboardModal,
 } from '@/components/DailyScoutChallenge';
-import { ProfileTutorialModal, useTutorial } from '@/components/Tutorial';
+import { ProfileTutorialModal, TutorialHint, useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
 import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { ProNotReadyScreen } from '@/ads/pro';
+import { ArrowDown } from 'lucide-react-native';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -72,6 +73,9 @@ export default function MyProfileScreen() {
       if (tutorial.profileStep === 'watchlist') {
         scrollRef.current?.scrollTo({ y: 430, animated: true });
       }
+      if (tutorial.profileStep === 'dailyScout') {
+        scrollRef.current?.scrollTo({ y: 120, animated: true });
+      }
       if (tutorial.profileStep === 'report') {
         scrollRef.current?.scrollTo({ y: 520, animated: true });
       }
@@ -119,6 +123,27 @@ export default function MyProfileScreen() {
           onLogout={handleLogout}
           navigationLocked={isProfileTutorial}
         />
+
+        <View style={styles.tutorialHintFrame}>
+          <TutorialHint
+            visible={isProfileTutorial && tutorial.profileStep === 'dailyScout'}
+            title={t('tutorialProfileDailyScoutTitle', 'Daily Scout Challenge')}
+            body={t(
+              'tutorialProfileDailyScoutBody',
+              'This section lets you answer the daily scouting question and follow your weekly score against other users.',
+            )}
+            actionLabel={t('tutorialContinueToPlayerPortfolio', 'Continue to Player Portfolio')}
+            arrow="none"
+            onAction={() => tutorial.setProfileStep('watchlist')}
+            onSkipAll={() => {
+              tutorial.skipTutorial();
+              rootNav.getParent()?.navigate('Strategy' as never);
+            }}
+          />
+          {isProfileTutorial && tutorial.profileStep === 'dailyScout' ? (
+            <ArrowDown style={styles.tutorialBottomArrow} size={24} color={ACCENT} strokeWidth={2.4} />
+          ) : null}
+        </View>
 
         <DailyScoutChallengeFrame
           onOpenChallenge={openDailyChallenge}
@@ -184,6 +209,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  tutorialHintFrame: { marginHorizontal: 16 },
+  tutorialBottomArrow: { alignSelf: 'center', marginTop: 8, marginBottom: -4 },
 
   kv: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   k: { color: MUTED },
