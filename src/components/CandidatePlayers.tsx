@@ -49,6 +49,19 @@ export type SearchResultRow = {
 
 export type CandidateSortKey = 'name' | 'nationality' | 'league' | 'team' | 'age' | 'role';
 
+function hasAbbreviation(token: string) {
+  return /[.]/.test(token);
+}
+
+function compactDisplayName(name: string) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return name;
+  if (parts.some(hasAbbreviation)) {
+    return parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
+  }
+  return parts[0];
+}
+
 type Props = {
   results: SearchResultRow[];
   sortedResults: SearchResultRow[];
@@ -134,6 +147,7 @@ export default function CandidatePlayers({
     activeId?: string | null,
     emptyMessage?: string,
     rowTheme?: PlayerPoolComponentTheme,
+    nameFormatter?: (name: string) => string,
   ) => {
     const activeTheme = rowTheme ?? theme;
     const verticalSeparatorStyle = [styles.vsep, activeTheme && { backgroundColor: activeTheme.line }];
@@ -180,7 +194,7 @@ export default function CandidatePlayers({
           </Text>
           <View style={verticalSeparatorStyle} />
           <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.name, textAlign: 'center' }]}>
-            {row.player.name.split(/\s+/)[0] || row.player.name}
+            {nameFormatter ? nameFormatter(row.player.name) : row.player.name.split(/\s+/)[0] || row.player.name}
           </Text>
           {!worldCupMode ? (
             <>
@@ -511,6 +525,7 @@ export default function CandidatePlayers({
                       ? t('worldCupTopSearchesEmpty', 'No World Cup top searches have been recorded yet.')
                       : t('weeklyPopularEmpty', 'No popular players have been recorded this week yet.'),
                     popularTheme,
+                    compactDisplayName,
                   )}
                 </ScrollView>
                 <View style={[styles.tableBottomBorder, popularTheme && { backgroundColor: popularTheme.line }]} />

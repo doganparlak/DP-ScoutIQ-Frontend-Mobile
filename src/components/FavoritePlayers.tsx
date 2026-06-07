@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { X, UserX, FileText, FileClock } from 'lucide-react-native';
+import { X, UserX, FileText, FileClock, Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
@@ -31,6 +31,7 @@ import PlayerCard from '../components/PlayerCard';
 import { showInterstitialAndWaitSafely } from '../ads/interstitial';
 import { ProNotReadyScreen } from '../ads/pro';
 import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
+import LineUp from './LineUp';
 
 type PlayerRow = {
   id: string;
@@ -143,6 +144,7 @@ export default function FavoritePlayers({
   const [loading, setLoading] = useState(true);
 
   const [proUpsellOpen, setProUpsellOpen] = useState(false);
+  const [lineupOpen, setLineupOpen] = useState(false);
 
   const [previewPlayer, setPreviewPlayer] = useState<PlayerData | null>(null);
 
@@ -924,7 +926,22 @@ export default function FavoritePlayers({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.sectionTitle}>{t('squadPortfolio', 'Squad Portfolio')}</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('squadPortfolio', 'Squad Portfolio')}</Text>
+        <Pressable
+          onPress={() => setLineupOpen(true)}
+          disabled={tutorialLocked}
+          style={({ pressed }) => [
+            styles.lineupButton,
+            tutorialLocked && styles.lineupButtonDisabled,
+            pressed && !tutorialLocked && styles.lineupButtonPressed,
+          ]}
+          accessibilityLabel={t('openLineup', 'Open lineup')}
+        >
+          <Users size={15} color={ACCENT} strokeWidth={2.5} />
+          <Text style={styles.lineupButtonText}>{t('openLineup', 'Lineup')}</Text>
+        </Pressable>
+      </View>
 
       <View style={{ height: 8 }} />
 
@@ -1196,6 +1213,12 @@ export default function FavoritePlayers({
         }}
       />
 
+      <LineUp
+        visible={lineupOpen}
+        players={rows}
+        onClose={() => setLineupOpen(false)}
+      />
+
       {scoutOpen && scoutPlayer && scoutReport && (
         <ScoutingReport
           visible={scoutOpen}
@@ -1233,7 +1256,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
   },
-  sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 10,
+  },
+  sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', flex: 1, minWidth: 0 },
+  lineupButton: {
+    minHeight: 36,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+  },
+  lineupButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900' },
+  lineupButtonDisabled: { opacity: 0.45 },
+  lineupButtonPressed: { opacity: 0.82 },
 
   profileTutorialHint: { marginBottom: 12 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
