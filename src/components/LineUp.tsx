@@ -370,33 +370,54 @@ export default function LineUp({
                 </View>
                 <Text style={styles.pitchFormation}>{formation}</Text>
               </View>
-              {rows.map((row, rowIndex) => (
-                <View key={`row-${rowIndex}`} style={styles.pitchRow}>
+              {rows.map((row, rowIndex) => {
+                const compactRow = row.length >= 6;
+                return (
+                <View key={`row-${rowIndex}`} style={[styles.pitchRow, compactRow && styles.pitchRowCompact]}>
                   {row.map((slot) => {
                     const player = playersById.get(assignments[slot.id] || '');
                     return (
                       <Pressable
                         key={slot.id}
                         onPress={() => setActiveSlotId(slot.id)}
-                        style={({ pressed }) => [styles.slot, pressed && styles.slotPressed]}
+                        style={({ pressed }) => [
+                          styles.slot,
+                          compactRow && styles.slotCompact,
+                          pressed && styles.slotPressed,
+                        ]}
                       >
-                        <View style={player ? styles.slotIconFilled : styles.slotIcon}>
-                          <Shirt size={18} color={player ? TEXT : ACCENT} strokeWidth={2.3} />
+                        <View
+                          style={[
+                            player ? styles.slotIconFilled : styles.slotIcon,
+                            compactRow && styles.slotIconCompact,
+                          ]}
+                        >
+                          <Shirt size={compactRow ? 15 : 18} color={player ? TEXT : ACCENT} strokeWidth={2.3} />
                         </View>
-                        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={styles.slotName}>
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.68}
+                          style={[styles.slotName, compactRow && styles.slotNameCompact]}
+                        >
                           {player ? displayLineupName(player.name) : slot.label}
                         </Text>
                         {typeof player?.form === 'number' ? (
-                          <Text numberOfLines={1} style={styles.slotForm}>
+                          <Text numberOfLines={1} style={[styles.slotForm, compactRow && styles.slotFormCompact]}>
                             {player.form}
                           </Text>
                         ) : null}
-                        {!player ? <Text numberOfLines={1} style={styles.slotLabel}>{slot.label}</Text> : null}
+                        {!player ? (
+                          <Text numberOfLines={1} style={[styles.slotLabel, compactRow && styles.slotLabelCompact]}>
+                            {slot.label}
+                          </Text>
+                        ) : null}
                       </Pressable>
                     );
                   })}
                 </View>
-              ))}
+                );
+              })}
             </View>
           </ScrollView>
 
@@ -824,6 +845,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     gap: 5,
   },
+  pitchRowCompact: {
+    gap: 3,
+    justifyContent: 'space-between',
+  },
   slot: {
     width: 54,
     height: 68,
@@ -834,6 +859,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 4,
+  },
+  slotCompact: {
+    width: 44,
+    height: 62,
+    borderRadius: 12,
+    paddingHorizontal: 2,
   },
   slotPressed: { opacity: 0.84, transform: [{ scale: 0.98 }] },
   slotIcon: {
@@ -852,9 +883,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ACCENT,
   },
+  slotIconCompact: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
   slotName: { color: TEXT, fontSize: 12, fontWeight: '900', marginTop: 4, width: '100%', textAlign: 'center' },
+  slotNameCompact: { fontSize: 10.5, marginTop: 3 },
   slotForm: { color: '#B7F7C8', fontSize: 10, fontWeight: '900', marginTop: 1 },
+  slotFormCompact: { fontSize: 9 },
   slotLabel: { color: ACCENT, fontSize: 9, fontWeight: '900', marginTop: 1 },
+  slotLabelCompact: { fontSize: 8 },
   pickerBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.58)',
