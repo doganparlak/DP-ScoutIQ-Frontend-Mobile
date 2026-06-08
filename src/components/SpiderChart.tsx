@@ -176,7 +176,7 @@ export default function SpiderChart({ title, points, Icon,
 
   // Build display lines with translations
   const withDisplay = cleaned.map((p) => {
-    const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
+    const labelTr = t(`metric.${p.label}`, { defaultValue: p.label }) as string;
     const labelLines = labelToLines(labelTr);
     const lines = [...labelLines, formatValue(p.value, p.label)];
     return { ...p, show: lines.join('\n'), lineCount: lines.length };

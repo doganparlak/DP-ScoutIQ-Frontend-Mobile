@@ -79,7 +79,7 @@ export default function SpiderBarsFallback({
       </View>
 
       {shown.map((p) => {
-        const labelTr = t(`metric.${p.label}`, { defaultValue: p.label });
+        const labelTr = t(`metric.${p.label}`, { defaultValue: p.label }) as string;
 
         return (
           <View key={p.label} style={{ marginTop: 8 }}>

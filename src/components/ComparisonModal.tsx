@@ -351,7 +351,7 @@ export default function ComparisonModal({
     }
 
     const labelToLines = (label: string) => {
-      const translated = t(`metric.${label}`, label);
+      const translated = t(`metric.${label}`, label) as string;
       const parts = translated.trim().split(/\s+/).filter(Boolean);
       return parts.join('\n');
     };
