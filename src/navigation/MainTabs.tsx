@@ -32,7 +32,6 @@ const TAB_BASE_HEIGHT = 70;
 const MAIN_TAB_ICON_SIZE = 30;
 const MAIN_TAB_ICON_LABEL_GAP = 8;
 const SIDE_TAB_VERTICAL_OFFSET = -4;
-const SCOUTWISE_PRO_TAB_VERTICAL_OFFSET = Platform.OS === 'android' ? SIDE_TAB_VERTICAL_OFFSET : 12;
 
 const isFreePlan = (plan: Plan | null) => plan === 'Free';
 
@@ -206,29 +205,26 @@ function ScoutWiseProTabButton({
   const locked = tutorial.active;
 
   return (
-    <View style={[style, styles.tabButtonWrap]} pointerEvents="box-none">
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ ...accessibilityState, disabled: locked }}
-        accessibilityLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
-        disabled={locked}
-        onPress={async () => {
-          const latestPlan = await onResolvePlan();
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ ...accessibilityState, disabled: locked }}
+      accessibilityLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
+      disabled={locked}
+      onPress={async () => {
+        const latestPlan = await onResolvePlan();
 
-          navigation.navigate('Chat', {
-            screen: isScoutWiseTutorial || !isFreePlan(latestPlan) ? 'LegacyStrategy' : 'ProHome',
-          });
-        }}
-        style={({ pressed }) => [
-          styles.tabButton,
-          styles.scoutWiseProTabOffset,
-          locked && styles.tabButtonLocked,
-          pressed && !locked && styles.tabButtonPressed,
-        ]}
-      >
-        {children}
-      </Pressable>
-    </View>
+        navigation.navigate('Chat', {
+          screen: isScoutWiseTutorial || !isFreePlan(latestPlan) ? 'LegacyStrategy' : 'ProHome',
+        });
+      }}
+      style={({ pressed }) => [
+        style,
+        locked && styles.tabButtonLocked,
+        pressed && !locked && styles.tabButtonPressed,
+      ]}
+    >
+      {children}
+    </Pressable>
   );
 }
 
@@ -292,6 +288,7 @@ export default function MainTabs() {
             borderTopColor: LINE,
             borderTopWidth: 1,
             height: tabHeight,
+            paddingBottom: androidBottom,
             overflow: 'visible',
           },
           tabBarActiveTintColor: ACCENT,
@@ -328,6 +325,7 @@ export default function MainTabs() {
           name="Chat"
           component={ScoutWiseProStackScreen}
           options={{
+            tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
             tabBarLabel: ({ color }) => (
               <Text
                 numberOfLines={1}
@@ -417,19 +415,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 9.5,
     maxWidth: 112,
-  },
-  tabButtonWrap: {
-    flex: 1,
-    overflow: 'visible',
-  },
-  tabButton: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoutWiseProTabOffset: {
-    transform: [{ translateY: SCOUTWISE_PRO_TAB_VERTICAL_OFFSET }],
   },
   tabButtonPressed: {
     opacity: 0.92,
