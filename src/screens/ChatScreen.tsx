@@ -11,7 +11,6 @@ import {
   Platform,
   AppState,
   AppStateStatus,
-  InteractionManager,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '@/components/Header';
@@ -21,12 +20,8 @@ import WelcomeCard from '@/components/WelcomeCard';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
 import { TutorialHint, useTutorial } from '@/components/Tutorial';
 
-import type { Plan } from '@/services/api';
-import { healthcheck, sendChat, resetSession, getMe } from '@/services/api';
-import { incrementChatQueryCount, shouldShowFullscreenAd } from '@/ads/adGating';
-import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
+import { healthcheck, sendChat, resetSession } from '@/services/api';
 import { ACCENT, BG } from '@/theme';
-import { ProNotReadyScreen } from '@/ads/pro';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -58,14 +53,9 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
   const [sessionId, setSessionId] = useState<string>('');
-  const [plan, setPlan] = useState<Plan>('Free');
 
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
   const pendingIdRef = React.useRef<string | null>(null);
-
-  // Ads not ready / Pro upsell
-  const [proUpsellOpen, setProUpsellOpen] = useState(false);
-  const pendingSendRef = useRef<string | null>(null);
 
   // AppState + retry bookkeeping
   const appStateRef = React.useRef<AppStateStatus>(AppState.currentState);
@@ -81,21 +71,6 @@ export default function ChatScreen() {
     payload: ChatPayloadItem[];
     sessionId: string;
   } | null>(null);
-
-  useEffect(() => {
-    if (proUpsellOpen) return;
-
-    const pendingText = pendingSendRef.current;
-    if (!pendingText) return;
-
-    pendingSendRef.current = null;
-
-    // Wait for modal dismiss animation to finish
-    InteractionManager.runAfterInteractions(() => {
-      send(pendingText);
-    });
-  }, [proUpsellOpen]);
-
 
   // Keep sendingRef in sync (so AppState listener can read it without stale closures)
   useEffect(() => {
@@ -128,14 +103,6 @@ export default function ChatScreen() {
         } catch {}
       }
 
-      // Get user plan once (ads only for Free)
-      try {
-        const me = await getMe();
-        const p = me?.plan;
-        setPlan(p === 'Pro Monthly' || p === 'Pro Yearly' ? p : 'Free');
-      } catch {
-        setPlan('Free');
-      }
     })();
   }, [t]);
 
@@ -144,12 +111,6 @@ export default function ChatScreen() {
       setInputText(t('tutorialChatSampleQuery', 'find me a center forward'));
     }
   }, [isScoutWiseTutorial, t, tutorial.scoutWiseStep]);
-
-  useEffect(() => {
-    setInterstitialFailureHandler(() => setProUpsellOpen(true));
-    return () => setInterstitialFailureHandler(null);
-  }, []);
-
 
   // persist chat locally
   useEffect(() => {
@@ -334,25 +295,7 @@ export default function ChatScreen() {
     });
     pendingIdRef.current = pendingId;
 
-    // 3) Ad gating (NON-BLOCKING)
-    ///** 
-     
-    try {
-      const nextCount = await incrementChatQueryCount();
-
-      if (!isScoutWiseTutorial && !sending && plan === 'Free' && shouldShowFullscreenAd(nextCount)) {
-        const ok = showInterstitialSafely();
-        if (!ok) {
-          setProUpsellOpen(true);
-        }
-      }
-    } catch (e) {
-      if (!isScoutWiseTutorial) {
-        setProUpsellOpen(true);
-      }
-    }
-    //*/
-    // 4) Build payload (text-only)
+    // 3) Build payload (text-only)
     const textOnly = messages
       .filter((m) => (m.kind ?? 'text') === 'text')
       .concat({ ...userMsg, id: 'temp', createdAt: Date.now() });
@@ -495,10 +438,6 @@ export default function ChatScreen() {
             navigation.navigate('Strategy');
           }}
         />
-        <ProNotReadyScreen
-          visible={proUpsellOpen}
-          onClose={() => setProUpsellOpen(false)}
-        />       
       </View>
     </KeyboardAvoidingView>
   );

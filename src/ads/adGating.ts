@@ -1,32 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const KEY = 'ads.chat.queryCount.v1';
 const POTENTIAL_KEY = 'ads.playerPool.potentialRevealCount.v1';
 const WEEKLY_POPULAR_KEY = 'ads.playerPool.weeklyPopularRevealCount.v1';
 const MATCHUP_LAUNCH_KEY = 'ads.playerPool.matchupLaunchCount.v1';
 const PORTFOLIO_LINEUP_KEY = 'ads.portfolio.lineupLaunchCount.v1';
+const DAILY_SCOUT_CHALLENGE_KEY = 'ads.profile.dailyScoutChallengeOpenCount.v1';
 
-// TEST MODE:
-// show on 3,5,7,9...
-export function shouldShowFullscreenAd(queryCount: number) {
-  if (queryCount < 3) return false;
-  return (queryCount - 3) % 3 === 0;
-}
-
-export async function incrementChatQueryCount(): Promise<number> {
-  const raw = await AsyncStorage.getItem(KEY);
-  const current = raw ? parseInt(raw, 10) : 0;
-  const next = (Number.isFinite(current) ? current : 0) + 1;
-  await AsyncStorage.setItem(KEY, String(next));
-  return next;
-}
-
-export async function resetChatQueryCount(): Promise<void> {
-  await AsyncStorage.removeItem(KEY);
+function shouldShowEveryThird(count: number) {
+  return count > 0 && count % 3 === 0;
 }
 
 export function shouldShowPotentialInterstitial(revealCount: number) {
-  return revealCount > 0 && revealCount % 2 === 0;
+  return shouldShowEveryThird(revealCount);
 }
 
 export async function incrementPotentialRevealCount(): Promise<number> {
@@ -38,7 +23,7 @@ export async function incrementPotentialRevealCount(): Promise<number> {
 }
 
 export function shouldShowWeeklyPopularInterstitial(revealCount: number) {
-  return revealCount > 0 && revealCount % 2 === 0;
+  return shouldShowEveryThird(revealCount);
 }
 
 export async function incrementWeeklyPopularRevealCount(): Promise<number> {
@@ -50,7 +35,7 @@ export async function incrementWeeklyPopularRevealCount(): Promise<number> {
 }
 
 export function shouldShowMatchupLaunchInterstitial(launchCount: number) {
-  return launchCount > 0;
+  return shouldShowEveryThird(launchCount);
 }
 
 export async function incrementMatchupLaunchCount(): Promise<number> {
@@ -62,7 +47,7 @@ export async function incrementMatchupLaunchCount(): Promise<number> {
 }
 
 export function shouldShowPortfolioLineupInterstitial(launchCount: number) {
-  return launchCount > 0 && launchCount % 2 === 0;
+  return shouldShowEveryThird(launchCount);
 }
 
 export async function incrementPortfolioLineupLaunchCount(): Promise<number> {
@@ -70,5 +55,17 @@ export async function incrementPortfolioLineupLaunchCount(): Promise<number> {
   const current = raw ? parseInt(raw, 10) : 0;
   const next = (Number.isFinite(current) ? current : 0) + 1;
   await AsyncStorage.setItem(PORTFOLIO_LINEUP_KEY, String(next));
+  return next;
+}
+
+export function shouldShowDailyScoutChallengeInterstitial(openCount: number) {
+  return shouldShowEveryThird(openCount);
+}
+
+export async function incrementDailyScoutChallengeOpenCount(): Promise<number> {
+  const raw = await AsyncStorage.getItem(DAILY_SCOUT_CHALLENGE_KEY);
+  const current = raw ? parseInt(raw, 10) : 0;
+  const next = (Number.isFinite(current) ? current : 0) + 1;
+  await AsyncStorage.setItem(DAILY_SCOUT_CHALLENGE_KEY, String(next));
   return next;
 }

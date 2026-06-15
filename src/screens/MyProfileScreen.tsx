@@ -20,6 +20,10 @@ import {
 import { ProfileTutorialModal, TutorialHint, useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
 import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
+import {
+  incrementDailyScoutChallengeOpenCount,
+  shouldShowDailyScoutChallengeInterstitial,
+} from '@/ads/adGating';
 import { ProNotReadyScreen } from '@/ads/pro';
 import { ArrowDown } from 'lucide-react-native';
 
@@ -99,8 +103,16 @@ export default function MyProfileScreen() {
 
   const openDailyChallenge = async () => {
     if (plan === 'Free') {
-      const shown = await showInterstitialAndWaitSafely();
-      if (!shown) {
+      try {
+        const nextCount = await incrementDailyScoutChallengeOpenCount();
+        if (shouldShowDailyScoutChallengeInterstitial(nextCount)) {
+          const shown = await showInterstitialAndWaitSafely();
+          if (!shown) {
+            setProUpsellOpen(true);
+            return;
+          }
+        }
+      } catch {
         setProUpsellOpen(true);
         return;
       }
