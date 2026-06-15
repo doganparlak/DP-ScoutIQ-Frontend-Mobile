@@ -14,13 +14,9 @@ const UNIT_ID = Platform.OS === 'ios'
 
 let ad: InterstitialAd | null = null;
 let loaded = false;
+let loading = false;
 let showing = false;
 let pendingShow = false;
-let onFailure: (() => void) | null = null;
-
-export function setInterstitialFailureHandler(fn: (() => void) | null) {
-  onFailure = fn;
-}
 
 function getAd() {
   if (ad) return ad;
@@ -29,6 +25,7 @@ function getAd() {
 
   ad.addAdEventListener(AdEventType.LOADED, () => {
     loaded = true;
+    loading = false;
     //console.log('[ADS] loaded');
   });
 
@@ -40,47 +37,51 @@ function getAd() {
   ad.addAdEventListener(AdEventType.CLOSED, () => {
     loaded = false;
     showing = false;
-    ad?.load();
   });
 
   ad.addAdEventListener(AdEventType.ERROR, (e) => {
     loaded = false;
+    loading = false;
     showing = false;
     pendingShow = false;
-    onFailure?.();
   });
 
   return ad;
 }
 
-export function preloadInterstitial() {
-  getAd().load();
-}
-
-export function showInterstitialSafely(): boolean {
-  if (showing || pendingShow) return true;
-
+function loadInterstitial(timeoutMs = 2000): Promise<boolean> {
   const a = getAd();
 
-  if (!loaded) {
+  if (loaded) return Promise.resolve(true);
+  if (!loading) {
+    loading = true;
     a.load();
-    return false;
   }
 
-  pendingShow = true;
+  return new Promise((resolve) => {
+    let done = false;
 
-  Keyboard.dismiss();
+    const cleanup = () => {
+      subLoaded?.();
+      subError?.();
+      clearTimeout(timer);
+    };
 
-  InteractionManager.runAfterInteractions(() => {
-    setTimeout(() => {
-      if (!loaded || showing) {
-        pendingShow = false;
-        return;
-      }
-      a.show();
-    }, 400);
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(ok);
+    };
+
+    const subLoaded = a.addAdEventListener(AdEventType.LOADED, () => finish(true));
+    const subError = a.addAdEventListener(AdEventType.ERROR, () => finish(false));
+    const timer = setTimeout(() => finish(loaded), timeoutMs);
   });
-  return true
+}
+
+export function prepareInterstitial() {
+  void loadInterstitial();
 }
 
 export function showInterstitialAndWaitSafely(): Promise<boolean> {
@@ -88,15 +89,16 @@ export function showInterstitialAndWaitSafely(): Promise<boolean> {
 
   const a = getAd();
 
-  if (!loaded) {
-    a.load();
-    return Promise.resolve(false);
-  }
+  return new Promise(async (resolve) => {
+    const ready = await loadInterstitial();
+    if (!ready || showing || pendingShow) {
+      resolve(false);
+      return;
+    }
 
-  pendingShow = true;
-  Keyboard.dismiss();
+    pendingShow = true;
+    Keyboard.dismiss();
 
-  return new Promise((resolve) => {
     let finished = false;
 
     const cleanup = () => {

@@ -28,11 +28,14 @@ import {
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
-import { showInterstitialAndWaitSafely } from '../ads/interstitial';
+import { prepareInterstitial, showInterstitialAndWaitSafely } from '../ads/interstitial';
 import { ProNotReadyScreen } from '../ads/pro';
 import {
   incrementPortfolioLineupLaunchCount,
+  incrementPortfolioReportOpenCount,
+  shouldPrepareNextInterstitial,
   shouldShowPortfolioLineupInterstitial,
+  shouldShowPortfolioReportInterstitial,
 } from '../ads/adGating';
 import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
 import LineUp from './LineUp';
@@ -578,8 +581,44 @@ export default function FavoritePlayers({
 
     const isPro = plan === 'Pro Monthly' || plan === 'Pro Yearly';
     const existing = readyReports.get(player.id);
+    const grantReportAccessForFreeUser = async () => {
+      try {
+        const nextCount = await incrementPortfolioReportOpenCount();
 
-    // Pro: cached reports open immediately, free users see an interstitial on each click.
+        if (shouldShowPortfolioReportInterstitial(nextCount)) {
+          const shown = await showInterstitialAndWaitSafely();
+          if (shown) {
+            setReportAccessGranted((prev) => {
+              const next = new Set(prev);
+              next.add(player.id);
+              return next;
+            });
+            return true;
+          }
+
+          setProUpsellSource('report');
+          setProUpsellOpen(true);
+          return false;
+        }
+
+        if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
+        }
+
+        setReportAccessGranted((prev) => {
+          const next = new Set(prev);
+          next.add(player.id);
+          return next;
+        });
+        return true;
+      } catch {
+        setProUpsellSource('report');
+        setProUpsellOpen(true);
+        return false;
+      }
+    };
+
+    // Pro: cached reports open immediately, free users are gated every third report click.
     if (isPro && existing) {
       setScoutPlayer(toPlayerData(player));
       setScoutReport(existing);
@@ -590,24 +629,7 @@ export default function FavoritePlayers({
     if (!isPro && existing) {
       setActiveReportPlayerId(player.id);
 
-      try {
-        const shown = await showInterstitialAndWaitSafely();
-
-        if (shown) {
-          setReportAccessGranted((prev) => {
-            const next = new Set(prev);
-            next.add(player.id);
-            return next;
-          });
-          return;
-        }
-
-        setProUpsellSource('report');
-        setProUpsellOpen(true);
-      } catch {
-        setProUpsellSource('report');
-        setProUpsellOpen(true);
-      }
+      await grantReportAccessForFreeUser();
       return;
     }
 
@@ -640,26 +662,8 @@ export default function FavoritePlayers({
       return;
     }
 
-    // Free: try interstitial ad while backend works
-    try {
-      const shown = await showInterstitialAndWaitSafely();
-
-      if (shown) {
-        setReportAccessGranted((prev) => {
-          const next = new Set(prev);
-          next.add(player.id);
-          return next;
-        });
-        return;
-      }
-
-      // Ad not completed -> show upsell instead
-      setProUpsellSource('report');
-      setProUpsellOpen(true);
-    } catch {
-      setProUpsellSource('report');
-      setProUpsellOpen(true);
-    }
+    // Free: gate every third report click while backend works.
+    await grantReportAccessForFreeUser();
   };
 
   const handleDelete = async (id: string) => {
@@ -688,7 +692,12 @@ export default function FavoritePlayers({
 
     try {
       const nextCount = await incrementPortfolioLineupLaunchCount();
-      if (!shouldShowPortfolioLineupInterstitial(nextCount)) return;
+      if (!shouldShowPortfolioLineupInterstitial(nextCount)) {
+        if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
+        }
+        return;
+      }
 
       const shown = await showInterstitialAndWaitSafely();
       if (!shown) {

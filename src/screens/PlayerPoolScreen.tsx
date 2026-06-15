@@ -19,10 +19,11 @@ import {
   incrementMatchupLaunchCount,
   incrementWeeklyPopularRevealCount,
   shouldShowMatchupLaunchInterstitial,
+  shouldPrepareNextInterstitial,
   shouldShowPotentialInterstitial,
   shouldShowWeeklyPopularInterstitial,
 } from '@/ads/adGating';
-import { showInterstitialSafely, setInterstitialFailureHandler } from '@/ads/interstitial';
+import { prepareInterstitial, showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { ProNotReadyScreen } from '@/ads/pro';
 import CandidatePlayers, {
   CANDIDATE_TABLE_VISIBLE_ROWS,
@@ -180,11 +181,6 @@ export default function PlayerPoolScreen() {
       scrollToTutorialArea('matchup');
     }
   }, [isPlayerPoolTutorialActive, scrollToTutorialArea, tutorial.playerPoolStep]);
-
-  React.useEffect(() => {
-    setInterstitialFailureHandler(() => setProUpsellOpen(true));
-    return () => setInterstitialFailureHandler(null);
-  }, []);
 
   const skipPlayerPoolTutorial = React.useCallback(() => {
     setComparisonOpen(false);
@@ -454,10 +450,12 @@ export default function PlayerPoolScreen() {
       if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementPotentialRevealCount();
         if (shouldShowPotentialInterstitial(nextCount)) {
-          const ok = showInterstitialSafely();
+          const ok = await showInterstitialAndWaitSafely();
           if (!ok) {
             setProUpsellOpen(true);
           }
+        } else if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
         }
       }
 
@@ -524,10 +522,12 @@ export default function PlayerPoolScreen() {
       if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementPotentialRevealCount();
         if (shouldShowPotentialInterstitial(nextCount)) {
-          const ok = showInterstitialSafely();
+          const ok = await showInterstitialAndWaitSafely();
           if (!ok) {
             setProUpsellOpen(true);
           }
+        } else if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
         }
       }
 
@@ -595,10 +595,12 @@ export default function PlayerPoolScreen() {
       if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementWeeklyPopularRevealCount();
         if (shouldShowWeeklyPopularInterstitial(nextCount)) {
-          const ok = showInterstitialSafely();
+          const ok = await showInterstitialAndWaitSafely();
           if (!ok) {
             setProUpsellOpen(true);
           }
+        } else if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
         }
       }
 
@@ -694,10 +696,12 @@ export default function PlayerPoolScreen() {
       if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementMatchupLaunchCount();
         if (shouldShowMatchupLaunchInterstitial(nextCount)) {
-          const ok = showInterstitialSafely();
+          const ok = await showInterstitialAndWaitSafely();
           if (!ok) {
             setProUpsellOpen(true);
           }
+        } else if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
         }
       }
 

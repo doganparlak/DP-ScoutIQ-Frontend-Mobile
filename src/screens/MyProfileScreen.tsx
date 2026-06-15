@@ -19,9 +19,10 @@ import {
 } from '@/components/DailyScoutChallenge';
 import { ProfileTutorialModal, TutorialHint, useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
-import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
+import { prepareInterstitial, showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import {
   incrementDailyScoutChallengeOpenCount,
+  shouldPrepareNextInterstitial,
   shouldShowDailyScoutChallengeInterstitial,
 } from '@/ads/adGating';
 import { ProNotReadyScreen } from '@/ads/pro';
@@ -111,6 +112,8 @@ export default function MyProfileScreen() {
             setProUpsellOpen(true);
             return;
           }
+        } else if (shouldPrepareNextInterstitial(nextCount)) {
+          prepareInterstitial();
         }
       } catch {
         setProUpsellOpen(true);

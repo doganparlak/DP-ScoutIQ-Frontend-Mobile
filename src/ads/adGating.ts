@@ -4,10 +4,15 @@ const POTENTIAL_KEY = 'ads.playerPool.potentialRevealCount.v1';
 const WEEKLY_POPULAR_KEY = 'ads.playerPool.weeklyPopularRevealCount.v1';
 const MATCHUP_LAUNCH_KEY = 'ads.playerPool.matchupLaunchCount.v1';
 const PORTFOLIO_LINEUP_KEY = 'ads.portfolio.lineupLaunchCount.v1';
+const PORTFOLIO_REPORT_KEY = 'ads.portfolio.reportOpenCount.v1';
 const DAILY_SCOUT_CHALLENGE_KEY = 'ads.profile.dailyScoutChallengeOpenCount.v1';
 
 function shouldShowEveryThird(count: number) {
   return count > 0 && count % 3 === 0;
+}
+
+export function shouldPrepareNextInterstitial(count: number) {
+  return count > 0 && count % 3 === 2;
 }
 
 export function shouldShowPotentialInterstitial(revealCount: number) {
@@ -55,6 +60,18 @@ export async function incrementPortfolioLineupLaunchCount(): Promise<number> {
   const current = raw ? parseInt(raw, 10) : 0;
   const next = (Number.isFinite(current) ? current : 0) + 1;
   await AsyncStorage.setItem(PORTFOLIO_LINEUP_KEY, String(next));
+  return next;
+}
+
+export function shouldShowPortfolioReportInterstitial(openCount: number) {
+  return shouldShowEveryThird(openCount);
+}
+
+export async function incrementPortfolioReportOpenCount(): Promise<number> {
+  const raw = await AsyncStorage.getItem(PORTFOLIO_REPORT_KEY);
+  const current = raw ? parseInt(raw, 10) : 0;
+  const next = (Number.isFinite(current) ? current : 0) + 1;
+  await AsyncStorage.setItem(PORTFOLIO_REPORT_KEY, String(next));
   return next;
 }
 
