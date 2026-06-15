@@ -121,6 +121,10 @@ function favoriteInputFromPlayer(player: PlayerData) {
   };
 }
 
+function isNicknameTakenError(message: string) {
+  return message.toLowerCase().includes('nickname is already taken');
+}
+
 export function DailyScoutChallengeModal({
   visible,
   autoOpen = false,
@@ -225,7 +229,13 @@ export function DailyScoutChallengeModal({
       );
       setNickname('');
     } catch (err: any) {
-      Alert.alert(t('dailyScoutNicknameFailed', 'Nickname failed'), String(err?.message || err));
+      const message = String(err?.message || err);
+      Alert.alert(
+        t('dailyScoutNicknameFailed', 'Nickname failed'),
+        isNicknameTakenError(message)
+          ? t('dailyScoutNicknameTaken', 'This nickname is already taken for this week.')
+          : message,
+      );
     } finally {
       setSavingNickname(false);
     }
