@@ -580,6 +580,7 @@ export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
 }
 
 type AddFavoriteIn = {
+  playerId?: string;
   name: string;
   nationality?: string;
   age?: number;

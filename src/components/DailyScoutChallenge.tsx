@@ -374,7 +374,10 @@ export function DailyScoutChallengeModal({
                     <PlayerCard
                       player={choice.player}
                       onAddFavorite={async (player) => {
-                        await addFavoritePlayer(favoriteInputFromPlayer(player));
+                        await addFavoritePlayer({
+                          ...favoriteInputFromPlayer(player),
+                          playerId: choice.id,
+                        });
                         return true;
                       }}
                       visualTheme={{ cardBackground: CARD, accent: ACCENT }}
