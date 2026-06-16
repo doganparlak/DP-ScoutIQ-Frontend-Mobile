@@ -33,7 +33,7 @@ const MAIN_TAB_ICON_SIZE = 30;
 const MAIN_TAB_ICON_LABEL_GAP = 8;
 const SIDE_TAB_VERTICAL_OFFSET = -4;
 
-const isFreePlan = (plan: Plan | null) => plan === 'Free';
+const isProPlan = (plan: Plan | null) => plan === 'Pro Monthly' || plan === 'Pro Yearly';
 
 type MainTabIconSlotProps = {
   children: React.ReactNode;
@@ -214,7 +214,7 @@ function ScoutWiseProTabButton({
         const latestPlan = await onResolvePlan();
 
         navigation.navigate('Chat', {
-          screen: isScoutWiseTutorial || !isFreePlan(latestPlan) ? 'LegacyStrategy' : 'ProHome',
+          screen: isScoutWiseTutorial || isProPlan(latestPlan) ? 'LegacyStrategy' : 'ProHome',
         });
       }}
       style={({ pressed }) => [

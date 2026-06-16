@@ -52,6 +52,7 @@ import {
   searchPlayerPool,
   type PlayerPoolSearchInput,
   type MatchupComparisonResponse,
+  type Plan,
 } from '@/services/api';
 import { ACCENT, BG, WORLD_CUP_COLORS } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -89,7 +90,7 @@ export default function PlayerPoolScreen() {
   const [error, setError] = React.useState<string | null>(null);
   const [positionOpen, setPositionOpen] = React.useState(false);
   const [sortOpen, setSortOpen] = React.useState(false);
-  const [plan, setPlan] = React.useState<'Free' | 'Pro Monthly' | 'Pro Yearly'>('Free');
+  const [plan, setPlan] = React.useState<Plan>('Free');
   const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
@@ -197,7 +198,13 @@ export default function PlayerPoolScreen() {
       try {
         const me = await getMe();
         const currentPlan = me?.plan;
-        setPlan(currentPlan === 'Pro Monthly' || currentPlan === 'Pro Yearly' ? currentPlan : 'Free');
+        const normalizedPlan: Plan =
+          currentPlan === 'No Ads Monthly' ||
+            currentPlan === 'Pro Monthly' ||
+            currentPlan === 'Pro Yearly'
+            ? currentPlan
+            : 'Free';
+        setPlan(normalizedPlan);
       } catch {
         setPlan('Free');
       }

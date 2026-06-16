@@ -14,10 +14,19 @@ import { activateIAPSubscription } from '@/services/api';
 //const TAG = '[RESTORE_IAP]';
 //const log = (...args: any[]) => console.log(TAG, ...args);
 
-const IOS_SKUS = new Set(['scoutwise_pro_monthly_ios', 'scoutwise_pro_yearly_ios']);
-const ANDROID_SKUS = new Set(['scoutwise_pro_monthly_android', 'scoutwise_pro_yearly_android']);
+const IOS_SKUS = new Set([
+  'scoutwise_no_ads_monthly_ios',
+  'scoutwise_pro_monthly_ios',
+  'scoutwise_pro_yearly_ios',
+]);
+const ANDROID_SKUS = new Set([
+  'scoutwise_no_ads_monthly_android',
+  'scoutwise_pro_monthly_android',
+  'scoutwise_pro_yearly_android',
+]);
 
 const isYearly = (sku: string) => (sku || '').toLowerCase().includes('yearly');
+const isPro = (sku: string) => (sku || '').toLowerCase().includes('_pro_');
 
 function pickBestSubscription(purchases: Purchase[]): Purchase | null {
   const subs = purchases.filter(p => {
@@ -34,9 +43,10 @@ function pickBestSubscription(purchases: Purchase[]): Purchase | null {
 
   if (!subs.length) return null;
 
-  // Prefer yearly if both exist
+  // Prefer Pro over No Ads, and yearly if both Pro subscriptions exist.
   const yearly = subs.find(p => isYearly(p.productId ?? ''));
-  const best = yearly ?? subs[0];
+  const pro = subs.find(p => isPro(p.productId ?? ''));
+  const best = yearly ?? pro ?? subs[0];
 
   //log('pickBestSubscription: picked=', best.productId, 'yearlyPreferred=', !!yearly);
   return best;

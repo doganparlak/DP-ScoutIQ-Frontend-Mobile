@@ -56,10 +56,7 @@ function hasAbbreviation(token: string) {
 function compactDisplayName(name: string) {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return name;
-  if (parts.some(hasAbbreviation)) {
-    return parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
-  }
-  return parts[0];
+  return parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
 }
 
 type Props = {
@@ -194,7 +191,7 @@ export default function CandidatePlayers({
           </Text>
           <View style={verticalSeparatorStyle} />
           <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.name, textAlign: 'center' }]}>
-            {nameFormatter ? nameFormatter(row.player.name) : row.player.name.split(/\s+/)[0] || row.player.name}
+            {nameFormatter ? nameFormatter(row.player.name) : compactDisplayName(row.player.name)}
           </Text>
           {!worldCupMode ? (
             <>

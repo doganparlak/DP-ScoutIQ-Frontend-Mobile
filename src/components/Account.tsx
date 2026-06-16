@@ -46,7 +46,9 @@ export default function Account({
 
   // Map plan code to localized label, e.g. plan_Pro
   const planLabel =
-    plan === 'Pro Monthly'
+    plan === 'No Ads Monthly'
+      ? t('noAdsMonthly', 'No Ads Monthly')
+      : plan === 'Pro Monthly'
       ? t('proMonthly', 'Pro Monthly')
       : plan === 'Pro Yearly'
         ? t('proYearly', 'Pro Yearly')

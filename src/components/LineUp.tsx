@@ -60,10 +60,8 @@ function hasAbbreviation(token: string) {
 function displayLineupName(name: string) {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '';
-  if (parts.some(hasAbbreviation)) {
-    return parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
-  }
-  return parts[0];
+  const lastName = parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
+  return lastName.length > 8 ? parts[0] : lastName;
 }
 
 function rowLabels(count: number, rowIndex: number, totalRows: number) {

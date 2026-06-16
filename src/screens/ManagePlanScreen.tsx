@@ -37,11 +37,16 @@ import {
 const IOS_SKU_MONTHLY = 'scoutwise_pro_monthly_ios';
 const ANDROID_SKU_MONTHLY = 'scoutwise_pro_monthly_android';
 
+// ✅ No Ads Monthly SKUs
+const IOS_SKU_NO_ADS_MONTHLY = 'scoutwise_no_ads_monthly_ios';
+const ANDROID_SKU_NO_ADS_MONTHLY = 'scoutwise_no_ads_monthly_android';
+
 // ✅ Yearly SKUs
 const IOS_SKU_YEARLY = 'scoutwise_pro_yearly_ios';
 const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
 
 const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
+const isPaidSubscription = (p: Plan) => p === 'No Ads Monthly' || isPro(p);
 
 //const log = (...args: any[]) => console.log('[IAP]', ...args);
 
@@ -59,6 +64,7 @@ export default function ManagePlan() {
   // ✅ plan label for UI
   const planLabel = React.useCallback(
     (p: Plan) => {
+      if (p === 'No Ads Monthly') return t('noAdsMonthly', 'No Ads Monthly');
       if (p === 'Pro Monthly') return t('proMonthly', 'Pro Monthly');
       if (p === 'Pro Yearly') return t('proYearly', 'Pro Yearly');
       return t('free', 'Free');
@@ -68,6 +74,7 @@ export default function ManagePlan() {
 
   const tablePlanLabel = React.useCallback(
     (p: Plan) => {
+      if (p === 'No Ads Monthly') return t('noAdsMonthlyTable', 'No Ads\nMonthly');
       if (p === 'Pro Monthly') return t('proMonthly', 'Pro Monthly').replace(' ', '\n');
       if (p === 'Pro Yearly') return t('proYearly', 'Pro Yearly').replace(' ', '\n');
       return t('free', 'Free');
@@ -77,6 +84,9 @@ export default function ManagePlan() {
 
   // ✅ pick SKU by selected plan
   const selectedSku = React.useMemo(() => {
+    if (selected === 'No Ads Monthly') {
+      return Platform.select({ ios: IOS_SKU_NO_ADS_MONTHLY, android: ANDROID_SKU_NO_ADS_MONTHLY })!;
+    }
     if (selected === 'Pro Monthly') {
       return Platform.select({ ios: IOS_SKU_MONTHLY, android: ANDROID_SKU_MONTHLY })!;
     }
@@ -87,7 +97,7 @@ export default function ManagePlan() {
   }, [selected]);
 
   const PLANS: Array<{ name: Plan }> = React.useMemo(
-    () => [{ name: 'Free' }, { name: 'Pro Monthly' }, { name: 'Pro Yearly' }],
+    () => [{ name: 'Free' }, { name: 'No Ads Monthly' }, { name: 'Pro Monthly' }, { name: 'Pro Yearly' }],
     [],
   );
 
@@ -120,6 +130,8 @@ export default function ManagePlan() {
           skus: [
             IOS_SKU_MONTHLY,
             ANDROID_SKU_MONTHLY,
+            IOS_SKU_NO_ADS_MONTHLY,
+            ANDROID_SKU_NO_ADS_MONTHLY,
             IOS_SKU_YEARLY,
             ANDROID_SKU_YEARLY,
           ],
@@ -130,12 +142,15 @@ export default function ManagePlan() {
         //log('Subs:', subs);
         if (subs) {
           for (const s of subs) {
-          if (s.id === IOS_SKU_MONTHLY || s.id === ANDROID_SKU_MONTHLY) {
-            map['Pro Monthly'] = s.displayPrice;
-          }
-          if (s.id === IOS_SKU_YEARLY || s.id === ANDROID_SKU_YEARLY) {
-            map['Pro Yearly'] = s.displayPrice;
-          }
+            if (s.id === IOS_SKU_NO_ADS_MONTHLY || s.id === ANDROID_SKU_NO_ADS_MONTHLY) {
+              map['No Ads Monthly'] = s.displayPrice;
+            }
+            if (s.id === IOS_SKU_MONTHLY || s.id === ANDROID_SKU_MONTHLY) {
+              map['Pro Monthly'] = s.displayPrice;
+            }
+            if (s.id === IOS_SKU_YEARLY || s.id === ANDROID_SKU_YEARLY) {
+              map['Pro Yearly'] = s.displayPrice;
+            }
           }
         }
         setPriceMap(map);
@@ -242,11 +257,11 @@ export default function ManagePlan() {
       Platform.OS === 'ios'
         ? t(
             'manageProIOS',
-            'You are already on a Pro plan. Please manage it in your Apple subscription settings.',
+            'You are already on a paid plan. Please manage it in your Apple subscription settings.',
           )
         : t(
             'manageProAndroid',
-            'You are already on a Pro plan. Please manage it in your Google Play subscription settings.',
+            'You are already on a paid plan. Please manage it in your Google Play subscription settings.',
           );
 
     Alert.alert(t('manageSubscriptionTitle', 'Manage subscription'), message, [
@@ -279,6 +294,11 @@ export default function ManagePlan() {
           t('alreadyProTitle', 'Already on Pro'),
           t('alreadyProBody', 'You already have Pro access.'),
         );
+      } else if (currentPlan === 'No Ads Monthly') {
+        Alert.alert(
+          t('alreadyNoAdsTitle', 'Already on No Ads'),
+          t('alreadyNoAdsBody', 'Your No Ads Monthly plan is already active.'),
+        );
       } else {
         Alert.alert(
           t('alreadyFreeTitle', 'Already on Free'),
@@ -288,15 +308,15 @@ export default function ManagePlan() {
       return;
     }
 
-    // ✅ Pro Monthly <-> Pro Yearly 
-    if (isPro(currentPlan) && isPro(selected)) {
+    // ✅ Store-managed paid plan changes
+    if (isPaidSubscription(currentPlan) && isPaidSubscription(selected)) {
       showManageStoreSubscriptionAlert();
       return;
     }
 
-    // Pro -> Free downgrade just inform stores handle those
+    // Paid -> Free downgrade: stores handle cancellation.
     if (selected === 'Free') {
-      if (isPro(currentPlan)) {
+      if (isPaidSubscription(currentPlan)) {
         showDownGradeAlert();
         return;
       }
@@ -308,7 +328,7 @@ export default function ManagePlan() {
     return;
     }
 
-    // 2) Free -> Pro upgrade
+    // 2) Free -> paid upgrade
     if (!iapReady) {
       Alert.alert(
         t('error', 'Error'),
@@ -407,6 +427,8 @@ export default function ManagePlan() {
               >
                 {p.name === 'Free'
                   ? t('planFeatures_Free', 'Ad-supported')
+                  : p.name === 'No Ads Monthly'
+                    ? t('planFeatures_NoAdsMonthly', 'Ad-free')
                   : p.name === 'Pro Monthly'
                     ? [
                         t('planFeatures_Pro', 'Ad-free'),
@@ -428,7 +450,7 @@ export default function ManagePlan() {
               >
                 {p.name === 'Free'
                   ? '-'
-                  : p.name === 'Pro Monthly'
+                  : p.name === 'No Ads Monthly' || p.name === 'Pro Monthly'
                     ? t('duration_month', '1 month')
                     : t('duration_year', '1 year')}
               </Text>
@@ -440,16 +462,16 @@ export default function ManagePlan() {
                   selected === p.name && styles.cellActive,
                 ]}
               >
-                {p.name === 'Free' ? '-' : priceMap[p.name] ?? '...'}
+                {p.name === 'Free' ? '-' : priceMap[p.name] ?? t('pricePending', '...')}
               </Text>
             </Pressable>
           ))}
 
           {/* 1.5) Subscription end date (Pro only) */}
-          {isPro(currentPlan) && formattedEndDate && (
+          {isPaidSubscription(currentPlan) && formattedEndDate && (
             <View style={styles.subscriptionRow}>
               <Text style={styles.subscriptionLabel}>
-                {t('subscriptionEndsAt', 'Pro subscription end date')}
+                {t('subscriptionEndsAt', 'Subscription end date')}
               </Text>
               <Text style={styles.subscriptionValue}>{formattedEndDate}</Text>
             </View>
@@ -510,7 +532,7 @@ export default function ManagePlan() {
           <Text style={styles.cancelNote}>
             {t(
               'cancelNote',
-              'Your Pro access will stay active until your current period ends.',
+              'Your paid access will stay active until your current period ends.',
             )}
           </Text>
         </View>
@@ -631,7 +653,7 @@ const styles = StyleSheet.create({
   currentWrap: { marginTop: 14 },
   currentLabel: { color: MUTED, fontWeight: '600', marginBottom: 6, textAlign: 'left' },
   currentPillRow: { alignItems: 'center' },
-  currentPillBox: { width: '33%' },
+  currentPillBox: { minWidth: '33%', maxWidth: '70%' },
   currentPill: {
     backgroundColor: '#18221B',
     borderWidth: 1,
@@ -645,9 +667,10 @@ const styles = StyleSheet.create({
 
   // segmented options
   label: { color: MUTED, marginBottom: 6, marginTop: 12 },
-  options: { flexDirection: 'row', gap: 8 },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   option: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '47%',
     backgroundColor: CARD,
     borderWidth: 1,
     borderColor: LINE,
@@ -656,7 +679,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionActive: { borderColor: ACCENT, backgroundColor: '#18221B' },
-  optionText: { color: TEXT, fontWeight: '600' },
+  optionText: { color: TEXT, fontWeight: '600', textAlign: 'center' },
   optionTextActive: { color: ACCENT },
 
   // CTA

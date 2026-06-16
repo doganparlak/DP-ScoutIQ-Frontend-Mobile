@@ -87,18 +87,9 @@ function roleLabel(value?: string) {
 }
 
 function matchupNameLabel(name: string) {
-  const trimmed = name.trim();
-  if (!trimmed || trimmed.includes('.')) return trimmed || name;
-
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) return parts[0];
-
-  const initials = parts
-    .slice(1)
-    .map((part) => `${part[0]?.toLocaleUpperCase() ?? ''}.`)
-    .join('');
-
-  return `${parts[0]} ${initials}`;
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return name;
+  return parts.filter((part) => !part.includes('.')).at(-1) || parts.at(-1) || parts[0];
 }
 
 export default function MatchupCenter({
@@ -172,7 +163,7 @@ export default function MatchupCenter({
         <Text style={[styles.td, styles.slotLabel, theme && { color: theme.accent }, { flex: COL.index }]}>{label}</Text>
         <View style={styles.vsep} />
         <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
-          {row.player.name.split(/\s+/)[0] || row.player.name}
+          {matchupNameLabel(row.player.name)}
         </Text>
         {!worldCupMode ? (
           <>

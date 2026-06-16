@@ -95,9 +95,15 @@ const COL = {
 type SortKey = 'name' | 'nationality' | 'team' | 'age' | 'roles' | 'form' | 'potential';
 type SortDir = 'asc' | 'desc';
 
-function firstWord(full: string): string {
+function hasAbbreviation(token: string) {
+  return /[.]/.test(token);
+}
+
+function portfolioDisplayName(full: string): string {
   const parts = (full || '').trim().split(/\s+/).filter(Boolean);
-  return parts[0] ?? '';
+  if (!parts.length) return '';
+  const lastName = parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
+  return lastName.length > 8 ? parts[0] : lastName;
 }
 
 function missingRank(value: unknown): 0 | 1 {
@@ -579,7 +585,7 @@ export default function FavoritePlayers({
 
     if (tutorialLocked) return;
 
-    const isPro = plan === 'Pro Monthly' || plan === 'Pro Yearly';
+    const hasAdFreeAccess = plan !== 'Free';
     const existing = readyReports.get(player.id);
     const grantReportAccessForFreeUser = async () => {
       try {
@@ -618,15 +624,15 @@ export default function FavoritePlayers({
       }
     };
 
-    // Pro: cached reports open immediately, free users are gated every third report click.
-    if (isPro && existing) {
+    // Paid plans: cached reports open immediately, free users are gated every third report click.
+    if (hasAdFreeAccess && existing) {
       setScoutPlayer(toPlayerData(player));
       setScoutReport(existing);
       setScoutOpen(true);
       return;
     }
 
-    if (!isPro && existing) {
+    if (!hasAdFreeAccess && existing) {
       setActiveReportPlayerId(player.id);
 
       await grantReportAccessForFreeUser();
@@ -652,8 +658,8 @@ export default function FavoritePlayers({
     setActiveReportPlayerId(player.id);
     allowReport(player);
 
-    // Pro: instant access, no ad
-    if (isPro) {
+    // Paid plans: instant access, no ad
+    if (hasAdFreeAccess) {
       setReportAccessGranted((prev) => {
         const next = new Set(prev);
         next.add(player.id);
@@ -687,8 +693,8 @@ export default function FavoritePlayers({
       return;
     }
 
-    const isPro = plan === 'Pro Monthly' || plan === 'Pro Yearly';
-    if (isPro) return;
+    const hasAdFreeAccess = plan !== 'Free';
+    if (hasAdFreeAccess) return;
 
     try {
       const nextCount = await incrementPortfolioLineupLaunchCount();
@@ -784,7 +790,7 @@ export default function FavoritePlayers({
           </Pressable>
         ) : (
           <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
-            {firstWord((item as PlayerRow).name)}
+            {portfolioDisplayName((item as PlayerRow).name)}
           </Text>
         )}
 

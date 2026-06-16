@@ -51,7 +51,7 @@ export type ChatBackendResponse = {
 };
 
 // --- add under other exported types ---
-export type Plan = 'Free' | 'Pro Monthly' | 'Pro Yearly';
+export type Plan = 'Free' | 'No Ads Monthly' | 'Pro Monthly' | 'Pro Yearly';
 
 export interface ActivateIAPSubscriptionIn {
   platform: 'ios' | 'android';
