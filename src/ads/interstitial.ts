@@ -1,5 +1,6 @@
 import { InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 import { Platform, InteractionManager, Keyboard } from 'react-native';
+import { logAdLifecycle } from './logging';
 
 const IOS_INTERSTITIAL = 'ca-app-pub-2754612075301490/1118898057'; 
 // REAL ca-app-pub-2754612075301490/1118898057
@@ -26,17 +27,19 @@ function getAd() {
   ad.addAdEventListener(AdEventType.LOADED, () => {
     loaded = true;
     loading = false;
-    //console.log('[ADS] loaded');
+    logAdLifecycle('interstitial', 'loaded');
   });
 
   ad.addAdEventListener(AdEventType.OPENED, () => {
     showing = true;
     pendingShow = false;
+    logAdLifecycle('interstitial', 'opened');
   });
 
   ad.addAdEventListener(AdEventType.CLOSED, () => {
     loaded = false;
     showing = false;
+    logAdLifecycle('interstitial', 'closed');
   });
 
   ad.addAdEventListener(AdEventType.ERROR, (e) => {
@@ -44,6 +47,11 @@ function getAd() {
     loading = false;
     showing = false;
     pendingShow = false;
+    const errorDetails = e as Error & { code?: string | number };
+    logAdLifecycle('interstitial', 'error', {
+      code: String(errorDetails?.code ?? 'unknown'),
+      message: String(e?.message ?? 'unknown'),
+    });
   });
 
   return ad;
@@ -55,6 +63,7 @@ function loadInterstitial(timeoutMs = 2000): Promise<boolean> {
   if (loaded) return Promise.resolve(true);
   if (!loading) {
     loading = true;
+    logAdLifecycle('interstitial', 'load_started');
     a.load();
   }
 
@@ -85,13 +94,17 @@ export function prepareInterstitial() {
 }
 
 export function showInterstitialAndWaitSafely(): Promise<boolean> {
-  if (showing || pendingShow) return Promise.resolve(false);
+  if (showing || pendingShow) {
+    logAdLifecycle('interstitial', 'show_skipped', { reason: 'busy' });
+    return Promise.resolve(false);
+  }
 
   const a = getAd();
 
   return new Promise(async (resolve) => {
     const ready = await loadInterstitial();
     if (!ready || showing || pendingShow) {
+      logAdLifecycle('interstitial', 'show_skipped', { reason: ready ? 'busy' : 'not_ready' });
       resolve(false);
       return;
     }
@@ -125,9 +138,11 @@ export function showInterstitialAndWaitSafely(): Promise<boolean> {
     InteractionManager.runAfterInteractions(() => {
       setTimeout(() => {
         if (!loaded || showing) {
+          logAdLifecycle('interstitial', 'show_skipped', { reason: loaded ? 'already_showing' : 'not_loaded' });
           finish(false);
           return;
         }
+        logAdLifecycle('interstitial', 'show_called');
         a.show();
       }, 400);
     });

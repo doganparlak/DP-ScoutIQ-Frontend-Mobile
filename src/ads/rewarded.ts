@@ -1,6 +1,7 @@
 // src/ads/rewarded.ts
 import { RewardedAd, AdEventType, RewardedAdEventType } from 'react-native-google-mobile-ads';
 import { InteractionManager, Keyboard, Platform } from 'react-native';
+import { logAdLifecycle } from './logging';
 
 const IOS_REWARDED = 'ca-app-pub-2754612075301490/7917252456';
 // REAL: ca-app-pub-2754612075301490/7917252456
@@ -24,17 +25,21 @@ function getAd() {
   ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
     loaded = true;
     pendingShow = false;
+    logAdLifecycle('rewarded', 'loaded');
   });
 
   ad.addAdEventListener(AdEventType.OPENED, () => {
     showing = true;
     pendingShow = false;
+    logAdLifecycle('rewarded', 'opened');
   });
 
   ad.addAdEventListener(AdEventType.CLOSED, () => {
     loaded = false;
     showing = false;
     pendingShow = false; 
+    logAdLifecycle('rewarded', 'closed');
+    logAdLifecycle('rewarded', 'load_started', { reason: 'preload_next' });
     ad?.load(); // preload next
   });
 
@@ -42,12 +47,18 @@ function getAd() {
     loaded = false;
     showing = false;
     pendingShow = false;
+    const errorDetails = e as Error & { code?: string | number };
+    logAdLifecycle('rewarded', 'error', {
+      code: String(errorDetails?.code ?? 'unknown'),
+      message: String(e?.message ?? 'unknown'),
+    });
   });
 
   return ad;
 }
 
 export function preloadRewarded() {
+  logAdLifecycle('rewarded', 'load_started', { reason: 'preload' });
   getAd().load();
 }
 
@@ -63,11 +74,16 @@ export function isRewardedLoaded() {
  *  - shown: false if not ready (so you can skip / show message)
  */
 export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolean }> {
-  if (showing || pendingShow) return Promise.resolve({ shown: false, rewarded: false });
+  if (showing || pendingShow) {
+    logAdLifecycle('rewarded', 'show_skipped', { reason: 'busy' });
+    return Promise.resolve({ shown: false, rewarded: false });
+  }
 
   const a = getAd();
 
   if (!loaded) {
+    logAdLifecycle('rewarded', 'show_skipped', { reason: 'not_ready' });
+    logAdLifecycle('rewarded', 'load_started', { reason: 'show_not_ready' });
     a.load();
     return Promise.resolve({ shown: false, rewarded: false });
   }
@@ -95,6 +111,7 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
 
     const subReward = a.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
       gotReward = true;
+      logAdLifecycle('rewarded', 'earned_reward');
     });
 
     const subClosed = a.addAdEventListener(AdEventType.CLOSED, () => {
@@ -109,9 +126,11 @@ export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolea
       setTimeout(() => {
         if (!loaded || showing) {
           pendingShow = false;
+          logAdLifecycle('rewarded', 'show_skipped', { reason: loaded ? 'already_showing' : 'not_loaded' });
           finish(false, false);
           return;
         }
+        logAdLifecycle('rewarded', 'show_called');
         a.show();
       }, 400);
     });
@@ -122,7 +141,10 @@ export function ensureRewardedLoaded(timeoutMs = 15000): Promise<boolean> {
   const a = getAd();
 
   // kick load if needed
-  if (!loaded) a.load();
+  if (!loaded) {
+    logAdLifecycle('rewarded', 'load_started', { reason: 'ensure_loaded' });
+    a.load();
+  }
   if (loaded) return Promise.resolve(true);
 
   return new Promise((resolve) => {
