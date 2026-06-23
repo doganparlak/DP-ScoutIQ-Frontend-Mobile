@@ -85,6 +85,7 @@ function midfieldLabels(count: number) {
   if (count === 3) return ['LCM', 'CM', 'RCM'];
   if (count === 4) return ['LM', 'LCM', 'RCM', 'RM'];
   if (count === 5) return ['LM', 'LCM', 'CM', 'RCM', 'RM'];
+  if (count === 6) return ['LM', 'LCM', 'LCM', 'RCM', 'RCM', 'RM'];
   return Array.from({ length: count }, (_, i) => `M${i + 1}`);
 }
 
@@ -100,6 +101,7 @@ function attackingLabels(count: number) {
   if (count === 1) return ['CF'];
   if (count === 2) return ['LCF', 'RCF'];
   if (count === 3) return ['LW', 'CF', 'RW'];
+  if (count === 4) return ['LW', 'LCF', 'RCF', 'RW'];
   return Array.from({ length: count }, (_, i) => `A${i + 1}`);
 }
 
@@ -161,6 +163,13 @@ export default function LineUp({
     () => new Map(players.map((player) => [player.id, player])),
     [players],
   );
+  const assignedPlayers = React.useMemo(() => {
+    return new Map(
+      slots
+        .map((slot) => [slot.id, playersById.get(assignments[slot.id] || '')] as const)
+        .filter((entry): entry is readonly [string, LineUpPlayer] => Boolean(entry[1])),
+    );
+  }, [assignments, playersById, slots]);
 
   const rows = React.useMemo(() => {
     const grouped = new Map<number, typeof slots>();
@@ -200,10 +209,11 @@ export default function LineUp({
   const assignPlayer = (playerId?: string) => {
     if (!activeSlotId) return;
     setAssignments((current) => {
+      const currentSlots = new Set(slots.map((slot) => slot.id));
       if (
         playerId &&
         Object.entries(current).some(([slotId, assignedPlayerId]) => (
-          slotId !== activeSlotId && assignedPlayerId === playerId
+          currentSlots.has(slotId) && slotId !== activeSlotId && assignedPlayerId === playerId
         ))
       ) {
         return current;
@@ -216,18 +226,31 @@ export default function LineUp({
   const resetLineup = () => setAssignments({});
 
   const selectFormation = (item: string) => {
+    const nextSlots = buildSlots(item);
+    const nextSlotIds = new Set(nextSlots.map((slot) => slot.id));
+    setAssignments((current) => {
+      const next: Record<string, string | undefined> = {};
+      nextSlots.forEach((slot) => {
+        next[slot.id] = current[slot.id];
+      });
+      return next;
+    });
+    setActiveSlotId((current) => {
+      if (current && nextSlotIds.has(current)) return current;
+      return null;
+    });
     setFormation(item);
     setFormationOpen(false);
   };
 
   const pickerPlayers = React.useMemo(() => {
     const assignedElsewhere = new Set(
-      Object.entries(assignments)
-        .filter(([slotId, playerId]) => slotId !== activeSlotId && !!playerId)
-        .map(([, playerId]) => playerId),
+      Array.from(assignedPlayers.entries())
+        .filter(([slotId]) => slotId !== activeSlotId)
+        .map(([, player]) => player.id),
     );
     return players.filter((player) => !assignedElsewhere.has(player.id));
-  }, [activeSlotId, assignments, players]);
+  }, [activeSlotId, assignedPlayers, players]);
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
