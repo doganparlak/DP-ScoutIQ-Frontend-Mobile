@@ -17,9 +17,11 @@ import { Eye } from 'lucide-react-native';
 import {
   incrementPotentialRevealCount,
   incrementMatchupLaunchCount,
+  incrementPortfolioReportOpenCount,
   incrementWeeklyPopularRevealCount,
   shouldShowMatchupLaunchInterstitial,
   shouldPrepareNextInterstitial,
+  shouldShowPortfolioReportInterstitial,
   shouldShowPotentialInterstitial,
   shouldShowWeeklyPopularInterstitial,
 } from '@/ads/adGating';
@@ -36,15 +38,18 @@ import { DailyScoutChallengeModal } from '@/components/DailyScoutChallenge';
 import Header from '@/components/Header';
 import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
+import ScoutingReport from '@/components/ScoutingReport';
 import SearchFilters from '@/components/SearchFilters';
 import { TutorialHint, useTutorial } from '@/components/Tutorial';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
   ROLE_SHORT_TO_LONG,
+  addFavoritePlayer,
   getMatchupComparison,
   getMe,
   getPlayerPoolOptions,
+  getScoutingReport,
   getWeeklyPopularPlayers,
   recordPlayerPoolSearchHit,
   revealPlayerPoolForm,
@@ -53,6 +58,7 @@ import {
   type PlayerPoolSearchInput,
   type MatchupComparisonResponse,
   type Plan,
+  type ScoutingReportResponse,
 } from '@/services/api';
 import { ACCENT, BG, WORLD_CUP_COLORS } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -61,6 +67,10 @@ type SortDir = 'asc' | 'desc';
 
 const ANDROID_REVEAL_FORM_EXTRA_SCROLL = 100;
 const ANDROID_ADD_MATCHUP_EXTRA_SCROLL = 100;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export default function PlayerPoolScreen() {
   const { t, i18n } = useTranslation();
@@ -97,12 +107,19 @@ export default function PlayerPoolScreen() {
   const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
   const [weeklyPopularLoading, setWeeklyPopularLoading] = React.useState(false);
   const [weeklyPopularRows, setWeeklyPopularRows] = React.useState<SearchResultRow[]>([]);
+  const [matchupMode, setMatchupMode] = React.useState<2 | 3>(2);
   const [matchupRow1, setMatchupRow1] = React.useState<SearchResultRow | null>(null);
   const [matchupRow2, setMatchupRow2] = React.useState<SearchResultRow | null>(null);
+  const [matchupRow3, setMatchupRow3] = React.useState<SearchResultRow | null>(null);
   const [comparisonOpen, setComparisonOpen] = React.useState(false);
   const [comparisonLoading, setComparisonLoading] = React.useState(false);
   const [comparisonError, setComparisonError] = React.useState<string | null>(null);
   const [comparisonData, setComparisonData] = React.useState<MatchupComparisonResponse | null>(null);
+  const [reportLoadingPlayerId, setReportLoadingPlayerId] = React.useState<string | null>(null);
+  const [readyReportsByPlayerId, setReadyReportsByPlayerId] = React.useState<Record<string, ScoutingReportResponse>>({});
+  const [scoutOpen, setScoutOpen] = React.useState(false);
+  const [scoutPlayer, setScoutPlayer] = React.useState<PlayerData | null>(null);
+  const [scoutReport, setScoutReport] = React.useState<ScoutingReportResponse | null>(null);
   const [worldCupMode, setWorldCupMode] = React.useState(false);
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
@@ -242,7 +259,7 @@ export default function PlayerPoolScreen() {
     setSelectedNationality(null);
     setLeague('');
     setSelectedLeague(null);
-    setSortKey((current) => (current === 'nationality' || current === 'league' ? 'name' : current));
+    setSortKey((current) => (current === 'nationality' ? 'name' : current));
   }, [worldCupMode]);
 
   const nationalitySuggestions = React.useMemo(() => {
@@ -314,6 +331,7 @@ export default function PlayerPoolScreen() {
     clearFilters();
     setMatchupRow1(null);
     setMatchupRow2(null);
+    setMatchupRow3(null);
     setComparisonOpen(false);
     setComparisonLoading(false);
     setComparisonError(null);
@@ -355,7 +373,6 @@ export default function PlayerPoolScreen() {
 
   const onSearch = React.useCallback(async (tutorialName?: string) => {
     const searchName = tutorialName ?? name;
-    const isShortRoleSelection = !!ROLE_SHORT_TO_LONG[position];
     const payload: PlayerPoolSearchInput = {
       name: searchName.trim() || undefined,
       gender: gender || undefined,
@@ -370,7 +387,7 @@ export default function PlayerPoolScreen() {
         : !!selectedLeague && selectedLeague.trim().toLowerCase() === league.trim().toLowerCase(),
       team: team.trim() || undefined,
       teamExact: !!selectedTeam && selectedTeam.trim().toLowerCase() === team.trim().toLowerCase(),
-      position: isShortRoleSelection ? undefined : position || undefined,
+      position: position || undefined,
       minAge: minAge ? Number(minAge) : undefined,
       maxAge: maxAge ? Number(maxAge) : undefined,
       minHeight: minHeight ? Number(minHeight) : undefined,
@@ -382,20 +399,12 @@ export default function PlayerPoolScreen() {
       setSearching(true);
       setError(null);
       const next = await searchPlayerPool(payload);
-      const filteredNext =
-        isShortRoleSelection
-          ? next.filter((row) =>
-              (row.player.meta?.roles ?? []).some(
-                (role) => (ROLE_LONG_TO_SHORT[role] || role) === position,
-              ),
-            )
-          : next;
       setRevealedPotentialForCard(false);
       setRevealedFormForCard(false);
-      const firstRow = filteredNext[0];
+      const firstRow = next[0];
       currentCardRenderIdRef.current = firstRow ? `${firstRow.id}:${Date.now()}` : null;
       countedCardRenderIdRef.current = null;
-      setResults(filteredNext);
+      setResults(next);
       setSelectedPlayerId(firstRow?.id ?? null);
       setSelectedPlayer(firstRow?.player ?? null);
 
@@ -658,9 +667,133 @@ export default function PlayerPoolScreen() {
     };
   }, [selectedPlayerForCard, selectedPlayerId]);
 
+  const selectedReportState = React.useMemo<'idle' | 'loading' | 'ready'>(() => {
+    if (!selectedPlayerId) return 'idle';
+    if (reportLoadingPlayerId === selectedPlayerId) return 'loading';
+    return readyReportsByPlayerId[selectedPlayerId]?.status === 'ready' ? 'ready' : 'idle';
+  }, [readyReportsByPlayerId, reportLoadingPlayerId, selectedPlayerId]);
+
+  const buildReportPayload = React.useCallback((player: PlayerData) => ({
+    name: player.name,
+    gender: player.meta?.gender,
+    nationality: player.meta?.nationality,
+    team: player.meta?.team,
+    age: player.meta?.age,
+    height: player.meta?.height,
+    weight: player.meta?.weight,
+    potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
+    form: typeof player.meta?.form === 'number' ? Math.round(player.meta.form) : undefined,
+  }), []);
+
+  const saveSelectedPlayerToPortfolio = React.useCallback(async (player: PlayerData) => {
+    const saved = await addFavoritePlayer({
+      playerId: selectedPlayerId ?? undefined,
+      name: player.name,
+      nationality: player.meta?.nationality,
+      age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
+      potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
+      form: typeof player.meta?.form === 'number' ? Math.round(player.meta.form) : undefined,
+      gender: player.meta?.gender,
+      height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
+      weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
+      team: player.meta?.team,
+      league: player.meta?.league,
+      worldCupMode,
+      formRevealed: worldCupMode ? revealedFormForCard : undefined,
+      roles: player.meta?.roles ?? [],
+    });
+
+    return saved;
+  }, [revealedFormForCard, selectedPlayerId, worldCupMode]);
+
+  const grantReportAccessForFreeUser = React.useCallback(async () => {
+    try {
+      const nextCount = await incrementPortfolioReportOpenCount();
+
+      if (shouldShowPortfolioReportInterstitial(nextCount)) {
+        const shown = await showInterstitialAndWaitSafely();
+        if (shown) return true;
+
+        setProUpsellOpen(true);
+        return false;
+      }
+
+      if (shouldPrepareNextInterstitial(nextCount)) {
+        prepareInterstitial();
+      }
+
+      return true;
+    } catch {
+      setProUpsellOpen(true);
+      return false;
+    }
+  }, []);
+
+  const generateReportFromPlayerCard = React.useCallback(async (player: PlayerData) => {
+    if (!selectedPlayerId || reportLoadingPlayerId) return;
+
+    setReportLoadingPlayerId(selectedPlayerId);
+    try {
+      const saved = await saveSelectedPlayerToPortfolio(player);
+      recordSelectedCardInterestOnce();
+
+      const hasAccess = plan !== 'Free' || await grantReportAccessForFreeUser();
+      const payload = buildReportPayload({
+        ...player,
+        meta: {
+          ...(player.meta ?? {}),
+          potential: typeof saved.potential === 'number' ? saved.potential : player.meta?.potential,
+          form: typeof saved.form === 'number' ? saved.form : player.meta?.form,
+        },
+      });
+
+      let report = await getScoutingReport(saved.id, payload);
+      for (let attempt = 0; attempt < 30 && report.status === 'processing'; attempt += 1) {
+        await delay(2000);
+        report = await getScoutingReport(saved.id, payload);
+      }
+
+      if (report.status !== 'ready' || !report.content) {
+        throw new Error(t('reportFailedBody', 'Could not generate the report. Please try again later.'));
+      }
+
+      setReadyReportsByPlayerId((current) => ({ ...current, [selectedPlayerId]: report }));
+
+      if (hasAccess) {
+        setScoutPlayer({
+          ...player,
+          meta: {
+            ...(player.meta ?? {}),
+            potential: typeof saved.potential === 'number' ? saved.potential : player.meta?.potential,
+            form: typeof saved.form === 'number' ? saved.form : player.meta?.form,
+          },
+        });
+        setScoutReport(report);
+        setScoutOpen(true);
+      }
+    } catch (err: any) {
+      Alert.alert(t('reportError', 'Report error'), String(err?.message || err));
+    } finally {
+      setReportLoadingPlayerId(null);
+    }
+  }, [
+    buildReportPayload,
+    grantReportAccessForFreeUser,
+    plan,
+    recordSelectedCardInterestOnce,
+    reportLoadingPlayerId,
+    saveSelectedPlayerToPortfolio,
+    selectedPlayerId,
+    t,
+  ]);
+
   const addSelectedPlayerToMatchup = React.useCallback(() => {
     if (!selectedPlayerForMatchup) return;
-    if (matchupRow1?.id === selectedPlayerForMatchup.id || matchupRow2?.id === selectedPlayerForMatchup.id) {
+    if (
+      matchupRow1?.id === selectedPlayerForMatchup.id ||
+      matchupRow2?.id === selectedPlayerForMatchup.id ||
+      (matchupMode === 3 && matchupRow3?.id === selectedPlayerForMatchup.id)
+    ) {
       return;
     }
 
@@ -680,11 +813,19 @@ export default function PlayerPoolScreen() {
       if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addViniciusToMatchup') {
         tutorial.setPlayerPoolStep('launchMatchup');
       }
+      return;
+    }
+
+    if (matchupMode === 3 && !matchupRow3) {
+      setMatchupRow3(selectedPlayerForMatchup);
+      recordSelectedCardInterestOnce();
     }
   }, [
     isPlayerPoolTutorialActive,
+    matchupMode,
     matchupRow1,
     matchupRow2,
+    matchupRow3,
     onSearch,
     recordSelectedCardInterestOnce,
     selectedPlayerForMatchup,
@@ -692,7 +833,7 @@ export default function PlayerPoolScreen() {
   ]);
 
   const onLaunchMatchup = React.useCallback(async () => {
-    if (!matchupRow1 || !matchupRow2 || comparisonLoading) return;
+    if (!matchupRow1 || !matchupRow2 || (matchupMode === 3 && !matchupRow3) || comparisonLoading) return;
 
     try {
       setComparisonOpen(true);
@@ -712,7 +853,12 @@ export default function PlayerPoolScreen() {
         }
       }
 
-      const nextComparison = await getMatchupComparison(matchupRow1.id, matchupRow2.id, worldCupMode);
+      const nextComparison = await getMatchupComparison(
+        matchupRow1.id,
+        matchupRow2.id,
+        worldCupMode,
+        matchupMode === 3 ? matchupRow3?.id : undefined,
+      );
       setComparisonData(nextComparison);
       if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'launchMatchup') {
         tutorial.setPlayerPoolStep('comparison');
@@ -722,7 +868,7 @@ export default function PlayerPoolScreen() {
     } finally {
       setComparisonLoading(false);
     }
-  }, [comparisonLoading, isPlayerPoolTutorialActive, matchupRow1, matchupRow2, plan, t, tutorial, worldCupMode]);
+  }, [comparisonLoading, isPlayerPoolTutorialActive, matchupMode, matchupRow1, matchupRow2, matchupRow3, plan, t, tutorial, worldCupMode]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -764,15 +910,13 @@ export default function PlayerPoolScreen() {
 
   const sortLabel = React.useMemo(() => {
     const effectiveSortKey =
-      worldCupMode && (sortKey === 'nationality' || sortKey === 'league') ? 'name' : sortKey;
+      worldCupMode && sortKey === 'nationality' ? 'name' : sortKey;
     const base =
       effectiveSortKey === 'name'
         ? t('tblName', 'Name')
         : effectiveSortKey === 'nationality'
           ? t('tblNat', 'Nat.')
-          : effectiveSortKey === 'league'
-            ? t('tblLeague', 'League')
-            : effectiveSortKey === 'team'
+          : effectiveSortKey === 'team'
               ? t('tblTeam', 'Team')
               : effectiveSortKey === 'age'
                 ? t('tblAge', 'Age')
@@ -786,7 +930,7 @@ export default function PlayerPoolScreen() {
 
     list.sort((a, b) => {
       const effectiveSortKey =
-        worldCupMode && (sortKey === 'nationality' || sortKey === 'league') ? 'name' : sortKey;
+        worldCupMode && sortKey === 'nationality' ? 'name' : sortKey;
 
       if (effectiveSortKey === 'age') {
         const aAge = a.player.meta?.age;
@@ -808,9 +952,7 @@ export default function PlayerPoolScreen() {
             ? a.player.meta?.roles?.[0] ?? ''
             : effectiveSortKey === 'nationality'
               ? a.player.meta?.nationality ?? ''
-              : effectiveSortKey === 'league'
-                ? a.player.meta?.league ?? ''
-                : a.player.meta?.team ?? '';
+              : a.player.meta?.team ?? '';
 
       const bVal =
         effectiveSortKey === 'name'
@@ -819,9 +961,7 @@ export default function PlayerPoolScreen() {
             ? b.player.meta?.roles?.[0] ?? ''
             : effectiveSortKey === 'nationality'
               ? b.player.meta?.nationality ?? ''
-              : effectiveSortKey === 'league'
-                ? b.player.meta?.league ?? ''
-                : b.player.meta?.team ?? '';
+              : b.player.meta?.team ?? '';
 
       const aMissing = !aVal.trim();
       const bMissing = !bVal.trim();
@@ -1170,6 +1310,10 @@ export default function PlayerPoolScreen() {
           selectedPlayerForCard={selectedPlayerForCard}
           onRevealPotential={onRevealPotential}
           onRevealForm={onRevealForm}
+          selectedPlayerId={selectedPlayerId}
+          onGenerateReport={generateReportFromPlayerCard}
+          reportState={selectedReportState}
+          reportDisabled={!selectedPlayerId}
           onAddFavoriteSuccess={() => {
             recordSelectedCardInterestOnce();
             if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addPortfolio') {
@@ -1198,12 +1342,19 @@ export default function PlayerPoolScreen() {
           selectedPlayer={selectedPlayerForMatchup}
           row1={matchupRow1}
           row2={matchupRow2}
+          row3={matchupRow3}
+          matchupMode={matchupMode}
+          onMatchupModeChange={(mode) => {
+            setMatchupMode(mode);
+            if (mode === 2) setMatchupRow3(null);
+          }}
           onAddSelectedPlayer={addSelectedPlayerToMatchup}
           onLaunchMatchup={onLaunchMatchup}
-          launchDisabled={!matchupRow1 || !matchupRow2}
+          launchDisabled={!matchupRow1 || !matchupRow2 || (matchupMode === 3 && !matchupRow3)}
           launchLoading={comparisonLoading}
           onRemoveRow1={() => setMatchupRow1(null)}
           onRemoveRow2={() => setMatchupRow2(null)}
+          onRemoveRow3={() => setMatchupRow3(null)}
           tutorialStep={isPlayerPoolTutorialActive ? tutorial.playerPoolStep : null}
           onTutorialSkipAll={skipPlayerPoolTutorial}
           tutorialActive={isPlayerPoolTutorialActive}
@@ -1224,6 +1375,7 @@ export default function PlayerPoolScreen() {
           error={comparisonError}
           player1={comparisonData?.player1 ?? (matchupRow1 ? { id: matchupRow1.id, player: matchupRow1.player } : null)}
           player2={comparisonData?.player2 ?? (matchupRow2 ? { id: matchupRow2.id, player: matchupRow2.player } : null)}
+          player3={comparisonData?.player3 ?? (matchupMode === 3 && matchupRow3 ? { id: matchupRow3.id, player: matchupRow3.player } : null)}
           onClose={() => {
             setComparisonOpen(false);
             if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison') {
@@ -1245,6 +1397,14 @@ export default function PlayerPoolScreen() {
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
+        {scoutPlayer && scoutReport ? (
+          <ScoutingReport
+            visible={scoutOpen}
+            onClose={() => setScoutOpen(false)}
+            player={scoutPlayer}
+            report={scoutReport}
+          />
+        ) : null}
         <ProNotReadyScreen
           visible={proUpsellOpen}
           onClose={() => setProUpsellOpen(false)}

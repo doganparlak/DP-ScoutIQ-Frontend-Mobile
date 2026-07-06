@@ -15,7 +15,7 @@ import { ChevronDown, X } from 'lucide-react-native';
 
 import PlayerCard from '@/components/PlayerCard';
 import { TutorialHint } from '@/components/Tutorial';
-import { ROLE_LONG_TO_SHORT } from '@/services/api';
+import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
 
@@ -34,12 +34,11 @@ export const CANDIDATE_TABLE_VISIBLE_ROWS = 5;
 
 const COL = {
   index: 0.45,
-  name: 0.93,
-  nat: 0.93,
-  team: 1.0,
-  league: 0.95,
-  age: 0.8,
-  roles: 0.8,
+  name: 0.95,
+  nat: 0.75,
+  team: 0.95,
+  age: 0.65,
+  roles: 1.25,
 } as const;
 
 export type SearchResultRow = {
@@ -47,7 +46,7 @@ export type SearchResultRow = {
   player: PlayerData;
 };
 
-export type CandidateSortKey = 'name' | 'nationality' | 'league' | 'team' | 'age' | 'role';
+export type CandidateSortKey = 'name' | 'nationality' | 'team' | 'age' | 'role';
 
 function hasAbbreviation(token: string) {
   return /[.]/.test(token);
@@ -57,6 +56,26 @@ function compactDisplayName(name: string) {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return name;
   return parts.filter((part) => !hasAbbreviation(part)).at(-1) || parts.at(-1) || parts[0];
+}
+
+function normalizeRoleLabel(value?: string) {
+  if (!value) return '';
+  const upper = value.toUpperCase();
+  if (ROLE_SHORT_TO_LONG[upper]) return upper;
+  return ROLE_LONG_TO_SHORT[value] || value;
+}
+
+function roleLabels(player: PlayerData) {
+  const fromSeen = player.meta?.positionNamesSeen ?? [];
+  const fromRoles = player.meta?.roles ?? [];
+  const labels = (fromSeen.length ? fromSeen : fromRoles)
+    .map(normalizeRoleLabel)
+    .filter(Boolean);
+  return Array.from(new Set(labels));
+}
+
+function rolePreviewLabels(player: PlayerData) {
+  return roleLabels(player).slice(0, 2);
 }
 
 type Props = {
@@ -171,19 +190,7 @@ export default function CandidatePlayers({
             ?.slice(0, 3)
             .toUpperCase() || '—'
         : '—';
-      const roleValue = row.player.meta?.roles?.[0];
-      const roleShort =
-        (roleValue && ROLE_LONG_TO_SHORT[roleValue]) ||
-        roleValue ||
-        '—';
-      const leagueShort = row.player.meta?.league
-        ? row.player.meta.league
-            .split(/\s+/)
-            .map((part) => part[0])
-            .join('')
-            .slice(0, 5)
-            .toUpperCase() || row.player.meta.league
-        : '—';
+      const roles = rolePreviewLabels(row.player);
       const rowContent = (
         <>
           <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.cell, styles.indexCell, androidCompact && styles.tdCompact, { flex: COL.index }]}>
@@ -199,10 +206,6 @@ export default function CandidatePlayers({
               <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.nat, textAlign: 'center' }]}>
                 {nationalityShort}
               </Text>
-              <View style={verticalSeparatorStyle} />
-              <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.league, textAlign: 'center' }]}>
-                {leagueShort}
-              </Text>
             </>
           ) : null}
           <View style={verticalSeparatorStyle} />
@@ -214,9 +217,29 @@ export default function CandidatePlayers({
             {row.player.meta?.age ?? '—'}
           </Text>
           <View style={verticalSeparatorStyle} />
-          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.roles, textAlign: 'center' }]}>
-            {roleShort}
-          </Text>
+          <View style={[styles.cell, styles.rolePillGroup, { flex: COL.roles }]}>
+            {roles.length ? roles.map((role) => (
+              <View
+                key={role}
+                style={[
+                  styles.rolePill,
+                  activeTheme && { backgroundColor: activeTheme.accentSoft, borderColor: activeTheme.line },
+                ]}
+              >
+                <Text
+                  maxFontSizeMultiplier={androidTextScale}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  style={[styles.rolePillText, activeTheme && { color: activeTheme.accent }]}
+                >
+                  {role}
+                </Text>
+              </View>
+            )) : (
+              <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.roleDash, androidCompact && styles.tdCompact]}>—</Text>
+            )}
+          </View>
         </>
       );
 
@@ -315,10 +338,6 @@ export default function CandidatePlayers({
                   <View style={[styles.cell, { flex: COL.nat }]}>
                     <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
                   </View>
-                  <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
-                  <View style={[styles.cell, { flex: COL.league }]}>
-                    <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
-                  </View>
                 </>
               ) : null}
               <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
@@ -403,7 +422,6 @@ export default function CandidatePlayers({
                 ['name', t('tblName', 'Name')],
                 ...(worldCupMode ? [] : [
                   ['nationality', t('tblNat', 'Nat.')],
-                  ['league', t('tblLeague', 'League')],
                 ] as Array<[CandidateSortKey, string]>),
                 ['team', t('tblTeam', 'Team')],
                 ['age', t('tblAge', 'Age')],
@@ -485,10 +503,6 @@ export default function CandidatePlayers({
                         <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
                         <View style={[styles.cell, { flex: COL.nat }]}>
                           <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-                        </View>
-                        <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
-                        <View style={[styles.cell, { flex: COL.league }]}>
-                          <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblLeagueShort', 'Lg.')}</Text>
                         </View>
                       </>
                     ) : null}
@@ -652,13 +666,51 @@ const styles = StyleSheet.create({
   tableScrollWrap: {
     paddingRight: 1,
   },
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
+  row: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
   rowLocked: { opacity: 0.62 },
   hsepThick: { height: 2, backgroundColor: LINE },
-  cell: { paddingVertical: 10, justifyContent: 'center' },
+  cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },
   thTextCompact: { fontSize: 11, lineHeight: 13 },
-  td: { color: TEXT, flex: 1, fontSize: 12.5 },
+  td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 12.5 },
+  roleCellText: {
+    color: ACCENT,
+    fontWeight: '800',
+    lineHeight: 16,
+  },
+  rolePillGroup: {
+    minWidth: 0,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 0,
+  },
+  rolePill: {
+    minWidth: 30,
+    maxWidth: 46,
+    flexShrink: 1,
+    height: 22,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.22)',
+    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  rolePillText: {
+    minWidth: 0,
+    color: ACCENT,
+    fontSize: 10.5,
+    fontWeight: '700',
+    lineHeight: 13,
+  },
+  roleDash: {
+    color: MUTED,
+    textAlign: 'center',
+  },
   tdCompact: { fontSize: 11.2, lineHeight: 15 },
   indexCell: { textAlign: 'center' },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },

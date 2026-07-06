@@ -885,12 +885,29 @@ export default function FavoritePlayers({
             </Text>
           </Pressable>
         ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.roles, textAlign: 'center' }]}>
+          <View style={[styles.cell, styles.rolePillGroup, { flex: COL.roles }]}>
             {(() => {
-              const roles = (item as PlayerRow).rolesShort || [];
-              return roles[0]?.trim() || '—';
+              const roles = ((item as PlayerRow).rolesShort || [])
+                .map((role) => role?.trim())
+                .filter(Boolean)
+                .slice(0, 2);
+
+              return roles.length ? roles.map((role) => (
+                <View key={role} style={styles.rolePill}>
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}
+                    style={styles.rolePillText}
+                  >
+                    {role}
+                  </Text>
+                </View>
+              )) : (
+                <Text numberOfLines={1} style={[styles.td, styles.roleDash]}>—</Text>
+              );
             })()}
-          </Text>
+          </View>
         )}
 
         <View style={styles.vsep} />
@@ -1393,12 +1410,45 @@ const styles = StyleSheet.create({
   tableTopBorder: { height: 1, backgroundColor: LINE },
   tableBottomBorder: { height: 1, backgroundColor: LINE },
 
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
+  row: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
   hsepThick: { height: 2, backgroundColor: LINE },
 
-  cell: { paddingVertical: 10, justifyContent: 'center' },
+  cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontWeight: '700' },
-  td: { color: TEXT, flex: 1 },
+  td: { minWidth: 0, color: TEXT, flex: 1 },
+  rolePillGroup: {
+    minWidth: 0,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 0,
+  },
+  rolePill: {
+    minWidth: 30,
+    maxWidth: 46,
+    flexShrink: 1,
+    height: 22,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.22)',
+    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  rolePillText: {
+    minWidth: 0,
+    color: ACCENT,
+    fontSize: 10.5,
+    fontWeight: '700',
+    lineHeight: 13,
+  },
+  roleDash: {
+    color: MUTED,
+    textAlign: 'center',
+  },
 
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
 

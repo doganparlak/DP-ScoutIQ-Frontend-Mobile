@@ -45,6 +45,10 @@ export type PlayerMeta = {
   nationality?: string;
   age?: number;
   roles?: string[];
+  positionCounts?: Record<string, number>;
+  positionCountTotal?: number;
+  positionNamesSeen?: string[];
+  primaryPositionCode?: string;
   potential?: number;
   form?: number;
   gender?: string;

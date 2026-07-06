@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 import PlayerCard from '@/components/PlayerCard';
 import { TutorialHint, TutorialStrong, type PlayerPoolTutorialStep } from '@/components/Tutorial';
@@ -31,6 +32,10 @@ type Props = {
   onRevealPotential: () => void;
   onRevealForm: () => void;
   onAddFavoriteSuccess?: () => void;
+  onGenerateReport?: (p: PlayerData) => void | Promise<void>;
+  reportState?: 'idle' | 'loading' | 'ready';
+  reportDisabled?: boolean;
+  selectedPlayerId?: string | null;
   revealingPotential: boolean;
   revealingForm: boolean;
   revealedPotentialForCard: boolean;
@@ -48,6 +53,10 @@ export default function PlayerCardPP({
   onRevealPotential,
   onRevealForm,
   onAddFavoriteSuccess,
+  onGenerateReport,
+  reportState = 'idle',
+  reportDisabled = false,
+  selectedPlayerId = null,
   revealingPotential,
   revealingForm,
   revealedPotentialForCard,
@@ -80,9 +89,12 @@ export default function PlayerCardPP({
         {t('playerCard', 'Player Card')}
       </Text>
       <View style={[styles.curateRow, androidCompact && styles.curateRowCompact]}>
-        <View style={[styles.curatePlusWrap, theme && { borderColor: theme.accent, backgroundColor: theme.accentSoft }]}>
-          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.curatePlusText, theme && { color: theme.accent }]}>＋</Text>
-        </View>
+        <Ionicons
+          name="person-circle-outline"
+          size={22}
+          color={theme?.accent ?? ACCENT}
+          style={styles.curateProfileIcon}
+        />
         <Text maxFontSizeMultiplier={androidTextScale} style={[styles.curateText, androidCompact && styles.curateTextCompact, theme && { color: theme.muted }]}>
           {t('wcCurate', 'Curate your dream squad in your portfolio.')}
         </Text>
@@ -105,6 +117,9 @@ export default function PlayerCardPP({
             player={selectedPlayerForCard ?? selectedPlayer}
             titleAlign="center"
             addFavoriteDisabled={!canPressPortfolio}
+            onGenerateReport={onGenerateReport}
+            reportState={reportState}
+            reportDisabled={reportDisabled || tutorialActive}
             hideNationalityLeague={worldCupMode}
             visualTheme={theme ? {
               cardBackground: 'rgba(167, 132, 244, 0.16)',
@@ -113,6 +128,7 @@ export default function PlayerCardPP({
             onAddFavorite={async (player) => {
               try {
                 await addFavoritePlayer({
+                  playerId: selectedPlayerId ?? undefined,
                   name: player.name,
                   nationality: player.meta?.nationality,
                   age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
@@ -310,6 +326,9 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontWeight: '800',
     fontSize: 14,
+  },
+  curateProfileIcon: {
+    marginTop: -1,
   },
   plusTargetPill: {
     borderWidth: 1,

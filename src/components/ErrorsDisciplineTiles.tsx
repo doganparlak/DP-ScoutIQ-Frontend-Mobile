@@ -1,7 +1,7 @@
 // src/components/ErrorsDisciplineTiles.tsx
 import * as React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Bug } from 'lucide-react-native';
+import { ShieldAlert } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { ACCENT, TEXT, CARD, MUTED, DANGER } from '@/theme';
 import type { SpiderPoint } from './SpiderChart';
@@ -48,7 +48,7 @@ export default function ErrorsDisciplineTiles({
   defaultCollapsed = true,
 }: Props) {
   const { t } = useTranslation();
-  const AutoIcon = Icon ?? Bug;
+  const AutoIcon = Icon ?? ShieldAlert;
 
   const [collapsed, setCollapsed] = React.useState(defaultCollapsed);
 

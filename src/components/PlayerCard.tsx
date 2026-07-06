@@ -1,14 +1,19 @@
 // src/components/PlayerCard.tsx
 import * as React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { FileClock, FileText } from 'lucide-react-native';
 import { CARD, TEXT, MUTED, ACCENT, LINE, DANGER } from '@/theme';
 import type { PlayerData } from '@/types';
+import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 
 type Props = {
   player: PlayerData;
   onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
   addFavoriteDisabled?: boolean;
+  onGenerateReport?: (p: PlayerData) => void | Promise<void>;
+  reportState?: 'idle' | 'loading' | 'ready';
+  reportDisabled?: boolean;
   titleAlign?: 'left' | 'center';
   hideNationalityLeague?: boolean;
   visualTheme?: {
@@ -25,6 +30,33 @@ function getScoreColor(score: number): string {
   if (score < 50) return DANGER;
   if (score < 70) return '#F59E0B';
   return ACCENT;
+}
+
+function roleShortLabel(value?: string) {
+  if (!value) return '';
+  const upper = value.toUpperCase();
+  if (ROLE_SHORT_TO_LONG[upper]) return upper;
+  return ROLE_LONG_TO_SHORT[value] || value;
+}
+
+function buildRoleDistribution(meta: PlayerData['meta']) {
+  const counts: Record<string, number> = meta?.positionCounts ?? {};
+  const total = meta?.positionCountTotal || Object.values(counts).reduce((sum: number, count: number) => sum + count, 0);
+  const fromCounts = Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([role, count]) => ({
+      role: roleShortLabel(role),
+      pct: total > 0 ? Math.round((count / total) * 100) : null,
+    }))
+    .filter((item) => item.role);
+
+  if (fromCounts.length) return fromCounts;
+
+  return Array.from(new Set((meta?.positionNamesSeen?.length ? meta.positionNamesSeen : meta?.roles ?? [])
+    .map(roleShortLabel)
+    .filter(Boolean)))
+    .map((role) => ({ role, pct: null }));
 }
 
 function ScoreBar({
@@ -73,13 +105,16 @@ export default function PlayerCard({
   player,
   onAddFavorite,
   addFavoriteDisabled = false,
+  onGenerateReport,
+  reportState = 'idle',
+  reportDisabled = false,
   titleAlign = 'left',
   hideNationalityLeague = false,
   visualTheme,
 }: Props) {
   const { t } = useTranslation();
   const { name, meta } = player;
-  const roles = meta?.roles ?? [];
+  const roleDistribution = buildRoleDistribution(meta);
   const potential = meta?.potential;
   const form = meta?.form;
 
@@ -113,6 +148,8 @@ export default function PlayerCard({
   };
 
   const disabled = !onAddFavorite || addFavoriteDisabled || isAdding || isAdded;
+  const reportLoading = reportState === 'loading';
+  const reportButtonDisabled = !onGenerateReport || reportDisabled || reportLoading;
   const potentialInt = Math.round(isValidPotential(potential) ? potential : 0);
   const formInt = Math.round(isValidPotential(form) ? form : 0);
 
@@ -160,36 +197,74 @@ export default function PlayerCard({
           {name}
         </Text>
 
-        {onAddFavorite && (
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={
-              isAdded
-                ? t('addedToFavorites', 'Added to favorites')
-                : t('addToFavorites', 'Add to favorites')
-            }
-            onPress={handleAdd}
-            disabled={disabled}
-            style={{
-              borderWidth: 1,
-              borderColor: isAdded ? cardAccent : (!onAddFavorite ? LINE : cardAccent),
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 2,
-              opacity: (addFavoriteDisabled || isAdding || !onAddFavorite) ? 0.5 : 1,
-            }}
-          >
-            <Text
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {onGenerateReport && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={
+                reportLoading
+                  ? t('generatingReport', 'Generating report')
+                  : reportState === 'ready'
+                    ? t('openReport', 'Open report')
+                    : t('generateReport', 'Generate report')
+              }
+              onPress={() => onGenerateReport?.(player)}
+              disabled={reportButtonDisabled}
               style={{
-                color: isAdded ? cardAccent : (!onAddFavorite ? MUTED : cardAccent),
-                fontWeight: '800',
-                fontSize: 14,
+                width: 38,
+                height: 28,
+                borderWidth: 1,
+                borderColor: reportButtonDisabled ? LINE : cardAccent,
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: reportButtonDisabled ? 0.5 : 1,
               }}
             >
-              {isAdded ? '✓' : isAdding ? '…' : '＋'}
-            </Text>
-          </TouchableOpacity>
-        )}
+              {reportLoading ? (
+                <FileClock size={15} color={cardAccent} strokeWidth={2.2} />
+              ) : (
+                <FileText size={15} color={reportButtonDisabled ? MUTED : cardAccent} strokeWidth={2.2} />
+              )}
+            </TouchableOpacity>
+          )}
+
+          {onAddFavorite && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={
+                isAdded
+                  ? t('addedToFavorites', 'Added to favorites')
+                  : t('addToFavorites', 'Add to favorites')
+              }
+              onPress={handleAdd}
+              disabled={disabled}
+              style={{
+                width: 38,
+                height: 28,
+                borderWidth: 1,
+                borderColor: isAdded ? cardAccent : (!onAddFavorite ? LINE : cardAccent),
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: (addFavoriteDisabled || isAdding || !onAddFavorite) ? 0.5 : 1,
+              }}
+            >
+              <Text
+                style={{
+                  color: isAdded ? cardAccent : (!onAddFavorite ? MUTED : cardAccent),
+                  fontWeight: '800',
+                  fontSize: 18,
+                  lineHeight: 20,
+                  textAlign: 'center',
+                  includeFontPadding: false,
+                }}
+              >
+                {isAdded ? '✓' : isAdding ? '…' : '＋'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* meta block: 
@@ -283,21 +358,31 @@ export default function PlayerCard({
         </View>
       )}
 
-      {roles.length > 0 && (
-        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-          {roles.map((r) => (
-            <View
-              key={r}
-              style={{
-                backgroundColor: cardAccent,
-                paddingVertical: 4,
-                paddingHorizontal: 8,
-                borderRadius: 999,
-              }}
-            >
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: 12 }}>{r}</Text>
-            </View>
-          ))}
+      {roleDistribution.length > 0 && (
+        <View style={{ marginTop: 8, gap: 6 }}>
+          <Text style={{ color: MUTED }}>
+            {t('roleDistribution', 'Role Distribution')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            {roleDistribution.map((item) => (
+              <View
+                key={`${item.role}-${item.pct ?? 'role'}`}
+                style={{
+                  backgroundColor: 'rgba(22, 163, 74, 0.13)',
+                  borderColor: cardAccent,
+                  borderWidth: 1,
+                  paddingVertical: 4,
+                  paddingHorizontal: 8,
+                  borderRadius: 999,
+                }}
+              >
+                <Text style={{ color: cardAccent, fontWeight: '800', fontSize: 12 }}>
+                  {item.role}
+                  {item.pct !== null ? <Text style={{ color: MUTED }}> {item.pct}%</Text> : null}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       )}
     </View>

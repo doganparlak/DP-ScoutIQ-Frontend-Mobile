@@ -9,7 +9,7 @@ import {
   LogIn,
   DraftingCompass,
   Star,
-  Bug,
+  ShieldAlert,
 } from 'lucide-react-native';
 import {
   VictoryChart,
@@ -120,6 +120,7 @@ export default function SpiderChart({ title, points, Icon,
       <ErrorsDisciplineTiles
         title={title}
         points={points}
+        Icon={Icon ?? ShieldAlert}
         thresholds={{ good: 0.25, warn: 0.55 }} // optional
       />
     );
@@ -136,7 +137,7 @@ export default function SpiderChart({ title, points, Icon,
     else if (tTitle.includes('shoot') || tTitle.includes('finish')) AutoIcon = LogIn;
     else if (tTitle.includes('pass') || tTitle.includes('delivery')) AutoIcon = DraftingCompass;
     else if (tTitle.includes('contribution') || tTitle.includes('impact')) AutoIcon = Star;
-    else if (tTitle.includes('error') || tTitle.includes('discipline')) AutoIcon = Bug;
+    else if (tTitle.includes('error') || tTitle.includes('discipline')) AutoIcon = ShieldAlert;
     else if (tTitle.includes('defend') || tTitle.includes('out of possession') || tTitle.includes('out-of-possession'))
       AutoIcon = BrickWall;
   }

@@ -27,6 +27,10 @@ export type PlayerMeta = {
   nationality?: string;
   age?: number;
   roles?: string[];
+  positionCounts?: Record<string, number>;
+  positionCountTotal?: number;
+  positionNamesSeen?: string[];
+  primaryPositionCode?: string;
   potential?: number;
   form?: number;
   gender?: string;
@@ -263,6 +267,7 @@ export type PlayerPoolFormResponse = {
 export type MatchupComparisonResponse = {
   player1: { id: string; player: PlayerData };
   player2: { id: string; player: PlayerData };
+  player3?: { id: string; player: PlayerData };
 };
 
 export type DailyScoutText = { en: string; tr: string };
@@ -316,6 +321,10 @@ const PLAYER_POOL_METADATA_SKIP_KEYS = new Set([
   'league_name',
   'league_name_norm',
   'position_name',
+  'position_counts',
+  'position_count_total',
+  'position_names_seen',
+  'primary_position_code',
   'roles',
   'positions',
   'gender',
@@ -327,11 +336,42 @@ const PLAYER_POOL_METADATA_SKIP_KEYS = new Set([
   'match_count',
 ]);
 
+function roleShortCode(role: unknown): string | null {
+  if (typeof role !== 'string' && typeof role !== 'number') return null;
+  const trimmed = String(role).trim();
+  if (!trimmed) return null;
+  const upper = trimmed.toUpperCase();
+  if (ROLE_SHORT_TO_LONG[upper]) return upper;
+  return ROLE_LONG_TO_SHORT[trimmed] ??
+    Object.entries(ROLE_LONG_TO_SHORT).find(([long]) => long.toLowerCase() === trimmed.toLowerCase())?.[1] ??
+    upper;
+}
+
 function normalizeRole(role: unknown): string | null {
   if (typeof role !== 'string') return null;
   const trimmed = role.trim();
   if (!trimmed) return null;
-  return ROLE_SHORT_TO_LONG[trimmed] ?? trimmed;
+  const short = roleShortCode(trimmed);
+  return short && ROLE_SHORT_TO_LONG[short] ? ROLE_SHORT_TO_LONG[short] : ROLE_SHORT_TO_LONG[trimmed] ?? trimmed;
+}
+
+function normalizePositionCounts(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, count]) => [roleShortCode(key), toFiniteNumber(count)] as const)
+    .filter((entry): entry is [string, number] => Boolean(entry[0]) && typeof entry[1] === 'number' && entry[1] > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .reduce<Record<string, number>>((acc, [key, count]) => {
+      acc[key] = count;
+      return acc;
+    }, {});
+}
+
+function normalizePositionNames(value: unknown, counts: Record<string, number>): string[] {
+  const names = Array.isArray(value) ? value.map(roleShortCode).filter(Boolean) as string[] : [];
+  const unique = Array.from(new Set(names));
+  if (unique.length) return unique;
+  return Object.keys(counts);
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -364,13 +404,27 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
 
   if (!name) return null;
 
+  const positionCounts = normalizePositionCounts(raw.position_counts);
+  const positionNamesSeen = normalizePositionNames(raw.position_names_seen, positionCounts);
+  const positionCountTotal =
+    toFiniteNumber(raw.position_count_total) ??
+    Object.values(positionCounts).reduce((total, count) => total + count, 0);
+  const primaryPositionCode = roleShortCode(raw.primary_position_code) ?? positionNamesSeen[0];
   const rawRoles = Array.isArray(raw.roles)
     ? raw.roles
     : Array.isArray(raw.positions)
       ? raw.positions
       : [raw.position_name].filter(Boolean);
 
-  const roles = rawRoles.map(normalizeRole).filter(Boolean) as string[];
+  const orderedRoleCodes = positionNamesSeen.length
+    ? positionNamesSeen
+    : Array.from(new Set(rawRoles.map(roleShortCode).filter(Boolean) as string[]));
+  const rolesFromDistribution = orderedRoleCodes
+    .map((code) => ROLE_SHORT_TO_LONG[code] ?? code)
+    .filter(Boolean);
+  const roles = rolesFromDistribution.length
+    ? rolesFromDistribution
+    : (rawRoles.map(normalizeRole).filter(Boolean) as string[]);
 
   const stats = Object.entries(raw)
     .filter(([metric]) => !PLAYER_POOL_METADATA_SKIP_KEYS.has(metric))
@@ -390,6 +444,10 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
         undefined,
       age: toFiniteNumber(raw.age),
       roles,
+      positionCounts,
+      positionCountTotal,
+      positionNamesSeen,
+      primaryPositionCode,
       potential: toFiniteNumber(raw.potential),
       form: toFiniteNumber(raw.form),
       gender: typeof raw.gender === 'string' ? raw.gender : undefined,
@@ -483,19 +541,25 @@ export async function getMatchupComparison(
   player1Id: string,
   player2Id: string,
   worldCupMode = false,
+  player3Id?: string,
 ): Promise<MatchupComparisonResponse> {
   const row = await request<{
     player1: PlayerPoolRawRow;
     player2: PlayerPoolRawRow;
+    player3?: PlayerPoolRawRow;
   }>(ENDPOINTS.playerPoolMatchupComparison, {
     method: 'POST',
-    body: JSON.stringify({ player1Id, player2Id, worldCupMode }),
+    body: JSON.stringify({ player1Id, player2Id, player3Id, worldCupMode }),
   });
 
   const player1IdOut = String(row.player1.id ?? player1Id);
   const player2IdOut = String(row.player2.id ?? player2Id);
+  const player3IdOut = row.player3 ? String(row.player3.id ?? player3Id ?? '') : undefined;
   const player1 = normalizePlayerPoolContent(row.player1.content ?? row.player1, player1IdOut);
   const player2 = normalizePlayerPoolContent(row.player2.content ?? row.player2, player2IdOut);
+  const player3 = row.player3 && player3IdOut
+    ? normalizePlayerPoolContent(row.player3.content ?? row.player3, player3IdOut)
+    : undefined;
 
   if (!player1 || !player2) {
     throw new Error('Could not load matchup comparison.');
@@ -504,6 +568,7 @@ export async function getMatchupComparison(
   return {
     player1: { id: player1IdOut, player: player1 },
     player2: { id: player2IdOut, player: player2 },
+    ...(player3 && player3IdOut ? { player3: { id: player3IdOut, player: player3 } } : {}),
   };
 }
 

@@ -22,7 +22,7 @@ import {
   DEFENDING_METRICS,
 } from '../components/spiderRanges';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LogIn, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
 
 import PlayerCard from '../components/PlayerCard';
 import SpiderChart, { type SpiderPoint } from '../components/SpiderChart';
@@ -53,7 +53,8 @@ type ParsedReport = {
   conclusion: string[];
 };
 
-type PageItem = { key: string; title: string; node: React.ReactNode };
+type ReportIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+type PageItem = { key: string; title: string; node: React.ReactNode; Icon?: ReportIcon };
 
 function stripBullet(s: string) {
   return s.replace(/^\s*[-•]\s*/, '').trim();
@@ -94,6 +95,7 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
   titleKey: string;
   fallbackTitle: string;
   points: SpiderPoint[];
+  Icon: ReportIcon;
 }> {
   const cj = report?.content_json;
   const meta = cj?.metrics_docs?.[0]?.metadata;
@@ -125,26 +127,26 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
 
   const isGK = roles.some((r) => String(r).toLowerCase().includes('goalkeeper') || String(r).toUpperCase() === 'GK');
 
-  const groups: Array<{ titleKey: string; fallbackTitle: string; points: SpiderPoint[] }> = [];
+  const groups: Array<{ titleKey: string; fallbackTitle: string; points: SpiderPoint[]; Icon: ReportIcon }> = [];
 
   if (isGK) {
     const pts = toSpiderPoints(stats, GK_METRICS);
-    if (pts.length) groups.push({ titleKey: 'goalkeeping', fallbackTitle: 'Goalkeeping', points: pts });
+    if (pts.length) groups.push({ titleKey: 'goalkeeping', fallbackTitle: 'Goalkeeping', points: pts, Icon: ShieldCheck });
   }
   const contrib = toSpiderPoints(stats, CONTRIBUTION_IMPACT_METRICS);
-  if (contrib.length) groups.push({ titleKey: 'contribution_impact', fallbackTitle: 'Contribution & Impact', points: contrib });
+  if (contrib.length) groups.push({ titleKey: 'contribution_impact', fallbackTitle: 'Contribution & Impact', points: contrib, Icon: Star });
 
   const shooting = toSpiderPoints(stats, SHOOTING_METRICS);
-  if (shooting.length) groups.push({ titleKey: 'shooting', fallbackTitle: 'Shooting & Finishing', points: shooting });
+  if (shooting.length) groups.push({ titleKey: 'shooting', fallbackTitle: 'Shooting & Finishing', points: shooting, Icon: LogIn });
 
   const passing = toSpiderPoints(stats, PASSING_METRICS);
-  if (passing.length) groups.push({ titleKey: 'passing', fallbackTitle: 'Passing & Delivery', points: passing });
+  if (passing.length) groups.push({ titleKey: 'passing', fallbackTitle: 'Passing & Delivery', points: passing, Icon: DraftingCompass });
 
   const defending = toSpiderPoints(stats, DEFENDING_METRICS);
-  if (defending.length) groups.push({ titleKey: 'defending', fallbackTitle: 'Defending', points: defending });
+  if (defending.length) groups.push({ titleKey: 'defending', fallbackTitle: 'Defending', points: defending, Icon: BrickWall });
 
   const errors = toSpiderPoints(stats, ERRORS_DISCIPLINE_METRICS);
-  if (errors.length) groups.push({ titleKey: 'errors_discipline', fallbackTitle: 'Errors & Discipline', points: errors });
+  if (errors.length) groups.push({ titleKey: 'errors_discipline', fallbackTitle: 'Errors & Discipline', points: errors, Icon: ShieldAlert });
 
   return groups;
 }
@@ -271,6 +273,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
             <ErrorsDisciplineTiles
               title={title}
               points={g.points}
+              Icon={g.Icon}
               collapsedCount={3}
               defaultCollapsed
             />
@@ -279,14 +282,14 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ) : isRadar ? (
         <View style={{ marginTop: -25, marginLeft: 40, alignItems: 'center' }}>
           <View style={{ transform: [{ scale: 0.90 }] }}>
-            <SpiderChart title={title} points={g.points} />
+            <SpiderChart title={title} points={g.points} Icon={g.Icon} />
           </View>
         </View>
       ) : (
-        <SpiderChart title={title} points={g.points} />
+        <SpiderChart title={title} points={g.points} Icon={g.Icon} />
       );
 
-      out.push({ key: `metrics-${idx}`, title, node });
+      out.push({ key: `metrics-${idx}`, title, node, Icon: g.Icon });
     });
 
     return out;
@@ -333,9 +336,12 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>
-              {t('scoutingReport', 'Scouting Report')} • {pages[page]?.title ?? ''}
-            </Text>
+            <View style={styles.headerTitleRow}>
+              {pages[page]?.Icon ? React.createElement(pages[page].Icon as ReportIcon, { size: 18, color: ACCENT, strokeWidth: 2.2 }) : null}
+              <Text style={styles.headerTitle}>
+                {t('scoutingReport', 'Scouting Report')} • {pages[page]?.title ?? ''}
+              </Text>
+            </View>
 
             <Pressable
               onPress={onClose}
@@ -447,6 +453,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  headerTitleRow: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
     color: TEXT,
