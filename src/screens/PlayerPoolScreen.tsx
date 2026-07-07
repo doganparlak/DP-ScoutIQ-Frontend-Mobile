@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,14 +13,17 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { Eye } from 'lucide-react-native';
+import { Crown, Eye } from 'lucide-react-native';
 
 import {
   incrementPotentialRevealCount,
   incrementMatchupLaunchCount,
+  incrementMatchupMissingScoreAddCount,
   incrementPortfolioReportOpenCount,
   incrementWeeklyPopularRevealCount,
   shouldShowMatchupLaunchInterstitial,
+  shouldShowMatchupMissingScoreInterstitial,
+  shouldPrepareNextMatchupMissingScoreInterstitial,
   shouldPrepareNextInterstitial,
   shouldShowPortfolioReportInterstitial,
   shouldShowPotentialInterstitial,
@@ -60,7 +64,7 @@ import {
   type Plan,
   type ScoutingReportResponse,
 } from '@/services/api';
-import { ACCENT, BG, WORLD_CUP_COLORS } from '@/theme';
+import { ACCENT, BG, PANEL, WORLD_CUP_COLORS } from '@/theme';
 import type { PlayerData } from '@/types';
 
 type SortDir = 'asc' | 'desc';
@@ -102,6 +106,7 @@ export default function PlayerPoolScreen() {
   const [sortOpen, setSortOpen] = React.useState(false);
   const [plan, setPlan] = React.useState<Plan>('Free');
   const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
+  const [threeWayProPromptOpen, setThreeWayProPromptOpen] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
   const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
@@ -111,6 +116,7 @@ export default function PlayerPoolScreen() {
   const [matchupRow1, setMatchupRow1] = React.useState<SearchResultRow | null>(null);
   const [matchupRow2, setMatchupRow2] = React.useState<SearchResultRow | null>(null);
   const [matchupRow3, setMatchupRow3] = React.useState<SearchResultRow | null>(null);
+  const [addingMatchupPlayer, setAddingMatchupPlayer] = React.useState(false);
   const [comparisonOpen, setComparisonOpen] = React.useState(false);
   const [comparisonLoading, setComparisonLoading] = React.useState(false);
   const [comparisonError, setComparisonError] = React.useState<string | null>(null);
@@ -131,6 +137,7 @@ export default function PlayerPoolScreen() {
   const currentCardRenderIdRef = React.useRef<string | null>(null);
   const countedCardRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
+  const isProPlan = plan === 'Pro Monthly' || plan === 'Pro Yearly';
 
   const scrollToTutorialArea = React.useCallback((area: 'worldCup' | 'weekly' | 'filters' | 'candidates' | 'card' | 'form' | 'matchupAdd' | 'matchup') => {
     const y =
@@ -667,6 +674,87 @@ export default function PlayerPoolScreen() {
     };
   }, [selectedPlayerForCard, selectedPlayerId]);
 
+  const ensureSelectedPlayerScoresForMatchup = React.useCallback(async (): Promise<SearchResultRow | null> => {
+    if (!selectedPlayerId || !selectedPlayer) return null;
+
+    const startedFullyRevealed = revealedPotentialForCard && revealedFormForCard;
+    let nextPotential =
+      revealedPotentialForCard && typeof selectedPlayer.meta?.potential === 'number'
+        ? Math.round(selectedPlayer.meta.potential)
+        : undefined;
+    let nextForm =
+      revealedFormForCard && typeof selectedPlayer.meta?.form === 'number'
+        ? Math.round(selectedPlayer.meta.form)
+        : undefined;
+
+    if (plan === 'Free' && !isPlayerPoolTutorialActive && !startedFullyRevealed) {
+      const nextCount = await incrementMatchupMissingScoreAddCount();
+      if (shouldShowMatchupMissingScoreInterstitial(nextCount)) {
+        const ok = await showInterstitialAndWaitSafely();
+        if (!ok) {
+          setProUpsellOpen(true);
+        }
+      } else if (shouldPrepareNextMatchupMissingScoreInterstitial(nextCount)) {
+        prepareInterstitial();
+      }
+    }
+
+    if (nextPotential === undefined) {
+      const revealed = await revealPlayerPoolPotential(selectedPlayerId, worldCupMode);
+      nextPotential = Math.round(revealed.potential);
+    }
+
+    if (nextForm === undefined) {
+      const revealed = await revealPlayerPoolForm(selectedPlayerId, worldCupMode);
+      nextForm = Math.round(revealed.form);
+    }
+
+    const enrichedPlayer: PlayerData = {
+      ...selectedPlayer,
+      meta: {
+        ...(selectedPlayer.meta ?? {}),
+        potential: nextPotential,
+        form: nextForm,
+      },
+    };
+
+    setRevealedPotentialForCard(true);
+    setRevealedFormForCard(true);
+
+    setResults((current) =>
+      current.map((row) =>
+        row.id === selectedPlayerId
+          ? {
+              ...row,
+              player: {
+                ...row.player,
+                meta: {
+                  ...(row.player.meta ?? {}),
+                  potential: nextPotential,
+                  form: nextForm,
+                },
+              },
+            }
+          : row,
+      ),
+    );
+
+    setSelectedPlayer(enrichedPlayer);
+
+    return {
+      id: selectedPlayerId,
+      player: enrichedPlayer,
+    };
+  }, [
+    isPlayerPoolTutorialActive,
+    plan,
+    revealedFormForCard,
+    revealedPotentialForCard,
+    selectedPlayer,
+    selectedPlayerId,
+    worldCupMode,
+  ]);
+
   const selectedReportState = React.useMemo<'idle' | 'loading' | 'ready'>(() => {
     if (!selectedPlayerId) return 'idle';
     if (reportLoadingPlayerId === selectedPlayerId) return 'loading';
@@ -787,8 +875,8 @@ export default function PlayerPoolScreen() {
     t,
   ]);
 
-  const addSelectedPlayerToMatchup = React.useCallback(() => {
-    if (!selectedPlayerForMatchup) return;
+  const addSelectedPlayerToMatchup = React.useCallback(async () => {
+    if (addingMatchupPlayer || !selectedPlayerId || !selectedPlayerForMatchup) return;
     if (
       matchupRow1?.id === selectedPlayerForMatchup.id ||
       matchupRow2?.id === selectedPlayerForMatchup.id ||
@@ -797,8 +885,20 @@ export default function PlayerPoolScreen() {
       return;
     }
 
+    let matchupPlayer = selectedPlayerForMatchup;
+    try {
+      setAddingMatchupPlayer(true);
+      const enriched = await ensureSelectedPlayerScoresForMatchup();
+      if (enriched) matchupPlayer = enriched;
+    } catch (err: any) {
+      Alert.alert(t('matchupComparisonFailed', 'Matchup comparison failed'), String(err?.message || err));
+      return;
+    } finally {
+      setAddingMatchupPlayer(false);
+    }
+
     if (!matchupRow1) {
-      setMatchupRow1(selectedPlayerForMatchup);
+      setMatchupRow1(matchupPlayer);
       recordSelectedCardInterestOnce();
       if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addYamalToMatchup') {
         setName('Vinicius Junior');
@@ -808,7 +908,7 @@ export default function PlayerPoolScreen() {
     }
 
     if (!matchupRow2) {
-      setMatchupRow2(selectedPlayerForMatchup);
+      setMatchupRow2(matchupPlayer);
       recordSelectedCardInterestOnce();
       if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addViniciusToMatchup') {
         tutorial.setPlayerPoolStep('launchMatchup');
@@ -817,10 +917,12 @@ export default function PlayerPoolScreen() {
     }
 
     if (matchupMode === 3 && !matchupRow3) {
-      setMatchupRow3(selectedPlayerForMatchup);
+      setMatchupRow3(matchupPlayer);
       recordSelectedCardInterestOnce();
     }
   }, [
+    addingMatchupPlayer,
+    ensureSelectedPlayerScoresForMatchup,
     isPlayerPoolTutorialActive,
     matchupMode,
     matchupRow1,
@@ -828,7 +930,9 @@ export default function PlayerPoolScreen() {
     matchupRow3,
     onSearch,
     recordSelectedCardInterestOnce,
+    selectedPlayerId,
     selectedPlayerForMatchup,
+    t,
     tutorial,
   ]);
 
@@ -1345,8 +1449,17 @@ export default function PlayerPoolScreen() {
           row3={matchupRow3}
           matchupMode={matchupMode}
           onMatchupModeChange={(mode) => {
+            if (mode === 3 && !isProPlan) {
+              setThreeWayProPromptOpen(true);
+              return;
+            }
+            if (mode === 2) {
+              const retainedRows = [matchupRow1, matchupRow2, matchupRow3].filter(Boolean).slice(0, 2);
+              setMatchupRow1(retainedRows[0] ?? null);
+              setMatchupRow2(retainedRows[1] ?? null);
+              setMatchupRow3(null);
+            }
             setMatchupMode(mode);
-            if (mode === 2) setMatchupRow3(null);
           }}
           onAddSelectedPlayer={addSelectedPlayerToMatchup}
           onLaunchMatchup={onLaunchMatchup}
@@ -1409,6 +1522,58 @@ export default function PlayerPoolScreen() {
           visible={proUpsellOpen}
           onClose={() => setProUpsellOpen(false)}
         />
+        <Modal
+          visible={threeWayProPromptOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setThreeWayProPromptOpen(false)}
+        >
+          <View style={styles.proPromptBackdrop}>
+            <View
+              style={[
+                styles.proPromptCard,
+                worldCupMode && {
+                  borderColor: WORLD_CUP_COLORS.mint,
+                  backgroundColor: WORLD_CUP_COLORS.panel,
+                },
+              ]}
+            >
+              <View style={[styles.proPromptIconWrap, worldCupMode && { borderColor: WORLD_CUP_COLORS.mint }]}>
+                <Crown size={24} color={worldCupMode ? WORLD_CUP_COLORS.mint : ACCENT} strokeWidth={2.2} />
+              </View>
+              <Text style={[styles.proPromptTitle, worldCupMode && { color: WORLD_CUP_COLORS.mint }]}>
+                {t('threeWayProTitle', '3-Way Comparison is a Pro feature')}
+              </Text>
+              <Text style={styles.proPromptBody}>
+                {t(
+                  'threeWayProBody',
+                  'Upgrade to Pro to compare three players at once with full ScoutWise metrics and charts.',
+                )}
+              </Text>
+              <View style={styles.proPromptActions}>
+                <Pressable
+                  onPress={() => setThreeWayProPromptOpen(false)}
+                  style={({ pressed }) => [styles.proPromptSecondary, pressed && styles.pressed]}
+                >
+                  <Text style={styles.proPromptSecondaryText}>{t('notNow', 'Not now')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setThreeWayProPromptOpen(false);
+                    navigation.navigate('Profile', { screen: 'ManagePlan' });
+                  }}
+                  style={({ pressed }) => [
+                    styles.proPromptPrimary,
+                    worldCupMode && { backgroundColor: WORLD_CUP_COLORS.mint, borderColor: WORLD_CUP_COLORS.mint },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.proPromptPrimaryText}>{t('managePlan', 'Manage Plan')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
         <DailyScoutChallengeModal autoOpen={tutorial.postTutorialReady} />
         </ScrollView>
       </View>
@@ -1543,6 +1708,85 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     textAlign: 'center',
+  },
+  proPromptBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  proPromptCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.34)',
+    backgroundColor: PANEL,
+    padding: 18,
+    alignItems: 'center',
+    gap: 12,
+  },
+  proPromptIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.42)',
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proPromptTitle: {
+    color: ACCENT,
+    fontSize: 17,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  proPromptBody: {
+    color: '#9A9AA3',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  proPromptActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 4,
+  },
+  proPromptSecondary: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  proPromptSecondaryText: {
+    color: '#B6B6BE',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  proPromptPrimary: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  proPromptPrimaryText: {
+    color: '#02130A',
+    fontSize: 12,
+    fontWeight: '900',
   },
   pressed: {
     opacity: 0.92,

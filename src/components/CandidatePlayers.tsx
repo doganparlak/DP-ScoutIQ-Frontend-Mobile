@@ -164,6 +164,7 @@ export default function CandidatePlayers({
     emptyMessage?: string,
     rowTheme?: PlayerPoolComponentTheme,
     nameFormatter?: (name: string) => string,
+    clickableCards = false,
   ) => {
     const activeTheme = rowTheme ?? theme;
     const verticalSeparatorStyle = [styles.vsep, activeTheme && { backgroundColor: activeTheme.line }];
@@ -193,7 +194,15 @@ export default function CandidatePlayers({
       const roles = rolePreviewLabels(row.player);
       const rowContent = (
         <>
-          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.cell, styles.indexCell, androidCompact && styles.tdCompact, { flex: COL.index }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} style={[
+            styles.td,
+            styles.cell,
+            styles.indexCell,
+            clickableCards && styles.clickableIndexText,
+            activeTheme && clickableCards && { color: activeTheme.accent },
+            androidCompact && styles.tdCompact,
+            { flex: COL.index },
+          ]}>
             {index + 1}
           </Text>
           <View style={verticalSeparatorStyle} />
@@ -223,14 +232,15 @@ export default function CandidatePlayers({
                 key={role}
                 style={[
                   styles.rolePill,
+                  worldCupMode && styles.rolePillWorldCup,
                   activeTheme && { backgroundColor: activeTheme.accentSoft, borderColor: activeTheme.line },
                 ]}
               >
                 <Text
                   maxFontSizeMultiplier={androidTextScale}
                   numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.72}
+                  adjustsFontSizeToFit={!worldCupMode}
+                  minimumFontScale={!worldCupMode ? 0.72 : undefined}
                   style={[styles.rolePillText, activeTheme && { color: activeTheme.accent }]}
                 >
                   {role}
@@ -254,9 +264,11 @@ export default function CandidatePlayers({
               disabled={rowsLocked}
               style={({ pressed }) => [
                 styles.row,
+                clickableCards && styles.clickableRow,
+                clickableCards && activeTheme && { borderColor: activeTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' },
                 activeId === row.id && (activeTheme ? { backgroundColor: activeTheme.activeRow } : styles.dataRowActive),
                 rowsLocked && styles.rowLocked,
-                pressed && styles.pressed,
+                pressed && (clickableCards ? styles.clickableRowPressed : styles.pressed),
               ]}
             >
               {rowContent}
@@ -266,7 +278,11 @@ export default function CandidatePlayers({
               {rowContent}
             </View>
           )}
-          <View style={[styles.hsepThick, activeTheme && { backgroundColor: activeTheme.line }]} />
+          {clickableCards ? (
+            <View style={styles.clickableRowGap} />
+          ) : (
+            <View style={[styles.hsepThick, activeTheme && { backgroundColor: activeTheme.line }]} />
+          )}
         </View>
       );
     });
@@ -324,7 +340,7 @@ export default function CandidatePlayers({
           <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
 
           <View style={styles.tableHeaderWrap}>
-            <View style={styles.row}>
+            <View style={[styles.row, styles.clickableHeaderRow, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
               <View style={[styles.cell, { flex: COL.index }]}>
                 <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
               </View>
@@ -353,20 +369,28 @@ export default function CandidatePlayers({
                 <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
               </View>
             </View>
-            <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
+            <View style={styles.clickableRowGap} />
           </View>
 
           <View style={[styles.tableScrollWrap, { minHeight: candidateTableHeight }]}>
             <ScrollView
               style={{ maxHeight: candidateTableHeight }}
-              contentContainerStyle={{ paddingRight: 5 }}
+              contentContainerStyle={{ paddingRight: 5, paddingVertical: 4 }}
               scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
               nestedScrollEnabled
               bounces={false}
               scrollEnabled={!scrollLocked}
               showsVerticalScrollIndicator
             >
-              {renderRows(sortedResults, onSelectRow, selectedPlayerId)}
+              {renderRows(
+                sortedResults,
+                onSelectRow,
+                selectedPlayerId,
+                undefined,
+                theme,
+                undefined,
+                true,
+              )}
             </ScrollView>
           </View>
 
@@ -490,7 +514,7 @@ export default function CandidatePlayers({
               <View style={styles.table}>
                 <View style={[styles.tableTopBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
                 <View style={styles.tableHeaderWrap}>
-                  <View style={styles.row}>
+                  <View style={[styles.row, styles.clickableHeaderRow, popularTheme && { borderColor: popularTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
                     <View style={[styles.cell, { flex: COL.index }]}>
                       <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
                     </View>
@@ -519,11 +543,11 @@ export default function CandidatePlayers({
                       <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
                     </View>
                   </View>
-                  <View style={[styles.hsepThick, popularTheme && { backgroundColor: popularTheme.line }]} />
+                  <View style={styles.clickableRowGap} />
                 </View>
                 <ScrollView
                   style={styles.popularScroll}
-                  contentContainerStyle={{ paddingRight: 5 }}
+                  contentContainerStyle={{ paddingRight: 5, paddingVertical: 4 }}
                   nestedScrollEnabled
                   bounces={false}
                   showsVerticalScrollIndicator
@@ -537,6 +561,7 @@ export default function CandidatePlayers({
                       : t('weeklyPopularEmpty', 'No popular players have been recorded this week yet.'),
                     popularTheme,
                     compactDisplayName,
+                    true,
                   )}
                 </ScrollView>
                 <View style={[styles.tableBottomBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
@@ -667,11 +692,39 @@ const styles = StyleSheet.create({
     paddingRight: 1,
   },
   row: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
+  clickableRow: {
+    minHeight: ROW_HEIGHT + 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.16)',
+    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
+  },
+  clickableHeaderRow: {
+    minHeight: ROW_HEIGHT + 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.22)',
+    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
+  },
+  clickableRowPressed: {
+    transform: [{ scale: 0.992 }],
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderColor: 'rgba(36, 245, 166, 0.42)',
+  },
+  clickableRowGap: { height: 8 },
+  clickableIndexText: {
+    color: ACCENT,
+    fontWeight: '900',
+  },
   rowLocked: { opacity: 0.62 },
   hsepThick: { height: 2, backgroundColor: LINE },
   cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
-  thText: { color: TEXT, fontWeight: '700' },
-  thTextCompact: { fontSize: 11, lineHeight: 13 },
+  thText: { color: TEXT, fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  thTextCompact: { fontSize: 12, lineHeight: 15 },
   td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 12.5 },
   roleCellText: {
     color: ACCENT,
@@ -699,6 +752,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 7,
+  },
+  rolePillWorldCup: {
+    minWidth: 38,
+    flexShrink: 0,
   },
   rolePillText: {
     minWidth: 0,

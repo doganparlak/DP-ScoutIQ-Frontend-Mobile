@@ -208,6 +208,10 @@ function lastNameLabel(name: string) {
   return parts[parts.length - 1] ?? trimmed;
 }
 
+function uppercaseLabel(value: string, lang?: string) {
+  return value.toLocaleUpperCase(lang?.startsWith('tr') ? 'tr-TR' : undefined);
+}
+
 function buildSyntheticRow(metric: string, value1: number | undefined, value2: number | undefined, min: number, max: number): MetricRow | null {
   if (typeof value1 !== 'number' || typeof value2 !== 'number') return null;
   if (!Number.isFinite(value1) || !Number.isFinite(value2)) return null;
@@ -407,7 +411,7 @@ export default function ComparisonModal({
     const fullPotentialLabel = i18n.language?.startsWith('tr') ? 'POTANSİYEL' : t('potential', 'Potential');
     const scores = [
       {
-        label: hasThirdPlayer ? fullPotentialLabel : 'POT',
+        label: fullPotentialLabel,
         value: player && isValidScore(player.meta?.potential) ? player.meta.potential : undefined,
       },
       {
@@ -415,7 +419,15 @@ export default function ComparisonModal({
         value: player && isValidScore(player.meta?.form) ? player.meta.form : undefined,
       },
     ];
-
+    const height = player?.meta?.height;
+    const weight = player?.meta?.weight;
+    const hasHeight = typeof height === 'number' && Number.isFinite(height);
+    const hasWeight = typeof weight === 'number' && Number.isFinite(weight);
+    const physicalValue = [
+      hasHeight ? `${Math.round(height)} cm` : null,
+      hasWeight ? `${Math.round(weight)} kg` : null,
+    ].filter(Boolean).join(' · ');
+    const upper = (value: string) => uppercaseLabel(value, i18n.language);
     return (
       <Pressable
         disabled={!player || tutorialVisible}
@@ -426,21 +438,54 @@ export default function ComparisonModal({
           pressed && styles.pressed,
         ]}
       >
-        <Text style={styles.playerSlotLabel}>{label}</Text>
-        <Text numberOfLines={1} style={styles.playerName}>
-          {player ? compactPlayerName(player.name) : '-'}
-        </Text>
+        <View style={styles.playerIntroRow}>
+          <View style={styles.playerIntroText}>
+            <Text style={styles.playerSlotLabel}>{label}</Text>
+            <Text numberOfLines={1} style={styles.playerName}>
+              {player ? compactPlayerName(player.name) : '-'}
+            </Text>
+          </View>
+          {physicalValue ? (
+            <View style={styles.physicalChip}>
+              <Text numberOfLines={1} style={styles.physicalChipLabel}>{upper(t('physical', 'Physical'))}</Text>
+              <Text numberOfLines={1} style={styles.physicalChipValue}>{physicalValue}</Text>
+            </View>
+          ) : null}
+        </View>
         <View style={styles.headerScoreRow}>
           {scores.map((score) => (
             <View key={score.label} style={styles.headerScorePill}>
-              <Text numberOfLines={1} style={styles.headerScoreLabel}>{score.label}</Text>
+              <Text numberOfLines={1} style={styles.headerScoreLabel}>{upper(score.label)}</Text>
               <Text style={[styles.headerScoreValue, score.value !== undefined ? { color: scoreColor(score.value) } : styles.headerScoreValueMissing]}>
                 {score.value !== undefined ? Math.round(score.value) : '-'}
               </Text>
             </View>
           ))}
         </View>
+        <View style={styles.identityGrid}>
+          <View style={styles.identityPillRow}>
+            <View style={styles.identityPill}>
+              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('team', 'Team'))}</Text>
+              <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.team ?? '-'}</Text>
+            </View>
+            <View style={styles.identityPill}>
+              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('league', 'League'))}</Text>
+              <Text numberOfLines={1} style={styles.identityPillValue}>{!worldCupMode ? player?.meta?.league ?? '-' : '-'}</Text>
+            </View>
+          </View>
+          <View style={styles.identityPillRow}>
+            <View style={styles.identityPill}>
+              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('age', 'Age'))}</Text>
+              <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.age ? `${player.meta.age}` : '-'}</Text>
+            </View>
+            <View style={styles.identityPill}>
+              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('country', 'Country'))}</Text>
+              <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.nationality ?? '-'}</Text>
+            </View>
+          </View>
+        </View>
         <View style={styles.headerRolesArea}>
+          <Text style={styles.headerRolesLabel}>{upper(t('roleDistribution', 'Role Distribution'))}</Text>
           {roles.length ? (
             <View style={styles.headerRolesRow}>
               {roles.map((item) => (
@@ -455,18 +500,6 @@ export default function ComparisonModal({
           ) : (
             <Text style={styles.headerRoleMissing}>-</Text>
           )}
-        </View>
-        <View style={styles.identityGrid}>
-          <View style={styles.identityLine}>
-            <Text numberOfLines={1} style={styles.identityValue}>{player?.meta?.age ? `${player.meta.age}` : '-'}</Text>
-            <Text style={styles.identityDivider}>|</Text>
-            <Text numberOfLines={1} style={styles.identityValue}>{player?.meta?.nationality ?? '-'}</Text>
-          </View>
-          <View style={styles.identityLine}>
-            <Text numberOfLines={1} style={styles.identityValue}>{player?.meta?.team ?? '-'}</Text>
-            <Text style={styles.identityDivider}>|</Text>
-            <Text numberOfLines={1} style={styles.identityValue}>{!worldCupMode ? player?.meta?.league ?? '-' : '-'}</Text>
-          </View>
         </View>
       </Pressable>
     );
@@ -938,7 +971,7 @@ export default function ComparisonModal({
                 onSkipAll={onTutorialSkipAll}
                 arrow="none"
               />
-              <View style={hasThirdPlayer ? styles.playersStack : styles.playersRow}>
+              <View style={styles.playersStack}>
                 {renderPlayerHeader(t('matchupPlayer1Placeholder', 'Player 1'), player1)}
                 {renderPlayerHeader(t('matchupPlayer2Placeholder', 'Player 2'), player2)}
                 {hasThirdPlayer ? renderPlayerHeader(t('matchupPlayer3Placeholder', 'Player 3'), player3) : null}
@@ -1179,11 +1212,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
   },
-  playersRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
   playersStack: {
     gap: 10,
     marginBottom: 14,
@@ -1191,12 +1219,13 @@ const styles = StyleSheet.create({
   playerHeader: {
     flex: 1,
     alignSelf: 'stretch',
+    minHeight: 252,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: LINE,
     backgroundColor: CARD,
     padding: 12,
-    gap: 8,
+    gap: 7,
   },
   playerSlotLabel: {
     color: MUTED,
@@ -1204,10 +1233,43 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
   },
+  playerIntroRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  playerIntroText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
   playerName: {
     color: TEXT,
     fontSize: 13,
     fontWeight: '900',
+    flex: 1,
+    minWidth: 0,
+  },
+  physicalChip: {
+    maxWidth: 118,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.16)',
+    backgroundColor: 'rgba(255,255,255,0.018)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    gap: 1,
+  },
+  physicalChipLabel: {
+    color: MUTED,
+    fontSize: 8.5,
+    fontWeight: '800',
+  },
+  physicalChipValue: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 10.5,
+    fontWeight: '800',
   },
   headerScoreRow: {
     flexDirection: 'row',
@@ -1228,7 +1290,6 @@ const styles = StyleSheet.create({
     color: MUTED,
     fontSize: 9.5,
     fontWeight: '800',
-    textTransform: 'uppercase',
   },
   headerScoreValue: {
     fontSize: 13,
@@ -1238,10 +1299,23 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   headerRolesArea: {
-    minHeight: 50,
-    maxHeight: 50,
+    minHeight: 74,
+    maxHeight: 74,
     justifyContent: 'flex-start',
     overflow: 'hidden',
+    marginTop: 'auto',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(255,255,255,0.018)',
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    gap: 5,
+  },
+  headerRolesLabel: {
+    color: MUTED,
+    fontSize: 9.5,
+    fontWeight: '800',
   },
   headerRolesRow: {
     flexDirection: 'row',
@@ -1271,22 +1345,30 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   identityGrid: {
-    gap: 5,
+    gap: 6,
   },
-  identityLine: {
-    minWidth: 0,
+  identityPillRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
-  identityValue: {
-    flexShrink: 1,
-    color: TEXT,
-    fontSize: 12,
-    fontWeight: '700',
+  identityPill: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(255,255,255,0.025)',
+    paddingHorizontal: 7,
+    paddingVertical: 6,
+    gap: 2,
   },
-  identityDivider: {
+  identityPillLabel: {
     color: MUTED,
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  identityPillValue: {
+    color: TEXT,
     fontSize: 12,
     fontWeight: '800',
   },

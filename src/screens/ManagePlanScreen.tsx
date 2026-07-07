@@ -53,6 +53,9 @@ const isPaidSubscription = (p: Plan) => p === 'No Ads Monthly' || isPro(p);
 export default function ManagePlan() {
   const nav = useNavigation();
   const { t } = useTranslation();
+  const goToProfileHome = React.useCallback(() => {
+    (nav as any).navigate('Profile', { screen: 'MyProfile' });
+  }, [nav]);
 
   const [currentPlan, setCurrentPlan] = React.useState<Plan>('Free');
   const [selected, setSelected] = React.useState<Plan>('Free');
@@ -205,8 +208,7 @@ export default function ManagePlan() {
               t('planNow', 'Your plan is now {{plan}}.', { plan: planLabel(res.plan) }),
             );
 
-            // @ts-ignore
-            nav.goBack();
+            goToProfileHome();
           } else {
             Alert.alert(
               t('error', 'Error'),
@@ -370,7 +372,7 @@ export default function ManagePlan() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => nav.goBack()}
+          onPress={goToProfileHome}
           style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
           accessibilityLabel={t('backToProfile', 'Back to Profile')}
         >
@@ -433,10 +435,12 @@ export default function ManagePlan() {
                     ? [
                         t('planFeatures_Pro', 'Ad-free'),
                         t('planFeatures_ProName', 'ScoutWise Pro'),
+                        t('planFeatures_ThreeWay', 'Compare 3'),
                       ].join('\n')
                     : [
                         t('planFeatures_Pro', 'Ad-free'),
                         t('planFeatures_ProName', 'ScoutWise Pro'),
+                        t('planFeatures_ThreeWay', 'Compare 3'),
                         t('proYearlyDiscount', '- 30%'),
                       ].join('\n')}
               </Text>
@@ -566,6 +570,7 @@ export default function ManagePlan() {
                 'proBenefit3',
                 'Chat with ScoutWise to discover the best-fit players for your needs',
               ),
+              t('proBenefitThreeWay', '3-Way Comparison'),
               t('proBenefit4', 'Priority customer support'),
               t('proBenefit5', 'Support the development of New Features'),
             ].map((benefit) => (

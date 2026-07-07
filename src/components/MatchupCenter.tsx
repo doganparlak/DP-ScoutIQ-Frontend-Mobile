@@ -168,7 +168,12 @@ export default function MatchupCenter({
   ) => {
     if (!row) {
       return (
-        <View style={[styles.row, styles.emptySlot, theme && { backgroundColor: theme.card }]}>
+        <View style={[
+          styles.row,
+          styles.slotCard,
+          styles.emptySlot,
+          theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' },
+        ]}>
           <Text style={[styles.td, styles.slotLabel, { flex: COL.index }]}>{label}</Text>
           <View style={styles.vsep} />
           <Text style={[styles.emptyText, theme && { color: theme.muted }]} numberOfLines={1}>
@@ -192,7 +197,7 @@ export default function MatchupCenter({
     ].filter(Boolean) as Array<{ label: string; value: number }>;
 
     return (
-      <View style={styles.slotWrap}>
+      <View style={[styles.slotWrap, styles.slotCard, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' }]}>
         <View style={styles.row}>
         <Text style={[styles.td, styles.slotLabel, theme && { color: theme.accent }, { flex: COL.index }]}>{label}</Text>
         <View style={styles.vsep} />
@@ -222,13 +227,14 @@ export default function MatchupCenter({
               key={role}
               style={[
                 styles.rolePill,
+                worldCupMode && styles.rolePillWorldCup,
                 theme && { backgroundColor: theme.accentSoft, borderColor: theme.line },
               ]}
             >
               <Text
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
+                adjustsFontSizeToFit={!worldCupMode}
+                minimumFontScale={!worldCupMode ? 0.72 : undefined}
                 style={[styles.rolePillText, theme && { color: theme.accent }]}
               >
                 {role}
@@ -374,7 +380,7 @@ export default function MatchupCenter({
         <View style={styles.table}>
           <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
           <View style={styles.tableHeaderWrap}>
-            <View style={styles.row}>
+            <View style={[styles.row, styles.slotHeaderRow, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
               <View style={[styles.cell, { flex: COL.index }]}>
                 <Text style={[styles.thText, styles.indexCell]}>#</Text>
               </View>
@@ -405,13 +411,13 @@ export default function MatchupCenter({
               <View style={[styles.vsep, theme && { backgroundColor: theme.line }]} />
               <View style={[styles.cell, { flex: COL.action }]} />
             </View>
-            <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
+            <View style={styles.slotRowGap} />
           </View>
 
           {renderSlot('1', row1, onRemoveRow1)}
-          <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
+          <View style={styles.slotRowGap} />
 
-          <View style={[styles.vsBand, theme && { backgroundColor: theme.accentSoft }]}>
+          <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
             <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
             <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}>
               <Text style={[styles.vsText, theme && { color: theme.accent }]}>
@@ -421,13 +427,13 @@ export default function MatchupCenter({
             <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
           </View>
 
-          <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
+          <View style={styles.slotRowGap} />
           {renderSlot('2', row2, onRemoveRow2)}
 
           {matchupMode === 3 ? (
             <>
-              <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
-              <View style={[styles.vsBand, theme && { backgroundColor: theme.accentSoft }]}>
+              <View style={styles.slotRowGap} />
+              <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
                 <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
                 <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}>
                   <Text style={[styles.vsText, theme && { color: theme.accent }]}>
@@ -436,7 +442,7 @@ export default function MatchupCenter({
                 </View>
                 <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
               </View>
-              <View style={[styles.hsepThick, theme && { backgroundColor: theme.line }]} />
+              <View style={styles.slotRowGap} />
               {renderSlot('3', row3 ?? null, onRemoveRow3 ?? (() => undefined))}
             </>
           ) : null}
@@ -571,6 +577,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 2,
   },
+  slotHeaderRow: {
+    minHeight: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.22)',
+    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
+  },
+  slotCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.16)',
+    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
+  },
+  slotRowGap: { height: 8 },
   slotWrap: {
     width: '100%',
   },
@@ -624,7 +648,7 @@ const styles = StyleSheet.create({
   },
   hsepThick: { height: 2, backgroundColor: LINE },
   cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
-  thText: { color: TEXT, fontWeight: '700', fontSize: 12 },
+  thText: { color: TEXT, fontSize: 12, lineHeight: 15, fontWeight: '800' },
   td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 12.5 },
   roleCellText: {
     color: ACCENT,
@@ -653,6 +677,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 7,
   },
+  rolePillWorldCup: {
+    minWidth: 38,
+    flexShrink: 0,
+  },
   rolePillText: {
     minWidth: 0,
     color: ACCENT,
@@ -680,7 +708,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   emptySlot: {
-    backgroundColor: 'rgba(31, 34, 32, 0.58)',
+    backgroundColor: 'rgba(22, 163, 74, 0.055)',
   },
   emptyText: {
     color: MUTED,
@@ -690,11 +718,14 @@ const styles = StyleSheet.create({
   },
   vsBand: {
     minHeight: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: LINE,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(22, 163, 74, 0.06)',
+    backgroundColor: 'rgba(255,255,255,0.018)',
   },
   vsLine: {
     flex: 1,

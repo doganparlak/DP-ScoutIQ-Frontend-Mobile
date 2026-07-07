@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const POTENTIAL_KEY = 'ads.playerPool.potentialRevealCount.v1';
 const WEEKLY_POPULAR_KEY = 'ads.playerPool.weeklyPopularRevealCount.v1';
 const MATCHUP_LAUNCH_KEY = 'ads.playerPool.matchupLaunchCount.v1';
+const MATCHUP_MISSING_SCORE_ADD_KEY = 'ads.playerPool.matchupMissingScoreAddCount.v1';
 const PORTFOLIO_LINEUP_KEY = 'ads.portfolio.lineupLaunchCount.v1';
 const PORTFOLIO_REPORT_KEY = 'ads.portfolio.reportOpenCount.v1';
 const DAILY_SCOUT_CHALLENGE_KEY = 'ads.profile.dailyScoutChallengeOpenCount.v1';
@@ -48,6 +49,22 @@ export async function incrementMatchupLaunchCount(): Promise<number> {
   const current = raw ? parseInt(raw, 10) : 0;
   const next = (Number.isFinite(current) ? current : 0) + 1;
   await AsyncStorage.setItem(MATCHUP_LAUNCH_KEY, String(next));
+  return next;
+}
+
+export function shouldShowMatchupMissingScoreInterstitial(addCount: number) {
+  return addCount > 0 && addCount % 2 === 0;
+}
+
+export function shouldPrepareNextMatchupMissingScoreInterstitial(addCount: number) {
+  return addCount > 0 && addCount % 2 === 1;
+}
+
+export async function incrementMatchupMissingScoreAddCount(): Promise<number> {
+  const raw = await AsyncStorage.getItem(MATCHUP_MISSING_SCORE_ADD_KEY);
+  const current = raw ? parseInt(raw, 10) : 0;
+  const next = (Number.isFinite(current) ? current : 0) + 1;
+  await AsyncStorage.setItem(MATCHUP_MISSING_SCORE_ADD_KEY, String(next));
   return next;
 }
 
