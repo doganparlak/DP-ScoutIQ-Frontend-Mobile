@@ -56,6 +56,54 @@ type ParsedReport = {
 type ReportIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 type PageItem = { key: string; title: string; node: React.ReactNode; Icon?: ReportIcon };
 
+type NarrativeSection = 'strengths' | 'weaknesses' | 'conclusion';
+type NarrativeBullet = { title: string; body: string };
+
+const NARRATIVE_TITLE_FALLBACKS: Record<NarrativeSection, string[]> = {
+  strengths: [],
+  weaknesses: [],
+  conclusion: ['Role & System', 'Development Focus', 'Usage Recommendation', 'In Possession', 'Out of Possession'],
+};
+
+function parseNarrativeBullet(item: string, section: NarrativeSection, index: number): NarrativeBullet {
+  const match = item.match(/^([^:：]{2,42})[:：]\s*(.+)$/);
+  if (match) {
+    return { title: match[1].trim(), body: match[2].trim() };
+  }
+
+  return {
+    title: NARRATIVE_TITLE_FALLBACKS[section][index] || '',
+    body: item,
+  };
+}
+
+function NarrativeBulletRow({
+  item,
+  index,
+  section,
+  color,
+}: {
+  item: string;
+  index: number;
+  section: NarrativeSection;
+  color: string;
+}) {
+  const bullet = parseNarrativeBullet(item, section, index);
+  return (
+    <View style={styles.narrativeRow}>
+      <Text style={[styles.narrativeDot, { color }]}>•</Text>
+      <Text style={styles.narrativeText}>
+        {bullet.title ? (
+          <Text style={[styles.narrativeTitle, { color }]}>
+            {bullet.title}: {' '}
+          </Text>
+        ) : null}
+        {bullet.body}
+      </Text>
+    </View>
+  );
+}
+
 function stripBullet(s: string) {
   return s.replace(/^\s*[-•]\s*/, '').trim();
 }
@@ -208,10 +256,13 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
             </Text>
           ) : (
             parsed.strengths.map((s, i) => (
-              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
-                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-              </View>
+              <NarrativeBulletRow
+                key={`${i}-${s}`}
+                item={s}
+                index={i}
+                section="strengths"
+                color={ACCENT}
+              />
             ))
           )}
         </View>
@@ -229,10 +280,13 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
             </Text>
           ) : (
             parsed.weaknesses.map((s, i) => (
-              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                <Text style={{ color: DANGER, fontWeight: '900' }}>•</Text>
-                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-              </View>
+              <NarrativeBulletRow
+                key={`${i}-${s}`}
+                item={s}
+                index={i}
+                section="weaknesses"
+                color={DANGER}
+              />
             ))
           )}
         </View>
@@ -250,10 +304,13 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
             </Text>
           ) : (
             parsed.conclusion.map((s, i) => (
-              <View key={`${i}-${s}`} style={{ flexDirection: 'row', gap: 10 }}>
-                <Text style={{ color: ACCENT, fontWeight: '900' }}>•</Text>
-                <Text style={{ color: TEXT, flex: 1, lineHeight: 20 }}>{s}</Text>
-              </View>
+              <NarrativeBulletRow
+                key={`${i}-${s}`}
+                item={s}
+                index={i}
+                section="conclusion"
+                color={ACCENT}
+              />
             ))
           )}
         </View>
@@ -532,6 +589,24 @@ const styles = StyleSheet.create({
   },
   brandWise: {
     color: ACCENT,
+    fontWeight: '900',
+  },
+  narrativeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  narrativeDot: {
+    fontWeight: '900',
+    fontSize: 16,
+    lineHeight: 21,
+  },
+  narrativeText: {
+    color: TEXT,
+    flex: 1,
+    lineHeight: 20,
+  },
+  narrativeTitle: {
     fontWeight: '900',
   },
 });
