@@ -12,6 +12,7 @@ import {
   NativeSyntheticEvent,
   Platform,
 } from 'react-native';
+import Svg, { Defs, Line, LinearGradient, Polygon, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import {
   toSpiderPoints,
   GK_METRICS,
@@ -22,12 +23,12 @@ import {
   DEFENDING_METRICS,
 } from '../components/spiderRanges';
 import { useTranslation } from 'react-i18next';
-import { BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LogIn, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
+import { BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LogIn, Map as MapIcon, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
 
 import PlayerCard from '../components/PlayerCard';
 import SpiderChart, { type SpiderPoint } from '../components/SpiderChart';
 import type { PlayerData } from '../types';
-import type { ScoutingReportResponse } from '../services/api';
+import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG, type ScoutingReportResponse } from '../services/api';
 import ErrorsDisciplineTiles from '../components/ErrorsDisciplineTiles';
 
 import {
@@ -58,6 +59,192 @@ type PageItem = { key: string; title: string; node: React.ReactNode; Icon?: Repo
 
 type NarrativeSection = 'strengths' | 'weaknesses' | 'conclusion';
 type NarrativeBullet = { title: string; body: string };
+
+type PitchRoleZoneCode = 'GK' | 'LB' | 'RB' | 'CB' | 'LM' | 'RM' | 'CDM' | 'CM' | 'CAM' | 'LW' | 'RW' | 'CF';
+
+type PitchZone = {
+  code: PitchRoleZoneCode;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+const PITCH_ROLE_ZONES: PitchZone[] = [
+  { code: 'GK', x: 2, y: 82, w: 52, h: 16 },
+  { code: 'LB', x: 2, y: 60.667, w: 13, h: 21.333 },
+  { code: 'LM', x: 2, y: 39.333, w: 13, h: 21.334 },
+  { code: 'LW', x: 2, y: 18, w: 13, h: 21.333 },
+  { code: 'CB', x: 15, y: 66, w: 26, h: 16 },
+  { code: 'CDM', x: 15, y: 50, w: 26, h: 16 },
+  { code: 'CM', x: 15, y: 34, w: 26, h: 16 },
+  { code: 'CAM', x: 15, y: 18, w: 26, h: 16 },
+  { code: 'RB', x: 41, y: 60.667, w: 13, h: 21.333 },
+  { code: 'RM', x: 41, y: 39.333, w: 13, h: 21.334 },
+  { code: 'RW', x: 41, y: 18, w: 13, h: 21.333 },
+  { code: 'CF', x: 2, y: 2, w: 52, h: 16 },
+];
+
+function roleShortLabel(value?: string) {
+  if (!value) return '';
+  const upper = String(value).trim().toUpperCase();
+  if (ROLE_SHORT_TO_LONG[upper]) return upper;
+  return ROLE_LONG_TO_SHORT[String(value)] || ROLE_LONG_TO_SHORT[String(value).toLowerCase()] || upper;
+}
+
+function normalizePositionCounts(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, number>>((acc, [rawRole, rawCount]) => {
+    const role = roleShortLabel(rawRole).toUpperCase();
+    const count = Number(rawCount);
+    if (role && Number.isFinite(count) && count > 0) acc[role] = (acc[role] || 0) + count;
+    return acc;
+  }, {});
+}
+
+function normalizePositionNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map((item) => roleShortLabel(String(item)).toUpperCase()).filter(Boolean)));
+}
+
+function toPitchZone(value: string): PitchRoleZoneCode | '' {
+  const code = roleShortLabel(value).toUpperCase();
+  if (['GK', 'LB', 'RB', 'CB', 'LM', 'RM', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'CF'].includes(code)) {
+    return code as PitchRoleZoneCode;
+  }
+  return '';
+}
+
+function normalizePitchZoneCounts(counts: Record<string, number>) {
+  return Object.entries(counts).reduce<Partial<Record<PitchRoleZoneCode, number>>>((acc, [role, count]) => {
+    const zone = toPitchZone(role);
+    if (zone) acc[zone] = (acc[zone] || 0) + count;
+    return acc;
+  }, {});
+}
+
+function buildPitchZoneColorValues(zoneCounts: Partial<Record<PitchRoleZoneCode, number>>) {
+  const leftWide = (zoneCounts.LM || 0) + (zoneCounts.LW || 0);
+  const rightWide = (zoneCounts.RM || 0) + (zoneCounts.RW || 0);
+  return PITCH_ROLE_ZONES.reduce<Partial<Record<PitchRoleZoneCode, number>>>((acc, zone) => {
+    if (zone.code === 'LM' || zone.code === 'LW') acc[zone.code] = leftWide;
+    else if (zone.code === 'RM' || zone.code === 'RW') acc[zone.code] = rightWide;
+    else acc[zone.code] = zoneCounts[zone.code] || 0;
+    return acc;
+  }, {});
+}
+
+function getReportPositionSource(player: PlayerData, report: ScoutingReportResponse) {
+  const card = report.content_json?.player_card || {};
+  const counts = normalizePositionCounts(card.position_counts || card.positionCounts || player.meta?.positionCounts);
+  const namesSeen = normalizePositionNames(card.position_names_seen || card.positionNamesSeen || player.meta?.positionNamesSeen);
+  const total =
+    Object.values(counts).reduce((sum, count) => sum + count, 0) ||
+    Number(card.position_count_total || card.positionCountTotal || player.meta?.positionCountTotal || 0);
+  return { counts, namesSeen, total };
+}
+
+function RoleDistributionPitchMap({ player, report }: { player: PlayerData; report: ScoutingReportResponse }) {
+  const { counts, namesSeen, total } = getReportPositionSource(player, report);
+  const zoneCounts = normalizePitchZoneCounts(counts);
+  const activeZones = new Set<string>([
+    ...Object.keys(zoneCounts),
+    ...(Object.keys(zoneCounts).length ? [] : namesSeen.map(toPitchZone).filter(Boolean)),
+  ]);
+
+  if (!activeZones.size) return null;
+
+  const colorValues = buildPitchZoneColorValues(zoneCounts);
+  const max = Math.max(...Object.values(colorValues), ...Object.values(zoneCounts), 0);
+  const roleEntries = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([role, count]) => ({
+      role,
+      pct: total ? Math.round((count / total) * 100) : null,
+    }));
+
+  return (
+    <View style={styles.pitchMapStage}>
+      <View style={styles.pitchRoleList}>
+        {roleEntries.map((entry) => (
+          <View key={entry.role} style={styles.pitchRolePill}>
+            <Text style={styles.pitchRoleCode}>{entry.role}</Text>
+            {entry.pct !== null ? <Text style={styles.pitchRolePct}>{entry.pct}%</Text> : null}
+          </View>
+        ))}
+      </View>
+      <View style={styles.pitchMapWrap}>
+        <Svg viewBox="0 0 56 100" width="100%" height="100%" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id="mobileReportPitchShade" x1="0" x2="0" y1="0" y2="1">
+            <Stop offset="0%" stopColor="#0A371E" />
+            <Stop offset="50%" stopColor="#082616" />
+            <Stop offset="100%" stopColor="#0A371E" />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="56" height="100" fill="url(#mobileReportPitchShade)" />
+        {PITCH_ROLE_ZONES.map((zone) => {
+          const count = zoneCounts[zone.code] || 0;
+          const colorValue = colorValues[zone.code] || 0;
+          const active = activeZones.has(zone.code) || Boolean(colorValue);
+          const intensity = colorValue && max ? colorValue / max : 0;
+          const percent = count && total ? Math.round((count / total) * 100) : 0;
+          const fill = active ? `rgba(32, 201, 151, ${0.06 + intensity * 0.62})` : 'rgba(6, 16, 11, 0.24)';
+          const labelX = zone.x + zone.w / 2;
+          const labelY = zone.y + zone.h / 2;
+          const roleY = labelY - (percent ? 3.2 : 0);
+          const percentY = labelY + 4.6;
+          return (
+            <React.Fragment key={zone.code}>
+              <Rect
+                x={zone.x}
+                y={zone.y}
+                width={zone.w}
+                height={zone.h}
+                fill={fill}
+                stroke="rgba(215, 239, 219, 0.36)"
+                strokeWidth={0.42}
+              />
+              <SvgText
+                x={labelX}
+                y={roleY}
+                textAnchor="middle"
+                alignmentBaseline="middle"
+                fill="rgba(255,255,255,0.93)"
+                fontSize="3.45"
+                fontWeight="900"
+              >
+                {zone.code}
+              </SvgText>
+              {percent ? (
+                <SvgText
+                  x={labelX}
+                  y={percentY}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                  fill="#D1FAE5"
+                  fontSize="2.75"
+                  fontWeight="900"
+                >
+                  {percent} %
+                </SvgText>
+              ) : null}
+            </React.Fragment>
+          );
+        })}
+        </Svg>
+      </View>
+      <View style={styles.pitchDirectionSlot}>
+        <View style={styles.pitchDirectionRail}>
+          <Svg viewBox="0 0 10 48" width="100%" height="100%" preserveAspectRatio="none">
+            <Line x1="5" y1="43" x2="5" y2="7" stroke="rgba(148, 163, 184, 0.74)" strokeWidth="0.7" strokeLinecap="round" />
+            <Polygon points="5,4.4 3.45,8.6 6.55,8.6" fill="rgba(148, 163, 184, 0.74)" />
+          </Svg>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 const NARRATIVE_TITLE_FALLBACKS: Record<NarrativeSection, string[]> = {
   strengths: [],
@@ -293,6 +480,21 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ),
     };
 
+    const pitchSource = getReportPositionSource(player, report);
+    const hasPitchMap = Object.keys(pitchSource.counts).length > 0 || pitchSource.namesSeen.length > 0;
+    const pitchMapPage: PageItem | null = hasPitchMap
+      ? {
+          key: 'pitch-map',
+          title: t('pitchMap', 'Pitch Map'),
+          node: (
+            <View style={styles.pitchMapPage}>
+              <RoleDistributionPitchMap player={player} report={report} />
+            </View>
+          ),
+          Icon: MapIcon,
+        }
+      : null;
+
     const roleUsagePage: PageItem = {
       key: 'conclusion',
       title: t('role_usage', 'Role & Usage'),
@@ -317,7 +519,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ),
     };
 
-    const out: PageItem[] = [playerPage, roleUsagePage, strengthsPage, weaknessesPage];
+    const out: PageItem[] = [playerPage, ...(pitchMapPage ? [pitchMapPage] : []), roleUsagePage, strengthsPage, weaknessesPage];
 
     spiderGroups.forEach((g, idx) => {
       const title = t(g.titleKey, g.fallbackTitle);
@@ -608,5 +810,72 @@ const styles = StyleSheet.create({
   },
   narrativeTitle: {
     fontWeight: '900',
+  },
+  pitchMapPage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 0,
+  },
+  pitchMapStage: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: 7,
+    transform: [{ translateX: 10 }],
+  },
+  pitchRoleList: {
+    width: 72,
+    gap: 5,
+    alignItems: 'stretch',
+    marginTop: 0,
+  },
+  pitchRolePill: {
+    minHeight: 25,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  pitchRoleCode: {
+    color: ACCENT,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  pitchRolePct: {
+    color: MUTED,
+    fontSize: 10.5,
+    fontWeight: '900',
+  },
+  pitchDirectionSlot: {
+    width: 72,
+    alignItems: 'flex-start',
+  },
+  pitchDirectionRail: {
+    width: 22,
+    height: 178,
+    marginTop: 0,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: 'rgba(255,255,255,0.052)',
+    overflow: 'hidden',
+  },
+  pitchMapWrap: {
+    width: '58%',
+    maxWidth: 232,
+    aspectRatio: 0.56,
+    overflow: 'hidden',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 199, 172, 0.55)',
+    backgroundColor: '#092E19',
   },
 });
