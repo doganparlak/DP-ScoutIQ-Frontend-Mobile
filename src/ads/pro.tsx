@@ -128,15 +128,10 @@ export function ProNotReadyScreen({ visible, onClose }: ProNotReadyProps) {
                   <Benefit
                     text={t(
                       'proBenefit2',
-                      'Use Team Strategy to define your tactical approach and the idea behind your scouting philosophy',
+                      'Player discovery chat aligned with your team strategy',
                     )}
                   />
-                  <Benefit
-                    text={t(
-                      'proBenefit3',
-                      'Chat with ScoutWise to discover the best-fit players for your needs',
-                    )}
-                  />
+                  <Benefit text={t('proBenefitThreeWay', '3-Way Comparison')} />
                   <Benefit text={t('proBenefit4', 'Priority customer support')} />
                   <Benefit text={t('proBenefit5', 'Support the development of new features')} />
                 </View>
@@ -192,17 +187,16 @@ function Benefit({ text }: { text: string }) {
 
     if (i18n.language?.startsWith('tr')) {
       apply('Reklamsız');
-      apply('Takım Stratejisi');
-      apply('ScoutWise');
-      apply('sohbet');
+      apply('Takım stratejine');
+      apply("3'lü");
       apply('Öncelikli');
       apply('Yeni özelliklerin');
     } else {
       apply('ad-free');
       apply('Ad-Free');
-      apply('Team Strategy');
-      apply('Chat');
-      apply('ScoutWise');
+      apply('team strategy');
+      apply('Team strategy');
+      apply('3-Way');
       apply('Priority');
       apply('new features');
       apply('New Features');
@@ -351,9 +345,7 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
     position: 'relative',
   },
-  planCardFeatured: {
-    borderColor: ACCENT,
-  },
+  planCardFeatured: {},
 
   /* ✅ Center everything inside plan cards */
   planCenter: {
@@ -468,7 +460,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
   },
 
   sloganWrap: {

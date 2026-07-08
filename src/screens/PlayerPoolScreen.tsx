@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Crown, Eye } from 'lucide-react-native';
 
@@ -19,11 +19,14 @@ import {
   incrementPotentialRevealCount,
   incrementMatchupLaunchCount,
   incrementMatchupMissingScoreAddCount,
+  incrementPlayerPoolMissingScoreActionCount,
   incrementPortfolioReportOpenCount,
   incrementWeeklyPopularRevealCount,
   shouldShowMatchupLaunchInterstitial,
   shouldShowMatchupMissingScoreInterstitial,
   shouldPrepareNextMatchupMissingScoreInterstitial,
+  shouldShowPlayerPoolMissingScoreActionInterstitial,
+  shouldPrepareNextPlayerPoolMissingScoreActionInterstitial,
   shouldPrepareNextInterstitial,
   shouldShowPortfolioReportInterstitial,
   shouldShowPotentialInterstitial,
@@ -53,7 +56,7 @@ import {
   getMatchupComparison,
   getMe,
   getPlayerPoolOptions,
-  getScoutingReport,
+  getPlayerPoolScoutingReport,
   getWeeklyPopularPlayers,
   recordPlayerPoolSearchHit,
   revealPlayerPoolForm,
@@ -137,7 +140,38 @@ export default function PlayerPoolScreen() {
   const currentCardRenderIdRef = React.useRef<string | null>(null);
   const countedCardRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
-  const isProPlan = plan === 'Pro Monthly' || plan === 'Pro Yearly';
+  const canUseThreeWayComparison = plan === 'No Ads Monthly' || plan === 'Pro Monthly' || plan === 'Pro Yearly';
+
+  const refreshCurrentPlan = React.useCallback(async () => {
+    try {
+      const me = await getMe();
+      const currentPlan = me?.plan;
+      const normalizedPlan: Plan =
+        currentPlan === 'No Ads Monthly' ||
+        currentPlan === 'Pro Monthly' ||
+        currentPlan === 'Pro Yearly'
+          ? currentPlan
+          : 'Free';
+      setPlan(normalizedPlan);
+    } catch {
+      setPlan('Free');
+    }
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let alive = true;
+
+      (async () => {
+        if (!alive) return;
+        await refreshCurrentPlan();
+      })();
+
+      return () => {
+        alive = false;
+      };
+    }, [refreshCurrentPlan]),
+  );
 
   const scrollToTutorialArea = React.useCallback((area: 'worldCup' | 'weekly' | 'filters' | 'candidates' | 'card' | 'form' | 'matchupAdd' | 'matchup') => {
     const y =
@@ -219,19 +253,7 @@ export default function PlayerPoolScreen() {
     let alive = true;
 
     (async () => {
-      try {
-        const me = await getMe();
-        const currentPlan = me?.plan;
-        const normalizedPlan: Plan =
-          currentPlan === 'No Ads Monthly' ||
-            currentPlan === 'Pro Monthly' ||
-            currentPlan === 'Pro Yearly'
-            ? currentPlan
-            : 'Free';
-        setPlan(normalizedPlan);
-      } catch {
-        setPlan('Free');
-      }
+      await refreshCurrentPlan();
 
       try {
         const options = await getPlayerPoolOptions(worldCupMode);
@@ -258,7 +280,7 @@ export default function PlayerPoolScreen() {
     return () => {
       alive = false;
     };
-  }, [worldCupMode]);
+  }, [refreshCurrentPlan, worldCupMode]);
 
   React.useEffect(() => {
     if (!worldCupMode) return;
@@ -674,7 +696,36 @@ export default function PlayerPoolScreen() {
     };
   }, [selectedPlayerForCard, selectedPlayerId]);
 
-  const ensureSelectedPlayerScoresForMatchup = React.useCallback(async (): Promise<SearchResultRow | null> => {
+  type MissingScoreGateSource = 'matchup' | 'playerCard';
+
+  const runMissingScoreGateForFreeUser = React.useCallback(async (source: MissingScoreGateSource) => {
+    if (plan !== 'Free' || isPlayerPoolTutorialActive) return;
+
+    if (source === 'matchup') {
+      const nextCount = await incrementMatchupMissingScoreAddCount();
+      if (shouldShowMatchupMissingScoreInterstitial(nextCount)) {
+        const ok = await showInterstitialAndWaitSafely();
+        if (!ok) {
+          setProUpsellOpen(true);
+        }
+      } else if (shouldPrepareNextMatchupMissingScoreInterstitial(nextCount)) {
+        prepareInterstitial();
+      }
+      return;
+    }
+
+    const nextCount = await incrementPlayerPoolMissingScoreActionCount();
+    if (shouldShowPlayerPoolMissingScoreActionInterstitial(nextCount)) {
+      const ok = await showInterstitialAndWaitSafely();
+      if (!ok) {
+        setProUpsellOpen(true);
+      }
+    } else if (shouldPrepareNextPlayerPoolMissingScoreActionInterstitial(nextCount)) {
+      prepareInterstitial();
+    }
+  }, [isPlayerPoolTutorialActive, plan]);
+
+  const ensureSelectedPlayerScores = React.useCallback(async (gateSource: MissingScoreGateSource): Promise<SearchResultRow | null> => {
     if (!selectedPlayerId || !selectedPlayer) return null;
 
     const startedFullyRevealed = revealedPotentialForCard && revealedFormForCard;
@@ -687,16 +738,8 @@ export default function PlayerPoolScreen() {
         ? Math.round(selectedPlayer.meta.form)
         : undefined;
 
-    if (plan === 'Free' && !isPlayerPoolTutorialActive && !startedFullyRevealed) {
-      const nextCount = await incrementMatchupMissingScoreAddCount();
-      if (shouldShowMatchupMissingScoreInterstitial(nextCount)) {
-        const ok = await showInterstitialAndWaitSafely();
-        if (!ok) {
-          setProUpsellOpen(true);
-        }
-      } else if (shouldPrepareNextMatchupMissingScoreInterstitial(nextCount)) {
-        prepareInterstitial();
-      }
+    if (!startedFullyRevealed) {
+      await runMissingScoreGateForFreeUser(gateSource);
     }
 
     if (nextPotential === undefined) {
@@ -746,14 +789,18 @@ export default function PlayerPoolScreen() {
       player: enrichedPlayer,
     };
   }, [
-    isPlayerPoolTutorialActive,
-    plan,
     revealedFormForCard,
     revealedPotentialForCard,
+    runMissingScoreGateForFreeUser,
     selectedPlayer,
     selectedPlayerId,
     worldCupMode,
   ]);
+
+  const ensureSelectedPlayerScoresForMatchup = React.useCallback(
+    () => ensureSelectedPlayerScores('matchup'),
+    [ensureSelectedPlayerScores],
+  );
 
   const selectedReportState = React.useMemo<'idle' | 'loading' | 'ready'>(() => {
     if (!selectedPlayerId) return 'idle';
@@ -772,27 +819,6 @@ export default function PlayerPoolScreen() {
     potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
     form: typeof player.meta?.form === 'number' ? Math.round(player.meta.form) : undefined,
   }), []);
-
-  const saveSelectedPlayerToPortfolio = React.useCallback(async (player: PlayerData) => {
-    const saved = await addFavoritePlayer({
-      playerId: selectedPlayerId ?? undefined,
-      name: player.name,
-      nationality: player.meta?.nationality,
-      age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-      potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
-      form: typeof player.meta?.form === 'number' ? Math.round(player.meta.form) : undefined,
-      gender: player.meta?.gender,
-      height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
-      weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
-      team: player.meta?.team,
-      league: player.meta?.league,
-      worldCupMode,
-      formRevealed: worldCupMode ? revealedFormForCard : undefined,
-      roles: player.meta?.roles ?? [],
-    });
-
-    return saved;
-  }, [revealedFormForCard, selectedPlayerId, worldCupMode]);
 
   const grantReportAccessForFreeUser = React.useCallback(async () => {
     try {
@@ -817,29 +843,51 @@ export default function PlayerPoolScreen() {
     }
   }, []);
 
+  const addSelectedPlayerToPortfolio = React.useCallback(async (player: PlayerData) => {
+    const enriched = await ensureSelectedPlayerScores('playerCard');
+    const playerToSave = enriched?.player ?? player;
+
+    await addFavoritePlayer({
+      playerId: selectedPlayerId ?? undefined,
+      name: playerToSave.name,
+      nationality: playerToSave.meta?.nationality,
+      age: typeof playerToSave.meta?.age === 'number' ? playerToSave.meta.age : undefined,
+      potential:
+        typeof playerToSave.meta?.potential === 'number'
+          ? Math.round(playerToSave.meta.potential)
+          : undefined,
+      form:
+        typeof playerToSave.meta?.form === 'number'
+          ? Math.round(playerToSave.meta.form)
+          : undefined,
+      gender: playerToSave.meta?.gender,
+      height: typeof playerToSave.meta?.height === 'number' ? playerToSave.meta.height : undefined,
+      weight: typeof playerToSave.meta?.weight === 'number' ? playerToSave.meta.weight : undefined,
+      team: playerToSave.meta?.team,
+      league: playerToSave.meta?.league,
+      worldCupMode,
+      formRevealed: worldCupMode ? true : undefined,
+      roles: playerToSave.meta?.roles ?? [],
+    });
+
+    return true;
+  }, [ensureSelectedPlayerScores, selectedPlayerId, worldCupMode]);
+
   const generateReportFromPlayerCard = React.useCallback(async (player: PlayerData) => {
     if (!selectedPlayerId || reportLoadingPlayerId) return;
 
     setReportLoadingPlayerId(selectedPlayerId);
     try {
-      const saved = await saveSelectedPlayerToPortfolio(player);
       recordSelectedCardInterestOnce();
 
-      const hasAccess = plan !== 'Free' || await grantReportAccessForFreeUser();
-      const payload = buildReportPayload({
-        ...player,
-        meta: {
-          ...(player.meta ?? {}),
-          potential: typeof saved.potential === 'number' ? saved.potential : player.meta?.potential,
-          form: typeof saved.form === 'number' ? saved.form : player.meta?.form,
-        },
-      });
+      const startedFullyRevealed = revealedPotentialForCard && revealedFormForCard;
+      const enriched = await ensureSelectedPlayerScores('playerCard');
+      const reportPlayer = enriched?.player ?? player;
+      const hasAccess =
+        plan !== 'Free' || !startedFullyRevealed || await grantReportAccessForFreeUser();
+      const payload = buildReportPayload(reportPlayer);
 
-      let report = await getScoutingReport(saved.id, payload);
-      for (let attempt = 0; attempt < 30 && report.status === 'processing'; attempt += 1) {
-        await delay(2000);
-        report = await getScoutingReport(saved.id, payload);
-      }
+      const report = await getPlayerPoolScoutingReport(payload);
 
       if (report.status !== 'ready' || !report.content) {
         throw new Error(t('reportFailedBody', 'Could not generate the report. Please try again later.'));
@@ -848,14 +896,7 @@ export default function PlayerPoolScreen() {
       setReadyReportsByPlayerId((current) => ({ ...current, [selectedPlayerId]: report }));
 
       if (hasAccess) {
-        setScoutPlayer({
-          ...player,
-          meta: {
-            ...(player.meta ?? {}),
-            potential: typeof saved.potential === 'number' ? saved.potential : player.meta?.potential,
-            form: typeof saved.form === 'number' ? saved.form : player.meta?.form,
-          },
-        });
+        setScoutPlayer(reportPlayer);
         setScoutReport(report);
         setScoutOpen(true);
       }
@@ -866,11 +907,13 @@ export default function PlayerPoolScreen() {
     }
   }, [
     buildReportPayload,
+    ensureSelectedPlayerScores,
     grantReportAccessForFreeUser,
     plan,
     recordSelectedCardInterestOnce,
     reportLoadingPlayerId,
-    saveSelectedPlayerToPortfolio,
+    revealedFormForCard,
+    revealedPotentialForCard,
     selectedPlayerId,
     t,
   ]);
@@ -1416,6 +1459,7 @@ export default function PlayerPoolScreen() {
           onRevealForm={onRevealForm}
           selectedPlayerId={selectedPlayerId}
           onGenerateReport={generateReportFromPlayerCard}
+          onAddFavorite={addSelectedPlayerToPortfolio}
           reportState={selectedReportState}
           reportDisabled={!selectedPlayerId}
           onAddFavoriteSuccess={() => {
@@ -1449,7 +1493,7 @@ export default function PlayerPoolScreen() {
           row3={matchupRow3}
           matchupMode={matchupMode}
           onMatchupModeChange={(mode) => {
-            if (mode === 3 && !isProPlan) {
+            if (mode === 3 && !canUseThreeWayComparison) {
               setThreeWayProPromptOpen(true);
               return;
             }
@@ -1542,12 +1586,12 @@ export default function PlayerPoolScreen() {
                 <Crown size={24} color={worldCupMode ? WORLD_CUP_COLORS.mint : ACCENT} strokeWidth={2.2} />
               </View>
               <Text style={[styles.proPromptTitle, worldCupMode && { color: WORLD_CUP_COLORS.mint }]}>
-                {t('threeWayProTitle', '3-Way Comparison is a Pro feature')}
+                {t('threeWayProTitle', 'Unlock 3-Way Comparison')}
               </Text>
               <Text style={styles.proPromptBody}>
                 {t(
                   'threeWayProBody',
-                  'Upgrade to Pro to compare three players at once with full ScoutWise metrics and charts.',
+                  'Move to a Plus or Pro plan to compare three players at once with full ScoutWise metrics and charts.',
                 )}
               </Text>
               <View style={styles.proPromptActions}>

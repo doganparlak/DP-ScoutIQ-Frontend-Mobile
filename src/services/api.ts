@@ -854,3 +854,12 @@ export async function getScoutingReport(
     body: JSON.stringify(player ?? {}),
   });
 }
+
+export async function getPlayerPoolScoutingReport(
+  player: PlayerIdentityPayload
+): Promise<ScoutingReportResponse> {
+  return request<ScoutingReportResponse>('/player-pool/report', {
+    method: 'POST',
+    body: JSON.stringify(player ?? {}),
+  });
+}

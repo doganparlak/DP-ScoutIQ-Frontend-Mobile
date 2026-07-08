@@ -299,7 +299,7 @@ export default function ManagePlan() {
       } else if (currentPlan === 'No Ads Monthly') {
         Alert.alert(
           t('alreadyNoAdsTitle', 'Already on No Ads'),
-          t('alreadyNoAdsBody', 'Your No Ads Monthly plan is already active.'),
+          t('alreadyNoAdsBody', 'Your Plus Monthly plan is already active.'),
         );
       } else {
         Alert.alert(
@@ -430,7 +430,10 @@ export default function ManagePlan() {
                 {p.name === 'Free'
                   ? t('planFeatures_Free', 'Ad-supported')
                   : p.name === 'No Ads Monthly'
-                    ? t('planFeatures_NoAdsMonthly', 'Ad-free')
+                    ? [
+                        t('planFeatures_NoAdsMonthly', 'Ad-free'),
+                        t('planFeatures_ThreeWay', 'Compare 3'),
+                      ].join('\n')
                   : p.name === 'Pro Monthly'
                     ? [
                         t('planFeatures_Pro', 'Ad-free'),
@@ -564,11 +567,7 @@ export default function ManagePlan() {
               t('proBenefit1', 'A focused, Ad-Free experience'),
               t(
                 'proBenefit2',
-                'Use Team Strategy to define your tactical approach and the idea behind your scouting philosophy',
-              ),
-              t(
-                'proBenefit3',
-                'Chat with ScoutWise to discover the best-fit players for your needs',
+                'Player discovery chat aligned with your team strategy',
               ),
               t('proBenefitThreeWay', '3-Way Comparison'),
               t('proBenefit4', 'Priority customer support'),

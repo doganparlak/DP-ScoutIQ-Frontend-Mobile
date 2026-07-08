@@ -4,6 +4,7 @@ const POTENTIAL_KEY = 'ads.playerPool.potentialRevealCount.v1';
 const WEEKLY_POPULAR_KEY = 'ads.playerPool.weeklyPopularRevealCount.v1';
 const MATCHUP_LAUNCH_KEY = 'ads.playerPool.matchupLaunchCount.v1';
 const MATCHUP_MISSING_SCORE_ADD_KEY = 'ads.playerPool.matchupMissingScoreAddCount.v1';
+const PLAYER_POOL_MISSING_SCORE_ACTION_KEY = 'ads.playerPool.missingScoreActionCount.v1';
 const PORTFOLIO_LINEUP_KEY = 'ads.portfolio.lineupLaunchCount.v1';
 const PORTFOLIO_REPORT_KEY = 'ads.portfolio.reportOpenCount.v1';
 const DAILY_SCOUT_CHALLENGE_KEY = 'ads.profile.dailyScoutChallengeOpenCount.v1';
@@ -60,12 +61,28 @@ export function shouldPrepareNextMatchupMissingScoreInterstitial(addCount: numbe
   return addCount > 0 && addCount % 2 === 1;
 }
 
-export async function incrementMatchupMissingScoreAddCount(): Promise<number> {
-  const raw = await AsyncStorage.getItem(MATCHUP_MISSING_SCORE_ADD_KEY);
+export function shouldShowPlayerPoolMissingScoreActionInterstitial(addCount: number) {
+  return addCount > 0 && addCount % 2 === 0;
+}
+
+export function shouldPrepareNextPlayerPoolMissingScoreActionInterstitial(addCount: number) {
+  return addCount > 0 && addCount % 2 === 1;
+}
+
+async function incrementStoredCount(key: string): Promise<number> {
+  const raw = await AsyncStorage.getItem(key);
   const current = raw ? parseInt(raw, 10) : 0;
   const next = (Number.isFinite(current) ? current : 0) + 1;
-  await AsyncStorage.setItem(MATCHUP_MISSING_SCORE_ADD_KEY, String(next));
+  await AsyncStorage.setItem(key, String(next));
   return next;
+}
+
+export async function incrementMatchupMissingScoreAddCount(): Promise<number> {
+  return incrementStoredCount(MATCHUP_MISSING_SCORE_ADD_KEY);
+}
+
+export async function incrementPlayerPoolMissingScoreActionCount(): Promise<number> {
+  return incrementStoredCount(PLAYER_POOL_MISSING_SCORE_ACTION_KEY);
 }
 
 export function shouldShowPortfolioLineupInterstitial(launchCount: number) {

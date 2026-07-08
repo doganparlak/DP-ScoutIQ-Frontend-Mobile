@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import PlayerCard from '@/components/PlayerCard';
 import { TutorialHint, TutorialStrong, type PlayerPoolTutorialStep } from '@/components/Tutorial';
-import { addFavoritePlayer } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
 
@@ -32,6 +31,7 @@ type Props = {
   onRevealPotential: () => void;
   onRevealForm: () => void;
   onAddFavoriteSuccess?: () => void;
+  onAddFavorite?: (p: PlayerData) => Promise<boolean>;
   onGenerateReport?: (p: PlayerData) => void | Promise<void>;
   reportState?: 'idle' | 'loading' | 'ready';
   reportDisabled?: boolean;
@@ -53,6 +53,7 @@ export default function PlayerCardPP({
   onRevealPotential,
   onRevealForm,
   onAddFavoriteSuccess,
+  onAddFavorite,
   onGenerateReport,
   reportState = 'idle',
   reportDisabled = false,
@@ -127,30 +128,11 @@ export default function PlayerCardPP({
             } : undefined}
             onAddFavorite={async (player) => {
               try {
-                await addFavoritePlayer({
-                  playerId: selectedPlayerId ?? undefined,
-                  name: player.name,
-                  nationality: player.meta?.nationality,
-                  age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-                  potential:
-                    typeof player.meta?.potential === 'number'
-                      ? Math.round(player.meta.potential)
-                      : undefined,
-                  form:
-                    typeof player.meta?.form === 'number'
-                      ? Math.round(player.meta.form)
-                      : undefined,
-                  gender: player.meta?.gender,
-                  height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
-                  weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
-                  team: player.meta?.team,
-                  league: player.meta?.league,
-                  worldCupMode,
-                  formRevealed: worldCupMode ? revealedFormForCard : undefined,
-                  roles: player.meta?.roles ?? [],
-                });
-                onAddFavoriteSuccess?.();
-                return true;
+                const ok = onAddFavorite ? await onAddFavorite(player) : false;
+                if (ok) {
+                  onAddFavoriteSuccess?.();
+                }
+                return ok;
               } catch (e: any) {
                 if (tutorialStep === 'addPortfolio') {
                   onAddFavoriteSuccess?.();

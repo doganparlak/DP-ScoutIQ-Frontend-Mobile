@@ -192,6 +192,8 @@ export default function CandidatePlayers({
             .toUpperCase() || '—'
         : '—';
       const roles = rolePreviewLabels(row.player);
+      const isActive = activeId === row.id;
+      const activeAccent = activeTheme?.accent ?? ACCENT;
       const rowContent = (
         <>
           <Text maxFontSizeMultiplier={androidTextScale} style={[
@@ -200,29 +202,30 @@ export default function CandidatePlayers({
             styles.indexCell,
             clickableCards && styles.clickableIndexText,
             activeTheme && clickableCards && { color: activeTheme.accent },
+            isActive && { color: activeAccent },
             androidCompact && styles.tdCompact,
             { flex: COL.index },
           ]}>
             {index + 1}
           </Text>
           <View style={verticalSeparatorStyle} />
-          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.name, textAlign: 'center' }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, isActive && styles.activeCellText, androidCompact && styles.tdCompact, { flex: COL.name, textAlign: 'center' }]}>
             {nameFormatter ? nameFormatter(row.player.name) : compactDisplayName(row.player.name)}
           </Text>
           {!worldCupMode ? (
             <>
               <View style={verticalSeparatorStyle} />
-              <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.nat, textAlign: 'center' }]}>
+              <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, isActive && styles.activeCellText, androidCompact && styles.tdCompact, { flex: COL.nat, textAlign: 'center' }]}>
                 {nationalityShort}
               </Text>
             </>
           ) : null}
           <View style={verticalSeparatorStyle} />
-          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.team, textAlign: 'center' }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} numberOfLines={1} style={[styles.td, styles.cell, isActive && styles.activeCellText, androidCompact && styles.tdCompact, { flex: COL.team, textAlign: 'center' }]}>
             {row.player.meta?.team || '—'}
           </Text>
           <View style={verticalSeparatorStyle} />
-          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.cell, androidCompact && styles.tdCompact, { flex: COL.age, textAlign: 'center' }]}>
+          <Text maxFontSizeMultiplier={androidTextScale} style={[styles.td, styles.cell, isActive && styles.activeCellText, androidCompact && styles.tdCompact, { flex: COL.age, textAlign: 'center' }]}>
             {row.player.meta?.age ?? '—'}
           </Text>
           <View style={verticalSeparatorStyle} />
@@ -234,6 +237,7 @@ export default function CandidatePlayers({
                   styles.rolePill,
                   worldCupMode && styles.rolePillWorldCup,
                   activeTheme && { backgroundColor: activeTheme.accentSoft, borderColor: activeTheme.line },
+                  isActive && { backgroundColor: 'rgba(36, 245, 166, 0.20)', borderColor: activeAccent },
                 ]}
               >
                 <Text
@@ -241,7 +245,7 @@ export default function CandidatePlayers({
                   numberOfLines={1}
                   adjustsFontSizeToFit={!worldCupMode}
                   minimumFontScale={!worldCupMode ? 0.72 : undefined}
-                  style={[styles.rolePillText, activeTheme && { color: activeTheme.accent }]}
+                  style={[styles.rolePillText, activeTheme && { color: activeTheme.accent }, isActive && { color: activeAccent }]}
                 >
                   {role}
                 </Text>
@@ -266,7 +270,8 @@ export default function CandidatePlayers({
                 styles.row,
                 clickableCards && styles.clickableRow,
                 clickableCards && activeTheme && { borderColor: activeTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' },
-                activeId === row.id && (activeTheme ? { backgroundColor: activeTheme.activeRow } : styles.dataRowActive),
+                isActive && styles.selectedClickableRow,
+                isActive && (activeTheme ? { backgroundColor: activeTheme.activeRow, borderColor: activeTheme.accent } : styles.dataRowActive),
                 rowsLocked && styles.rowLocked,
                 pressed && (clickableCards ? styles.clickableRowPressed : styles.pressed),
               ]}
@@ -274,7 +279,7 @@ export default function CandidatePlayers({
               {rowContent}
             </Pressable>
           ) : (
-            <View style={[styles.row, activeId === row.id && (activeTheme ? { backgroundColor: activeTheme.activeRow } : styles.dataRowActive)]}>
+            <View style={[styles.row, isActive && styles.selectedStaticRow, isActive && (activeTheme ? { backgroundColor: activeTheme.activeRow } : styles.dataRowActive)]}>
               {rowContent}
             </View>
           )}
@@ -715,6 +720,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(22, 163, 74, 0.12)',
     borderColor: 'rgba(36, 245, 166, 0.42)',
   },
+  selectedClickableRow: {
+    backgroundColor: 'rgba(36, 245, 166, 0.16)',
+    borderColor: 'rgba(36, 245, 166, 0.72)',
+    shadowColor: ACCENT,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
+  },
+  selectedStaticRow: {
+    backgroundColor: 'rgba(36, 245, 166, 0.13)',
+  },
   clickableRowGap: { height: 8 },
   clickableIndexText: {
     color: ACCENT,
@@ -726,6 +743,10 @@ const styles = StyleSheet.create({
   thText: { color: TEXT, fontSize: 12, lineHeight: 15, fontWeight: '800' },
   thTextCompact: { fontSize: 12, lineHeight: 15 },
   td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 12.5 },
+  activeCellText: {
+    color: TEXT,
+    fontWeight: '800',
+  },
   roleCellText: {
     color: ACCENT,
     fontWeight: '800',
@@ -772,7 +793,8 @@ const styles = StyleSheet.create({
   indexCell: { textAlign: 'center' },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
   dataRowActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+    backgroundColor: 'rgba(36, 245, 166, 0.16)',
+    borderColor: 'rgba(36, 245, 166, 0.72)',
   },
   emptyRow: {
     minHeight: ROW_HEIGHT * 2,
