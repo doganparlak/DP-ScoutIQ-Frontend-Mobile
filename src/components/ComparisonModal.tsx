@@ -43,7 +43,7 @@ import {
 } from '@/components/spiderRanges';
 import PlayerCard from '@/components/PlayerCard';
 import type { SpiderPoint } from '@/components/SpiderChart';
-import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG } from '@/services/api';
+import { rolePickerCode } from '@/services/api';
 import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
 import type { PlayerData } from '@/types';
 
@@ -124,20 +124,22 @@ function formatValue(value?: number) {
 }
 
 function roleShortLabel(value?: string) {
-  if (!value) return '';
-  const upper = value.toUpperCase();
-  if (ROLE_SHORT_TO_LONG[upper]) return upper;
-  return ROLE_LONG_TO_SHORT[value] || value;
+  return rolePickerCode(value);
 }
 
 function roleDistribution(player?: PlayerData | null) {
-  const counts = player?.meta?.positionCounts ?? {};
-  const total = player?.meta?.positionCountTotal || Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const rawCounts = player?.meta?.positionCounts ?? {};
+  const counts = Object.entries(rawCounts).reduce<Record<string, number>>((acc, [role, count]) => {
+    const short = roleShortLabel(role);
+    if (short && count > 0) acc[short] = (acc[short] || 0) + count;
+    return acc;
+  }, {});
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const fromCounts = Object.entries(counts)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([role, count]) => ({
-      role: roleShortLabel(role),
+      role,
       pct: total > 0 ? Math.round((count / total) * 100) : null,
     }))
     .filter((item) => item.role);
@@ -382,6 +384,16 @@ export default function ComparisonModal({
     () => buildMetricRows(player1?.player ?? null, player2?.player ?? null),
     [player1?.player, player2?.player],
   );
+  const categoryTitle = React.useCallback(
+    (key: string, fallbackTitle: string) => {
+      if (key === 'scoutwise_scores') {
+        const title = String(t('scoutwise_scores', i18n.language.startsWith('tr') ? 'ScoutWise Skorları & Puanlar' : 'ScoutWise Scores & Ratings'));
+        return title.replace('ScoutWise Skorları', 'ScoutWise\u00A0Skorları');
+      }
+      return String(t(key, fallbackTitle));
+    },
+    [i18n.language, t],
+  );
   const categorySummaries = React.useMemo(
     () =>
       buildCategorySummaries(
@@ -445,7 +457,7 @@ export default function ComparisonModal({
               {player ? compactPlayerName(player.name) : '-'}
             </Text>
           </View>
-          {physicalValue ? (
+          {physicalValue && !worldCupMode ? (
             <View style={styles.physicalChip}>
               <Text numberOfLines={1} style={styles.physicalChipLabel}>{upper(t('physical', 'Physical'))}</Text>
               <Text numberOfLines={1} style={styles.physicalChipValue}>{physicalValue}</Text>
@@ -463,26 +475,41 @@ export default function ComparisonModal({
           ))}
         </View>
         <View style={styles.identityGrid}>
-          <View style={styles.identityPillRow}>
-            <View style={styles.identityPill}>
-              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('team', 'Team'))}</Text>
-              <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.team ?? '-'}</Text>
+          {worldCupMode ? (
+            <View style={styles.identityPillRow}>
+              <View style={styles.identityPill}>
+                <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('team', 'Team'))}</Text>
+                <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.team ?? '-'}</Text>
+              </View>
+              <View style={styles.identityPill}>
+                <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('age', 'Age'))}</Text>
+                <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.age ? `${player.meta.age}` : '-'}</Text>
+              </View>
             </View>
-            <View style={styles.identityPill}>
-              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('league', 'League'))}</Text>
-              <Text numberOfLines={1} style={styles.identityPillValue}>{!worldCupMode ? player?.meta?.league ?? '-' : '-'}</Text>
-            </View>
-          </View>
-          <View style={styles.identityPillRow}>
-            <View style={styles.identityPill}>
-              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('age', 'Age'))}</Text>
-              <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.age ? `${player.meta.age}` : '-'}</Text>
-            </View>
-            <View style={styles.identityPill}>
-              <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('country', 'Country'))}</Text>
-              <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.nationality ?? '-'}</Text>
-            </View>
-          </View>
+          ) : (
+            <>
+              <View style={styles.identityPillRow}>
+                <View style={styles.identityPill}>
+                  <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('team', 'Team'))}</Text>
+                  <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.team ?? '-'}</Text>
+                </View>
+                <View style={styles.identityPill}>
+                  <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('league', 'League'))}</Text>
+                  <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.league ?? '-'}</Text>
+                </View>
+              </View>
+              <View style={styles.identityPillRow}>
+                <View style={styles.identityPill}>
+                  <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('age', 'Age'))}</Text>
+                  <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.age ? `${player.meta.age}` : '-'}</Text>
+                </View>
+                <View style={styles.identityPill}>
+                  <Text numberOfLines={1} style={styles.identityPillLabel}>{upper(t('nationality', 'Nationality'))}</Text>
+                  <Text numberOfLines={1} style={styles.identityPillValue}>{player?.meta?.nationality ?? '-'}</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
         <View style={styles.headerRolesArea}>
           <Text style={styles.headerRolesLabel}>{upper(t('roleDistribution', 'Role Distribution'))}</Text>
@@ -995,9 +1022,14 @@ export default function ComparisonModal({
                   <View style={styles.summaryGrid}>
                     {categorySummaries.map((item) => (
                       <View key={item.key} style={[styles.summaryRow, theme && { borderColor: theme.line }]}>
-                        <Text numberOfLines={2} style={styles.summaryCategory}>
+                        <Text
+                          numberOfLines={2}
+                          adjustsFontSizeToFit={item.key === 'scoutwise_scores'}
+                          minimumFontScale={0.86}
+                          style={styles.summaryCategory}
+                        >
                           {formatAmpersandTitle(
-                            String(t(item.key, item.fallbackTitle)),
+                            categoryTitle(item.key, item.fallbackTitle),
                             item.key === 'scoutwise_scores' || item.key === 'contribution_impact' || (hasThirdPlayer && item.key === 'errors_discipline'),
                           )}
                         </Text>
@@ -1035,7 +1067,7 @@ export default function ComparisonModal({
                         <group.Icon size={16} color={theme?.accent ?? ACCENT} strokeWidth={2.2} />
                         <Text style={[styles.groupTitle, theme && { color: theme.accent }]}>
                           {formatAmpersandTitle(
-                            String(t(group.key, group.fallbackTitle)),
+                            categoryTitle(group.key, group.fallbackTitle),
                             group.key === 'contribution_impact' && showToggle,
                           )}
                         </Text>
@@ -1115,7 +1147,7 @@ export default function ComparisonModal({
                             player2?.player.name ?? String(t('matchupPlayer2Placeholder', 'Player 2')),
                           )
                         : renderDualSpiderChart(
-                            t(group.key, group.fallbackTitle),
+                            categoryTitle(group.key, group.fallbackTitle),
                             group.rows,
                             player1?.player.name ?? String(t('matchupPlayer1Placeholder', 'Player 1')),
                             player2?.player.name ?? String(t('matchupPlayer2Placeholder', 'Player 2')),

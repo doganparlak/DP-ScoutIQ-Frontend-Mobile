@@ -28,7 +28,7 @@ import { BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LogIn, Map as Ma
 import PlayerCard from '../components/PlayerCard';
 import SpiderChart, { type SpiderPoint } from '../components/SpiderChart';
 import type { PlayerData } from '../types';
-import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG, type ScoutingReportResponse } from '../services/api';
+import { rolePickerCode, type ScoutingReportResponse } from '../services/api';
 import ErrorsDisciplineTiles from '../components/ErrorsDisciplineTiles';
 
 import {
@@ -86,10 +86,7 @@ const PITCH_ROLE_ZONES: PitchZone[] = [
 ];
 
 function roleShortLabel(value?: string) {
-  if (!value) return '';
-  const upper = String(value).trim().toUpperCase();
-  if (ROLE_SHORT_TO_LONG[upper]) return upper;
-  return ROLE_LONG_TO_SHORT[String(value)] || ROLE_LONG_TO_SHORT[String(value).toLowerCase()] || upper;
+  return rolePickerCode(value);
 }
 
 function normalizePositionCounts(value: unknown): Record<string, number> {
@@ -132,6 +129,54 @@ function buildPitchZoneColorValues(zoneCounts: Partial<Record<PitchRoleZoneCode,
     else acc[zone.code] = zoneCounts[zone.code] || 0;
     return acc;
   }, {});
+}
+
+function firstDefined<T>(...values: T[]): T | undefined {
+  return values.find((value) => value !== undefined && value !== null && value !== '') as T | undefined;
+}
+
+function toNumberOrUndefined(value: unknown): number | undefined {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function buildReportDisplayPlayer(player: PlayerData, report: ScoutingReportResponse): PlayerData {
+  const card = report.content_json?.player_card || {};
+  const metaDoc = report.content_json?.metrics_docs?.[0]?.metadata || {};
+
+  if (!card || typeof card !== 'object') return player;
+
+  const positionCounts = normalizePositionCounts(card.position_counts || card.positionCounts || metaDoc.position_counts || player.meta?.positionCounts);
+  const positionNamesSeen = normalizePositionNames(card.position_names_seen || card.positionNamesSeen || metaDoc.position_names_seen || player.meta?.positionNamesSeen);
+  const positionCountTotal =
+    toNumberOrUndefined(card.position_count_total || card.positionCountTotal || metaDoc.position_count_total) ||
+    Object.values(positionCounts).reduce((sum, count) => sum + count, 0) ||
+    player.meta?.positionCountTotal;
+
+  const rolesFromCard = Array.isArray(card.roles) ? card.roles : undefined;
+  const roles = positionNamesSeen.length ? positionNamesSeen : rolesFromCard || player.meta?.roles;
+
+  return {
+    ...player,
+    name: String(firstDefined(card.name, card.player_name, card.playerName, metaDoc.player_name, player.name) || player.name),
+    meta: {
+      ...player.meta,
+      gender: firstDefined(card.gender, metaDoc.gender, player.meta?.gender) as string | undefined,
+      nationality: firstDefined(card.nationality, card.nationality_name, card.nationalityName, metaDoc.nationality_name, player.meta?.nationality) as string | undefined,
+      team: firstDefined(card.team, card.team_name, card.teamName, metaDoc.team_name, player.meta?.team) as string | undefined,
+      league: firstDefined(card.league, card.league_name, card.leagueName, metaDoc.league_name, player.meta?.league) as string | undefined,
+      age: toNumberOrUndefined(firstDefined(card.age, metaDoc.age, player.meta?.age)),
+      height: toNumberOrUndefined(firstDefined(card.height, metaDoc.height, player.meta?.height)),
+      weight: toNumberOrUndefined(firstDefined(card.weight, metaDoc.weight, player.meta?.weight)),
+      potential: toNumberOrUndefined(firstDefined(card.potential, player.meta?.potential)),
+      form: toNumberOrUndefined(firstDefined(card.form, player.meta?.form)),
+      roles,
+      ...(Object.keys(positionCounts).length ? { positionCounts } : {}),
+      ...(positionNamesSeen.length ? { positionNamesSeen } : {}),
+      ...(positionCountTotal ? { positionCountTotal } : {}),
+      primaryPositionCode: firstDefined(card.primary_position_code, card.primaryPositionCode, player.meta?.primaryPositionCode) as string | undefined,
+    },
+  };
 }
 
 function getReportPositionSource(player: PlayerData, report: ScoutingReportResponse) {
@@ -246,20 +291,23 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
   );
 }
 
-const NARRATIVE_TITLE_FALLBACKS: Record<NarrativeSection, string[]> = {
-  strengths: [],
-  weaknesses: [],
-  conclusion: ['Role & System', 'Development Focus', 'Usage Recommendation', 'In Possession', 'Out of Possession'],
-};
+function narrativeTitleFallback(section: NarrativeSection, index: number, lang?: string): string {
+  if (section !== 'conclusion') return '';
+  const isTr = (lang || '').toLowerCase().startsWith('tr');
+  const titles = isTr
+    ? ['Rol & Sistem', 'Gelişim Odağı', 'Kullanım Önerisi', 'Topa Sahipken', 'Topsuz Oyunda']
+    : ['Role & System', 'Development Focus', 'Usage Recommendation', 'In Possession', 'Out of Possession'];
+  return titles[index] || '';
+}
 
-function parseNarrativeBullet(item: string, section: NarrativeSection, index: number): NarrativeBullet {
+function parseNarrativeBullet(item: string, section: NarrativeSection, index: number, lang?: string): NarrativeBullet {
   const match = item.match(/^([^:：]{2,42})[:：]\s*(.+)$/);
   if (match) {
     return { title: match[1].trim(), body: match[2].trim() };
   }
 
   return {
-    title: NARRATIVE_TITLE_FALLBACKS[section][index] || '',
+    title: narrativeTitleFallback(section, index, lang),
     body: item,
   };
 }
@@ -269,13 +317,15 @@ function NarrativeBulletRow({
   index,
   section,
   color,
+  lang,
 }: {
   item: string;
   index: number;
   section: NarrativeSection;
   color: string;
+  lang?: string;
 }) {
-  const bullet = parseNarrativeBullet(item, section, index);
+  const bullet = parseNarrativeBullet(item, section, index, lang);
   return (
     <View style={styles.narrativeRow}>
       <Text style={[styles.narrativeDot, { color }]}>•</Text>
@@ -388,12 +438,13 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
 
 export default function ScoutingReport({ visible, onClose, player, report }: Props) {
   const [page, setPage] = useState(0);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [pagerWidth, setPagerWidth] = useState<number>(0);
   const listRef = useRef<FlatList<PageItem> | null>(null);
 
   const parsed = useMemo(() => parseReportText(report?.content || ''), [report?.content]);
+  const reportDisplayPlayer = useMemo(() => buildReportDisplayPlayer(player, report), [player, report]);
   const spiderGroups = useMemo(() => buildSpiderGroupsFromReport(report), [report]);
 
   useEffect(() => {
@@ -406,7 +457,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       title: t('player', 'Player'),
       node: (
         <View style={styles.playerPage}>
-          <PlayerCard player={player} titleAlign="center" />
+          <PlayerCard player={reportDisplayPlayer} titleAlign="center" />
 
           <Text style={styles.createdByTitle}>
             {!!t('createdByPrefix', { defaultValue: '' }) && (
@@ -480,7 +531,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       ),
     };
 
-    const pitchSource = getReportPositionSource(player, report);
+    const pitchSource = getReportPositionSource(reportDisplayPlayer, report);
     const hasPitchMap = Object.keys(pitchSource.counts).length > 0 || pitchSource.namesSeen.length > 0;
     const pitchMapPage: PageItem | null = hasPitchMap
       ? {
@@ -488,7 +539,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
           title: t('pitchMap', 'Pitch Map'),
           node: (
             <View style={styles.pitchMapPage}>
-              <RoleDistributionPitchMap player={player} report={report} />
+              <RoleDistributionPitchMap player={reportDisplayPlayer} report={report} />
             </View>
           ),
           Icon: MapIcon,
@@ -512,6 +563,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
                 index={i}
                 section="conclusion"
                 color={ACCENT}
+                lang={i18n.language}
               />
             ))
           )}

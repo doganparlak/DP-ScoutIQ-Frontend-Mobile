@@ -23,9 +23,19 @@ type Props = {
 const AVATAR = 34;
 const GAP = 8;
 
+function splitBulletContent(content: string) {
+  const lines = content.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const bulletLines = lines
+    .map((line) => line.match(/^[•*-]\s*(.+)$/)?.[1]?.trim())
+    .filter((line): line is string => Boolean(line));
+
+  return bulletLines.length === lines.length && bulletLines.length > 0 ? bulletLines : null;
+}
+
 export default function MessageBubble({ role, content, pending }: Props) {
   const isUser = role === 'user';
   const { t } = useTranslation();
+  const bulletLines = !isUser && !pending ? splitBulletContent(content) : null;
 
   const bubbleRef = React.useRef<View>(null);
   const [menuVisible, setMenuVisible] = React.useState(false);
@@ -80,6 +90,15 @@ export default function MessageBubble({ role, content, pending }: Props) {
               <Text style={styles.pendingText}>
                 {t('assistantPending', 'Unveiling insights')}
               </Text>
+            </View>
+          ) : bulletLines ? (
+            <View style={styles.bulletList}>
+              {bulletLines.map((line, index) => (
+                <View key={`${index}-${line}`} style={[styles.bulletRow, index === bulletLines.length - 1 && styles.bulletRowLast]}>
+                  <Text style={styles.bulletMark}>•</Text>
+                  <Text style={styles.bulletText}>{line}</Text>
+                </View>
+              ))}
             </View>
           ) : (
             <Text style={styles.text}>{content}</Text>
@@ -149,7 +168,7 @@ const styles = StyleSheet.create({
   bubble: {
     padding: 12,
     borderRadius: 16,
-    maxWidth: '100%',
+    maxWidth: '84%',
     flexShrink: 1,
   },
 
@@ -169,6 +188,38 @@ const styles = StyleSheet.create({
 
   text: {
     color: 'white',
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'left',
+  },
+
+  bulletList: {
+    gap: 10,
+  },
+
+  bulletRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+
+  bulletRowLast: {
+    marginBottom: 0,
+  },
+
+  bulletMark: {
+    width: 14,
+    color: ACCENT,
+    fontSize: 18,
+    lineHeight: 21,
+    fontWeight: '900',
+  },
+
+  bulletText: {
+    color: 'white',
+    flexShrink: 1,
+    flexGrow: 1,
     fontSize: 15,
     lineHeight: 21,
     textAlign: 'left',

@@ -1,35 +1,11 @@
 import { COUNTRIES } from '@/constants/countries';
+import { ROLE_PICKER_ORDER } from '@/services/api';
 
 export const PLAYER_POOL_COUNTRIES = Array.from(
   new Set(COUNTRIES.map((country) => (country === 'Türkiye' ? 'Turkey' : country))),
 ).sort((a, b) => a.localeCompare(b));
 
-export const PLAYER_POOL_POSITION_OPTIONS = [
-  'GK',
-  'LB',
-  'RB',
-  'LCB',
-  'RCB',
-  'CB',
-  'LWB',
-  'RWB',
-  'LM',
-  'RM',
-  'LDM',
-  'RDM',
-  'LCM',
-  'RCM',
-  'LAM',
-  'RAM',
-  'CDM',
-  'CM',
-  'CAM',
-  'LW',
-  'RW',
-  'LCF',
-  'RCF',
-  'CF',
-] as const;
+export const PLAYER_POOL_POSITION_OPTIONS = ROLE_PICKER_ORDER;
 
 export const PLAYER_POOL_TEAM_NAMES = [
   '1º Dezembro',

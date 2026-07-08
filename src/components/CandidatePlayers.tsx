@@ -15,7 +15,7 @@ import { ChevronDown, X } from 'lucide-react-native';
 
 import PlayerCard from '@/components/PlayerCard';
 import { TutorialHint } from '@/components/Tutorial';
-import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG } from '@/services/api';
+import { rolePickerCode } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 import type { PlayerData } from '@/types';
 
@@ -59,10 +59,7 @@ function compactDisplayName(name: string) {
 }
 
 function normalizeRoleLabel(value?: string) {
-  if (!value) return '';
-  const upper = value.toUpperCase();
-  if (ROLE_SHORT_TO_LONG[upper]) return upper;
-  return ROLE_LONG_TO_SHORT[value] || value;
+  return rolePickerCode(value);
 }
 
 function roleLabels(player: PlayerData) {
@@ -150,6 +147,8 @@ export default function CandidatePlayers({
     weeklyPopularTutorialVisible && Platform.OS === 'android'
       ? windowHeight * 0.78 + ROW_HEIGHT / 2
       : undefined;
+  const popularVisibleRows = weeklyPopularTutorialVisible ? 7 : 8;
+  const popularScrollMaxHeight = ROW_HEIGHT * popularVisibleRows;
 
   React.useEffect(() => {
     if (!weeklyPopularOpen) {
@@ -271,6 +270,7 @@ export default function CandidatePlayers({
                 clickableCards && styles.clickableRow,
                 clickableCards && activeTheme && { borderColor: activeTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' },
                 isActive && styles.selectedClickableRow,
+                isActive && Platform.OS === 'android' && styles.selectedClickableRowAndroid,
                 isActive && (activeTheme ? { backgroundColor: activeTheme.activeRow, borderColor: activeTheme.accent } : styles.dataRowActive),
                 rowsLocked && styles.rowLocked,
                 pressed && (clickableCards ? styles.clickableRowPressed : styles.pressed),
@@ -516,9 +516,9 @@ export default function CandidatePlayers({
                 <ActivityIndicator color={popularTheme?.accent ?? ACCENT} />
               </View>
             ) : (
-              <View style={styles.table}>
+              <View style={[styles.table, styles.popularTable]}>
                 <View style={[styles.tableTopBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
-                <View style={styles.tableHeaderWrap}>
+                <View style={styles.popularTableHeaderWrap}>
                   <View style={[styles.row, styles.clickableHeaderRow, popularTheme && { borderColor: popularTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
                     <View style={[styles.cell, { flex: COL.index }]}>
                       <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
@@ -551,8 +551,8 @@ export default function CandidatePlayers({
                   <View style={styles.clickableRowGap} />
                 </View>
                 <ScrollView
-                  style={styles.popularScroll}
-                  contentContainerStyle={{ paddingRight: 5, paddingVertical: 4 }}
+                  style={[styles.popularScroll, { maxHeight: popularScrollMaxHeight }]}
+                  contentContainerStyle={styles.popularScrollContent}
                   nestedScrollEnabled
                   bounces={false}
                   showsVerticalScrollIndicator
@@ -688,10 +688,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   table: { marginTop: 10 },
+  popularTable: {
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
   tableTopBorder: { height: 1, backgroundColor: LINE },
   tableBottomBorder: { height: 1, backgroundColor: LINE },
   tableHeaderWrap: {
     paddingRight: 5,
+  },
+  popularTableHeaderWrap: {
+    paddingRight: 0,
   },
   tableScrollWrap: {
     paddingRight: 1,
@@ -728,6 +735,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
     elevation: 2,
+  },
+  selectedClickableRowAndroid: {
+    shadowOpacity: 0,
+    elevation: 0,
   },
   selectedStaticRow: {
     backgroundColor: 'rgba(36, 245, 166, 0.13)',
@@ -831,7 +842,11 @@ const styles = StyleSheet.create({
     maxHeight: '78%',
   },
   popularScroll: {
-    maxHeight: ROW_HEIGHT * 8,
+    overflow: 'hidden',
+  },
+  popularScrollContent: {
+    paddingRight: 0,
+    paddingVertical: 4,
   },
   weeklyTutorialGap: {
     marginBottom: 12,

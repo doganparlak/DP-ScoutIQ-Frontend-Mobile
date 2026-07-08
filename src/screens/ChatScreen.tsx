@@ -30,8 +30,11 @@ import { useTranslation } from 'react-i18next';
 const { useState, useEffect, useRef } = React;
 
 // Extend ChatMessage locally to support "visuals" items that carry players
+type ChatVisualKind = 'playerCard' | 'pitchMap' | 'metrics';
+
 type ChatMessageExt = ChatMessage & {
   kind?: 'text' | 'visuals';
+  visualKind?: ChatVisualKind;
   players?: PlayerData[];
   pending?: boolean;
 };
@@ -42,6 +45,49 @@ type ChatPayloadItem = { role: ChatPayloadRole; content: string };
 
 const TUTORIAL_GYOKERES_INTERPRETATION =
   'Viktor Gyokeres is a strong center-forward profile for a team that wants a direct outlet, penalty-box presence, and repeated threat in transition. His scoring output, carrying power, and ability to attack space make him especially useful when your strategy asks the striker to stretch the back line while still receiving under pressure. The main scouting question is how cleanly that physical dominance translates against deeper blocks, but his recent data suggests a forward who can turn volume into high-impact chances.';
+
+function formatScoutWiseNarrative(text: string) {
+  const initialPlaceholders: string[] = [];
+  const cleaned = text
+    .split(/\n+/)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^([•*-]|\d+[.)])\s+/, '')
+        .replace(/^#+\s*/, ''),
+    )
+    .filter(Boolean);
+
+  const paragraph = cleaned
+    .join(' ')
+    .replace(/\b([A-ZÇĞİÖŞÜ])\.(?=\s+[A-ZÇĞİÖŞÜ][\p{L}'-]+)/gu, (match) => {
+      const token = `__INITIAL_${initialPlaceholders.length}__`;
+      initialPlaceholders.push(match);
+      return token;
+    });
+
+  const sentences = paragraph
+    .split(/(?<=[.!?])\s+|(?<=[.!?])(?=[A-ZÇĞİÖŞÜa-zçğıöşü])/u)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .map((sentence) =>
+      sentence.replace(/__INITIAL_(\d+)__/g, (_, index) => initialPlaceholders[Number(index)] || ''),
+    );
+
+  const bulletItems = sentences.length ? sentences : cleaned;
+  return bulletItems.map((sentence) => `• ${sentence}`).join('\n');
+}
+
+function hasPitchMapData(player: PlayerData) {
+  const meta = player.meta as (PlayerData['meta'] & Record<string, unknown>) | undefined;
+  if (!meta) return false;
+  const counts = meta.positionCounts ?? meta.position_counts;
+  const names = meta.positionNamesSeen ?? meta.position_names_seen;
+  return Boolean(
+    (counts && typeof counts === 'object' && !Array.isArray(counts) && Object.keys(counts).length) ||
+      (Array.isArray(names) && names.length),
+  );
+}
 
 export default function ChatScreen() {
   const { t } = useTranslation();
@@ -193,14 +239,21 @@ export default function ChatScreen() {
         ? t('tutorialGyokeresInterpretation', TUTORIAL_GYOKERES_INTERPRETATION)
         : String(res?.response ?? '');
 
-    // 1) Append visuals as a dedicated history item (persists forever)
+    // 1) Append the player card, pitch map, and metric visuals as dedicated history items.
     if (visualPlayers.length > 0) {
-      append({ role: 'assistant', content: '', kind: 'visuals', players: visualPlayers });
+      append({ role: 'assistant', content: '', kind: 'visuals', visualKind: 'playerCard', players: visualPlayers });
+
+      if (visualPlayers.some(hasPitchMapData)) {
+        append({ role: 'assistant', content: '', kind: 'visuals', visualKind: 'pitchMap', players: visualPlayers });
+      }
+
+      append({ role: 'assistant', content: '', kind: 'visuals', visualKind: 'metrics', players: visualPlayers });
     }
 
-    // 2) Append the interpretation as a normal assistant bubble
-    if (narrative.trim()) {
-      append({ role: 'assistant', content: narrative.trim(), kind: 'text' });
+    // 2) Keep the interpretation in one ScoutWise bubble with bullet lines.
+    const formattedNarrative = formatScoutWiseNarrative(narrative.trim());
+    if (formattedNarrative.trim()) {
+      append({ role: 'assistant', content: formattedNarrative, kind: 'text' });
     }
 
     clearAttemptFlags(attemptKey);
@@ -334,7 +387,7 @@ export default function ChatScreen() {
   // Renders either a message bubble or a persisted visuals block
   const renderItem = React.useCallback(({ item }: { item: ChatMessageExt }) => {
     if (item.kind === 'visuals' && item.players?.length) {
-      return <ChatVisualsBlock players={item.players} />;
+      return <ChatVisualsBlock players={item.players} visualKind={item.visualKind} />;
     }
 
     return (

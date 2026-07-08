@@ -5,6 +5,7 @@ const WEEKLY_POPULAR_KEY = 'ads.playerPool.weeklyPopularRevealCount.v1';
 const MATCHUP_LAUNCH_KEY = 'ads.playerPool.matchupLaunchCount.v1';
 const MATCHUP_MISSING_SCORE_ADD_KEY = 'ads.playerPool.matchupMissingScoreAddCount.v1';
 const PLAYER_POOL_MISSING_SCORE_ACTION_KEY = 'ads.playerPool.missingScoreActionCount.v1';
+const PLAYER_CARD_PLAN_NUDGE_KEY = 'ads.playerPool.playerCardPlanNudgeCount.v1';
 const PORTFOLIO_LINEUP_KEY = 'ads.portfolio.lineupLaunchCount.v1';
 const PORTFOLIO_REPORT_KEY = 'ads.portfolio.reportOpenCount.v1';
 const DAILY_SCOUT_CHALLENGE_KEY = 'ads.profile.dailyScoutChallengeOpenCount.v1';
@@ -83,6 +84,18 @@ export async function incrementMatchupMissingScoreAddCount(): Promise<number> {
 
 export async function incrementPlayerPoolMissingScoreActionCount(): Promise<number> {
   return incrementStoredCount(PLAYER_POOL_MISSING_SCORE_ACTION_KEY);
+}
+
+export async function incrementPlayerCardPlanNudgeCount(): Promise<number> {
+  return incrementStoredCount(PLAYER_CARD_PLAN_NUDGE_KEY);
+}
+
+export function shouldShowPlayerCardPlanNudge(count: number) {
+  return count > 0 && (count - 1) % 4 === 0;
+}
+
+export function shouldPrepareNextPlayerCardPlanNudge(count: number) {
+  return count > 0 && count % 4 === 0;
 }
 
 export function shouldShowPortfolioLineupInterstitial(launchCount: number) {

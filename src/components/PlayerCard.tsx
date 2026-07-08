@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { FileClock, FileText } from 'lucide-react-native';
 import { CARD, TEXT, MUTED, ACCENT, LINE, DANGER } from '@/theme';
 import type { PlayerData } from '@/types';
-import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG } from '@/services/api';
+import { rolePickerCode } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 
 type Props = {
@@ -33,20 +33,22 @@ function getScoreColor(score: number): string {
 }
 
 function roleShortLabel(value?: string) {
-  if (!value) return '';
-  const upper = value.toUpperCase();
-  if (ROLE_SHORT_TO_LONG[upper]) return upper;
-  return ROLE_LONG_TO_SHORT[value] || value;
+  return rolePickerCode(value);
 }
 
 function buildRoleDistribution(meta: PlayerData['meta']) {
-  const counts: Record<string, number> = meta?.positionCounts ?? {};
-  const total = meta?.positionCountTotal || Object.values(counts).reduce((sum: number, count: number) => sum + count, 0);
+  const rawCounts: Record<string, number> = meta?.positionCounts ?? {};
+  const counts = Object.entries(rawCounts).reduce<Record<string, number>>((acc, [role, count]) => {
+    const short = roleShortLabel(role);
+    if (short && count > 0) acc[short] = (acc[short] || 0) + count;
+    return acc;
+  }, {});
+  const total = Object.values(counts).reduce((sum: number, count: number) => sum + count, 0);
   const fromCounts = Object.entries(counts)
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([role, count]) => ({
-      role: roleShortLabel(role),
+      role,
       pct: total > 0 ? Math.round((count / total) * 100) : null,
     }))
     .filter((item) => item.role);

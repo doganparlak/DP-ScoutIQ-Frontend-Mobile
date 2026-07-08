@@ -309,7 +309,7 @@ export default function HelpCenter() {
             <View style={styles.block}>
               <Text style={styles.h3}>{t('howMatchupCenterTitle', 'Matchup Center')}</Text>
               <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howMatchupCenter1', 'Matchup Center lets you place two selected players side by side, launch a comparison, and review shared metrics with tables, charts, and discipline tiles.')}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howMatchupCenter1', 'Matchup Center lets you place selected players side by side, launch a comparison, and review shared metrics with tables, charts, and discipline tiles.')}
               </Text>
             </View>
 
@@ -337,7 +337,7 @@ export default function HelpCenter() {
               <Text style={styles.h3}>{t('howMetricTitle', 'Metric Visualizations')}</Text>
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart and Horizontal Bar Chart for a clear statistical profile.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>, <Text style={styles.bold}>{t('shooting', 'Shooting')}</Text>, <Text style={styles.bold}>{t('passing', 'Passing')}</Text>, <Text style={styles.bold}>{t('defending', 'Defending')}</Text>, <Text style={styles.bold}>{t('contribution_impact', 'Contribution & Impact')}</Text>, <Text style={styles.bold}>{t('errors_discipline', 'Errors & Discipline')}</Text>.{'\n'}
+                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('scoutwise_scores', 'ScoutWise Scores & Ratings')}</Text>, <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>, <Text style={styles.bold}>{t('shooting', 'Shooting')}</Text>, <Text style={styles.bold}>{t('passing', 'Passing')}</Text>, <Text style={styles.bold}>{t('defending', 'Defending')}</Text>, <Text style={styles.bold}>{t('contribution_impact', 'Contribution & Impact')}</Text>, <Text style={styles.bold}>{t('errors_discipline', 'Errors & Discipline')}</Text>.{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}{'\n'}
                 <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar4', 'Shown metrics are the per game averages based on available data.')}
               </Text>
@@ -406,7 +406,7 @@ export default function HelpCenter() {
 
               <Text style={[styles.p, styles.justify]}>
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howScoutReport1', 'Scouting Report includes the player card and all available statistics from the last 365 days, plus Strengths, Weakness & Concerns, and a Conclusion section.')}
+                {t('howScoutReport1', 'Scouting Report includes the player card and metric visualizations, as well as Pitch Map, Role & Usage, Strengths, and Weaknesses & Concerns sections.')}
                 {'\n'}
 
                 <Text style={styles.bullet}>{'\u2022'}</Text>{' '}

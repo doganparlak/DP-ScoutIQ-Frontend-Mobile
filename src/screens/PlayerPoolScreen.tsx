@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { Crown, Eye } from 'lucide-react-native';
+import { Crown, Eye, X } from 'lucide-react-native';
 
 import {
   incrementPotentialRevealCount,
@@ -22,6 +22,7 @@ import {
   incrementPlayerPoolMissingScoreActionCount,
   incrementPortfolioReportOpenCount,
   incrementWeeklyPopularRevealCount,
+  incrementPlayerCardPlanNudgeCount,
   shouldShowMatchupLaunchInterstitial,
   shouldShowMatchupMissingScoreInterstitial,
   shouldPrepareNextMatchupMissingScoreInterstitial,
@@ -31,6 +32,7 @@ import {
   shouldShowPortfolioReportInterstitial,
   shouldShowPotentialInterstitial,
   shouldShowWeeklyPopularInterstitial,
+  shouldShowPlayerCardPlanNudge,
 } from '@/ads/adGating';
 import { prepareInterstitial, showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { ProNotReadyScreen } from '@/ads/pro';
@@ -51,7 +53,9 @@ import { TutorialHint, useTutorial } from '@/components/Tutorial';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
+  ROLE_PICKER_ORDER,
   ROLE_SHORT_TO_LONG,
+  rolePickerCode,
   addFavoritePlayer,
   getMatchupComparison,
   getMe,
@@ -75,8 +79,81 @@ type SortDir = 'asc' | 'desc';
 const ANDROID_REVEAL_FORM_EXTRA_SCROLL = 100;
 const ANDROID_ADD_MATCHUP_EXTRA_SCROLL = 100;
 
+function orderedRoleOptions(values: readonly string[]) {
+  const available = new Set(values.map((value) => rolePickerCode(value)).filter(Boolean));
+  return ROLE_PICKER_ORDER.filter((role) => available.has(role));
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function renderPlanNudgeBody(body: string) {
+  const lines = body.split('\n');
+
+  return lines.map((line, index) => {
+    const match = line.match(/^(Plus|Pro)(.*)$/);
+
+    return (
+      <React.Fragment key={`${line}-${index}`}>
+        {index > 0 ? '\n\n' : ''}
+        {match ? (
+          <>
+            <Text style={styles.playerCardPlanNudgePlanName}>{match[1]}</Text>
+            {match[2]}
+          </>
+        ) : (
+          line
+        )}
+      </React.Fragment>
+    );
+  });
+}
+
+
+function PlayerCardPlanNudge({
+  title,
+  body,
+  buttonLabel,
+  onOpenPlans,
+  onClose,
+  worldCupMode,
+}: {
+  title: string;
+  body: string;
+  buttonLabel: string;
+  onOpenPlans: () => void;
+  onClose: () => void;
+  worldCupMode: boolean;
+}) {
+  const accent = worldCupMode ? WORLD_CUP_COLORS.lavender : ACCENT;
+
+  return (
+    <View style={[styles.playerCardPlanNudge, worldCupMode && { borderColor: accent, backgroundColor: 'rgba(167, 132, 244, 0.10)' }]}>
+      <View style={styles.playerCardPlanNudgeTopRow}>
+        <View style={[styles.playerCardPlanNudgeIcon, { borderColor: accent, backgroundColor: worldCupMode ? 'rgba(167, 132, 244, 0.16)' : 'rgba(22, 163, 74, 0.12)' }]}>
+          <Crown size={18} color={accent} strokeWidth={2.3} />
+        </View>
+        <View style={styles.playerCardPlanNudgeCopy}>
+          <Text style={[styles.playerCardPlanNudgeTitle, { color: accent }]}>{title}</Text>
+          <Text style={styles.playerCardPlanNudgeBody}>{renderPlanNudgeBody(body)}</Text>
+        </View>
+        <Pressable onPress={onClose} hitSlop={10} style={({ pressed }) => [styles.playerCardPlanNudgeClose, pressed && styles.pressed]}>
+          <X size={16} color="#8F8F99" strokeWidth={2.4} />
+        </Pressable>
+      </View>
+      <Pressable
+        onPress={onOpenPlans}
+        style={({ pressed }) => [
+          styles.playerCardPlanNudgeButton,
+          { borderColor: accent, backgroundColor: accent },
+          pressed && styles.pressed,
+        ]}
+      >
+        <Text style={styles.playerCardPlanNudgeButtonText}>{buttonLabel}</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 export default function PlayerPoolScreen() {
@@ -110,6 +187,7 @@ export default function PlayerPoolScreen() {
   const [plan, setPlan] = React.useState<Plan>('Free');
   const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
   const [threeWayProPromptOpen, setThreeWayProPromptOpen] = React.useState(false);
+  const [playerCardPlanNudgeVisible, setPlayerCardPlanNudgeVisible] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
   const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
@@ -139,6 +217,7 @@ export default function PlayerPoolScreen() {
   const scrollRef = React.useRef<ScrollView | null>(null);
   const currentCardRenderIdRef = React.useRef<string | null>(null);
   const countedCardRenderIdRef = React.useRef<string | null>(null);
+  const lastCardAppearanceRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
   const canUseThreeWayComparison = plan === 'No Ads Monthly' || plan === 'Pro Monthly' || plan === 'Pro Yearly';
 
@@ -269,7 +348,8 @@ export default function PlayerPoolScreen() {
           setTeamOptions(options.teams);
         }
         if (Array.isArray(options.positions)) {
-          setPositionOptions(options.positions);
+          const orderedPositions = orderedRoleOptions(options.positions);
+          setPositionOptions(orderedPositions.length ? orderedPositions : [...PLAYER_POOL_POSITION_OPTIONS]);
         }
 
       } catch (error) {
@@ -351,6 +431,8 @@ export default function PlayerPoolScreen() {
     setSelectedPlayer(null);
     currentCardRenderIdRef.current = null;
     countedCardRenderIdRef.current = null;
+    lastCardAppearanceRenderIdRef.current = null;
+    setPlayerCardPlanNudgeVisible(false);
     setRevealedPotentialForCard(false);
     setRevealedFormForCard(false);
     setError(null);
@@ -433,6 +515,7 @@ export default function PlayerPoolScreen() {
       const firstRow = next[0];
       currentCardRenderIdRef.current = firstRow ? `${firstRow.id}:${Date.now()}` : null;
       countedCardRenderIdRef.current = null;
+      if (!firstRow) setPlayerCardPlanNudgeVisible(false);
       setResults(next);
       setSelectedPlayerId(firstRow?.id ?? null);
       setSelectedPlayer(firstRow?.player ?? null);
@@ -450,6 +533,8 @@ export default function PlayerPoolScreen() {
       setSelectedPlayer(null);
       currentCardRenderIdRef.current = null;
       countedCardRenderIdRef.current = null;
+      lastCardAppearanceRenderIdRef.current = null;
+      setPlayerCardPlanNudgeVisible(false);
       setRevealedPotentialForCard(false);
       setRevealedFormForCard(false);
       setError(err?.message ?? t('favoritesError', 'Favorites error'));
@@ -475,6 +560,29 @@ export default function PlayerPoolScreen() {
     tutorial,
     worldCupMode,
   ]);
+
+  React.useEffect(() => {
+    const renderId = currentCardRenderIdRef.current;
+
+    if (plan !== 'Free' || isPlayerPoolTutorialActive || !selectedPlayerId || !selectedPlayer || !renderId) {
+      setPlayerCardPlanNudgeVisible(false);
+      return;
+    }
+
+    if (lastCardAppearanceRenderIdRef.current === renderId) return;
+
+    lastCardAppearanceRenderIdRef.current = renderId;
+    let alive = true;
+
+    (async () => {
+      const count = await incrementPlayerCardPlanNudgeCount();
+      if (alive) setPlayerCardPlanNudgeVisible(shouldShowPlayerCardPlanNudge(count));
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [isPlayerPoolTutorialActive, plan, selectedPlayer, selectedPlayerId]);
 
   const recordSelectedCardInterestOnce = React.useCallback(() => {
     if (isPlayerPoolTutorialActive) return;
@@ -809,16 +917,19 @@ export default function PlayerPoolScreen() {
   }, [readyReportsByPlayerId, reportLoadingPlayerId, selectedPlayerId]);
 
   const buildReportPayload = React.useCallback((player: PlayerData) => ({
+    playerId: selectedPlayerId ?? undefined,
+    worldCupMode,
     name: player.name,
     gender: player.meta?.gender,
     nationality: player.meta?.nationality,
     team: player.meta?.team,
+    league: player.meta?.league,
     age: player.meta?.age,
     height: player.meta?.height,
     weight: player.meta?.weight,
     potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
     form: typeof player.meta?.form === 'number' ? Math.round(player.meta.form) : undefined,
-  }), []);
+  }), [selectedPlayerId, worldCupMode]);
 
   const grantReportAccessForFreeUser = React.useCallback(async () => {
     try {
@@ -1027,22 +1138,14 @@ export default function PlayerPoolScreen() {
   }, [results.length]);
 
   const roleDisplayLabel = React.useCallback((value: string) => {
-    return ROLE_LONG_TO_SHORT[value] || value;
+    return rolePickerCode(value) || ROLE_LONG_TO_SHORT[value] || value;
   }, []);
 
   const positionOptionLabels = React.useMemo(() => {
-    const seen = new Set<string>();
-    const out: string[] = [];
-
-    for (const item of positionOptions) {
-      const short = roleDisplayLabel(item);
-      if (seen.has(short)) continue;
-      seen.add(short);
-      out.push(short);
-    }
-
-    return out;
-  }, [positionOptions, roleDisplayLabel]);
+    const available = new Set(positionOptions.map((item) => rolePickerCode(item)).filter(Boolean));
+    if (!available.size) return [...PLAYER_POOL_POSITION_OPTIONS];
+    return ROLE_PICKER_ORDER.filter((role) => available.has(role));
+  }, [positionOptions]);
 
   const cycleSort = React.useCallback((key: CandidateSortKey) => {
     setSortKey((current) => {
@@ -1484,6 +1587,21 @@ export default function PlayerPoolScreen() {
             accentSoft: 'rgba(167, 132, 244, 0.12)',
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
+          footerContent={
+            playerCardPlanNudgeVisible && plan === 'Free' && !isPlayerPoolTutorialActive ? (
+              <PlayerCardPlanNudge
+                onClose={() => setPlayerCardPlanNudgeVisible(false)}
+                onOpenPlans={() => {
+                  setPlayerCardPlanNudgeVisible(false);
+                  navigation.navigate('Profile', { screen: 'ManagePlan' });
+                }}
+                worldCupMode={worldCupMode}
+                title={t('playerCardPlanNudgeTitle', 'Access The Full Experience')}
+                body={t('playerCardPlanNudgeBody', 'Plus unlocks ad-free ScoutWise with 3-way comparison.\nPro adds strategy-aware player discovery through ScoutWise chat.')}
+                buttonLabel={t('viewPlans', 'View Plans')}
+              />
+            ) : null
+          }
         />
 
         <MatchupCenter
@@ -1753,6 +1871,69 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
+  playerCardPlanNudge: {
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.32)',
+    backgroundColor: 'rgba(22, 163, 74, 0.08)',
+    padding: 12,
+    gap: 10,
+  },
+  playerCardPlanNudgeTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  playerCardPlanNudgeIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playerCardPlanNudgeCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  playerCardPlanNudgeTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  playerCardPlanNudgeBody: {
+    color: '#9A9AA3',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  playerCardPlanNudgePlanName: {
+    color: ACCENT,
+    fontWeight: '900',
+  },
+  playerCardPlanNudgeClose: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+  },
+  playerCardPlanNudgeButton: {
+    minHeight: 40,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  playerCardPlanNudgeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   proPromptBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.72)',
@@ -1828,7 +2009,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   proPromptPrimaryText: {
-    color: '#02130A',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '900',
   },

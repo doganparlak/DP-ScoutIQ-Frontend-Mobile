@@ -96,15 +96,29 @@ export async function sendChat(
     }),
   });
 
-  const players = (json.data?.players || []).map((player) => ({
-    ...player,
-    meta: player.meta
-      ? {
-          ...player.meta,
-          league: normalizeLeagueName(player.meta.league),
-        }
-      : player.meta,
-  }));
+  const players = (json.data?.players || []).map((player) => {
+    const meta = player.meta as (PlayerData['meta'] & Record<string, unknown>) | undefined;
+    if (!meta) return player;
+
+    const positionCounts = normalizePositionCounts(meta.positionCounts ?? meta.position_counts);
+    const positionNamesSeen = normalizePositionNames(meta.positionNamesSeen ?? meta.position_names_seen, positionCounts);
+    const positionCountTotal =
+      toFiniteNumber(meta.positionCountTotal ?? meta.position_count_total) ??
+      Object.values(positionCounts).reduce((total, count) => total + count, 0);
+    const primaryPositionCode = roleShortCode(meta.primaryPositionCode ?? meta.primary_position_code) ?? positionNamesSeen[0];
+
+    return {
+      ...player,
+      meta: {
+        ...meta,
+        league: normalizeLeagueName(meta.league as string | undefined),
+        ...(Object.keys(positionCounts).length ? { positionCounts } : {}),
+        ...(positionNamesSeen.length ? { positionNamesSeen } : {}),
+        ...(positionCountTotal ? { positionCountTotal } : {}),
+        ...(primaryPositionCode ? { primaryPositionCode } : {}),
+      },
+    };
+  });
 
   // Normalize
   return {
@@ -175,6 +189,70 @@ export const ROLE_LONG_TO_SHORT: Record<string, string> = {
   'Centre Forward': 'CF',
   'Attacker': 'CF',
 };
+
+export const ROLE_PICKER_ORDER = [
+  'GK',
+  'LB',
+  'RB',
+  'CB',
+  'LM',
+  'RM',
+  'CDM',
+  'CM',
+  'CAM',
+  'LW',
+  'RW',
+  'CF',
+] as const;
+
+const ROLE_ALIASES: Record<string, string> = {
+  G: 'GK',
+  GK: 'GK',
+  GOALKEEPER: 'GK',
+  'GOAL KEEPER': 'GK',
+  goalkeeper: 'GK',
+  'goal keeper': 'GK',
+  A: 'CF',
+  ATTACKER: 'CF',
+  attacker: 'CF',
+  FORWARD: 'CF',
+  forward: 'CF',
+  F: 'CF',
+  MIDFIELDER: 'CM',
+  midfielder: 'CM',
+  M: 'CM',
+  DEFENDER: 'CB',
+  defender: 'CB',
+  D: 'CB',
+};
+
+const ROLE_COLLAPSE_TO_PICKER: Record<string, string> = {
+  LWB: 'LB',
+  RWB: 'RB',
+  LCB: 'CB',
+  RCB: 'CB',
+  LDM: 'CDM',
+  RDM: 'CDM',
+  LCM: 'CM',
+  RCM: 'CM',
+  LAM: 'CAM',
+  RAM: 'CAM',
+  LCF: 'CF',
+  RCF: 'CF',
+};
+
+export function rolePickerCode(value?: string | null) {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  const upper = normalized.toUpperCase();
+  const direct = ROLE_PICKER_ORDER.includes(upper as any) ? upper : undefined;
+  const longMatch =
+    ROLE_LONG_TO_SHORT[normalized] ??
+    Object.entries(ROLE_LONG_TO_SHORT).find(([long]) => long.toLowerCase() === normalized.toLowerCase())?.[1];
+  const alias = direct || longMatch || ROLE_ALIASES[upper] || ROLE_ALIASES[normalized.toLowerCase()];
+  if (!alias) return '';
+  return ROLE_PICKER_ORDER.includes(alias as any) ? alias : ROLE_COLLAPSE_TO_PICKER[alias] || '';
+}
 
 const HIDDEN_LEAGUE_NAMES = new Set([
   'champions league',
@@ -340,11 +418,7 @@ function roleShortCode(role: unknown): string | null {
   if (typeof role !== 'string' && typeof role !== 'number') return null;
   const trimmed = String(role).trim();
   if (!trimmed) return null;
-  const upper = trimmed.toUpperCase();
-  if (ROLE_SHORT_TO_LONG[upper]) return upper;
-  return ROLE_LONG_TO_SHORT[trimmed] ??
-    Object.entries(ROLE_LONG_TO_SHORT).find(([long]) => long.toLowerCase() === trimmed.toLowerCase())?.[1] ??
-    upper;
+  return rolePickerCode(trimmed) || null;
 }
 
 function normalizeRole(role: unknown): string | null {
@@ -362,7 +436,7 @@ function normalizePositionCounts(value: unknown): Record<string, number> {
     .filter((entry): entry is [string, number] => Boolean(entry[0]) && typeof entry[1] === 'number' && entry[1] > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .reduce<Record<string, number>>((acc, [key, count]) => {
-      acc[key] = count;
+      acc[key] = (acc[key] || 0) + count;
       return acc;
     }, {});
 }
@@ -833,10 +907,14 @@ export type ScoutingReportResponse = {
 };
 
 export type PlayerIdentityPayload = {
+  playerId?: string;
+  clubPlayerId?: number;
+  worldCupMode?: boolean;
   name?: string;
   gender?: string;
   nationality?: string;
   team?: string;
+  league?: string;
   age?: number;
   height?: number;
   weight?: number;

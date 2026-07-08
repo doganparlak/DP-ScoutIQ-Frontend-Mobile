@@ -45,6 +45,7 @@ type Props = {
   onTutorialSkipAll?: () => void;
   theme?: PlayerPoolComponentTheme;
   worldCupMode?: boolean;
+  footerContent?: React.ReactNode;
 };
 
 export default function PlayerCardPP({
@@ -67,6 +68,7 @@ export default function PlayerCardPP({
   onTutorialSkipAll,
   theme,
   worldCupMode = false,
+  footerContent,
 }: Props) {
   const { t } = useTranslation();
   const { width: windowWidth, fontScale } = useWindowDimensions();
@@ -190,6 +192,7 @@ export default function PlayerCardPP({
             targetLabel={t('tutorialPressRevealForm', 'Press Reveal Form')}
             arrow="down"
           />
+          {footerContent}
           <View style={styles.revealActionsRow}>
             {!worldCupMode ? (
               <Pressable

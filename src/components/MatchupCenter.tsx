@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowDownCircle, Radar, X } from 'lucide-react-native';
 
 import { TutorialHint, type PlayerPoolTutorialStep } from '@/components/Tutorial';
-import { ROLE_LONG_TO_SHORT, ROLE_SHORT_TO_LONG } from '@/services/api';
+import { rolePickerCode } from '@/services/api';
 import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
 import type { SearchResultRow } from '@/components/CandidatePlayers';
 
@@ -72,10 +72,7 @@ function shortNationality(value?: string) {
 }
 
 function roleLabel(value?: string) {
-  if (!value) return '';
-  const upper = value.toUpperCase();
-  if (ROLE_SHORT_TO_LONG[upper]) return upper;
-  return ROLE_LONG_TO_SHORT[value] || value;
+  return rolePickerCode(value);
 }
 
 function roleLabels(row: SearchResultRow) {

@@ -21,7 +21,8 @@ import {
   deleteFavoritePlayer,
   getFavoritePlayers,
   getScoutingReport,
-  ROLE_LONG_TO_SHORT,
+  ROLE_PICKER_ORDER,
+  rolePickerCode,
   type Plan,
   type FavoritePlayer,
   type ScoutingReportResponse,
@@ -55,28 +56,10 @@ type PlayerRow = {
   weight?: number;
 };
 
-const ALL_ROLE_SHORTS = [
-  'GK','LB','RB','LCB','RCB','CB','LWB','RWB','LM','RM','LDM','RDM','LCM','RCM','LAM','RAM','CDM','CM','CAM','LW','RW','LCF','RCF','CF',
-] as const;
-
-const COMPATIBLE_SHORT_ROLES: Record<string, string[]> = {
-  LCB: ['LCB', 'CB'],
-  RCB: ['RCB', 'CB'],
-  LWB: ['LWB', 'LB', 'LM'],
-  RWB: ['RWB', 'RB', 'RM'],
-  LDM: ['LDM', 'CDM'],
-  RDM: ['RDM', 'CDM'],
-  LCM: ['LCM', 'CM'],
-  RCM: ['RCM', 'CM'],
-  LAM: ['LAM', 'CAM'],
-  RAM: ['RAM', 'CAM'],
-  LCF: ['LCF', 'CF'],
-  RCF: ['RCF', 'CF'],
-};
+const ALL_ROLE_SHORTS = ROLE_PICKER_ORDER;
 
 function roleMatchesSelection(playerRoles: string[], selectedRole: string) {
-  const compatibleRoles = COMPATIBLE_SHORT_ROLES[selectedRole] ?? [selectedRole];
-  return compatibleRoles.some((role) => playerRoles.includes(role));
+  return playerRoles.includes(selectedRole);
 }
 
 const ROW_HEIGHT = 48;
@@ -213,7 +196,7 @@ export default function FavoritePlayers({
         age: typeof f.age === 'number' ? f.age : undefined,
         potential: typeof f.potential === 'number' ? f.potential : undefined,
         form: typeof f.form === 'number' ? f.form : undefined,
-        rolesShort: (f.roles || []).map((long) => ROLE_LONG_TO_SHORT[long] ?? long),
+        rolesShort: Array.from(new Set((f.roles || []).map((role) => rolePickerCode(role)).filter(Boolean))),
         gender: f.gender || undefined,
         team: f.team || undefined,
         league: f.league || undefined,
@@ -726,7 +709,7 @@ export default function FavoritePlayers({
       isLamineYamalName((item as PlayerRow).name);
 
     const RowInner = (
-      <View style={[styles.row, { minHeight: ROW_HEIGHT }]}>
+      <View style={[styles.row, isHeader && styles.clickableHeaderRow, { minHeight: ROW_HEIGHT }]}>
         {isHeader ? (
           <View style={[styles.cell, { flex: COL.rep, alignItems: 'center' }]} />
         ) : (
@@ -780,7 +763,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.name },
               pressed && pressedStyle,
-              sortKey === 'name' && { backgroundColor: CARD },
+              sortKey === 'name' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -804,7 +787,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.nat },
               pressed && pressedStyle,
-              sortKey === 'nationality' && { backgroundColor: CARD },
+              sortKey === 'nationality' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -828,7 +811,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.team },
               pressed && pressedStyle,
-              sortKey === 'team' && { backgroundColor: CARD },
+              sortKey === 'team' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -852,7 +835,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.age },
               pressed && pressedStyle,
-              sortKey === 'age' && { backgroundColor: CARD },
+              sortKey === 'age' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -876,7 +859,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.roles },
               pressed && pressedStyle,
-              sortKey === 'roles' && { backgroundColor: CARD },
+              sortKey === 'roles' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -887,23 +870,24 @@ export default function FavoritePlayers({
         ) : (
           <View style={[styles.cell, styles.rolePillGroup, { flex: COL.roles }]}>
             {(() => {
-              const roles = ((item as PlayerRow).rolesShort || [])
+              const playerRoles = ((item as PlayerRow).rolesShort || [])
                 .map((role) => role?.trim())
-                .filter(Boolean)
-                .slice(0, 2);
+                .filter(Boolean);
+              const selectedMatchingRole = selectedRoles.find((role) => playerRoles.includes(role));
+              const visibleRole = selectedMatchingRole || playerRoles[0];
 
-              return roles.length ? roles.map((role) => (
-                <View key={role} style={styles.rolePill}>
+              return visibleRole ? (
+                <View key={visibleRole} style={styles.rolePill}>
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     minimumFontScale={0.72}
                     style={styles.rolePillText}
                   >
-                    {role}
+                    {visibleRole}
                   </Text>
                 </View>
-              )) : (
+              ) : (
                 <Text numberOfLines={1} style={[styles.td, styles.roleDash]}>—</Text>
               );
             })()}
@@ -920,7 +904,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.form },
               pressed && pressedStyle,
-              sortKey === 'form' && { backgroundColor: CARD },
+              sortKey === 'form' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -944,7 +928,7 @@ export default function FavoritePlayers({
               styles.cell,
               { flex: COL.pot },
               pressed && pressedStyle,
-              sortKey === 'potential' && { backgroundColor: CARD },
+              sortKey === 'potential' && styles.activeHeaderCell,
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
@@ -987,11 +971,16 @@ export default function FavoritePlayers({
           <Pressable
             disabled={tutorialLocked}
             onPress={() => setPreviewPlayer(toPlayerData(item as PlayerRow))}
+            style={({ pressed }) => [
+              styles.clickableRow,
+              pressed && !tutorialLocked && styles.clickableRowPressed,
+              tutorialLocked && styles.rowLocked,
+            ]}
           >
             {RowInner}
           </Pressable>
         )}
-        <View style={styles.hsepThick} />
+        <View style={styles.clickableRowGap} />
       </View>
     );
   };
@@ -1249,20 +1238,24 @@ export default function FavoritePlayers({
             <Text style={{ color: MUTED }}>{t('loadingFavorites', 'Loading favorites…')}</Text>
           </View>
         ) : (
-          <View style={styles.tableScrollWrap}>
-            <ScrollView
-              style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
-              contentContainerStyle={{ paddingRight: 5 }}
-              scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
-              nestedScrollEnabled={tableNeedsInnerScroll}
-              bounces={false}
-              scrollEnabled={tableNeedsInnerScroll}
-              showsVerticalScrollIndicator={tableNeedsInnerScroll}
-            >
+          <>
+            <View style={styles.tableHeaderWrap}>
               {renderUnifiedRow('HEADER')}
-              {filtered.map((item) => renderUnifiedRow(item))}
-            </ScrollView>
-          </View>
+            </View>
+            <View style={styles.tableScrollWrap}>
+              <ScrollView
+                style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
+                contentContainerStyle={{ paddingRight: 5, paddingVertical: 4 }}
+                scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
+                nestedScrollEnabled={tableNeedsInnerScroll}
+                bounces={false}
+                scrollEnabled={tableNeedsInnerScroll}
+                showsVerticalScrollIndicator={tableNeedsInnerScroll}
+              >
+                {filtered.map((item) => renderUnifiedRow(item))}
+              </ScrollView>
+            </View>
+          </>
         )}
 
         <View style={styles.tableBottomBorder} />
@@ -1343,6 +1336,9 @@ export default function FavoritePlayers({
 }
 
 const styles = StyleSheet.create({
+  tableHeaderWrap: {
+    paddingRight: 5,
+  },
   tableScrollWrap: {
     paddingRight: 1,
   },
@@ -1411,11 +1407,39 @@ const styles = StyleSheet.create({
   tableBottomBorder: { height: 1, backgroundColor: LINE },
 
   row: { width: '100%', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 2 },
+  clickableRow: {
+    minHeight: ROW_HEIGHT + 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.16)',
+    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
+  },
+  clickableHeaderRow: {
+    minHeight: ROW_HEIGHT + 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(36, 245, 166, 0.22)',
+    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    paddingHorizontal: 4,
+    overflow: 'hidden',
+  },
+  activeHeaderCell: {
+    backgroundColor: 'rgba(36, 245, 166, 0.14)',
+  },
+  clickableRowPressed: {
+    transform: [{ scale: 0.992 }],
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderColor: 'rgba(36, 245, 166, 0.42)',
+  },
+  clickableRowGap: { height: 8 },
+  rowLocked: { opacity: 0.62 },
   hsepThick: { height: 2, backgroundColor: LINE },
 
   cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
-  thText: { color: TEXT, fontWeight: '700' },
-  td: { minWidth: 0, color: TEXT, flex: 1 },
+  thText: { color: TEXT, fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 12.5 },
   rolePillGroup: {
     minWidth: 0,
     overflow: 'hidden',
