@@ -734,7 +734,7 @@ export default function ComparisonModal({
           return (
             <View key={row.metric} style={styles.dualTileRow}>
               <Text numberOfLines={2} style={styles.dualTileMetric}>
-                {t(`metric.${row.metric}`, row.metric)}
+                {String(t(`metric.${row.metric}`, row.metric))}
               </Text>
 
               <View style={styles.dualRiskStack}>
@@ -928,7 +928,7 @@ export default function ComparisonModal({
           return (
             <View key={row.metric} style={styles.dualTileRow}>
               <Text numberOfLines={2} style={styles.dualTileMetric}>
-                {t(`metric.${row.metric}`, row.metric)}
+                {String(t(`metric.${row.metric}`, row.metric))}
               </Text>
               {[row.point1, row.point2, row.point3].map((point, index) => {
                 const value = values[index];
@@ -1127,7 +1127,7 @@ export default function ComparisonModal({
                             <View key={row.metric} style={styles.threeMetricRow}>
                               <View style={styles.threeMetricNameCell}>
                                 <Text numberOfLines={2} style={styles.metricName}>
-                                  {t(`metric.${row.metric}`, row.metric)}
+                                  {String(t(`metric.${row.metric}`, row.metric))}
                                 </Text>
                               </View>
                               <View style={styles.threeValuesRow}>
@@ -1162,7 +1162,7 @@ export default function ComparisonModal({
                           <View key={row.metric} style={styles.twoMetricRow}>
                             <View style={styles.twoMetricNameCell}>
                               <Text numberOfLines={2} style={styles.metricName}>
-                                {t(`metric.${row.metric}`, row.metric)}
+                                {String(t(`metric.${row.metric}`, row.metric))}
                               </Text>
                             </View>
                             <View style={styles.twoValuesRow}>
