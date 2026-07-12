@@ -29,12 +29,11 @@ import {
 } from '../services/api';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
-import { prepareInterstitial, showInterstitialAndWaitSafely } from '../ads/interstitial';
+import { showInterstitialAndWaitSafely } from '../ads/interstitial';
 import { ProNotReadyScreen } from '../ads/pro';
 import {
   incrementPortfolioLineupLaunchCount,
   incrementPortfolioReportOpenCount,
-  shouldPrepareNextInterstitial,
   shouldShowPortfolioLineupInterstitial,
   shouldShowPortfolioReportInterstitial,
 } from '../ads/adGating';
@@ -115,6 +114,38 @@ function isLamineYamalName(name: string) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .includes('lamine yamal');
+}
+
+function normalizeSearchText(value?: string | null) {
+  const folded = String(value || '')
+    .trim()
+    .replace(/[ıİ]/g, (char) => (char === 'ı' ? 'i' : 'I'))
+    .replace(/[áàâäãåāăą]/gi, 'a')
+    .replace(/[éèêëēĕėęě]/gi, 'e')
+    .replace(/[íìîïīĭį]/gi, 'i')
+    .replace(/[óòôöõøōŏő]/gi, 'o')
+    .replace(/[úùûüūŭůűų]/gi, 'u')
+    .replace(/[ñń]/gi, 'n')
+    .replace(/[ćčç]/gi, 'c')
+    .replace(/[ğ]/gi, 'g')
+    .replace(/[ł]/gi, 'l')
+    .replace(/[ř]/gi, 'r')
+    .replace(/[śšş]/gi, 's')
+    .replace(/[ýÿ]/gi, 'y')
+    .replace(/[žźż]/gi, 'z')
+    .replace(/æ/gi, 'ae')
+    .replace(/œ/gi, 'oe')
+    .replace(/ß/g, 'ss');
+
+  return folded
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
+function searchIncludes(value: string | undefined, query: string) {
+  const normalizedQuery = normalizeSearchText(query);
+  return !normalizedQuery || normalizeSearchText(value).includes(normalizedQuery);
 }
 
 type FavoritePlayersProps = {
@@ -271,10 +302,10 @@ export default function FavoritePlayers({
     const maxF = maxForm ? Math.min(100, parseInt(maxForm, 10)) : undefined;
 
     const list = rows.filter((p) => {
-      if (qName && !p.name.toLowerCase().includes(qName.toLowerCase())) return false;
-      if (qNat && !(p.nationality || '').toLowerCase().includes(qNat.toLowerCase())) return false;
-      if (qLeague && !(p.league || '').toLowerCase().includes(qLeague.toLowerCase())) return false;
-      if (qTeam && !(p.team || '').toLowerCase().includes(qTeam.toLowerCase())) return false;
+      if (!searchIncludes(p.name, qName)) return false;
+      if (!searchIncludes(p.nationality, qNat)) return false;
+      if (!searchIncludes(p.league, qLeague)) return false;
+      if (!searchIncludes(p.team, qTeam)) return false;
 
       if (genderFilter) {
         const g = (p.gender || '').toLowerCase();
@@ -590,10 +621,6 @@ export default function FavoritePlayers({
           return false;
         }
 
-        if (shouldPrepareNextInterstitial(nextCount)) {
-          prepareInterstitial();
-        }
-
         setReportAccessGranted((prev) => {
           const next = new Set(prev);
           next.add(player.id);
@@ -682,9 +709,6 @@ export default function FavoritePlayers({
     try {
       const nextCount = await incrementPortfolioLineupLaunchCount();
       if (!shouldShowPortfolioLineupInterstitial(nextCount)) {
-        if (shouldPrepareNextInterstitial(nextCount)) {
-          prepareInterstitial();
-        }
         return;
       }
 

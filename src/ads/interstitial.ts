@@ -57,7 +57,7 @@ function getAd() {
   return ad;
 }
 
-function loadInterstitial(timeoutMs = 2000): Promise<boolean> {
+function loadInterstitial(timeoutMs = 3000): Promise<boolean> {
   const a = getAd();
 
   if (loaded) return Promise.resolve(true);

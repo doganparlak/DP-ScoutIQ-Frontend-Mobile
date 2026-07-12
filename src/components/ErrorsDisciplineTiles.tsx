@@ -125,7 +125,7 @@ export default function ErrorsDisciplineTiles({
         const sev = severityFor(m.risk);
         const sevColor = colorFor(sev);
         const sevText = labelFor(sev);
-        const labelTr = t(`metric.${m.label}`, { defaultValue: m.label });
+        const labelTr = String(t(`metric.${m.label}`, { defaultValue: m.label }));
 
         return (
           <View key={m.label} style={{ marginTop: 6 }}>

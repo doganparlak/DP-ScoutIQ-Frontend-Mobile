@@ -14,8 +14,16 @@ function shouldShowEveryThird(count: number) {
   return count > 0 && count % 3 === 0;
 }
 
+function shouldShowEverySecond(count: number) {
+  return count > 0 && count % 2 === 0;
+}
+
 export function shouldPrepareNextInterstitial(count: number) {
   return count > 0 && count % 3 === 2;
+}
+
+export function shouldPrepareNextEverySecondInterstitial(count: number) {
+  return count > 0 && count % 2 === 1;
 }
 
 export function shouldShowPotentialInterstitial(revealCount: number) {
@@ -43,7 +51,7 @@ export async function incrementWeeklyPopularRevealCount(): Promise<number> {
 }
 
 export function shouldShowMatchupLaunchInterstitial(launchCount: number) {
-  return shouldShowEveryThird(launchCount);
+  return shouldShowEverySecond(launchCount);
 }
 
 export async function incrementMatchupLaunchCount(): Promise<number> {
@@ -55,11 +63,7 @@ export async function incrementMatchupLaunchCount(): Promise<number> {
 }
 
 export function shouldShowMatchupMissingScoreInterstitial(addCount: number) {
-  return addCount > 0 && addCount % 2 === 0;
-}
-
-export function shouldPrepareNextMatchupMissingScoreInterstitial(addCount: number) {
-  return addCount > 0 && addCount % 2 === 1;
+  return shouldShowEveryThird(addCount);
 }
 
 export function shouldShowPlayerPoolMissingScoreActionInterstitial(addCount: number) {
@@ -99,7 +103,7 @@ export function shouldPrepareNextPlayerCardPlanNudge(count: number) {
 }
 
 export function shouldShowPortfolioLineupInterstitial(launchCount: number) {
-  return shouldShowEveryThird(launchCount);
+  return shouldShowEverySecond(launchCount);
 }
 
 export async function incrementPortfolioLineupLaunchCount(): Promise<number> {
@@ -123,7 +127,7 @@ export async function incrementPortfolioReportOpenCount(): Promise<number> {
 }
 
 export function shouldShowDailyScoutChallengeInterstitial(openCount: number) {
-  return shouldShowEveryThird(openCount);
+  return shouldShowEverySecond(openCount);
 }
 
 export async function incrementDailyScoutChallengeOpenCount(): Promise<number> {

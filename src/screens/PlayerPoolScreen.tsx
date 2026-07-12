@@ -7,9 +7,11 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -25,16 +27,13 @@ import {
   incrementPlayerCardPlanNudgeCount,
   shouldShowMatchupLaunchInterstitial,
   shouldShowMatchupMissingScoreInterstitial,
-  shouldPrepareNextMatchupMissingScoreInterstitial,
   shouldShowPlayerPoolMissingScoreActionInterstitial,
-  shouldPrepareNextPlayerPoolMissingScoreActionInterstitial,
-  shouldPrepareNextInterstitial,
   shouldShowPortfolioReportInterstitial,
   shouldShowPotentialInterstitial,
   shouldShowWeeklyPopularInterstitial,
   shouldShowPlayerCardPlanNudge,
 } from '@/ads/adGating';
-import { prepareInterstitial, showInterstitialAndWaitSafely } from '@/ads/interstitial';
+import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { ProNotReadyScreen } from '@/ads/pro';
 import CandidatePlayers, {
   CANDIDATE_TABLE_VISIBLE_ROWS,
@@ -88,6 +87,53 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeSearchText(value: string) {
+  const folded = value
+    .trim()
+    .replace(/[ıİ]/g, (char) => (char === 'ı' ? 'i' : 'I'))
+    .replace(/[áàâäãåāăą]/gi, 'a')
+    .replace(/[éèêëēĕėęě]/gi, 'e')
+    .replace(/[íìîïīĭį]/gi, 'i')
+    .replace(/[óòôöõøōŏő]/gi, 'o')
+    .replace(/[úùûüūŭůűų]/gi, 'u')
+    .replace(/[ñń]/gi, 'n')
+    .replace(/[ćčç]/gi, 'c')
+    .replace(/[ğ]/gi, 'g')
+    .replace(/[ł]/gi, 'l')
+    .replace(/[ř]/gi, 'r')
+    .replace(/[śšş]/gi, 's')
+    .replace(/[ýÿ]/gi, 'y')
+    .replace(/[žźż]/gi, 'z')
+    .replace(/æ/gi, 'ae')
+    .replace(/œ/gi, 'oe')
+    .replace(/ß/g, 'ss');
+
+  return folded
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
+function optionMatchesSearch(option: string, normalizedQuery: string) {
+  const normalizedOption = normalizeSearchText(option);
+  if (normalizedOption.includes(normalizedQuery)) return true;
+
+  const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  if (!queryTokens.length) return false;
+
+  let searchFrom = 0;
+  return queryTokens.every((token) => {
+    const index = normalizedOption.indexOf(token, searchFrom);
+    if (index === -1) return false;
+    searchFrom = index + token.length;
+    return true;
+  });
+}
+
+function optionExactMatch(option: string | null | undefined, value: string) {
+  return Boolean(option) && normalizeSearchText(option || '') === normalizeSearchText(value);
+}
+
 function renderPlanNudgeBody(body: string) {
   const lines = body.split('\n');
 
@@ -118,6 +164,7 @@ function PlayerCardPlanNudge({
   onOpenPlans,
   onClose,
   worldCupMode,
+  containerStyle,
 }: {
   title: string;
   body: string;
@@ -125,11 +172,12 @@ function PlayerCardPlanNudge({
   onOpenPlans: () => void;
   onClose: () => void;
   worldCupMode: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
 }) {
   const accent = worldCupMode ? WORLD_CUP_COLORS.lavender : ACCENT;
 
   return (
-    <View style={[styles.playerCardPlanNudge, worldCupMode && { borderColor: accent, backgroundColor: 'rgba(167, 132, 244, 0.10)' }]}>
+    <View style={[styles.playerCardPlanNudge, worldCupMode && { borderColor: accent, backgroundColor: 'rgba(167, 132, 244, 0.10)' }, containerStyle]}>
       <View style={styles.playerCardPlanNudgeTopRow}>
         <View style={[styles.playerCardPlanNudgeIcon, { borderColor: accent, backgroundColor: worldCupMode ? 'rgba(167, 132, 244, 0.16)' : 'rgba(22, 163, 74, 0.12)' }]}>
           <Crown size={18} color={accent} strokeWidth={2.3} />
@@ -188,6 +236,7 @@ export default function PlayerPoolScreen() {
   const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
   const [threeWayProPromptOpen, setThreeWayProPromptOpen] = React.useState(false);
   const [playerCardPlanNudgeVisible, setPlayerCardPlanNudgeVisible] = React.useState(false);
+  const [matchupPlanNudgeDismissed, setMatchupPlanNudgeDismissed] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
   const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
@@ -372,28 +421,28 @@ export default function PlayerPoolScreen() {
   }, [worldCupMode]);
 
   const nationalitySuggestions = React.useMemo(() => {
-    const q = nationality.trim().toLowerCase();
+    const q = normalizeSearchText(nationality);
     if (!q) return [];
-    const matches = countryOptions.filter((item) => item.toLowerCase().includes(q));
-    const exactMatch = matches.find((item) => item.toLowerCase() === q);
+    const matches = countryOptions.filter((item) => optionMatchesSearch(item, q));
+    const exactMatch = matches.find((item) => normalizeSearchText(item) === q);
     if (exactMatch) return [exactMatch];
     return matches.slice(0, 6);
   }, [countryOptions, nationality]);
 
   const teamSuggestions = React.useMemo(() => {
-    const q = team.trim().toLowerCase();
+    const q = normalizeSearchText(team);
     if (!q) return [];
-    const matches = teamOptions.filter((item) => item.toLowerCase().includes(q));
-    const exactMatch = matches.find((item) => item.toLowerCase() === q);
+    const matches = teamOptions.filter((item) => optionMatchesSearch(item, q));
+    const exactMatch = matches.find((item) => normalizeSearchText(item) === q);
     if (exactMatch) return [exactMatch];
     return matches.slice(0, 6);
   }, [team, teamOptions]);
 
   const leagueSuggestions = React.useMemo(() => {
-    const q = league.trim().toLowerCase();
+    const q = normalizeSearchText(league);
     if (!q) return [];
-    const matches = leagueOptions.filter((item) => item.toLowerCase().includes(q));
-    const exactMatch = matches.find((item) => item.toLowerCase() === q);
+    const matches = leagueOptions.filter((item) => optionMatchesSearch(item, q));
+    const exactMatch = matches.find((item) => normalizeSearchText(item) === q);
     if (exactMatch) return [exactMatch];
     return matches.slice(0, 6);
   }, [league, leagueOptions]);
@@ -468,6 +517,12 @@ export default function PlayerPoolScreen() {
   }, [resetPlayerPoolState, tutorial.activationKey, tutorial.active, tutorial.stage]);
 
   React.useEffect(() => {
+    if (isPlayerPoolTutorialActive && matchupMode !== 2) {
+      setMatchupMode(2);
+    }
+  }, [isPlayerPoolTutorialActive, matchupMode]);
+
+  React.useEffect(() => {
     if (isPlayerPoolTutorialActive) {
       wasTutorialActiveRef.current = true;
       return;
@@ -491,13 +546,13 @@ export default function PlayerPoolScreen() {
       nationalityExact: worldCupMode
         ? undefined
         : !!selectedNationality &&
-          selectedNationality.trim().toLowerCase() === nationality.trim().toLowerCase(),
+          optionExactMatch(selectedNationality, nationality),
       league: worldCupMode ? undefined : league.trim() || undefined,
       leagueExact: worldCupMode
         ? undefined
-        : !!selectedLeague && selectedLeague.trim().toLowerCase() === league.trim().toLowerCase(),
+        : !!selectedLeague && optionExactMatch(selectedLeague, league),
       team: team.trim() || undefined,
-      teamExact: !!selectedTeam && selectedTeam.trim().toLowerCase() === team.trim().toLowerCase(),
+      teamExact: !!selectedTeam && optionExactMatch(selectedTeam, team),
       position: position || undefined,
       minAge: minAge ? Number(minAge) : undefined,
       maxAge: maxAge ? Number(maxAge) : undefined,
@@ -607,8 +662,6 @@ export default function PlayerPoolScreen() {
           if (!ok) {
             setProUpsellOpen(true);
           }
-        } else if (shouldPrepareNextInterstitial(nextCount)) {
-          prepareInterstitial();
         }
       }
 
@@ -679,8 +732,6 @@ export default function PlayerPoolScreen() {
           if (!ok) {
             setProUpsellOpen(true);
           }
-        } else if (shouldPrepareNextInterstitial(nextCount)) {
-          prepareInterstitial();
         }
       }
 
@@ -752,8 +803,6 @@ export default function PlayerPoolScreen() {
           if (!ok) {
             setProUpsellOpen(true);
           }
-        } else if (shouldPrepareNextInterstitial(nextCount)) {
-          prepareInterstitial();
         }
       }
 
@@ -805,6 +854,7 @@ export default function PlayerPoolScreen() {
   }, [selectedPlayerForCard, selectedPlayerId]);
 
   type MissingScoreGateSource = 'matchup' | 'playerCard';
+  type ScoreEnsureOptions = { requirePotential?: boolean };
 
   const runMissingScoreGateForFreeUser = React.useCallback(async (source: MissingScoreGateSource) => {
     if (plan !== 'Free' || isPlayerPoolTutorialActive) return;
@@ -816,8 +866,6 @@ export default function PlayerPoolScreen() {
         if (!ok) {
           setProUpsellOpen(true);
         }
-      } else if (shouldPrepareNextMatchupMissingScoreInterstitial(nextCount)) {
-        prepareInterstitial();
       }
       return;
     }
@@ -828,15 +876,19 @@ export default function PlayerPoolScreen() {
       if (!ok) {
         setProUpsellOpen(true);
       }
-    } else if (shouldPrepareNextPlayerPoolMissingScoreActionInterstitial(nextCount)) {
-      prepareInterstitial();
     }
   }, [isPlayerPoolTutorialActive, plan]);
 
-  const ensureSelectedPlayerScores = React.useCallback(async (gateSource: MissingScoreGateSource): Promise<SearchResultRow | null> => {
+  const ensureSelectedPlayerScores = React.useCallback(async (
+    gateSource: MissingScoreGateSource,
+    options: ScoreEnsureOptions = {},
+  ): Promise<SearchResultRow | null> => {
     if (!selectedPlayerId || !selectedPlayer) return null;
 
-    const startedFullyRevealed = revealedPotentialForCard && revealedFormForCard;
+    const requirePotential = options.requirePotential ?? true;
+    const startedFullyRevealed = requirePotential
+      ? revealedPotentialForCard && revealedFormForCard
+      : revealedFormForCard;
     let nextPotential =
       revealedPotentialForCard && typeof selectedPlayer.meta?.potential === 'number'
         ? Math.round(selectedPlayer.meta.potential)
@@ -850,7 +902,7 @@ export default function PlayerPoolScreen() {
       await runMissingScoreGateForFreeUser(gateSource);
     }
 
-    if (nextPotential === undefined) {
+    if (requirePotential && nextPotential === undefined) {
       const revealed = await revealPlayerPoolPotential(selectedPlayerId, worldCupMode);
       nextPotential = Math.round(revealed.potential);
     }
@@ -864,12 +916,14 @@ export default function PlayerPoolScreen() {
       ...selectedPlayer,
       meta: {
         ...(selectedPlayer.meta ?? {}),
-        potential: nextPotential,
+        potential: requirePotential ? nextPotential : undefined,
         form: nextForm,
       },
     };
 
-    setRevealedPotentialForCard(true);
+    if (requirePotential) {
+      setRevealedPotentialForCard(true);
+    }
     setRevealedFormForCard(true);
 
     setResults((current) =>
@@ -881,7 +935,7 @@ export default function PlayerPoolScreen() {
                 ...row.player,
                 meta: {
                   ...(row.player.meta ?? {}),
-                  potential: nextPotential,
+                  potential: requirePotential ? nextPotential : undefined,
                   form: nextForm,
                 },
               },
@@ -927,7 +981,7 @@ export default function PlayerPoolScreen() {
     age: player.meta?.age,
     height: player.meta?.height,
     weight: player.meta?.weight,
-    potential: typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
+    potential: !worldCupMode && typeof player.meta?.potential === 'number' ? Math.round(player.meta.potential) : undefined,
     form: typeof player.meta?.form === 'number' ? Math.round(player.meta.form) : undefined,
   }), [selectedPlayerId, worldCupMode]);
 
@@ -941,10 +995,6 @@ export default function PlayerPoolScreen() {
 
         setProUpsellOpen(true);
         return false;
-      }
-
-      if (shouldPrepareNextInterstitial(nextCount)) {
-        prepareInterstitial();
       }
 
       return true;
@@ -991,8 +1041,13 @@ export default function PlayerPoolScreen() {
     try {
       recordSelectedCardInterestOnce();
 
-      const startedFullyRevealed = revealedPotentialForCard && revealedFormForCard;
-      const enriched = await ensureSelectedPlayerScores('playerCard');
+      const reportRequiresPotentialOnCard = !worldCupMode;
+      const startedFullyRevealed = reportRequiresPotentialOnCard
+        ? revealedPotentialForCard && revealedFormForCard
+        : revealedFormForCard;
+      const enriched = await ensureSelectedPlayerScores('playerCard', {
+        requirePotential: reportRequiresPotentialOnCard,
+      });
       const reportPlayer = enriched?.player ?? player;
       const hasAccess =
         plan !== 'Free' || !startedFullyRevealed || await grantReportAccessForFreeUser();
@@ -1027,6 +1082,7 @@ export default function PlayerPoolScreen() {
     revealedPotentialForCard,
     selectedPlayerId,
     t,
+    worldCupMode,
   ]);
 
   const addSelectedPlayerToMatchup = React.useCallback(async () => {
@@ -1106,8 +1162,6 @@ export default function PlayerPoolScreen() {
           if (!ok) {
             setProUpsellOpen(true);
           }
-        } else if (shouldPrepareNextInterstitial(nextCount)) {
-          prepareInterstitial();
         }
       }
 
@@ -1590,9 +1644,13 @@ export default function PlayerPoolScreen() {
           footerContent={
             playerCardPlanNudgeVisible && plan === 'Free' && !isPlayerPoolTutorialActive ? (
               <PlayerCardPlanNudge
-                onClose={() => setPlayerCardPlanNudgeVisible(false)}
+                onClose={() => {
+                  setPlayerCardPlanNudgeVisible(false);
+                  setMatchupPlanNudgeDismissed(true);
+                }}
                 onOpenPlans={() => {
                   setPlayerCardPlanNudgeVisible(false);
+                  setMatchupPlanNudgeDismissed(true);
                   navigation.navigate('Profile', { screen: 'ManagePlan' });
                 }}
                 worldCupMode={worldCupMode}
@@ -1644,6 +1702,26 @@ export default function PlayerPoolScreen() {
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
+        {plan === 'Free' &&
+        !isPlayerPoolTutorialActive &&
+        matchupMode === 2 &&
+        matchupRow1 &&
+        matchupRow2 &&
+        !playerCardPlanNudgeVisible &&
+        !matchupPlanNudgeDismissed ? (
+          <PlayerCardPlanNudge
+            onClose={() => setMatchupPlanNudgeDismissed(true)}
+            onOpenPlans={() => {
+              setMatchupPlanNudgeDismissed(true);
+              navigation.navigate('Profile', { screen: 'ManagePlan' });
+            }}
+            worldCupMode={worldCupMode}
+            title={t('playerCardPlanNudgeTitle', 'Access The Full Experience')}
+            body={t('playerCardPlanNudgeBody', 'Plus unlocks ad-free ScoutWise with 3-way comparison.\nPro adds strategy-aware player discovery through ScoutWise chat.')}
+            buttonLabel={t('viewPlans', 'View Plans')}
+            containerStyle={styles.matchupPlanNudge}
+          />
+        ) : null}
         <ComparisonModal
           visible={comparisonOpen}
           loading={comparisonLoading}
@@ -1879,6 +1957,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(22, 163, 74, 0.08)',
     padding: 12,
     gap: 10,
+  },
+  matchupPlanNudge: {
+    marginTop: -8,
   },
   playerCardPlanNudgeTopRow: {
     flexDirection: 'row',
