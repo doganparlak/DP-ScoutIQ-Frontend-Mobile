@@ -22,6 +22,7 @@ import {
   ERRORS_DISCIPLINE_METRICS,
   DEFENDING_METRICS,
 } from '../components/spiderRanges';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LogIn, Map as MapIcon, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
 
@@ -291,23 +292,52 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
   );
 }
 
-function narrativeTitleFallback(section: NarrativeSection, index: number, lang?: string): string {
-  if (section !== 'conclusion') return '';
-  const isTr = (lang || '').toLowerCase().startsWith('tr');
-  const titles = isTr
-    ? ['Rol & Sistem', 'Gelişim Odağı', 'Kullanım Önerisi', 'Topa Sahipken', 'Topsuz Oyunda']
-    : ['Role & System', 'Development Focus', 'Usage Recommendation', 'In Possession', 'Out of Possession'];
-  return titles[index] || '';
+const NARRATIVE_FALLBACK_KEYS: Record<NarrativeSection, string[]> = {
+  strengths: [
+    'narrative_strength_primary_edge',
+    'narrative_strength_system_value',
+    'narrative_strength_game_impact',
+    'narrative_strength_development_signal',
+    'narrative_strength_decision_value',
+  ],
+  weaknesses: [
+    'narrative_weakness_risk_scenario',
+    'narrative_weakness_pressure_point',
+    'narrative_weakness_trade_off',
+    'narrative_weakness_coaching_cue',
+    'narrative_weakness_mitigation',
+  ],
+  conclusion: [
+    'narrative_conclusion_role_system',
+    'narrative_conclusion_development_focus',
+    'narrative_conclusion_usage_recommendation',
+    'narrative_conclusion_in_possession',
+    'narrative_conclusion_out_of_possession',
+  ],
+};
+
+function narrativeTitleFallback(
+  section: NarrativeSection,
+  index: number,
+  translate: TFunction,
+): string {
+  const key = NARRATIVE_FALLBACK_KEYS[section][index];
+  return key ? translate(key, { defaultValue: '' }) : '';
 }
 
-function parseNarrativeBullet(item: string, section: NarrativeSection, index: number, lang?: string): NarrativeBullet {
-  const match = item.match(/^([^:：]{2,42})[:：]\s*(.+)$/);
+function parseNarrativeBullet(
+  item: string,
+  section: NarrativeSection,
+  index: number,
+  translate: TFunction,
+): NarrativeBullet {
+  const match = item.match(/^([^:：\n]{2,90})[:：]\s*(.+)$/);
   if (match) {
     return { title: match[1].trim(), body: match[2].trim() };
   }
 
   return {
-    title: narrativeTitleFallback(section, index, lang),
+    title: narrativeTitleFallback(section, index, translate),
     body: item,
   };
 }
@@ -317,15 +347,15 @@ function NarrativeBulletRow({
   index,
   section,
   color,
-  lang,
+  translate,
 }: {
   item: string;
   index: number;
   section: NarrativeSection;
   color: string;
-  lang?: string;
+  translate: TFunction;
 }) {
-  const bullet = parseNarrativeBullet(item, section, index, lang);
+  const bullet = parseNarrativeBullet(item, section, index, translate);
   return (
     <View style={styles.narrativeRow}>
       <Text style={[styles.narrativeDot, { color }]}>•</Text>
@@ -438,7 +468,7 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
 
 export default function ScoutingReport({ visible, onClose, player, report }: Props) {
   const [page, setPage] = useState(0);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const [pagerWidth, setPagerWidth] = useState<number>(0);
   const listRef = useRef<FlatList<PageItem> | null>(null);
@@ -500,6 +530,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
                 index={i}
                 section="strengths"
                 color={ACCENT}
+                translate={t}
               />
             ))
           )}
@@ -524,6 +555,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
                 index={i}
                 section="weaknesses"
                 color={DANGER}
+                translate={t}
               />
             ))
           )}
@@ -563,7 +595,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
                 index={i}
                 section="conclusion"
                 color={ACCENT}
-                lang={i18n.language}
+                translate={t}
               />
             ))
           )}
