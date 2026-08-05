@@ -1312,7 +1312,7 @@ export const resources = {
       narrative_conclusion_role_system: 'Rol & Sistem',
       narrative_conclusion_development_focus: 'Gelişim Odağı',
       narrative_conclusion_usage_recommendation: 'Kullanım Önerisi',
-      narrative_conclusion_in_possession: 'Topa Sahipken',
+      narrative_conclusion_in_possession: 'Toplu Oyunda',
       narrative_conclusion_out_of_possession: 'Topsuz Oyunda',
       closeScoutingReport: 'Oyuncu keşfi raporu kapatılıyor.',
       nextSection: 'Sıradaki kategori',
