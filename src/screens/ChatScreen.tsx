@@ -16,6 +16,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import ChatInput from '@/components/ChatInput';
 import MessageBubble from '@/components/MessageBubble';
@@ -116,17 +117,44 @@ export default function ChatScreen() {
 
   // The drawer header places this screen below window Y=0. Keyboard coordinates
   // are window-based, so measure that offset instead of assuming a header height.
+  const insets = useSafeAreaInsets();
   const keyboardFrameRef = useRef<View>(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [androidKeyboardInset, setAndroidKeyboardInset] = useState(0);
+  const androidKeyboardTop = useRef<number | null>(null);
   const measureKeyboardOffset = React.useCallback(() => {
-    keyboardFrameRef.current?.measureInWindow((_x, y) => {
-      setKeyboardOffset(Math.max(0, y));
+    keyboardFrameRef.current?.measureInWindow((_x, y, _width, height) => {
+      if (Platform.OS === 'android') {
+        // Measure the unchanged outer frame, not the padded content. This also
+        // avoids double-counting any resize already performed by Android.
+        // Android measureInWindow excludes the status-bar inset; keyboard
+        // screenY includes it, so put both measurements in screen coordinates.
+        const keyboardTop = androidKeyboardTop.current;
+        setAndroidKeyboardInset(keyboardTop === null ? 0 : Math.max(0, y + insets.top + height - keyboardTop));
+      } else {
+        setKeyboardOffset(Math.max(0, y));
+      }
     });
-  }, []);
+  }, [insets.top]);
   useFocusEffect(React.useCallback(() => {
     const frame = requestAnimationFrame(measureKeyboardOffset);
     return () => cancelAnimationFrame(frame);
   }, [measureKeyboardOffset]));
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    androidKeyboardTop.current = Keyboard.metrics()?.screenY ?? null;
+    measureKeyboardOffset();
+    const show = Keyboard.addListener('keyboardDidShow', event => {
+      androidKeyboardTop.current = event.endCoordinates.screenY;
+      measureKeyboardOffset();
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      androidKeyboardTop.current = null;
+      setAndroidKeyboardInset(0);
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, [measureKeyboardOffset]);
 
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
   const pendingIdRef = React.useRef<string | null>(null);
@@ -505,8 +533,9 @@ export default function ChatScreen() {
       onLayout={measureKeyboardOffset}
     >
     <KeyboardAvoidingView
-      style={styles.wrap}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.wrap, Platform.OS === 'android' && { paddingBottom: androidKeyboardInset }]}
+      enabled={Platform.OS === 'ios'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={keyboardOffset}
     >
       <View style={{ flex: 1 }}>
