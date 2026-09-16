@@ -75,7 +75,6 @@ export const ERRORS_DISCIPLINE_METRICS = [
   'Error Lead To Goal',
   'Error Lead To Shot',
   'Yellow Cards',
-  'Yellow & Red Cards',
   'Red Cards',
 ] as const;
 

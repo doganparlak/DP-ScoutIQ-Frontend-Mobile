@@ -1,3 +1,4 @@
+import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
 import React from 'react';
 import {
   Modal,
@@ -9,8 +10,9 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Search, X } from 'lucide-react-native';
+import { ChevronDown, Search, X, ListFilter } from 'lucide-react-native';
 
+import { ContractStatusFilter, ContractDateFilter, type ContractStatus } from '@/components/ContractFilters';
 import { TutorialHint } from '@/components/Tutorial';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
 
@@ -26,9 +28,12 @@ type PlayerPoolComponentTheme = {
 type Props = {
   name: string;
   setName: (value: string) => void;
-  gender: '' | 'male' | 'female';
-  renderGenderLabel: () => string;
-  cycleGender: () => void;
+  contractStatus: ContractStatus;
+  setContractStatus: (value: ContractStatus) => void;
+  loanEndDate: string;
+  setLoanEndDate: (value: string) => void;
+  contractEndDate: string;
+  setContractEndDate: (value: string) => void;
   nationality: string;
   setNationality: (value: string) => void;
   selectedNationality: string | null;
@@ -71,9 +76,7 @@ type Props = {
 export default function SearchFilters({
   name,
   setName,
-  gender,
-  renderGenderLabel,
-  cycleGender,
+  contractStatus, setContractStatus, loanEndDate, setLoanEndDate, contractEndDate, setContractEndDate,
   nationality,
   setNationality,
   selectedNationality,
@@ -125,9 +128,9 @@ export default function SearchFilters({
   return (
     <View style={[styles.panel, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
       <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
-      <Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
-        {t('playerPoolFilters', 'Search filters')}
-      </Text>
+      <View style={[FRAME_HEADING, { marginBottom: 10 }]}><ListFilter size={20} color={theme?.accent ?? ACCENT} /><Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
+        {t('playerPoolFilters', 'Player search filters')}
+      </Text></View>
 
       <View style={styles.tutorialGap}>
         <TutorialHint
@@ -157,14 +160,10 @@ export default function SearchFilters({
         </View>
 
         <View style={styles.filterCol}>
-          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltGender', 'Gender')}</Text>
-          <Pressable
-            onPress={cycleGender}
-            disabled={controlsLocked}
-            style={({ pressed }) => [inputStyle, styles.centeredInput, pressed && styles.pressed]}
-          >
-            <Text style={{ color: gender ? TEXT : (theme?.muted ?? MUTED), fontSize: 14 }}>{renderGenderLabel()}</Text>
-          </Pressable>
+          <ContractStatusFilter value={contractStatus} disabled={controlsLocked} onChange={(value) => {
+            setContractStatus(value);
+            if (value === 'permanent') setLoanEndDate('');
+          }} />
         </View>
 
         {!worldCupMode ? (
@@ -348,6 +347,21 @@ export default function SearchFilters({
             />
           </View>
         </View>
+        <View style={styles.filterCol}>
+          <ContractDateFilter
+            testID="loan-end-date"
+            label={t('contractLoanEnd', 'Loan end date')}
+            value={loanEndDate}
+            onChange={(value) => {
+              setLoanEndDate(value);
+              if (value && contractStatus !== 'loan') setContractStatus('loan');
+            }}
+            disabled={controlsLocked || contractStatus === 'permanent'}
+          />
+        </View>
+        <View style={styles.filterCol}>
+          <ContractDateFilter testID="contract-end-date" label={t('contractPermanentEnd', 'Contract end date')} value={contractEndDate} onChange={setContractEndDate} disabled={controlsLocked} />
+        </View>
       </View>
 
       <View style={styles.actionsRow}>
@@ -457,21 +471,11 @@ const styles = StyleSheet.create({
     backgroundColor: PANEL,
     padding: 16,
   },
-  sectionTitle: {
-    color: ACCENT,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
+  sectionTitle: { ...FRAME_TITLE, flex: 1, minWidth: 0, marginBottom: 0 },
   tutorialGap: {
     marginBottom: 12,
   },
-  worldCupTopStripe: {
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#FF3D00',
-    marginBottom: 10,
-  },
+  worldCupTopStripe: { ...FRAME_STRIPE },
   filters: {
     flexDirection: 'row',
     flexWrap: 'wrap',

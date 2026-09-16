@@ -2,7 +2,7 @@
   "expo": {
     "name": "ScoutWise",
     "slug": "dp-scoutiq",
-    "version": "1.1.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "dpscoutiq",
@@ -13,17 +13,29 @@
       "bundleIdentifier": "com.anonymous.dp-scoutiq",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleDisplayName": "ScoutWise"
+        "CFBundleDisplayName": "ScoutWise",
+        "UIBackgroundModes": [
+          "remote-notification",
+          "fetch"
+        ]
+      },
+      "googleServicesFile": "./firebase/GoogleService-Info.plist",
+      "entitlements": {
+        "aps-environment": "development"
       }
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.dpformance.dpscoutiq",
       "adaptiveIcon": {
         "foregroundImage": "./assets/scoutwise_logo_green_foreground.png",
         "backgroundColor": "#1B9346"
-      }
+      },
+      "googleServicesFile": "./firebase/google-services.json",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
-
     "web": {
       "bundler": "metro"
     },
@@ -35,9 +47,45 @@
           "iosAppId": "ca-app-pub-2754612075301490~1593540774",
           "androidAppId": "ca-app-pub-2754612075301490~1184323149"
         }
-      ]
-    ]
-    ,
+      ],
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "disableSPM": true
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBAnalytics",
+              "RNFBCrashlytics",
+              "RNFBMessaging",
+              "RNFBRemoteConfig",
+              "RNFBPerf"
+            ]
+          }
+        }
+      ],
+      [
+        "@react-native-firebase/analytics",
+        {
+          "ios": {
+            "withoutAdIdSupport": true
+          }
+        }
+      ],
+      "@react-native-firebase/crashlytics",
+      "./plugins/withFirebaseDiagnostics",
+      "@react-native-firebase/messaging",
+      "./plugins/withFirebaseMessaging",
+      "@react-native-firebase/perf"
+    ],
     "extra": {
       "eas": {
         "projectId": "ff45af19-a14f-462f-94f2-3efd08d55f4f"

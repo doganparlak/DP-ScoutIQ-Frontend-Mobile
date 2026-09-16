@@ -1,0 +1,32 @@
+import {usePreMatchSection} from './PreMatchReportContext';
+import React,{useEffect,useState} from 'react';
+import {Image,Pressable,StyleSheet,Text,View} from 'react-native';
+import {Shield} from 'lucide-react-native';
+import {ACCENT,LINE,MUTED,TEXT} from '@/theme';
+import {getPreMatchSquad,type PostMatchCardData,type PreMatchSquadUsage} from '@/services/matchPool';
+import {MatchReportSelector} from './MatchReportPlayerAnalysis';
+import ActionSpinner from './ActionSpinner';
+import ReportPlayerPortrait from './ReportPlayerPortrait';
+export default function PreMatchLineups({data,tr,active}:{data:PostMatchCardData;tr:boolean;active:boolean}){
+ const {result,error,loading,onRetry}=usePreMatchSection('squad');
+ const [teamId,setTeamId]=useState<number>();
+ const [portraitTeams,setPortraitTeams]=useState<PreMatchSquadUsage['teams']>();
+ const teams=[...data.teams].sort((a,b)=>Number(a.location!=='home')-Number(b.location!=='home')),team=teams.find(t=>t.id===teamId)||teams[0],accent=team?.location==='away'?'#38BDF8':ACCENT;
+ const savedUsage=result?.teams.find(t=>t.team_id===team?.id);
+ useEffect(()=>{if(!active||!result||result.teams.some(group=>group.players.some(player=>!!player.player_image_url)))return;let cancelled=false;getPreMatchSquad(data.fixture.id).then(value=>{if(!cancelled)setPortraitTeams(value.teams);}).catch(()=>{});return()=>{cancelled=true;};},[active,data.fixture.id,result]);
+ const freshUsage=portraitTeams?.find(t=>t.team_id===team?.id);
+ const usage=freshUsage||savedUsage;
+ const order=(p:{position_id?:number;position_name?:string})=>{const n=(p.position_name||'').toLowerCase();return p.position_id===24||/goalkeeper|kaleci/.test(n)?0:p.position_id===25||/defender|back|savunma/.test(n)?1:p.position_id===26||/midfielder|midfield|orta saha/.test(n)?2:p.position_id===27||/attacker|forward|hücum/.test(n)?3:4;};
+ const players=[...(usage?.players||[])].sort((a,b)=>order(a)-order(b)||b.starts-a.starts||b.substitute_appearances-a.substitute_appearances||a.player_name.localeCompare(b.player_name));
+ return <View style={{gap:15}}><View style={[s.frame,{borderColor:`${accent}70`}]}><View style={[s.rule,{backgroundColor:accent}]}/><MatchReportSelector label={tr?'Takım Seçimi':'Select Team'} value={team?.name||'—'} options={teams.map(t=>({id:t.id,name:t.name,detail:t.location==='away'?tr?'Deplasman':'Away':tr?'Ev Sahibi':'Home',color:t.location==='away'?'#38BDF8':ACCENT}))} onSelect={setTeamId} accent={accent}/></View>
+ <View style={[s.frame,{borderColor:`${accent}70`}]}><View style={s.hero}>{team?.image_url?<Image source={{uri:team.image_url}} style={s.logo} resizeMode="contain"/>:<Shield size={40} color={accent}/>}<View style={{flex:1,gap:7}}><Text style={[s.title,{color:accent}]}>{team?.name}</Text><Text style={s.muted}>{tr?'Bu sezon · Son':'This season · Last'} {usage?.sample_size??'—'} {tr?'tamamlanmış maç':'completed matches'}</Text></View></View>
+ {loading?<View style={s.feedback}><ActionSpinner size={25} color={accent}/><Text style={s.muted}>{tr?'Kadro kullanımı yükleniyor…':'Loading squad usage…'}</Text></View>:error?<View style={s.feedback}><Text style={s.muted}>{tr?'Kadro verisi yüklenemedi.':'Unable to load squad data.'}</Text><Pressable style={[s.tile,{borderColor:accent}]} onPress={onRetry}><Text style={{color:accent}}>{tr?'Tekrar Dene':'Try Again'}</Text></Pressable></View>:<>
+ <Text style={[s.title,{color:accent}]}>{tr?'Kadro Kullanımı':'Squad Usage'}</Text>
+ {usage?.summary&&<View style={s.row}><View style={[s.tile,{flex:1}]}><Text style={s.muted}>{tr?'Rotasyon Seviyesi':'Rotation Level'}</Text><Text style={[s.title,{color:accent}]}>%{usage.summary.rotation_level}</Text></View><View style={[s.tile,{flex:1}]}><Text style={s.muted}>{tr?'Genel Ort. Puan':'Team Avg. Rating'}</Text><Text style={s.title}>{usage.summary.average_rating?.toFixed(2)??'—'}</Text></View></View>}
+ {!!usage?.formations?.length&&<><Text style={s.muted}>{tr?'Kullanılan Dizilişler':'Formation Usage'}</Text><View style={s.grid}>{usage.formations.map(f=><View key={f.formation} style={[s.tile,{width:'48%',borderColor:`${accent}50`}]}><Text style={[s.title,{color:accent}]}>{f.formation}</Text><Text style={s.muted}>{f.matches} {tr?'maçta kullanıldı':'matches used'}</Text></View>)}</View></>}
+ {players.map((p,i)=><React.Fragment key={p.player_id}>{(i===0||order(players[i-1])!==order(p))&&<Text style={[s.group,{color:accent}]}>{(tr?['Kaleci','Savunma','Orta Saha','Hücum','Oyuncu']:['Goalkeeper','Defender','Midfielder','Attacker','Player'])[order(p)]}</Text>}<View style={s.tile}><View style={s.playerTile}><ReportPlayerPortrait imageUrl={p.player_image_url} accent={accent} size={42}/><View style={{flex:1,gap:8}}><View style={s.row}><Text style={[s.name,{flex:1}]}>{p.player_name}</Text>{p.average_rating!=null&&<Text style={[s.name,{color:accent}]}>{p.average_rating.toFixed(2)}</Text>}</View><View style={s.row}>{p.last_match_starter&&<Text style={s.last}>{tr?'Son Maç İlk 11':'Last Match XI'}</Text>}<Text style={[s.last,{color:accent,borderColor:`${accent}66`}]}>{tr?'İlk 11':'Starts'}: <Text style={{color:TEXT}}>{p.starts}</Text></Text><Text style={[s.last,{color:'#CBD5E1',borderColor:'#64748B',backgroundColor:'#33415566'}]}>{tr?'Yedekten':'Substitute'}: <Text style={{color:TEXT}}>{p.substitute_appearances}</Text></Text></View></View></View></View></React.Fragment>)}
+ {!players.length&&<Text style={s.muted}>{tr?'Bu sezon için kadro kullanım verisi bulunmuyor.':'No squad usage available for this season.'}</Text>}
+ </>}
+ </View></View>;
+}
+const s=StyleSheet.create({frame:{padding:14,borderWidth:1,borderRadius:19,gap:14},rule:{height:3,borderRadius:3},hero:{flexDirection:'row',alignItems:'center',gap:13,paddingBottom:12,borderBottomWidth:1,borderBottomColor:LINE},logo:{width:55,height:64},title:{fontSize:17,fontWeight:'800',color:TEXT},muted:{color:MUTED,fontSize:11,lineHeight:16,fontWeight:'600'},row:{flexDirection:'row',alignItems:'center',gap:8,flexWrap:'wrap'},playerTile:{flexDirection:'row',alignItems:'center',gap:10},tile:{padding:11,borderWidth:1,borderColor:LINE,borderRadius:12,gap:9,backgroundColor:'rgba(255,255,255,.02)'},grid:{flexDirection:'row',flexWrap:'wrap',gap:9},feedback:{paddingVertical:35,alignItems:'center',gap:15},group:{fontSize:12,fontWeight:'800',marginTop:7},name:{fontSize:13,fontWeight:'700',color:TEXT},last:{color:'#C4B5FD',fontSize:9,borderWidth:1,borderColor:'#A78BFA66',padding:5,borderRadius:6}});

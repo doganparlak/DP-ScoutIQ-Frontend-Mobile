@@ -1,4 +1,6 @@
+import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
 import React from 'react';
+import { shortSeason, shortPlayer, shortTeam } from '@/utils/seasonTableLabels';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownCircle, Radar, X } from 'lucide-react-native';
+import { Radar, X, GitCompareArrows } from 'lucide-react-native';
 
 import { TutorialHint, type PlayerPoolTutorialStep } from '@/components/Tutorial';
 import { rolePickerCode } from '@/services/api';
@@ -37,19 +39,20 @@ const COL = {
 type MatchupSlot = SearchResultRow | null;
 
 type Props = {
-  selectedPlayer: SearchResultRow | null;
   row1: MatchupSlot;
   row2: MatchupSlot;
   row3?: MatchupSlot;
-  matchupMode?: 2 | 3;
-  onMatchupModeChange?: (mode: 2 | 3) => void;
-  onAddSelectedPlayer: () => void;
+  row4?: MatchupSlot;
+  matchupMode?: 2 | 3 | 4;
+  hideModeSwitch?: boolean;
+  onMatchupModeChange?: (mode: 2 | 3 | 4) => void;
   onLaunchMatchup: () => void;
   launchDisabled?: boolean;
   launchLoading?: boolean;
   onRemoveRow1: () => void;
   onRemoveRow2: () => void;
   onRemoveRow3?: () => void;
+  onRemoveRow4?: () => void;
   tutorialStep?: PlayerPoolTutorialStep | null;
   onTutorialSkipAll?: () => void;
   tutorialActive?: boolean;
@@ -75,23 +78,24 @@ function roleLabel(value?: string) {
   return rolePickerCode(value);
 }
 
-function roleLabels(row: SearchResultRow) {
-  const source = row.player.meta?.positionNamesSeen?.length
-    ? row.player.meta.positionNamesSeen
-    : row.player.meta?.roles ?? [];
-  const labels = source.map(roleLabel).filter(Boolean);
-  return Array.from(new Set(labels));
-}
-
 function rolePreviewLabels(row: SearchResultRow) {
-  return roleLabels(row).slice(0, 2);
+  const meta = row.player.meta;
+  const counts: Record<string, number> = {};
+  for (const [role, count] of Object.entries(meta?.positionCounts ?? {})) {
+    const label = roleLabel(role);
+    if (label) counts[label] = (counts[label] ?? 0) + count;
+  }
+  const roles = Array.from(new Set([
+    ...(meta?.positionNamesSeen ?? []), ...(meta?.roles ?? []),
+    ...Object.keys(counts), ...(meta?.primaryPositionCode ? [meta.primaryPositionCode] : []),
+  ].map(roleLabel).filter(Boolean)));
+  const primary = roleLabel(meta?.primaryPositionCode);
+  roles.sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0)
+    || Number(b === primary) - Number(a === primary) || a.localeCompare(b));
+  return roles.length > 1 ? [roles[0], `+${roles.length - 1}`] : roles;
 }
 
-function matchupNameLabel(name: string) {
-  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return name;
-  return parts.filter((part) => !part.includes('.')).at(-1) || parts.at(-1) || parts[0];
-}
+const matchupNameLabel = shortPlayer;
 
 function isValidScore(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
@@ -109,19 +113,20 @@ function formatScore(value: number) {
 }
 
 export default function MatchupCenter({
-  selectedPlayer,
   row1,
   row2,
   row3 = null,
+  row4 = null,
   matchupMode = 2,
+  hideModeSwitch = false,
   onMatchupModeChange,
-  onAddSelectedPlayer,
   onLaunchMatchup,
   launchDisabled = false,
   launchLoading = false,
   onRemoveRow1,
   onRemoveRow2,
   onRemoveRow3,
+  onRemoveRow4,
   tutorialStep = null,
   onTutorialSkipAll,
   tutorialActive = false,
@@ -129,30 +134,13 @@ export default function MatchupCenter({
   worldCupMode = false,
 }: Props) {
   const { t, i18n } = useTranslation();
-  const filledCount = (row1 ? 1 : 0) + (row2 ? 1 : 0) + (matchupMode === 3 && row3 ? 1 : 0);
-  const isFull = filledCount >= matchupMode;
-  const isSelectedAlreadyInMatchup =
-    !!selectedPlayer && (row1?.id === selectedPlayer.id || row2?.id === selectedPlayer.id || (matchupMode === 3 && row3?.id === selectedPlayer.id));
-  const canAdd = !!selectedPlayer && !isFull && !isSelectedAlreadyInMatchup;
-  const addEnabled =
-    !tutorialActive ||
-    tutorialStep === 'addYamalToMatchup' ||
-    tutorialStep === 'addViniciusToMatchup';
   const launchEnabled = !tutorialActive || tutorialStep === 'launchMatchup';
-  const addBridgeDisabled = !canAdd || !addEnabled;
-  const themedMutedAccent = theme ? 'rgba(227, 0, 11, 0.42)' : MUTED;
-  const themedMutedAccentBg = theme ? 'rgba(227, 0, 11, 0.08)' : undefined;
-  const themedMutedAccentBorder = theme ? 'rgba(227, 0, 11, 0.28)' : undefined;
   const player1Label = row1
     ? matchupNameLabel(row1.player.name)
     : t('matchupPlayer1Placeholder', 'Player 1');
   const player2Label = row2
     ? matchupNameLabel(row2.player.name)
     : t('matchupPlayer2Placeholder', 'Player 2');
-  const addPlayerLabel = t('addPlayerToMatchupCenter', 'Add player to Matchup Center');
-  const addPlayerLabelUpper = addPlayerLabel.toLocaleUpperCase(
-    i18n.language?.startsWith('tr') ? 'tr-TR' : undefined,
-  );
   const launchMatchupLabel = t('launchMatchup', 'Launch Matchup');
   const launchMatchupLabelUpper = launchMatchupLabel.toLocaleUpperCase(
     i18n.language?.startsWith('tr') ? 'tr-TR' : undefined,
@@ -174,7 +162,7 @@ export default function MatchupCenter({
           <Text style={[styles.td, styles.slotLabel, { flex: COL.index }]}>{label}</Text>
           <View style={styles.vsep} />
           <Text style={[styles.emptyText, theme && { color: theme.muted }]} numberOfLines={1}>
-            {t('matchupCenterEmptySlot', 'Player slot')}
+            {i18n.language.startsWith('tr') ? 'Eşleşme alanı' : 'Comparison slot'}
           </Text>
           <View style={styles.vsep} />
           <View style={[styles.cell, styles.actionCell, { flex: COL.action }]} />
@@ -183,6 +171,8 @@ export default function MatchupCenter({
     }
 
     const roles = rolePreviewLabels(row);
+    const entityAccent = row.player.entityType === 'league' ? '#38BDF8' : row.player.entityType === 'season' ? '#C084FC' : undefined;
+    const entityStyle = entityAccent ? { borderColor: entityAccent, backgroundColor: `${entityAccent}1A` } : undefined;
     const fullPotentialLabel = i18n.language?.startsWith('tr') ? 'POTANSİYEL' : t('potential', 'Potential');
     const scores = [
       isValidScore(row.player.meta?.potential)
@@ -194,12 +184,12 @@ export default function MatchupCenter({
     ].filter(Boolean) as Array<{ label: string; value: number }>;
 
     return (
-      <View style={[styles.slotWrap, styles.slotCard, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' }]}>
+      <View style={[styles.slotWrap, styles.slotCard, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' }, entityStyle]}>
         <View style={styles.row}>
-        <Text style={[styles.td, styles.slotLabel, theme && { color: theme.accent }, { flex: COL.index }]}>{label}</Text>
+        <Text style={[styles.td, styles.slotLabel, theme && { color: theme.accent }, entityAccent && { color: entityAccent }, { flex: COL.index }]}>{label}</Text>
         <View style={styles.vsep} />
-        <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
-          {matchupNameLabel(row.player.name)}
+        <Text numberOfLines={row.player.entityType === 'league' ? 3 : 1} style={[styles.td, styles.cell, { flex: COL.name, textAlign: 'center' }]}>
+          {row.player.entityType === 'league' ? row.player.name : matchupNameLabel(row.player.name)}
         </Text>
         {!worldCupMode ? (
           <>
@@ -211,7 +201,7 @@ export default function MatchupCenter({
         ) : null}
         <View style={styles.vsep} />
         <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
-          {row.player.meta?.team || '-'}
+          {row.player.entityType === 'league' ? row.player.meta?.teamCount ?? '—' : shortTeam(row.player.meta?.team || '')}
         </Text>
         <View style={styles.vsep} />
         <Text style={[styles.td, styles.cell, { flex: COL.age, textAlign: 'center' }]}>
@@ -226,13 +216,14 @@ export default function MatchupCenter({
                 styles.rolePill,
                 worldCupMode && styles.rolePillWorldCup,
                 theme && { backgroundColor: theme.accentSoft, borderColor: theme.line },
+                entityStyle,
               ]}
             >
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit={!worldCupMode}
                 minimumFontScale={!worldCupMode ? 0.72 : undefined}
-                style={[styles.rolePillText, theme && { color: theme.accent }]}
+                style={[styles.rolePillText, theme && { color: theme.accent }, entityAccent && { color: entityAccent }]}
               >
                 {role}
               </Text>
@@ -259,6 +250,10 @@ export default function MatchupCenter({
           )}
         </Pressable>
         </View>
+        {row.player.entityType === 'season' && <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: 'rgba(192,132,252,.3)' }}><Text style={{ color: '#C084FC', fontSize: 11, fontWeight: '700' }}>{i18n.language.startsWith('tr') ? 'Sezon Verileri' : 'Season Data'} · {shortSeason(row.player.meta?.seasonName || '')} · {row.player.meta?.league}</Text></View>}
+        {row.player.entityType === 'league' && <View style={{ padding: 8, borderTopWidth: 1, borderColor: '#38BDF84D', gap: 4 }}>
+          <Text style={{ color: '#38BDF8', fontSize: 11 }}>{i18n.language.startsWith('tr') ? 'Lig ortalaması' : 'League average'} · {row.player.meta?.playerCount ?? 0} {i18n.language.startsWith('tr') ? 'oyuncu' : 'players'}</Text>
+        </View>}
         {scores.length ? (
           <View style={[styles.slotScoreStrip, theme && { borderTopColor: theme.line }]}>
             {scores.map((score) => (
@@ -289,75 +284,23 @@ export default function MatchupCenter({
 
   return (
     <>
-      <TutorialHint
-        visible={tutorialStep === 'addYamalToMatchup'}
-        title={t('tutorialAddYamalMatchupTitle', 'Add a player to Matchup Center')}
-        body={t(
-          'tutorialAddYamalMatchupBody',
-          'Tap this to place a player in the Matchup Center.',
-        )}
-        onSkipAll={onTutorialSkipAll}
-        targetLabel={t('tutorialPressAddMatchup', 'Press Add player')}
-        arrow="down"
-      />
-
-      <TutorialHint
-        visible={tutorialStep === 'addViniciusToMatchup'}
-        title={t('tutorialAddViniciusMatchupTitle', 'Add a player to Matchup Center')}
-        body={t(
-          'tutorialAddViniciusMatchupBody',
-          'Tap this to place a player in the Matchup Center.',
-        )}
-        onSkipAll={onTutorialSkipAll}
-        targetLabel={t('tutorialPressAddMatchup', 'Press Add player')}
-        arrow="down"
-      />
-
-      <Pressable
-        onPress={onAddSelectedPlayer}
-        disabled={!canAdd || !addEnabled}
-        style={({ pressed }) => [
-          styles.addBridge,
-          theme && { backgroundColor: theme.accentSoft, borderColor: theme.line },
-          addBridgeDisabled && styles.addBridgeMuted,
-          addBridgeDisabled && theme && { backgroundColor: themedMutedAccentBg, borderColor: themedMutedAccentBorder },
-          pressed && styles.pressed,
-        ]}
-        accessibilityLabel={t('addPlayerToMatchupCenter', 'Add player to Matchup Center')}
-      >
-        <ArrowDownCircle
-          size={24}
-          color={addBridgeDisabled ? themedMutedAccent : (theme?.accent ?? ACCENT)}
-          strokeWidth={2.2}
-        />
-        <Text
-          style={[
-            styles.addBridgeText,
-            theme && { color: theme.accent },
-            addBridgeDisabled && (theme ? { color: themedMutedAccent } : styles.addBridgeTextMuted),
-          ]}
-        >
-          {addPlayerLabelUpper}
-        </Text>
-        <ArrowDownCircle
-          size={24}
-          color={addBridgeDisabled ? themedMutedAccent : (theme?.accent ?? ACCENT)}
-          strokeWidth={2.2}
-        />
-      </Pressable>
-
       <View style={[styles.panel, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
         <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
-        <View style={styles.sectionHeaderRow}>
+        <View style={[styles.sectionHeaderRow, FRAME_HEADING]}>
+          <GitCompareArrows size={20} color={theme?.accent ?? ACCENT} />
           <Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
             {t('matchupCenterTitle', 'Matchup Center')}
           </Text>
-          <View style={[styles.modeSwitch, theme && { backgroundColor: theme.card, borderColor: theme.line }]}>
-            {([2, 3] as const).map((mode) => {
+          {!hideModeSwitch && <View style={[styles.modeSwitch, theme && { backgroundColor: theme.card, borderColor: theme.line }]}>
+            {([2, 3, 4] as const).map((mode) => {
               const active = matchupMode === mode;
               return (
                 <Pressable
                   key={mode}
+                  testID={`matchup-mode-${mode}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={String(mode)}
+                  accessibilityState={{ selected: active, disabled: tutorialActive }}
                   onPress={() => onMatchupModeChange?.(mode)}
                   disabled={tutorialActive}
                   style={[
@@ -371,7 +314,7 @@ export default function MatchupCenter({
                 </Pressable>
               );
             })}
-          </View>
+          </View>}
         </View>
 
         <View style={styles.table}>
@@ -427,7 +370,7 @@ export default function MatchupCenter({
           <View style={styles.slotRowGap} />
           {renderSlot('2', row2, onRemoveRow2)}
 
-          {matchupMode === 3 ? (
+          {matchupMode >= 3 ? (
             <>
               <View style={styles.slotRowGap} />
               <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
@@ -443,6 +386,12 @@ export default function MatchupCenter({
               {renderSlot('3', row3 ?? null, onRemoveRow3 ?? (() => undefined))}
             </>
           ) : null}
+          {matchupMode === 4 && <><View style={styles.slotRowGap} />
+            <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
+              <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
+              <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}><Text style={[styles.vsText, theme && { color: theme.accent }]}>VS</Text></View>
+              <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
+            </View><View style={styles.slotRowGap} />{renderSlot("4", row4, onRemoveRow4 ?? (() => undefined))}</>}
           <View style={[styles.tableBottomBorder, theme && { backgroundColor: theme.line }]} />
         </View>
 
@@ -484,33 +433,6 @@ export default function MatchupCenter({
 }
 
 const styles = StyleSheet.create({
-  addBridge: {
-    minHeight: 44,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.36)',
-    backgroundColor: 'rgba(22, 163, 74, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-  },
-  addBridgeMuted: {
-    borderColor: ACCENT,
-    backgroundColor: CARD,
-    opacity: 0.7,
-  },
-  addBridgeText: {
-    color: ACCENT,
-    fontSize: 13,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  addBridgeTextMuted: {
-    color: MUTED,
-  },
   panel: {
     borderRadius: 20,
     borderWidth: 1,
@@ -525,17 +447,8 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  sectionTitle: {
-    color: ACCENT,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  worldCupTopStripe: {
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#FF3D00',
-    marginBottom: 10,
-  },
+  sectionTitle: { ...FRAME_TITLE, flex: 1, minWidth: 0, marginBottom: 0 },
+  worldCupTopStripe: { ...FRAME_STRIPE },
   modeSwitch: {
     minHeight: 32,
     borderRadius: 999,

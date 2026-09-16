@@ -12,13 +12,25 @@ export async function loadStrategy() {
 return (await AsyncStorage.getItem(KEY_STRATEGY)) || '';
 }
 
+// Loading placeholders belong only to the active request, never saved history.
+function completedHistory(messages: any) {
+  return Array.isArray(messages) ? messages.filter(message => message && !message.pending) : [];
+}
+
 export async function saveHistory(messages: any) {
-await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(messages));
+  await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(completedHistory(messages)));
 }
 
 export async function loadHistory() {
-const raw = await AsyncStorage.getItem(KEY_HISTORY);
-return raw ? JSON.parse(raw) : [];
+  const raw = await AsyncStorage.getItem(KEY_HISTORY);
+  if (!raw) return [];
+  const history = JSON.parse(raw);
+  const completed = completedHistory(history);
+  // Clean up placeholders saved by older app versions as well.
+  if (!Array.isArray(history) || completed.length !== history.length) {
+    await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(completed));
+  }
+  return completed;
 }
 
 export async function clearAll() {

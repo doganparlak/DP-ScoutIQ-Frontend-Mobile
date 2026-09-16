@@ -1,3 +1,4 @@
+import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -11,9 +12,8 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, X } from 'lucide-react-native';
+import { ChevronDown, X, Shirt } from 'lucide-react-native';
 
-import PlayerCard from '@/components/PlayerCard';
 import { TutorialHint } from '@/components/Tutorial';
 import { rolePickerCode } from '@/services/api';
 import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
@@ -88,23 +88,12 @@ type Props = {
   sortKey: CandidateSortKey;
   cycleSort: (key: CandidateSortKey) => void;
   onSelectRow: (row: SearchResultRow) => void;
-  weeklyPopularRows: SearchResultRow[];
-  weeklyPopularOpen: boolean;
-  weeklyPopularLoading: boolean;
-  onCloseWeeklyPopular: () => void;
-  weeklyPopularTutorialVisible?: boolean;
-  onWeeklyPopularTutorialSkipAll?: () => void;
   tutorialStep?: 'candidates' | 'viniciusReady' | null;
   onTutorialContinue?: () => void;
   onTutorialSkipAll?: () => void;
   rowsLocked?: boolean;
   scrollLocked?: boolean;
   theme?: PlayerPoolComponentTheme;
-  weeklyPopularTheme?: PlayerPoolComponentTheme;
-  previewPlayerCardTheme?: {
-    cardBackground: string;
-    accent: string;
-  };
   worldCupMode?: boolean;
 };
 
@@ -121,41 +110,18 @@ export default function CandidatePlayers({
   sortKey,
   cycleSort,
   onSelectRow,
-  weeklyPopularRows,
-  weeklyPopularOpen,
-  weeklyPopularLoading,
-  onCloseWeeklyPopular,
-  weeklyPopularTutorialVisible = false,
-  onWeeklyPopularTutorialSkipAll,
   tutorialStep = null,
   onTutorialContinue,
   onTutorialSkipAll,
   rowsLocked = false,
   scrollLocked = false,
   theme,
-  weeklyPopularTheme,
-  previewPlayerCardTheme,
   worldCupMode = false,
 }: Props) {
   const { t } = useTranslation();
-  const { height: windowHeight, width: windowWidth, fontScale } = useWindowDimensions();
-  const [popularPreviewPlayer, setPopularPreviewPlayer] = React.useState<PlayerData | null>(null);
+  const { width: windowWidth, fontScale } = useWindowDimensions();
   const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
   const androidTextScale = Platform.OS === 'android' ? 1.15 : undefined;
-  const popularTheme = weeklyPopularTheme ?? theme;
-  const popularModalMaxHeight =
-    weeklyPopularTutorialVisible && Platform.OS === 'android'
-      ? windowHeight * 0.78 + ROW_HEIGHT / 2
-      : undefined;
-  const popularVisibleRows = weeklyPopularTutorialVisible ? 7 : 8;
-  const popularScrollMaxHeight = ROW_HEIGHT * popularVisibleRows;
-
-  React.useEffect(() => {
-    if (!weeklyPopularOpen) {
-      setPopularPreviewPlayer(null);
-    }
-  }, [weeklyPopularOpen]);
-
   const renderRows = React.useCallback((
     rows: SearchResultRow[],
     onPress?: (row: SearchResultRow) => void,
@@ -300,7 +266,8 @@ export default function CandidatePlayers({
   return (
     <View style={[styles.panel, androidCompact && styles.panelCompact, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
       <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
-      <View style={[styles.sectionHeaderRow, androidCompact && styles.sectionHeaderRowCompact]}>
+      <View style={[styles.sectionHeaderRow, androidCompact && styles.sectionHeaderRowCompact, FRAME_HEADING]}>
+        <Shirt size={20} color={theme?.accent ?? ACCENT} />
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit={androidCompact}
@@ -308,7 +275,7 @@ export default function CandidatePlayers({
           maxFontSizeMultiplier={Platform.OS === 'android' ? 1.15 : undefined}
           style={[styles.sectionTitle, androidCompact && styles.sectionTitleCompact, theme && { color: theme.accent }]}
         >
-          {t('playerPoolCandidates', 'Candidate players')}
+          {t('playerPoolCandidates', 'Matching Players')}
         </Text>
         <View>
           <Pressable
@@ -327,7 +294,7 @@ export default function CandidatePlayers({
               maxFontSizeMultiplier={Platform.OS === 'android' ? 1.1 : undefined}
               style={[styles.sortByButtonText, androidCompact && styles.sortByButtonTextCompact, theme && { color: theme.muted }]}
             >
-              {t('sortBy', 'Sort by')}: {sortLabel}
+              {sortLabel}
             </Text>
             <ChevronDown size={15} color={theme?.muted ?? MUTED} strokeWidth={2.2} />
           </Pressable>
@@ -405,10 +372,10 @@ export default function CandidatePlayers({
 
       <TutorialHint
         visible={tutorialStep === 'candidates'}
-        title={t('tutorialCandidatesTitle', 'Candidate players')}
+        title={t('tutorialCandidatesTitle', 'Matching Players')}
         body={t(
           'tutorialCandidatesBody',
-          'Search results appear here. You can sort the candidate players however you prefer and select the player who interests you.',
+          'Search results appear here. You can sort the matching players however you prefer and select the player who interests you.',
         )}
         actionLabel={t('tutorialContinueToCard', 'Continue to player card')}
         onAction={onTutorialContinue}
@@ -418,10 +385,10 @@ export default function CandidatePlayers({
 
       <TutorialHint
         visible={tutorialStep === 'viniciusReady'}
-        title={t('tutorialViniciusReadyTitle', 'Candidate players')}
+        title={t('tutorialViniciusReadyTitle', 'Matching Players')}
         body={t(
           'tutorialViniciusReadyBody',
-          'Search results appear here. You can sort the candidate players however you prefer and select the player who interests you. We selected Vinicius Junior as the second example.',
+          'Search results appear here. You can sort the matching players however you prefer and select the player who interests you. We selected Vinicius Junior as the second example.',
         )}
         actionLabel={t('tutorialShowMatchupCenter', 'Show Matchup Center')}
         onAction={onTutorialContinue}
@@ -474,137 +441,6 @@ export default function CandidatePlayers({
         </View>
       </Modal>
 
-      <Modal
-        transparent
-        visible={weeklyPopularOpen}
-        animationType="fade"
-        onRequestClose={onCloseWeeklyPopular}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[
-            styles.popularModalCard,
-            popularTheme && { backgroundColor: popularTheme.panel, borderColor: popularTheme.line },
-            popularModalMaxHeight ? { maxHeight: popularModalMaxHeight } : null,
-          ]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, styles.popularModalTitle, popularTheme && { color: popularTheme.accent }]}>
-                {worldCupMode
-                  ? t('worldCupTopSearches', 'World Cup Top Searches')
-                  : t('weeklyPopularPlayers', "This week's popular players")}
-              </Text>
-              <Pressable onPress={onCloseWeeklyPopular}>
-                {({ pressed }) => (
-                  <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-                )}
-              </Pressable>
-            </View>
-            <View style={weeklyPopularTutorialVisible && styles.weeklyTutorialGap}>
-              <TutorialHint
-                visible={weeklyPopularTutorialVisible}
-                title={t('tutorialWeeklyPopularListTitle', 'Weekly popular players')}
-                body={t(
-                  'tutorialWeeklyPopularListBody',
-                  'You can view the 10 most searched players each week. Close this list when you are done.',
-                )}
-                onSkipAll={onWeeklyPopularTutorialSkipAll}
-                arrow="none"
-              />
-            </View>
-
-            {weeklyPopularLoading ? (
-              <View style={styles.loadingWrap}>
-                <ActivityIndicator color={popularTheme?.accent ?? ACCENT} />
-              </View>
-            ) : (
-              <View style={[styles.table, styles.popularTable]}>
-                <View style={[styles.tableTopBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
-                <View style={styles.popularTableHeaderWrap}>
-                  <View style={[styles.row, styles.clickableHeaderRow, popularTheme && { borderColor: popularTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
-                    <View style={[styles.cell, { flex: COL.index }]}>
-                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
-                    </View>
-                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
-                    <View style={[styles.cell, { flex: COL.name }]}>
-                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblName', 'Name')}</Text>
-                    </View>
-                    {!worldCupMode ? (
-                      <>
-                        <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
-                        <View style={[styles.cell, { flex: COL.nat }]}>
-                          <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblNat', 'Nat.')}</Text>
-                        </View>
-                      </>
-                    ) : null}
-                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
-                    <View style={[styles.cell, { flex: COL.team }]}>
-                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblTeam', 'Team')}</Text>
-                    </View>
-                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
-                    <View style={[styles.cell, { flex: COL.age }]}>
-                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblAge', 'Age')}</Text>
-                    </View>
-                    <View style={[styles.vsep, popularTheme && { backgroundColor: popularTheme.line }]} />
-                    <View style={[styles.cell, { flex: COL.roles }]}>
-                      <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, { textAlign: 'center' }]}>{t('tblRoles', 'Role')}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.clickableRowGap} />
-                </View>
-                <ScrollView
-                  style={[styles.popularScroll, { maxHeight: popularScrollMaxHeight }]}
-                  contentContainerStyle={styles.popularScrollContent}
-                  nestedScrollEnabled
-                  bounces={false}
-                  showsVerticalScrollIndicator
-                >
-                  {renderRows(
-                    weeklyPopularRows,
-                    (row) => setPopularPreviewPlayer(row.player),
-                    undefined,
-                    worldCupMode
-                      ? t('worldCupTopSearchesEmpty', 'No World Cup top searches have been recorded yet.')
-                      : t('weeklyPopularEmpty', 'No popular players have been recorded this week yet.'),
-                    popularTheme,
-                    compactDisplayName,
-                    true,
-                  )}
-                </ScrollView>
-                <View style={[styles.tableBottomBorder, popularTheme && { backgroundColor: popularTheme.line }]} />
-              </View>
-            )}
-          </View>
-        </View>
-
-        <Modal
-          transparent
-          visible={!!popularPreviewPlayer}
-          animationType="fade"
-          onRequestClose={() => setPopularPreviewPlayer(null)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCardWrap}>
-              {popularPreviewPlayer ? (
-                <PlayerCard
-                  player={popularPreviewPlayer}
-                  titleAlign="center"
-                  visualTheme={previewPlayerCardTheme}
-                  hideNationalityLeague={worldCupMode}
-                />
-              ) : null}
-              <Pressable
-                onPress={() => setPopularPreviewPlayer(null)}
-                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                style={({ pressed }) => [styles.closeInsideCard, { opacity: pressed ? 0.9 : 1 }]}
-                accessibilityLabel={t('closePlayerCard', 'Close player card')}
-              >
-                {({ pressed }) => (
-                  <X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-      </Modal>
     </View>
   );
 }
@@ -620,12 +456,7 @@ const styles = StyleSheet.create({
   panelCompact: {
     paddingHorizontal: 12,
   },
-  sectionTitle: {
-    color: ACCENT,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
+  sectionTitle: { ...FRAME_TITLE, flex: 1, minWidth: 0, marginBottom: 0 },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -643,12 +474,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     marginBottom: 0,
   },
-  worldCupTopStripe: {
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#5C00E6',
-    marginBottom: 10,
-  },
+  worldCupTopStripe: { ...FRAME_STRIPE },
   sortByButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -688,17 +514,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   table: { marginTop: 10 },
-  popularTable: {
-    alignSelf: 'stretch',
-    overflow: 'hidden',
-  },
   tableTopBorder: { height: 1, backgroundColor: LINE },
   tableBottomBorder: { height: 1, backgroundColor: LINE },
   tableHeaderWrap: {
     paddingRight: 5,
-  },
-  popularTableHeaderWrap: {
-    paddingRight: 0,
   },
   tableScrollWrap: {
     paddingRight: 1,
@@ -833,24 +652,6 @@ const styles = StyleSheet.create({
     padding: 16,
     maxHeight: '70%',
   },
-  popularModalCard: {
-    backgroundColor: PANEL,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: LINE,
-    padding: 16,
-    maxHeight: '78%',
-  },
-  popularScroll: {
-    overflow: 'hidden',
-  },
-  popularScrollContent: {
-    paddingRight: 0,
-    paddingVertical: 4,
-  },
-  weeklyTutorialGap: {
-    marginBottom: 12,
-  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -862,18 +663,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  popularModalTitle: {
-    color: ACCENT,
-  },
-  modalCardWrap: {
-    width: '100%',
-    maxWidth: 560,
-    borderRadius: 16,
-    overflow: 'visible',
-    padding: 2,
-    position: 'relative',
-  },
-  closeInsideCard: { position: 'absolute', top: 6, right: 6, zIndex: 10, padding: 6 },
   optionRow: {
     borderRadius: 12,
     borderWidth: 1,

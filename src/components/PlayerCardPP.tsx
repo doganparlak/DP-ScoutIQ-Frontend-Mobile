@@ -1,3 +1,5 @@
+import { UserRound } from 'lucide-react-native';
+import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
 import React from 'react';
 import {
   Alert,
@@ -9,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
 
 import PlayerCard from '@/components/PlayerCard';
 import { TutorialHint, TutorialStrong, type PlayerPoolTutorialStep } from '@/components/Tutorial';
@@ -28,6 +29,8 @@ type PlayerPoolComponentTheme = {
 type Props = {
   selectedPlayer: PlayerData | null;
   selectedPlayerForCard: PlayerData | null;
+  onMatchup?: () => void;
+  matchupDisabled?: boolean;
   onRevealPotential: () => void;
   onRevealForm: () => void;
   onAddFavoriteSuccess?: () => void;
@@ -51,6 +54,8 @@ type Props = {
 export default function PlayerCardPP({
   selectedPlayer,
   selectedPlayerForCard,
+  onMatchup,
+  matchupDisabled,
   onRevealPotential,
   onRevealForm,
   onAddFavoriteSuccess,
@@ -77,31 +82,13 @@ export default function PlayerCardPP({
   const tutorialActive = !!tutorialStep;
   const canPressPotential = !tutorialActive || tutorialStep === 'revealPotential';
   const canPressForm = !tutorialActive || tutorialStep === 'revealForm';
+  const canPressMatchup = !tutorialActive || tutorialStep === 'addYamalToMatchup' || tutorialStep === 'addViniciusToMatchup';
   const canPressPortfolio = !tutorialActive || tutorialStep === 'addPortfolio';
 
   return (
     <View style={[styles.panel, androidCompact && styles.panelCompact, theme && { backgroundColor: theme.panel, borderColor: theme.line }]}>
       <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
-      <Text
-        numberOfLines={1}
-        adjustsFontSizeToFit={androidCompact}
-        minimumFontScale={0.78}
-        maxFontSizeMultiplier={androidTextScale}
-        style={[styles.sectionTitle, androidCompact && styles.sectionTitleCompact, theme && { color: theme.accent }]}
-      >
-        {t('playerCard', 'Player Card')}
-      </Text>
-      <View style={[styles.curateRow, androidCompact && styles.curateRowCompact]}>
-        <Ionicons
-          name="person-circle-outline"
-          size={22}
-          color={theme?.accent ?? ACCENT}
-          style={styles.curateProfileIcon}
-        />
-        <Text maxFontSizeMultiplier={androidTextScale} style={[styles.curateText, androidCompact && styles.curateTextCompact, theme && { color: theme.muted }]}>
-          {t('wcCurate', 'Curate your dream squad in your portfolio.')}
-        </Text>
-      </View>
+      {!selectedPlayer && <View style={[FRAME_HEADING, { marginBottom: 10 }]}><UserRound size={20} color={theme?.accent ?? ACCENT} /><Text style={styles.sectionTitle}>{t("playerCard", "Player Card")}</Text></View>}
       {selectedPlayer ? (
         <>
           <TutorialHint
@@ -116,9 +103,20 @@ export default function PlayerCardPP({
             onSkipAll={onTutorialSkipAll}
             arrow="none"
           />
+          <TutorialHint
+            visible={tutorialStep === 'addYamalToMatchup' || tutorialStep === 'addViniciusToMatchup'}
+            title={t('tutorialAddYamalMatchupTitle', 'Add a player to Matchup Center')}
+            body={t('tutorialCardMatchupBody', 'Tap Matchup on this card to add the player and open Matchup Center.')}
+            targetLabel={t('tutorialPressAddMatchup', 'Press Matchup')}
+            onSkipAll={onTutorialSkipAll}
+            arrow="down"
+          />
           <PlayerCard
             player={selectedPlayerForCard ?? selectedPlayer}
-            titleAlign="center"
+            matchupDisabled={matchupDisabled}
+            onMatchup={canPressMatchup ? onMatchup : undefined}
+            heading={t("playerCard", "Player Card")}
+            titleAlign="left"
             addFavoriteDisabled={!canPressPortfolio}
             onGenerateReport={onGenerateReport}
             reportState={reportState}
@@ -276,45 +274,11 @@ const styles = StyleSheet.create({
   panelCompact: {
     paddingHorizontal: 12,
   },
-  sectionTitle: {
-    color: ACCENT,
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
+  sectionTitle: { ...FRAME_TITLE, flex: 1, minWidth: 0, marginBottom: 0 },
   sectionTitleCompact: {
     fontSize: 15,
   },
-  worldCupTopStripe: {
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#E40000',
-    marginBottom: 10,
-  },
-  curateRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 12,
-  },
-  curateRowCompact: {
-    gap: 8,
-  },
-  curatePlusWrap: {
-    borderWidth: 1,
-    borderColor: ACCENT,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-  },
-  curatePlusText: {
-    color: ACCENT,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  curateProfileIcon: {
-    marginTop: -1,
-  },
+  worldCupTopStripe: { ...FRAME_STRIPE },
   plusTargetPill: {
     borderWidth: 1,
     borderColor: ACCENT,
@@ -326,16 +290,6 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontWeight: '800',
     fontSize: 14,
-  },
-  curateText: {
-    color: MUTED,
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  curateTextCompact: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   pressed: {
     opacity: 0.92,
@@ -378,7 +332,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     textAlign: 'center',
-    textTransform: 'uppercase',
   },
   revealScoreButtonTextRevealed: {
     color: ACCENT,

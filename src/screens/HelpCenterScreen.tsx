@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Trash2 } from 'lucide-react-native';
+import {
+  BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ChevronDown, CircleHelp,
+  ClipboardList, CreditCard, Database, GitCompareArrows, LayoutDashboard,
+  MessageSquareText, Search, Shield, Target, Trash2, Trophy, UserRound,
+} from 'lucide-react-native';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking, Platform
 } from 'react-native';
@@ -15,7 +19,6 @@ import {
 import type { RootStackParamList } from '@/types';
 import { deleteAccount as apiDeleteAccount } from '@/services/api';
 import { sendReachOut } from '@/services/api';
-import { useTutorial } from '@/components/Tutorial';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
@@ -36,18 +39,17 @@ const LEGAL_URLS = {
 export default function HelpCenter() {
   const nav = useNavigation<RootNav>();
   const { t, i18n } = useTranslation();
-  const tutorial = useTutorial();
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
   const privacyUrl = LEGAL_URLS[lang].privacy;
   const termsUrl =
   Platform.OS === 'ios' ? LEGAL_URLS.iosTerms : LEGAL_URLS[lang].terms;
 
   const [selected, setSelected] = useState<TabKey>('how');
+  const [expandedGuide, setExpandedGuide] = useState('panel');
   const [message, setMessage] = useState('');
   const [sentMessage, setSentMessage] = useState<string | null>(null);
   const [hasSentThisLogin, setHasSentThisLogin] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [activatingTutorial, setActivatingTutorial] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -140,27 +142,6 @@ export default function HelpCenter() {
     }
   };
 
-  const onActivateTutorial = async () => {
-    if (activatingTutorial) return;
-
-    try {
-      setActivatingTutorial(true);
-      await tutorial.activateTutorial();
-
-      const currentNav = nav as any;
-      const parentNav = currentNav.getParent?.();
-      if (parentNav?.navigate) {
-        parentNav.navigate('Strategy');
-      } else {
-        currentNav.navigate('MainTabs', { screen: 'Strategy' });
-      }
-    } catch (e: any) {
-      Alert.alert(t('tutorialActivateFailed', 'Could not start tutorial'), String(e?.message || t('tryAgain', 'Please try again.')));
-    } finally {
-      setActivatingTutorial(false);
-    }
-  };
-
   const tabs = useMemo(
     () => [
       { key: 'how' as const, label: t('tabHowTo', 'How to use') },
@@ -170,12 +151,30 @@ export default function HelpCenter() {
     [t],
   );
 
+  const guides = useMemo(() => [
+    { key: 'panel', group: t('navigationWorkspace', 'YOUR WORKSPACE'), title: t('tabProfile', 'Panel'), Icon: LayoutDashboard, summary: t('helpGuidePanelSummary'), steps: [t('helpGuidePanel1'), t('helpGuidePanel2'), t('helpGuidePanel3')] },
+    { key: 'pro', group: t('navigationWorkspace', 'YOUR WORKSPACE'), title: t('tabScoutWisePro', 'ScoutWise Pro'), Icon: MessageSquareText, summary: t('helpGuideProSummary'), steps: [t('helpGuidePro1'), t('helpGuidePro2'), t('helpGuidePro3')] },
+    { key: 'weekly', group: t('interactionCenter', 'INTERACTION CENTER'), title: t('tabWeeklySearches', 'Weekly Searches'), Icon: Search, summary: t('helpGuideWeeklySummary'), steps: [t('helpGuideWeekly1'), t('helpGuideWeekly2')] },
+    { key: 'daily', group: t('interactionCenter', 'INTERACTION CENTER'), title: t('dailyScoutChallengeTitle', 'Daily Scout Challenge'), Icon: Target, summary: t('helpGuideDailySummary'), steps: [t('helpGuideDaily1'), t('helpGuideDaily2'), t('helpGuideDaily3')] },
+    { key: 'playerPool', group: t('dataCenter', 'DATA CENTER'), title: t('tabPlayerPool', 'Player Pool'), Icon: UserRound, summary: t('helpGuidePlayerPoolSummary'), steps: [t('helpGuidePlayerPool1'), t('helpGuidePlayerPool2'), t('helpGuidePlayerPool3')] },
+    { key: 'teamPool', group: t('dataCenter', 'DATA CENTER'), title: t('teamPoolWorkspace', 'Team Pool'), Icon: Shield, summary: t('helpGuideTeamPoolSummary'), steps: [t('helpGuideTeamPool1'), t('helpGuideTeamPool2'), t('helpGuideTeamPool3')] },
+    { key: 'leaguePool', group: t('dataCenter', 'DATA CENTER'), title: t('leaguePoolWorkspace', 'League Pool'), Icon: Trophy, summary: t('helpGuideLeaguePoolSummary'), steps: [t('helpGuideLeaguePool1'), t('helpGuideLeaguePool2'), t('helpGuideLeaguePool3')] },
+    { key: 'matchPool', group: t('dataCenter', 'DATA CENTER'), title: t('matchPoolWorkspace', 'Match Pool'), Icon: CalendarSearch, summary: t('helpGuideMatchPoolSummary'), steps: [t('helpGuideMatchPool1'), t('helpGuideMatchPool2'), t('helpGuideMatchPool3')] },
+    { key: 'seasonData', group: t('dataCenter', 'DATA CENTER'), title: t('seasonDataWorkspace', 'Season Data'), Icon: Database, summary: t('helpGuideSeasonSummary'), steps: [t('helpGuideSeason1'), t('helpGuideSeason2'), t('helpGuideSeason3')] },
+    { key: 'playerPortfolio', group: t('portfolioCenter', 'PORTFOLIO CENTER'), title: t('portfolioWorkspace', 'Player Portfolio'), Icon: ClipboardList, summary: t('helpGuidePlayerPortfolioSummary'), steps: [t('helpGuidePlayerPortfolio1'), t('helpGuidePlayerPortfolio2'), t('helpGuidePlayerPortfolio3')] },
+    { key: 'matchPortfolio', group: t('portfolioCenter', 'PORTFOLIO CENTER'), title: t('matchPortfolioWorkspace', 'Match Portfolio'), Icon: BookMarked, summary: t('helpGuideMatchPortfolioSummary'), steps: [t('helpGuideMatchPortfolio1'), t('helpGuideMatchPortfolio2'), t('helpGuideMatchPortfolio3')] },
+    { key: 'matchup', group: t('analysisCenter', 'ANALYSIS CENTER'), title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('helpGuideMatchupSummary'), steps: [t('helpGuideMatchup1'), t('helpGuideMatchup2'), t('helpGuideMatchup3')] },
+    { key: 'teamAnalysis', group: t('analysisCenter', 'ANALYSIS CENTER'), title: t('teamAnalysisWorkspace', 'Team Analysis Center'), Icon: BarChart3, summary: t('helpGuideTeamAnalysisSummary'), steps: [t('helpGuideTeamAnalysis1'), t('helpGuideTeamAnalysis2'), t('helpGuideTeamAnalysis3')] },
+    { key: 'plan', group: t('settingsGroup', 'SETTINGS'), title: t('managePlan', 'Manage Plan'), Icon: CreditCard, summary: t('helpGuidePlanSummary'), steps: [t('helpGuidePlan1'), t('helpGuidePlan2')] },
+    { key: 'help', group: t('settingsGroup', 'SETTINGS'), title: t('helpCenter', 'Help Center'), Icon: CircleHelp, summary: t('helpGuideHelpSummary'), steps: [t('helpGuideHelp1'), t('helpGuideHelp2'), t('helpGuideHelp3')] },
+  ], [t]);
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => nav.goBack()}
+          onPress={() => (nav as any).navigate('Profile', { screen: 'MyProfile' })}
           style={({ pressed }) => [styles.back, { opacity: pressed ? 0.7 : 1 }]}
           accessibilityLabel={t('backToProfile', 'Back to Profile')}
         >
@@ -209,214 +208,46 @@ export default function HelpCenter() {
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {/* HOW TO USE */}
         {selected === 'how' && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>{t('guidebook', 'Guidebook')}</Text>
-
-            <Pressable
-              onPress={onActivateTutorial}
-              disabled={activatingTutorial}
-              style={({ pressed }) => [
-                styles.activateTutorialBtn,
-                (pressed && !activatingTutorial) ? styles.activateTutorialBtnPressed : null,
-                activatingTutorial ? styles.activateTutorialBtnDisabled : null,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={t('activateTutorial', 'Activate tutorial')}
-            >
-              <Text style={styles.activateTutorialText}>
-                {activatingTutorial
-                  ? t('startingTutorial', 'Starting tutorial...')
-                  : t('activateTutorial', 'Activate tutorial')}
-              </Text>
-            </Pressable>
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howStrategyTitle', 'Team strategy & scouting philosophy')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy1', 'Start with an optional strategy screen to define your tactical approach and the idea behind your scouting philosophy.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy2', 'ScoutWise uses this information to align its suggestions and interpretations.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howStrategy3', 'You can skip this step and return to it anytime.')}
-              </Text>
+          <View style={styles.guideShell}>
+            <View style={styles.guideHero}>
+              <View style={styles.guideHeroIcon}><BookOpenCheck size={25} color={ACCENT} /></View>
+              <View style={{ flex: 1, gap: 5 }}>
+                <Text style={styles.guideHeroTitle}>{t('helpGuideTitle', 'ScoutWise Guide')}</Text>
+                <Text style={styles.guideHeroText}>{t('helpGuideIntro', 'Choose a page to learn what it does and the quickest way to use it.')}</Text>
+              </View>
             </View>
 
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howChatTitle', 'Chat')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat1', 'Chat with ScoutWise to discover the best-fit players for your needs—just as you would with a regular chatbot.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat2', 'All responses are data-driven and interpreted through your defined preferences.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat3', 'Ask for filters on the fly (age, role, nationality, stats, tactical fit, etc.), find players, and add favorites to your ')}
-                <Text style={styles.bold}>{t('playerPortfolio', 'Player Portfolio')}</Text>
-                <Text>{t('howChat5', '')}.</Text>{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howChat4', 'When requested, ScoutWise will introduce a player. Each introduction includes a ')}
-                <Text style={styles.bold}>{t('playerCard', 'Player Card')}</Text>, <Text style={styles.bold}>{t('metricVisualizations', 'Metric Visualizations')}</Text> {t('and', 'and')} <Text style={styles.bold}>{t('scoutwiseInsights', 'ScoutWise Insights')}</Text> {t('ofPerformanceAndFit', 'of the player’s performance and fit.') }
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howPlayerPoolTitle', 'Player Pool')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerPool1', 'Player Pool is a dedicated search space where you can discover players directly from your database.')}
-                {'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howPlayerPool2', 'It is organized into Search Filters, Candidate Players, Player Card, and Matchup Center sections for scouting workflow.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howWeeklyTopSearchesTitle', 'Weekly Top Searches')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howWeeklyTopSearches1', 'Weekly Top Searches reveals the 10 players users showed the strongest interest in during the current week.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howPlayerSearchTitle', 'Search Filters')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPlayerSearch1', 'Use the search filters to narrow players by identity, team, league, nationality, role, age, and physical profile.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howCandidatePlayersTitle', 'Candidate Players')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCandidatePlayers1', 'Candidate Players lists the matching results from your search and lets you open a player card for selection.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howCardTitle', 'Player Card')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard1', 'Each player card encapsulates essential identity (age, gender, nationality), team identity (team name, league), technical identity (role), physical identity (weight, height), and potential/form values.')}
-                {'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howCard2', 'Allows you to add the player to your portfolio.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howMatchupCenterTitle', 'Matchup Center')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howMatchupCenter1', 'Matchup Center lets you place selected players side by side, launch a comparison, and review shared metrics with tables, charts, and discipline tiles.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howPotentialTitle', 'Potential')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howPotential1', 'ScoutWise assigns a Potential score (0–100) based on metadata and historical stats—representing projected ceiling and development outlook.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howFormTitle', 'Form')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howForm1', 'ScoutWise assigns a form score (0–100) based on current role-relevant metrics and age context—representing current performance and reliability.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howMetricTitle', 'Metric Visualizations')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar1', 'For each suggested player, ScoutWise visualizes metrics via Radar Chart and Horizontal Bar Chart for a clear statistical profile.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar2', 'Charts are grouped as')} <Text style={styles.bold}>{t('scoutwise_scores', 'ScoutWise Scores & Ratings')}</Text>, <Text style={styles.bold}>{t('goalkeeping', 'Goalkeeping')}</Text>, <Text style={styles.bold}>{t('shooting', 'Shooting')}</Text>, <Text style={styles.bold}>{t('passing', 'Passing')}</Text>, <Text style={styles.bold}>{t('defending', 'Defending')}</Text>, <Text style={styles.bold}>{t('contribution_impact', 'Contribution & Impact')}</Text>, <Text style={styles.bold}>{t('errors_discipline', 'Errors & Discipline')}</Text>.{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar3', 'Values are aggregated from recent matches for context and clarity.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howRadar4', 'Shown metrics are the per game averages based on available data.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howRadarTitle', 'Radar Charts')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('RadarDefinition', 'A radar chart is a circular chart that shows multiple values at once by plotting them along spokes that extend from a central point, making it easy to see strengths and weaknesses at a glance.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('RadarDefinition2', 'The values shown represent performance metrics, such as different aspects of a player’s play, displayed together to give an overall profile.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howHorizontalBar', 'Horizontal Bar Charts')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('HorizontalBarDefinition', 'A horizontal bar chart is a chart that displays data in horizontal bars, making it easy to compare values and see trends.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howInterpTitle', 'ScoutWise Insights')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp1', 'ScoutWise analyzes performance within role context and your criteria, highlighting the most relevant statistics.')}{'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howInterp2', 'Each interpretation concisely explains past performances and tactical fit across systems.')}{'\n'}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howDailyScoutChallengeTitle', 'Daily Scout Challenge')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text> {t('howDailyScoutChallenge1', 'Daily Scout Challenge gives you one daily scouting strategy with three player options, lets you choose the best fit, and ranks weekly scores on the scoreboard.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howPlayerPortfolio', 'Player Portfolio')}</Text>
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howPlayerPortfolio1', 'The Player Portfolio is a watch list of players you have added for closer evaluation.')}
-                {'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howPlayerPortfolio2', 'Each row represents a player and displays name, nationality, team, age, role, form, and potential.')}
-                {'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howPlayerPortfolio3', 'The report icon at the start of each row allows you to generate a scouting report, and players can be filtered using player card attributes.')}
-                {'\n'}
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howPlayerPortfolio4', 'Lineup Builder lets you turn the players in your Player Portfolio into an XI by choosing a formation, naming your team, tapping pitch slots to assign players by position, clearing slots or the full lineup when needed, and checking the squad rating based on player form and positional fit.')}
-              </Text>
-            </View>
-
-            <View style={styles.line} />
-
-            <View style={styles.block}>
-              <Text style={styles.h3}>{t('howScoutReportTitle', 'Scouting Report')}</Text>
-
-              <Text style={[styles.p, styles.justify]}>
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howScoutReport1', 'Scouting Report includes the player card and metric visualizations, as well as Pitch Map, Role & Usage, Strengths, and Weaknesses & Concerns sections.')}
-                {'\n'}
-
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howScoutReport2', 'Interpretations are detailed and consider physical identity, stats, age, nationality, and role.')}
-                {'\n'}
-
-                <Text style={styles.bullet}>{'\u2022'}</Text>{' '}
-                {t('howScoutReport3', 'This helps you quickly evaluate the fit, upside, and risks of a player already in your portfolio.')}
-              </Text>
-            </View>
+            {guides.map((guide, index) => {
+              const open = expandedGuide === guide.key;
+              const showGroup = index === 0 || guides[index - 1].group !== guide.group;
+              return <React.Fragment key={guide.key}>
+                {showGroup && <Text style={styles.guideGroup}>{guide.group}</Text>}
+                <View style={[styles.guideCard, open && styles.guideCardOpen]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: open }}
+                    onPress={() => setExpandedGuide(open ? '' : guide.key)}
+                    style={({ pressed }) => [styles.guideHeader, pressed && { opacity: .72 }]}
+                  >
+                    <View style={[styles.guideIcon, open && styles.guideIconOpen]}><guide.Icon size={21} color={open ? '#4ADE80' : '#A8B4AC'} /></View>
+                    <View style={styles.guideHeadingCopy}>
+                      <Text style={[styles.guideTitle, open && { color: '#4ADE80' }]}>{guide.title}</Text>
+                      {!open && <Text style={styles.guidePreview} numberOfLines={1}>{guide.summary}</Text>}
+                    </View>
+                    <ChevronDown size={19} color={open ? '#4ADE80' : MUTED} style={open ? { transform: [{ rotate: '180deg' }] } : undefined} />
+                  </Pressable>
+                  {open && <View style={styles.guideBody}>
+                    <Text style={styles.guideSummary}>{guide.summary}</Text>
+                    <View style={styles.guideSteps}>
+                      {guide.steps.map((step, stepIndex) => <View key={`${guide.key}-${stepIndex}`} style={styles.guideStep}>
+                        <View style={styles.stepNumber}><Text style={styles.stepNumberText}>{stepIndex + 1}</Text></View>
+                        <Text style={styles.stepText}>{step}</Text>
+                      </View>)}
+                    </View>
+                  </View>}
+                </View>
+              </React.Fragment>;
+            })}
           </View>
         )}
 
@@ -542,21 +373,29 @@ const styles = StyleSheet.create({
     padding: 16, marginHorizontal: 16, marginTop: 12,
   },
 
+  guideShell: { marginHorizontal: 16, marginTop: 12, gap: 10 },
+  guideHero: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16, borderWidth: 1, borderColor: 'rgba(22,163,74,.72)', borderRadius: 20, backgroundColor: PANEL },
+  guideHeroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(22,163,74,.5)', backgroundColor: 'rgba(22,163,74,.13)' },
+  guideHeroTitle: { color: TEXT, fontSize: 19, fontWeight: '900' },
+  guideHeroText: { color: MUTED, fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  guideGroup: { color: '#93A59A', fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1.55, marginTop: 12, marginLeft: 3 },
+  guideCard: { borderWidth: 1, borderColor: LINE, borderRadius: 17, backgroundColor: PANEL, overflow: 'hidden' },
+  guideCardOpen: { borderColor: 'rgba(22,163,74,.68)', backgroundColor: 'rgba(19,31,23,.98)' },
+  guideHeader: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12 },
+  guideIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE, backgroundColor: 'rgba(255,255,255,.025)' },
+  guideIconOpen: { borderColor: 'rgba(22,163,74,.45)', backgroundColor: 'rgba(22,163,74,.12)' },
+  guideHeadingCopy: { flex: 1, minWidth: 0, gap: 5 },
+  guideTitle: { color: TEXT, fontSize: 15, fontWeight: '900' },
+  guidePreview: { color: MUTED, fontSize: 11, lineHeight: 16 },
+  guideBody: { gap: 14, borderTopWidth: 1, borderTopColor: LINE, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 15 },
+  guideSummary: { color: '#DDE5E0', fontSize: 13, lineHeight: 21, fontWeight: '600' },
+  guideSteps: { gap: 10 },
+  guideStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 11, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(22,163,74,.25)', backgroundColor: 'rgba(22,163,74,.055)' },
+  stepNumber: { width: 25, height: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(22,163,74,.17)', borderWidth: 1, borderColor: 'rgba(22,163,74,.48)' },
+  stepNumberText: { color: '#4ADE80', fontSize: 11, fontWeight: '900' },
+  stepText: { flex: 1, color: TEXT, fontSize: 12, lineHeight: 19, fontWeight: '600' },
+
   sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
-  activateTutorialBtn: {
-    minHeight: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.14)',
-    marginBottom: 14,
-    paddingHorizontal: 16,
-  },
-  activateTutorialBtnPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
-  activateTutorialBtnDisabled: { opacity: 0.55 },
-  activateTutorialText: { color: ACCENT, fontWeight: '900', fontSize: 14 },
   block: { gap: 6 },
   h3: { color: ACCENT, fontSize: 14, fontWeight: '800' },
   p: { color: TEXT, opacity: 0.9, lineHeight: 20, flexShrink: 1, width: '100%' },

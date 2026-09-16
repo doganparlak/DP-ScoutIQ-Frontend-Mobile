@@ -1,3 +1,5 @@
+import { reportScopeMatches } from '@/services/reportAccess';
+import { toSpiderPoints as comparisonPoints, type EnterpriseMetricUnit } from '@/utils/comparisonRanges';
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
@@ -11,7 +13,9 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
+  Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Line, LinearGradient, Polygon, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import {
   toSpiderPoints,
@@ -24,13 +28,16 @@ import {
 } from '../components/spiderRanges';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LogIn, Map as MapIcon, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Clock3, Timer, Radar, ListOrdered, BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LockKeyhole, LogIn, Map as MapIcon, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
 
 import PlayerCard from '../components/PlayerCard';
 import SpiderChart, { type SpiderPoint } from '../components/SpiderChart';
 import type { PlayerData } from '../types';
-import { rolePickerCode, type ScoutingReportResponse } from '../services/api';
+import { rolePickerCode, type Plan, type ScoutingReportResponse } from '../services/api';
 import ErrorsDisciplineTiles from '../components/ErrorsDisciplineTiles';
+import ReportPhaseDistributions from './ReportPhaseDistributions';
+import ActionSpinner from './ActionSpinner';
 
 import {
   CARD,
@@ -47,6 +54,10 @@ type Props = {
   onClose: () => void;
   player: PlayerData;
   report: ScoutingReportResponse;
+  plan?: Plan;
+  reloadReport?: () => Promise<ScoutingReportResponse>;
+  loadReportSection?: (section: 'strengths' | 'weaknesses' | 'role_usage') => Promise<ScoutingReportResponse>;
+  onReportUpdate?: (report: ScoutingReportResponse) => void;
 };
 
 type ParsedReport = {
@@ -191,6 +202,8 @@ function getReportPositionSource(player: PlayerData, report: ScoutingReportRespo
 }
 
 function RoleDistributionPitchMap({ player, report }: { player: PlayerData; report: ScoutingReportResponse }) {
+  const [pitchSpace, setPitchSpace] = useState({ width: 0, height: 0 });
+  const pitchWidth = Math.max(0, Math.min(pitchSpace.width - 32, pitchSpace.height * 0.56));
   const { counts, namesSeen, total } = getReportPositionSource(player, report);
   const zoneCounts = normalizePitchZoneCounts(counts);
   const activeZones = new Set<string>([
@@ -219,7 +232,9 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
           </View>
         ))}
       </View>
-      <View style={styles.pitchMapWrap}>
+      <View style={styles.pitchCanvas} onLayout={({nativeEvent: {layout}}) => setPitchSpace({width: layout.width, height: layout.height})}>
+      <View style={styles.pitchFieldRow}>
+      <View style={[styles.pitchMapWrap, {width: pitchWidth, height: pitchWidth / 0.56}]}>
         <Svg viewBox="0 0 56 100" width="100%" height="100%" preserveAspectRatio="none">
         <Defs>
           <LinearGradient id="mobileReportPitchShade" x1="0" x2="0" y1="0" y2="1">
@@ -281,12 +296,14 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
         </Svg>
       </View>
       <View style={styles.pitchDirectionSlot}>
-        <View style={styles.pitchDirectionRail}>
+        <View style={[styles.pitchDirectionRail, {height: Math.min(178, pitchWidth / 0.56)}]}>
           <Svg viewBox="0 0 10 48" width="100%" height="100%" preserveAspectRatio="none">
             <Line x1="5" y1="43" x2="5" y2="7" stroke="rgba(148, 163, 184, 0.74)" strokeWidth="0.7" strokeLinecap="round" />
             <Polygon points="5,4.4 3.45,8.6 6.55,8.6" fill="rgba(148, 163, 184, 0.74)" />
           </Svg>
         </View>
+      </View>
+      </View>
       </View>
     </View>
   );
@@ -357,16 +374,9 @@ function NarrativeBulletRow({
 }) {
   const bullet = parseNarrativeBullet(item, section, index, translate);
   return (
-    <View style={styles.narrativeRow}>
-      <Text style={[styles.narrativeDot, { color }]}>•</Text>
-      <Text style={styles.narrativeText}>
-        {bullet.title ? (
-          <Text style={[styles.narrativeTitle, { color }]}>
-            {bullet.title}: {' '}
-          </Text>
-        ) : null}
-        {bullet.body}
-      </Text>
+    <View style={[styles.narrativeRow, {borderColor: `${color}55`, backgroundColor: `${color}08` }]}>
+      {bullet.title ? <View style={styles.narrativeHeading}><View style={[styles.narrativeMarker, {backgroundColor:color}]} /><Text style={[styles.narrativeTitle, {color}]}>{bullet.title}</Text></View> : null}
+      <Text style={styles.narrativeText}>{bullet.body}</Text>
     </View>
   );
 }
@@ -466,9 +476,95 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
   return groups;
 }
 
-export default function ScoutingReport({ visible, onClose, player, report }: Props) {
+function ReportPageHeading({name, imageUrl, title, Icon, accent = ACCENT}: {name: string; imageUrl?: string; title: string; Icon: ReportIcon; accent?: string}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [imageUrl]);
+  const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  return <View style={[styles.reportHeading, {borderColor:`${accent}40`,backgroundColor:`${accent}0F`} ]}>
+    <View style={styles.reportPlayer}>
+      <View style={[styles.reportPortraitFrame, {borderColor:accent}]}>
+        {imageUrl && !imageFailed
+          ? <Image source={{uri:imageUrl}} resizeMode="contain" onError={()=>setImageFailed(true)} style={styles.reportPortrait}/>
+          : <Text style={[styles.reportPortraitInitials,{color:accent}]}>{initials}</Text>}
+      </View>
+      <View style={styles.reportIdentity}><Text numberOfLines={1} style={styles.reportEyebrow}>SCOUTWISE</Text><Text style={[styles.reportName, accent === DANGER && {color:accent}]}>{name}</Text></View>
+    </View>
+    <View style={[styles.reportCategory,{backgroundColor:`${accent}20`}]}><Icon size={17} color={accent}/><Text style={[styles.reportCategoryText,{color:accent}]}>{title}</Text></View>
+  </View>;
+}
+function ReportToggle({options, value, onChange, accent = ACCENT}: {accent?: string;options: {value:string; label:string; Icon:ReportIcon}[]; value:string; onChange:(value:any)=>void}) {
+ return <View style={styles.metricSwitch}>{options.map(({value:v,label,Icon})=><Pressable key={v} accessibilityRole="button" accessibilityState={{selected:value===v}} onPress={()=>onChange(v)} style={({pressed})=>[styles.metricOption,value===v&&[styles.metricActive,{backgroundColor:`${accent}20`,borderColor:`${accent}70`}],pressed&&{opacity:.8}]}><Icon size={16} color={value===v?accent:MUTED}/><Text style={{color:value===v?TEXT:MUTED,fontSize:13,fontWeight:'700'}}>{label}</Text></Pressable>)}</View>;
+}
+
+function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent = ACCENT }: { title: string; message: string; buttonLabel: string; onOpenPlans: () => void; accent?: string }) {
+  return <View style={[styles.lockedInsight, {borderColor:`${accent}55`, backgroundColor:`${accent}0A`}]}>
+    <View style={styles.lockedInsightHeading}>
+      <View style={[styles.lockedInsightIcon, {borderColor:`${accent}66`, backgroundColor:`${accent}18`}]}>
+        <LockKeyhole size={17} color={accent} strokeWidth={2.3}/>
+      </View>
+      <Text style={[styles.lockedInsightTitle,{color:accent}]}>{title}</Text>
+    </View>
+    <Text style={styles.lockedInsightText}>{message}</Text>
+    <Pressable onPress={onOpenPlans} style={({pressed})=>[styles.lockedInsightButton,pressed&&{opacity:.82}]}>
+      <Text style={styles.lockedInsightButtonText}>{buttonLabel}</Text>
+    </Pressable>
+  </View>;
+}
+
+function ReportAnalysisState({failed,onRetry}:{failed:boolean;onRetry:()=>void}){
+ const {t}=useTranslation();
+ return <View style={styles.analysisState}>{failed?<><Text style={styles.analysisStateText}>{t('reportFailedBody','Could not generate the report. Please try again later.')}</Text><Pressable accessibilityRole="button" onPress={onRetry} style={styles.analysisRetry}><Text style={styles.analysisRetryText}>{t('tryAgain','Try Again')}</Text></Pressable></>:<><ActionSpinner size={27} color={ACCENT}/><Text style={styles.analysisStateText}>{t('generatingReport','Generating report…')}</Text></>}</View>;
+}
+
+function ReportMetricPage({ group, name, imageUrl, report }: { group: ReturnType<typeof buildSpiderGroupsFromReport>[number]; name: string; imageUrl?: string; report: ScoutingReportResponse }) {
+  const { t, i18n } = useTranslation();
+  const [unit, setUnit] = useState<EnterpriseMetricUnit>('perMatch');
+  const [view, setView] = useState<'radar' | 'tiles'>('radar');
+  const [width, setWidth] = useState(320);
+  const meta = report.content_json?.metrics_docs?.[0]?.metadata ?? {};
+  const stats = Object.entries(meta).flatMap(([metric, value]) => typeof value === 'number' || typeof value === 'string' ? [{metric, value}] : []);
+  const points = comparisonPoints(stats, group.points.map(p=>p.label), {unit});
+  const isErrors = group.titleKey === 'errors_discipline';
+  const accent = isErrors ? DANGER : ACCENT;
+  return <View style={{gap:14, width:'100%'}} onLayout={e=>setWidth(e.nativeEvent.layout.width)}>
+    <ReportPageHeading name={name} imageUrl={imageUrl} title={t(group.titleKey,group.fallbackTitle)} Icon={group.Icon} accent={accent}/>
+    <View style={styles.reportControls}>
+      <ReportToggle accent={accent} value={unit} onChange={setUnit} options={[{value:'perMatch',label:i18n.language.startsWith('tr')?'Maç Başı':'Per Match',Icon:Clock3},{value:'per90',label:i18n.language.startsWith('tr')?'90 Dakika':'Per 90',Icon:Timer}]}/>
+      {!isErrors && <ReportToggle value={view} onChange={setView} options={[{value:'radar',label:'Radar',Icon:Radar},{value:'tiles',label:i18n.language.startsWith('tr')?'Sayılar':'Numbers',Icon:ListOrdered}]}/>}
+    </View>
+    {isErrors ? <ErrorsDisciplineTiles points={points} hideTitle expandable={false} accent={DANGER} framed /> : view==='radar' ? <View style={styles.radarFrame}>
+      <View style={styles.radarAreaHeader}><View style={{flexDirection:'row',alignItems:'center',gap:7}}><Radar size={16} color={ACCENT}/><Text style={styles.radarAreaTitle}>{i18n.language.startsWith('tr')?'Performans Profili':'Performance Profile'}</Text></View><Text style={styles.radarUnit}>{unit==='per90'?'90′':i18n.language.startsWith('tr')?'Maç Başı':'Per Match'}</Text></View>
+      <SpiderChart hideTitle title={t(group.titleKey,group.fallbackTitle)} points={points} Icon={group.Icon} chartSize={Math.max(0,width-26)} /></View> : points.map(p=><View key={p.label} style={styles.metricTile}><Text style={{color:TEXT,flex:1,fontWeight:'600'}}>{String(t(`metric.${p.label}`,{defaultValue:p.label}))}</Text><Text style={{color:ACCENT,fontWeight:'800',fontSize:17}}>{Number(p.value).toLocaleString(i18n.language,{maximumFractionDigits:2})}{p.label.includes('%')?'%':''}</Text></View>)}
+  </View>;
+}
+
+export default function ScoutingReport({ visible, onClose, player, report: initialReport, plan = 'Free', reloadReport, loadReportSection, onReportUpdate }: Props) {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const [page, setPage] = useState(0);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const [report,setReport]=useState(initialReport);
+  const [retryToken,setRetryToken]=useState(0);
+  const reloadReportRef=useRef(reloadReport),loadReportSectionRef=useRef(loadReportSection),onReportUpdateRef=useRef(onReportUpdate);
+  reloadReportRef.current=reloadReport;loadReportSectionRef.current=loadReportSection;onReportUpdateRef.current=onReportUpdate;
+  useEffect(()=>setReport(initialReport),[initialReport]);
+  useEffect(()=>{
+    if(!visible||report.status!=='processing'||report.content_json?.generation_mode==='lazy_sections'||!reloadReportRef.current)return;
+    let cancelled=false;let timer:ReturnType<typeof setTimeout>;
+    const poll=()=>{timer=setTimeout(async()=>{try{const next=await reloadReportRef.current!();if(cancelled)return;setReport(next);onReportUpdateRef.current?.(next);if(next.status==='processing')poll();}catch{if(!cancelled)poll();}},2000);};
+    poll();return()=>{cancelled=true;clearTimeout(timer);};
+  },[visible,report.status,report.content_json?.generation_mode,retryToken]);
+  const retryReport=useCallback(async()=>{if(!reloadReportRef.current)return;const next=await reloadReportRef.current();setReport(next);onReportUpdateRef.current?.(next);setRetryToken(value=>value+1);},[]);
+  const analysisReady=report.status==='ready'&&!!report.content;
+  const analysisFailed=report.status==='failed'||report.status==='error';
+  const narrativeState=(section:'strengths'|'weaknesses'|'role_usage')=>report.content_json?.sections?.[section]?.status;
+  const narrativeReady=(section:'strengths'|'weaknesses'|'role_usage')=>(narrativeState(section)==='ready'&&reportScopeMatches(report.content_json?.sections?.[section],plan!=='Free'))||(!report.content_json?.generation_mode&&analysisReady);
+  const narrativeFailed=(section:'strengths'|'weaknesses'|'role_usage')=>narrativeState(section)==='failed'||(!report.content_json?.generation_mode&&analysisFailed);
+  const applyReport=useCallback((next:ScoutingReportResponse)=>{setReport(next);onReportUpdateRef.current?.(next);},[]);
+  const retrySection=useCallback(async(section:'strengths'|'weaknesses'|'role_usage')=>{
+    if(!loadReportSectionRef.current)return retryReport();
+    setRetryToken(value=>value+1);
+  },[retryReport]);
 
   const [pagerWidth, setPagerWidth] = useState<number>(0);
   const listRef = useRef<FlatList<PageItem> | null>(null);
@@ -476,6 +572,11 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
   const parsed = useMemo(() => parseReportText(report?.content || ''), [report?.content]);
   const reportDisplayPlayer = useMemo(() => buildReportDisplayPlayer(player, report), [player, report]);
   const spiderGroups = useMemo(() => buildSpiderGroupsFromReport(report), [report]);
+  const narrativeLimit = plan === 'Free' ? 2 : 3;
+  const openPlanManagement = useCallback(() => {
+    onClose();
+    requestAnimationFrame(() => navigation.navigate('ManagePlan'));
+  }, [navigation, onClose]);
 
   useEffect(() => {
     if (visible) setPage(0);
@@ -518,12 +619,13 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       title: t('strengths', 'Strengths'),
       node: (
         <View style={{ gap: 10 }}>
-          {parsed.strengths.length === 0 ? (
+          <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={t('strengths', 'Strengths')} Icon={ShieldCheck}/>
+          {!narrativeReady('strengths') ? <ReportAnalysisState failed={narrativeFailed('strengths')} onRetry={()=>retrySection('strengths')}/> : parsed.strengths.length === 0 ? (
             <Text style={{ color: MUTED }}>
               {t('noStrengthsFound', 'No strengths section found.')}
             </Text>
           ) : (
-            parsed.strengths.map((s, i) => (
+            parsed.strengths.slice(0, narrativeLimit).map((s, i) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}
@@ -534,6 +636,12 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
               />
             ))
           )}
+          {narrativeReady('strengths') && plan === 'Free' ? <LockedInsightCard
+            title={t('lockedMoreStrengthsTitle', 'More Strengths')}
+            message={t('lockedMoreStrengthsBody', 'Switch to Plus or Pro to reveal more strengths.')}
+            buttonLabel={t('managePlan', 'Manage Plan')}
+            onOpenPlans={openPlanManagement}
+          /> : null}
         </View>
       ),
     };
@@ -543,12 +651,13 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
       title: t('weakness_concerns', 'Weakness & Concerns'),
       node: (
         <View style={{ gap: 10 }}>
-          {parsed.weaknesses.length === 0 ? (
+          <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={t('weakness_concerns', 'Weaknesses')} Icon={ShieldAlert} accent={DANGER}/>
+          {!narrativeReady('weaknesses') ? <ReportAnalysisState failed={narrativeFailed('weaknesses')} onRetry={()=>retrySection('weaknesses')}/> : parsed.weaknesses.length === 0 ? (
             <Text style={{ color: MUTED }}>
               {t('noConcernsFound', 'No concerns section found.')}
             </Text>
           ) : (
-            parsed.weaknesses.map((s, i) => (
+            parsed.weaknesses.slice(0, narrativeLimit).map((s, i) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}
@@ -559,12 +668,24 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
               />
             ))
           )}
+          {narrativeReady('weaknesses') && plan === 'Free' ? <LockedInsightCard
+            title={t('lockedMoreWeaknessesTitle', 'More Weaknesses')}
+            message={t('lockedMoreWeaknessesBody', 'Switch to Plus or Pro to reveal more weaknesses.')}
+            buttonLabel={t('managePlan', 'Manage Plan')}
+            onOpenPlans={openPlanManagement}
+            accent={DANGER}
+          /> : null}
         </View>
       ),
     };
 
     const pitchSource = getReportPositionSource(reportDisplayPlayer, report);
     const hasPitchMap = Object.keys(pitchSource.counts).length > 0 || pitchSource.namesSeen.length > 0;
+    const primaryPhaseRole = roleShortLabel(
+      reportDisplayPlayer.meta?.primaryPositionCode ||
+      Object.entries(pitchSource.counts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+      pitchSource.namesSeen[0],
+    );
     const pitchMapPage: PageItem | null = hasPitchMap
       ? {
           key: 'pitch-map',
@@ -578,17 +699,25 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
         }
       : null;
 
+    const roleBullets = parsed.conclusion.map((item, index) => ({item, index})).filter(({item, index}) => {
+      const title = parseNarrativeBullet(item, 'conclusion', index, t).title
+        .toLocaleLowerCase('tr').replace(/ı/g, 'i').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[*_]/g, '').trim();
+      if (/^(kullanim onerisi|usage recommendation|usage advice)$/.test(title)) return false;
+      if (plan === 'Free' && /^(gelisim odagi|development focus)$/.test(title)) return false;
+      return true;
+    });
     const roleUsagePage: PageItem = {
       key: 'conclusion',
       title: t('role_usage', 'Role & Usage'),
       node: (
         <View style={{ gap: 10 }}>
-          {parsed.conclusion.length === 0 ? (
+          <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={t('role_usage', 'Role & Usage')} Icon={DraftingCompass}/>
+          {!narrativeReady('role_usage') ? <ReportAnalysisState failed={narrativeFailed('role_usage')} onRetry={()=>retrySection('role_usage')}/> : roleBullets.length === 0 ? (
             <Text style={{ color: MUTED }}>
               {t('noConclusionFound', 'No conclusion found.')}
             </Text>
           ) : (
-            parsed.conclusion.map((s, i) => (
+            roleBullets.map(({item: s, index: i}) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}
@@ -599,44 +728,57 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
               />
             ))
           )}
+          {narrativeReady('role_usage') && plan === 'Free' ? <LockedInsightCard
+            title={t('lockedDevelopmentFocusTitle', 'Development Focus')}
+            message={t('lockedDevelopmentFocusBody', 'Switch to Plus or Pro to reveal Development Focus.')}
+            buttonLabel={t('managePlan', 'Manage Plan')}
+            onOpenPlans={openPlanManagement}
+          /> : null}
         </View>
       ),
     };
 
-    const out: PageItem[] = [playerPage, ...(pitchMapPage ? [pitchMapPage] : []), roleUsagePage, strengthsPage, weaknessesPage];
+    const phasePages: PageItem[] = [true, false].map(possession => {
+      const title = i18n.language.startsWith('tr')
+        ? possession ? 'Toplu Oyun' : 'Topsuz Oyun'
+        : possession ? 'In Possession' : 'Out of Possession';
+      const Icon = possession ? DraftingCompass : ShieldCheck;
+      return {
+        key: possession ? 'in-possession' : 'out-of-possession', title, Icon,
+        node: <View style={{ gap: 12 }}>
+          <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={title} Icon={Icon} accent={possession ? ACCENT : '#F59E0B'} />
+          <ReportPhaseDistributions
+            phases={report.content_json?.phase_distributions || []}
+            possession={possession}
+            free={plan === 'Free'}
+            primaryRole={primaryPhaseRole}
+            onOpenPlans={openPlanManagement}
+          />
+        </View>,
+      };
+    });
+    const out: PageItem[] = [playerPage, ...(pitchMapPage ? [pitchMapPage] : []), roleUsagePage, ...phasePages, strengthsPage, weaknessesPage];
 
     spiderGroups.forEach((g, idx) => {
       const title = t(g.titleKey, g.fallbackTitle);
-      const isRadar = (g.points?.length ?? 0) >= 4;
-      const isErrors = g.titleKey === 'errors_discipline';
-
-      const node = isErrors ? (
-        <View style={{ marginTop: -5, width: '100%', alignItems: 'center' }}>
-          <View style={{ width: '100%', maxWidth: 620 }}>
-            <ErrorsDisciplineTiles
-              title={title}
-              points={g.points}
-              Icon={g.Icon}
-              collapsedCount={3}
-              defaultCollapsed
-            />
-          </View>
-        </View>
-      ) : isRadar ? (
-        <View style={{ marginTop: -25, marginLeft: 40, alignItems: 'center' }}>
-          <View style={{ transform: [{ scale: 0.90 }] }}>
-            <SpiderChart title={title} points={g.points} Icon={g.Icon} />
-          </View>
-        </View>
-      ) : (
-        <SpiderChart title={title} points={g.points} Icon={g.Icon} />
-      );
+      const node = <ReportMetricPage group={g} name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} report={report} />;
 
       out.push({ key: `metrics-${idx}`, title, node, Icon: g.Icon });
     });
 
     return out;
-  }, [player, parsed, spiderGroups, t]);
+  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection]);
+
+  const activeNarrativeSection = pages[page]?.key === 'strengths' ? 'strengths' : pages[page]?.key === 'weaknesses' ? 'weaknesses' : pages[page]?.key === 'conclusion' ? 'role_usage' : null;
+  useEffect(()=>{
+    if(!visible||!activeNarrativeSection||!loadReportSectionRef.current||report.content_json?.generation_mode!=='lazy_sections')return;
+    const status=narrativeState(activeNarrativeSection);
+    if(status==='ready'&&reportScopeMatches(report.content_json?.sections?.[activeNarrativeSection],plan!=='Free'))return;
+    let cancelled=false;let timer:ReturnType<typeof setTimeout>;
+    const poll=async()=>{try{const next=await reloadReportRef.current!();if(cancelled)return;applyReport(next);const nextStatus=next.content_json?.sections?.[activeNarrativeSection]?.status;if(nextStatus!=='failed'&&(nextStatus!=='ready'||!reportScopeMatches(next.content_json?.sections?.[activeNarrativeSection],plan!=='Free')))timer=setTimeout(poll,2000);}catch{if(!cancelled)timer=setTimeout(poll,5000);}};
+    const request=async()=>{try{const next=await loadReportSectionRef.current!(activeNarrativeSection);if(cancelled)return;applyReport(next);const nextStatus=next.content_json?.sections?.[activeNarrativeSection]?.status;if(nextStatus!=='failed'&&(nextStatus!=='ready'||!reportScopeMatches(next.content_json?.sections?.[activeNarrativeSection],plan!=='Free')))timer=setTimeout(poll,2000);}catch{if(!cancelled)timer=setTimeout(request,5000);}};
+    request();return()=>{cancelled=true;clearTimeout(timer);};
+  },[visible,activeNarrativeSection,report.content_json?.generation_mode,report.content_json?.sections?.[activeNarrativeSection || '']?.status,applyReport,retryToken,plan]);
 
   const last = pages.length - 1;
   const canPrev = page > 0;
@@ -676,7 +818,7 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
 
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <View style={[styles.backdrop, { paddingTop: Math.max(14, insets.top), paddingBottom: Math.max(14, insets.bottom) }]}>
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
@@ -714,13 +856,13 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
                   index,
                 })}
                 renderItem={({ item }) => (
-                  <View style={{ width: pagerWidth }}>
-                    <ScrollView
+                  <View style={{ width: pagerWidth, height: '100%' }}>
+                    {item.key === 'pitch-map' ? item.node : <ScrollView
                       contentContainerStyle={{ paddingBottom: 0 }}
                       showsVerticalScrollIndicator
                     >
                       {item.node}
-                    </ScrollView>
+                    </ScrollView>}
                   </View>
                 )}
               />
@@ -773,17 +915,36 @@ export default function ScoutingReport({ visible, onClose, player, report }: Pro
 }
 
 const styles = StyleSheet.create({
+  reportHeading: { flexDirection:'row', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:12, padding:14, borderRadius:18, backgroundColor:'rgba(22,163,74,.06)', borderWidth:1, borderColor:'rgba(22,163,74,.25)' },
+  reportPlayer: { flexDirection:'row', alignItems:'center', gap:10, flexGrow:1, flexShrink:1, minWidth:0 },
+  reportPortraitFrame: { width:46, height:52, flexShrink:0, borderRadius:13, borderWidth:1, backgroundColor:'#122019', padding:2, alignItems:'center', justifyContent:'center', overflow:'hidden' },
+  reportPortrait: { width:'100%', height:'100%', borderRadius:10 },
+  reportPortraitInitials: { fontSize:15, fontWeight:'900' },
+  reportIdentity: { flexGrow:1, flexShrink:1, minWidth:88, gap:5 },
+  reportEyebrow: { color:MUTED, fontSize:9, fontWeight:'800', letterSpacing:1.5 },
+  reportName: { color:TEXT, fontSize:20, fontWeight:'800' },
+  reportCategory: { flexDirection:'row', alignItems:'center', gap:7, paddingHorizontal:10, paddingVertical:8, borderRadius:12, backgroundColor:'rgba(22,163,74,.13)', maxWidth:'100%' },
+  reportCategoryText: { color:ACCENT, fontSize:12, fontWeight:'800', flexShrink:1 },
+  reportControls: { gap:8, padding:8, borderRadius:18, borderWidth:1, borderColor:LINE, backgroundColor:'rgba(0,0,0,.12)' },
+  metricSwitch: { flexDirection: 'row', borderRadius:12, padding:3, gap:6 },
+  metricOption: { flex:1, flexDirection:'row', justifyContent:'center', gap:7, paddingVertical:10, alignItems:'center', borderRadius:10, borderWidth:1, borderColor:'transparent' },
+  metricActive: { backgroundColor:'rgba(22,163,74,.13)', borderColor:'rgba(22,163,74,.45)' },
+  radarFrame: { width: '100%', alignItems: 'center', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(22,163,74,.45)', backgroundColor: CARD, paddingTop: 14, paddingBottom: 8 },
+  radarAreaHeader: { alignSelf:'stretch', flexDirection:'row', flexWrap:'wrap', gap:8, alignItems:'center', justifyContent:'space-between', marginHorizontal:14, paddingBottom:12, borderBottomWidth:1, borderBottomColor:'rgba(22,163,74,.2)' },
+  radarAreaTitle: {color:TEXT,fontSize:12,fontWeight:'800'},
+  radarUnit: {color:ACCENT,fontSize:11,fontWeight:'700',backgroundColor:'rgba(22,163,74,.12)',paddingHorizontal:9,paddingVertical:5,borderRadius:8},
+  metricTile: { flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 14, borderWidth: 1, borderColor: LINE, padding: 14, backgroundColor: 'rgba(22,163,74,.04)' },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
   },
   card: {
     width: '100%',
-    maxWidth: 700,
-    height: '60%',
+    maxWidth: 620,
+    height: '88%',
     backgroundColor: CARD,
     borderRadius: 18,
     borderWidth: 1,
@@ -877,44 +1038,27 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontWeight: '900',
   },
-  narrativeRow: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-  narrativeDot: {
-    fontWeight: '900',
-    fontSize: 16,
-    lineHeight: 21,
-  },
-  narrativeText: {
-    color: TEXT,
-    flex: 1,
-    lineHeight: 20,
-  },
-  narrativeTitle: {
-    fontWeight: '900',
-  },
-  pitchMapPage: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 0,
-  },
-  pitchMapStage: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: 7,
-    transform: [{ translateX: 10 }],
-  },
-  pitchRoleList: {
-    width: 72,
-    gap: 5,
-    alignItems: 'stretch',
-    marginTop: 0,
-  },
+  narrativeRow: { gap: 9, padding: 15, borderRadius: 16, borderWidth: 1 },
+  narrativeHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  narrativeMarker: { width: 5, height: 18, borderRadius: 3 },
+  narrativeText: { color: TEXT, fontSize: 14, lineHeight: 22 },
+  narrativeTitle: { fontWeight: '800', fontSize: 14, flexShrink: 1 },
+  lockedInsight: { gap: 10, padding: 14, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed' },
+  lockedInsightHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  lockedInsightIcon: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  lockedInsightTitle: { flex: 1, fontSize: 14, fontWeight: '900' },
+  lockedInsightText: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  lockedInsightButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.14)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  lockedInsightButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  analysisState:{minHeight:180,alignItems:'center',justifyContent:'center',gap:13,padding:18,borderWidth:1,borderColor:LINE,borderRadius:16,backgroundColor:'rgba(255,255,255,.02)'},
+  analysisStateText:{color:MUTED,fontSize:13,lineHeight:20,fontWeight:'600',textAlign:'center'},
+  analysisRetry:{minHeight:42,borderWidth:1,borderColor:ACCENT,borderRadius:12,paddingHorizontal:20,alignItems:'center',justifyContent:'center'},
+  analysisRetryText:{color:ACCENT,fontSize:12,fontWeight:'900'},
+  pitchMapPage: { flex: 1, width: '100%', minHeight: 0 },
+  pitchMapStage: { flex: 1, width: '100%', gap: 12 },
+  pitchRoleList: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 7 },
+  pitchCanvas: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
+  pitchFieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pitchRolePill: {
     minHeight: 25,
     borderRadius: 10,
@@ -939,8 +1083,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   pitchDirectionSlot: {
-    width: 72,
-    alignItems: 'flex-start',
+    width: 22,
+    alignItems: 'center',
   },
   pitchDirectionRail: {
     width: 22,
@@ -953,9 +1097,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   pitchMapWrap: {
-    width: '58%',
-    maxWidth: 232,
-    aspectRatio: 0.56,
     overflow: 'hidden',
     borderRadius: 18,
     borderWidth: 1,

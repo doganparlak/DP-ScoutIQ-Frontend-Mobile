@@ -1,4 +1,6 @@
 // src/screens/ChatScreen.tsx
+import ChatAccessModal from '@/components/ChatAccessModal';
+import { canUseChat } from '@/utils/chatAccess';
 import * as React from 'react';
 import {
   View,
@@ -11,16 +13,17 @@ import {
   Platform,
   AppState,
   AppStateStatus,
+  Keyboard,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Header from '@/components/Header';
 import ChatInput from '@/components/ChatInput';
 import MessageBubble from '@/components/MessageBubble';
 import WelcomeCard from '@/components/WelcomeCard';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
-import { TutorialHint, useTutorial } from '@/components/Tutorial';
+import { TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 
-import { healthcheck, sendChat, resetSession } from '@/services/api';
+import { getMe, healthcheck, sendChat, resetSession, type Profile } from '@/services/api';
 import { ACCENT, BG } from '@/theme';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
@@ -90,18 +93,65 @@ function hasPitchMapData(player: PlayerData) {
 }
 
 export default function ChatScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const tutorial = useTutorial();
   const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [accessModal, setAccessModal] = useState<'tutorial' | 'exhausted' | null>(null);
+  useFocusEffect(React.useCallback(() => {
+    let active = true;
+    getMe().then(me => {
+      if (!active) return;
+      setProfile(me);
+      if (!tutorial.active && !canUseChat(me)) navigation.navigate('ProHome');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [navigation, tutorial.active]));
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
   const [sessionId, setSessionId] = useState<string>('');
 
+  // The drawer header places this screen below window Y=0. Keyboard coordinates
+  // are window-based, so measure that offset instead of assuming a header height.
+  const keyboardFrameRef = useRef<View>(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const measureKeyboardOffset = React.useCallback(() => {
+    keyboardFrameRef.current?.measureInWindow((_x, y) => {
+      setKeyboardOffset(Math.max(0, y));
+    });
+  }, []);
+  useFocusEffect(React.useCallback(() => {
+    const frame = requestAnimationFrame(measureKeyboardOffset);
+    return () => cancelAnimationFrame(frame);
+  }, [measureKeyboardOffset]));
+
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
   const pendingIdRef = React.useRef<string | null>(null);
+  const tutorialPreviewWasActive = React.useRef(false);
+
+  React.useEffect(() => {
+    const previewActive = tutorial.active && tutorial.activePage === 'pro';
+    if (previewActive) {
+      tutorialPreviewWasActive.current = true;
+      return;
+    }
+    if (!tutorialPreviewWasActive.current) return;
+    tutorialPreviewWasActive.current = false;
+    getMe().then(me => {
+      if (!canUseChat(me)) {
+        navigation.navigate('ProHome');
+      }
+    }).catch(() => navigation.navigate('ProHome'));
+  }, [navigation, tutorial.active, tutorial.activePage]);
+
+  React.useEffect(() => {
+    if (tutorial.active && tutorial.activePage === 'pro' && tutorial.activeFrame === 0) {
+      navigation.navigate('LegacyStrategy');
+    }
+  }, [navigation, tutorial.active, tutorial.activeFrame, tutorial.activePage]);
 
   // AppState + retry bookkeeping
   const appStateRef = React.useRef<AppStateStatus>(AppState.currentState);
@@ -116,6 +166,7 @@ export default function ChatScreen() {
   const pendingRequestRef = React.useRef<{
     payload: ChatPayloadItem[];
     sessionId: string;
+    requestId: string;
   } | null>(null);
 
   // Keep sendingRef in sync (so AppState listener can read it without stale closures)
@@ -181,8 +232,10 @@ export default function ChatScreen() {
     // Only the latest in-flight attempt is allowed to mutate the UI.
     if (attemptKey !== inFlightAttemptRef.current) return;
 
-    if (pendingIdRef.current) {
-      setMessages((m) => m.filter((x) => x.id !== pendingIdRef.current));
+    const pendingId = pendingIdRef.current;
+    if (pendingId) {
+      // React may run this updater after the ref is cleared or reused.
+      setMessages((m) => m.filter((x) => x.id !== pendingId));
       pendingIdRef.current = null;
     }
   }
@@ -199,9 +252,12 @@ export default function ChatScreen() {
     }
   }
 
-  async function performChatRequest(payload: ChatPayloadItem[], sid: string, attemptKey: number) {
+  async function performChatRequest(payload: ChatPayloadItem[], sid: string, attemptKey: number, requestId: string) {
     const currentStrategy = await loadStrategy();
-    const res = await sendChat(payload, sid, currentStrategy, isScoutWiseTutorial);
+    const res = await sendChat(payload, sid, currentStrategy, false, requestId);
+    if (typeof res.freeChatMessagesRemaining === 'number') {
+      setProfile(previous => previous ? { ...previous, freeChatMessagesRemaining: res.freeChatMessagesRemaining as number } : previous);
+    }
 
     // If a newer attempt started while we were waiting, ignore this result completely.
     if (attemptKey !== inFlightAttemptRef.current) {
@@ -263,16 +319,17 @@ export default function ChatScreen() {
     return res;
   }
 
-  async function runAttempt(payload: ChatPayloadItem[], sid: string) {
+  async function runAttempt(payload: ChatPayloadItem[], sid: string, requestId: string) {
     // Create a NEW attempt key for this network attempt
     const attemptKey = ++attemptSeqRef.current;
     inFlightAttemptRef.current = attemptKey;
     bgDuringAttemptRef.current[attemptKey] = false;
 
+    sendingRef.current = true;
     setSending(true);
 
     try {
-      await performChatRequest(payload, sid, attemptKey);
+      await performChatRequest(payload, sid, attemptKey, requestId);
     } catch (err: any) {
       // If a newer attempt started, ignore this failure (don't alert, don't clean UI)
       if (attemptKey !== inFlightAttemptRef.current) {
@@ -287,7 +344,24 @@ export default function ChatScreen() {
         // Real foreground error: remove pending + alert + clear retry state
         removePendingBubbleIfCurrentAttempt(attemptKey);
         pendingRequestRef.current = null;
-        Alert.alert(t('chatFailedTitle', 'Chat failed'), String(err?.message || err));
+        if (String(err?.message).includes('CHAT_TRIAL_EXHAUSTED')) {
+          setProfile(previous => previous ? { ...previous, freeChatMessagesRemaining: 0 } : previous);
+          setAccessModal('exhausted');
+        } else if (String(err?.message).includes('CHAT_REQUEST_PENDING')) {
+          // Keep the same request ID; retry explicitly without spending again.
+          pendingRequestRef.current = { payload, sessionId: sid, requestId };
+          Alert.alert(t('chatFailedTitle', 'Chat'), i18n.language.startsWith('tr') ? 'Mesajın hâlâ işleniyor. Biraz sonra tekrar dene.' : 'Your message is still processing. Try again shortly.', [
+            { text: t('notNow', 'Not now') },
+            { text: t('retry', 'Retry'), onPress: () => { if (!sendingRef.current) void runAttempt(payload, sid, requestId); } },
+          ]);
+        } else {
+          // Failed or interrupted responses can be safely retried with the original ID.
+          getMe().then(setProfile).catch(() => {});
+          Alert.alert(t('chatFailedTitle', 'Chat failed'), String(err?.message || err), [
+            { text: t('notNow', 'Not now') },
+            { text: t('retry', 'Retry'), onPress: () => { if (!sendingRef.current) void runAttempt(payload, sid, requestId); } },
+          ]);
+        }
       } else {
         // Background/inactive (or backgrounded during attempt):
         // keep pending bubble + pendingRequestRef, so it retries on resume.
@@ -297,6 +371,7 @@ export default function ChatScreen() {
     } finally {
       // Only the latest attempt is allowed to end "sending"
       if (attemptKey === inFlightAttemptRef.current) {
+        sendingRef.current = false;
         setSending(false);
       }
     }
@@ -319,7 +394,7 @@ export default function ChatScreen() {
         if (!req) return;
 
         // Start a brand-new attempt (new attemptKey)
-        runAttempt(req.payload, req.sessionId);
+        runAttempt(req.payload, req.sessionId, req.requestId);
       }
     });
 
@@ -327,7 +402,28 @@ export default function ChatScreen() {
   }, []);
 
   async function send(text: string) {
-    if (!text.trim()) return;
+    if (!text.trim() || sendingRef.current) return;
+    if (tutorial.active) {
+      Keyboard.dismiss();
+      setAccessModal('tutorial');
+      return;
+    }
+    sendingRef.current = true;
+    let currentProfile: Profile;
+    try {
+      currentProfile = await getMe();
+      setProfile(currentProfile);
+    } catch (error) {
+      sendingRef.current = false;
+      Alert.alert(t('chatFailedTitle', 'Chat failed'), String(error));
+      return;
+    }
+    if (!canUseChat(currentProfile)) {
+      sendingRef.current = false;
+      Keyboard.dismiss();
+      setAccessModal('exhausted');
+      return;
+    }
 
     // 1) Append the user's message
     setInputText('');
@@ -359,10 +455,11 @@ export default function ChatScreen() {
       .map((m) => ({ role: m.role as ChatPayloadRole, content: m.content }));
 
     // Save for retry if background kills the request
-    pendingRequestRef.current = { payload, sessionId };
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    pendingRequestRef.current = { payload, sessionId, requestId };
 
     // Start attempt
-    runAttempt(payload, sessionId);
+    void runAttempt(payload, sessionId, requestId);
   }
 
   // Fresh conversation: clears server memory + local state (user action)
@@ -401,10 +498,16 @@ export default function ChatScreen() {
   }, []);
 
   return (
+    <View
+      ref={keyboardFrameRef}
+      style={styles.wrap}
+      collapsable={false}
+      onLayout={measureKeyboardOffset}
+    >
     <KeyboardAvoidingView
       style={styles.wrap}
-      behavior={Platform.select({ ios: 'padding', android: 'padding'})}
-      keyboardVerticalOffset={0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardOffset}
     >
       <View style={{ flex: 1 }}>
         <Header />
@@ -412,12 +515,24 @@ export default function ChatScreen() {
         <View style={styles.toolbar}>
           <TouchableOpacity
             onPress={startNewChat}
+            disabled={sending}
             style={styles.newChatBtn}
             accessibilityRole="button"
             accessibilityLabel={t('newChat', 'New Chat')}
           >
             <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
           </TouchableOpacity>
+
+          {!tutorial.active && profile?.plan === 'Free' && (
+            <View style={styles.creditSlot}>
+              <View style={styles.creditBadge}>
+                <Text accessibilityLiveRegion="polite" style={styles.creditText} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+                  <Text style={styles.creditCount}>{profile.freeChatMessagesRemaining ?? 0}</Text>
+                  {(profile.freeChatMessagesRemaining ?? 0) === 1 ? ' credit' : ' credits'}
+                </Text>
+              </View>
+            </View>
+          )}
 
           <TouchableOpacity
             onPress={() => navigation.navigate('LegacyStrategy')}
@@ -431,11 +546,18 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
 
+        <ChatAccessModal visible={accessModal !== null} tutorial={accessModal === 'tutorial'} onClose={() => setAccessModal(null)} onAction={() => {
+          const preview = accessModal === 'tutorial';
+          setAccessModal(null);
+          if (preview) { tutorial.completeTutorial(); navigation.navigate('ProHome'); }
+          else { navigation.getParent()?.navigate('Profile', { screen: 'ManagePlan' }); }
+        }} />
         <FlatList
           ref={flatRef}
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListHeaderComponent={<View style={styles.tutorialGuide}><TutorialPageGuide page="pro" frame={1} onShow={() => flatRef.current?.scrollToOffset({ offset: 0, animated: true })} /></View>}
           ListEmptyComponent={<WelcomeCard />}
           contentContainerStyle={
             empty
@@ -445,7 +567,7 @@ export default function ChatScreen() {
           style={{ flex: 1 }}
           showsVerticalScrollIndicator
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           contentInset={{ bottom: 140 }}
           scrollIndicatorInsets={{ bottom: 140 }}
           initialNumToRender={10}
@@ -493,6 +615,7 @@ export default function ChatScreen() {
         />
       </View>
     </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -506,9 +629,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  creditSlot: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  creditBadge: {
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(36,245,166,0.24)',
+    backgroundColor: 'rgba(36,245,166,0.09)',
+  },
+  creditText: {
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  creditCount: {
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
+  },
   visualCardWidth: {
     marginHorizontal: 12,
   },
+  tutorialGuide: { marginHorizontal: 12, marginBottom: 8 },
   newChatBtn: {
     flexDirection: 'row',
     alignItems: 'center',

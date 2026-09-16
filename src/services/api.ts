@@ -1,6 +1,8 @@
+import { type PlayerContract, normalizePlayerContract } from '@/utils/playerContract';
 import { API_BASE_URL, ENDPOINTS } from '@/config';
 import type { ChatMessage } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { cleanImageUrl, sportmonksLeagueImage, sportmonksTeamImage } from '@/utils/sportmonksImages';
 
 function url(path: string) {
   return `${API_BASE_URL}${path}`;
@@ -23,7 +25,19 @@ function extractMessage(messages: Array<Pick<ChatMessage, 'role' | 'content'>>):
 
 /** --- Frontend-facing data types (you can move these to @/types later) --- */
 export type PlayerStat = { metric: string; value: number };
-export type PlayerMeta = {
+export type PlayerMeta = PlayerContract & {
+  sportmonksId?: number;
+  teamId?: number;
+  leagueId?: number;
+  imageUrl?: string;
+  teamLogoUrl?: string;
+  leagueLogoUrl?: string;
+  contractTeamLogoUrl?: string;
+  playerCount?: number;
+  teamCount?: number;
+  matchCount?: number;
+  comparisonSources?: {competition:string;leagueShortCode?:string;team:string}[];
+  leagueFilters?: { leagues: string[]; countries: string[]; positions: string[] };
   nationality?: string;
   age?: number;
   roles?: string[];
@@ -39,7 +53,7 @@ export type PlayerMeta = {
   team?: string;
   league?: string;
 };
-export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
+export type PlayerData = { entityType?: 'player' | 'league' | 'season'; name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 export type ChatData = { players: PlayerData[] };
 
 
@@ -49,6 +63,7 @@ export type ResponsePart =
   | { type: 'image'; src: string; html?: never };
 
 export type ChatBackendResponse = {
+  freeChatMessagesRemaining?: number | null;
   response: string;
   data?: ChatData;                // <-- numbers-only payload for frontend tables/plots
   response_parts?: ResponsePart[]; // optional: if you still split narrative into chunks
@@ -82,6 +97,7 @@ export async function sendChat(
   sessionId: string,
   strategy?: string,
   tutorialMode = false,
+  requestId?: string,
 ): Promise<ChatBackendResponse> {
   const message = extractMessage(messages);
 
@@ -93,6 +109,7 @@ export async function sendChat(
       strategy: strategy || null,
       session_id: sessionId,
       tutorial_mode: tutorialMode,
+      request_id: requestId,
     }),
   });
 
@@ -111,6 +128,22 @@ export async function sendChat(
       ...player,
       meta: {
         ...meta,
+        ...normalizePlayerContract(meta),
+        teamId: toFiniteNumber(meta.teamId ?? meta.team_id),
+        leagueId: toFiniteNumber(meta.leagueId ?? meta.league_id),
+        imageUrl:
+          (typeof meta.imageUrl === 'string' && meta.imageUrl.trim()) ||
+          (typeof meta.image_url === 'string' && meta.image_url.trim()) ||
+          undefined,
+        teamLogoUrl:
+          cleanImageUrl(meta.teamLogoUrl ?? meta.team_logo_url ?? meta.team_image_url ?? meta.team_image_path) ||
+          sportmonksTeamImage(meta.teamId ?? meta.team_id),
+        leagueLogoUrl:
+          cleanImageUrl(meta.leagueLogoUrl ?? meta.league_logo_url ?? meta.league_image_url ?? meta.league_image_path) ||
+          sportmonksLeagueImage(meta.leagueId ?? meta.league_id),
+        contractTeamLogoUrl:
+          cleanImageUrl(meta.contractTeamLogoUrl ?? meta.contract_team_logo_url ?? meta.contract_team_image_url) ||
+          sportmonksTeamImage(meta.contractTeamId ?? meta.contract_team_id),
         league: normalizeLeagueName(meta.league as string | undefined),
         ...(Object.keys(positionCounts).length ? { positionCounts } : {}),
         ...(positionNamesSeen.length ? { positionNamesSeen } : {}),
@@ -122,6 +155,7 @@ export async function sendChat(
 
   // Normalize
   return {
+    freeChatMessagesRemaining: json.freeChatMessagesRemaining,
     response: (json.response ?? '').toString(),
     data: { players },
     response_parts: json.response_parts ?? [],
@@ -289,9 +323,14 @@ function normalizeLeagueName(value: unknown): string | undefined {
 }
 
 
-export type FavoritePlayer = {
+export type FavoritePlayer = PlayerContract & {
+  sportmonksId?: number;
+  teamId?: number;
+  leagueId?: number;
+  playerId?: string;
   id: string;
   name: string;
+  imageUrl?: string;
   nationality?: string;
   age?: number;
   potential?: number;
@@ -305,6 +344,9 @@ export type FavoritePlayer = {
 };
 
 export type PlayerPoolSearchInput = {
+  contractStatus?: 'loan' | 'permanent';
+  loanEndDate?: string;
+  contractEndDate?: string;
   name?: string;
   gender?: 'male' | 'female';
   nationality?: string;
@@ -346,6 +388,7 @@ export type MatchupComparisonResponse = {
   player1: { id: string; player: PlayerData };
   player2: { id: string; player: PlayerData };
   player3?: { id: string; player: PlayerData };
+  player4?: { id: string; player: PlayerData };
 };
 
 export type DailyScoutText = { en: string; tr: string };
@@ -384,7 +427,25 @@ type PlayerPoolRawRow = {
 };
 
 const PLAYER_POOL_METADATA_SKIP_KEYS = new Set([
+  'is_on_loan', 'contract_team_id', 'contract_team_name', 'loan_end_date', 'contract_end_date',
+  'isOnLoan', 'contractTeamId', 'contractTeamName', 'loanEndDate', 'contractEndDate',
   'id',
+  'player_id',
+  'team_id',
+  'league_id',
+  'teamId',
+  'leagueId',
+  'team_image_url',
+  'team_image_path',
+  'team_logo_url',
+  'teamLogoUrl',
+  'league_image_url',
+  'league_image_path',
+  'league_logo_url',
+  'leagueLogoUrl',
+  'contract_team_logo_url',
+  'contract_team_image_url',
+  'contractTeamLogoUrl',
   'name',
   'player_name',
   'player_name_norm',
@@ -451,10 +512,17 @@ function normalizePositionNames(value: unknown, counts: Record<string, number>):
 function toFiniteNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim()) {
-    const num = Number(value);
+    const cleaned = value.trim().replace(/%$/, "").trim();
+    if (!cleaned) return undefined;
+    const num = Number(cleaned);
     if (Number.isFinite(num)) return num;
   }
   return undefined;
+}
+
+function physicalMeasurement(value: unknown): number | undefined {
+  const parsed = toFiniteNumber(typeof value === 'string' ? value.trim().replace(/\s*(cm|kg)$/i, '') : value);
+  return parsed !== undefined && parsed > 0 ? parsed : undefined;
 }
 
 function normalizePlayerPoolContent(content: unknown, fallbackId: string): PlayerData | null {
@@ -512,6 +580,24 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
     name,
     stats,
     meta: {
+      ...normalizePlayerContract(raw),
+      sportmonksId: toFiniteNumber(raw.player_id),
+      teamId: toFiniteNumber(raw.teamId ?? raw.team_id),
+      leagueId: toFiniteNumber(raw.leagueId ?? raw.league_id),
+      imageUrl:
+        (typeof raw.imageUrl === 'string' && raw.imageUrl.trim()) ||
+        (typeof raw.image_url === 'string' && raw.image_url.trim()) ||
+        undefined,
+      teamLogoUrl:
+        cleanImageUrl(raw.teamLogoUrl ?? raw.team_logo_url ?? raw.team_image_url ?? raw.team_image_path) ||
+        sportmonksTeamImage(raw.teamId ?? raw.team_id),
+      leagueLogoUrl:
+        cleanImageUrl(raw.leagueLogoUrl ?? raw.league_logo_url ?? raw.league_image_url ?? raw.league_image_path) ||
+        sportmonksLeagueImage(raw.leagueId ?? raw.league_id),
+      contractTeamLogoUrl:
+        cleanImageUrl(raw.contractTeamLogoUrl ?? raw.contract_team_logo_url ?? raw.contract_team_image_url) ||
+        sportmonksTeamImage(raw.contractTeamId ?? raw.contract_team_id),
+      matchCount: toFiniteNumber(raw.match_count),
       nationality:
         (typeof raw.nationality === 'string' && raw.nationality) ||
         (typeof raw.nationality_name === 'string' && raw.nationality_name) ||
@@ -522,11 +608,11 @@ function normalizePlayerPoolContent(content: unknown, fallbackId: string): Playe
       positionCountTotal,
       positionNamesSeen,
       primaryPositionCode,
-      potential: toFiniteNumber(raw.potential),
-      form: toFiniteNumber(raw.form),
+      potential: toFiniteNumber(raw.potential) ?? toFiniteNumber(raw.potential_score),
+      form: toFiniteNumber(raw.form) ?? toFiniteNumber(raw.form_score),
       gender: typeof raw.gender === 'string' ? raw.gender : undefined,
-      height: toFiniteNumber(raw.height),
-      weight: toFiniteNumber(raw.weight),
+      height: physicalMeasurement(raw.height),
+      weight: physicalMeasurement(raw.weight),
       team:
         (typeof raw.team === 'string' && raw.team) ||
         (typeof raw.team_name === 'string' && raw.team_name) ||
@@ -616,14 +702,26 @@ export async function getMatchupComparison(
   player2Id: string,
   worldCupMode = false,
   player3Id?: string,
+  player4Id?: string,
+  sportmonksIds: Array<number | undefined> = [],
 ): Promise<MatchupComparisonResponse> {
+  // The mobile endpoint returns pairs. Fetch the additional pair through the same
+  // authenticated endpoint so every selected player receives complete comparison data.
+  if (player3Id) {
+    const [first, extra] = await Promise.all([
+      getMatchupComparison(player1Id, player2Id, worldCupMode, undefined, undefined, sportmonksIds.slice(0, 2)),
+      getMatchupComparison(player3Id, player4Id ?? player1Id, worldCupMode, undefined, undefined, [sportmonksIds[2], player4Id ? sportmonksIds[3] : sportmonksIds[0]]),
+    ]);
+    return { ...first, player3: extra.player1, ...(player4Id ? { player4: extra.player2 } : {}) };
+  }
+
   const row = await request<{
     player1: PlayerPoolRawRow;
     player2: PlayerPoolRawRow;
     player3?: PlayerPoolRawRow;
   }>(ENDPOINTS.playerPoolMatchupComparison, {
     method: 'POST',
-    body: JSON.stringify({ player1Id, player2Id, player3Id, worldCupMode }),
+    body: JSON.stringify({ player1Id, player2Id, worldCupMode, player1SportmonksId: sportmonksIds[0], player2SportmonksId: sportmonksIds[1] }),
   });
 
   const player1IdOut = String(row.player1.id ?? player1Id);
@@ -714,11 +812,13 @@ export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
   const favorites = await request<FavoritePlayer[]>('/me/favorites');
   return (favorites || []).map((favorite) => ({
     ...favorite,
+    ...normalizePlayerContract(favorite),
     league: normalizeLeagueName(favorite.league),
   }));
 }
 
 type AddFavoriteIn = {
+  sportmonksId?: number;
   playerId?: string;
   name: string;
   nationality?: string;
@@ -761,6 +861,7 @@ export type Profile = {
   subscriptionEndAt?: string | null;
   consent?: boolean;
   tutorialCompleted?: boolean;
+  freeChatMessagesRemaining?: number;
 };
 
 // --- Teach request() to forward language on every call ---
@@ -907,6 +1008,7 @@ export type ScoutingReportResponse = {
 };
 
 export type PlayerIdentityPayload = {
+  sportmonksId?: number;
   playerId?: string;
   clubPlayerId?: number;
   worldCupMode?: boolean;
@@ -925,12 +1027,17 @@ export type PlayerIdentityPayload = {
 
 export async function getScoutingReport(
   favoriteId: string,
-  player?: PlayerIdentityPayload
+  player?: PlayerIdentityPayload,
+  lazy = false,
 ): Promise<ScoutingReportResponse> {
-  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report`, {
+  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report${lazy ? '?lazy=true' : ''}`, {
     method: 'POST',
     body: JSON.stringify(player ?? {}),
   });
+}
+
+export async function getFavoriteScoutingReportSection(favoriteId:string,section:'strengths'|'weaknesses'|'role_usage',player?:PlayerIdentityPayload):Promise<ScoutingReportResponse>{
+  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report-progress/sections/${section}`,{method:'POST',body:JSON.stringify(player??{})});
 }
 
 export async function getPlayerPoolScoutingReport(
@@ -940,4 +1047,75 @@ export async function getPlayerPoolScoutingReport(
     method: 'POST',
     body: JSON.stringify(player ?? {}),
   });
+}
+
+/** Durable report flow used by current clients. Legacy clients keep the synchronous endpoint above. */
+export async function getPlayerPoolScoutingReportProgress(
+  player: PlayerIdentityPayload
+): Promise<ScoutingReportResponse> {
+  return request<ScoutingReportResponse>('/player-pool/report-progress', {
+    method: 'POST',
+    body: JSON.stringify(player ?? {}),
+  });
+}
+
+export async function getPlayerPoolScoutingReportSection(player:PlayerIdentityPayload,section:'strengths'|'weaknesses'|'role_usage'):Promise<ScoutingReportResponse>{
+  return request<ScoutingReportResponse>(`/player-pool/report-progress/sections/${section}`,{method:'POST',body:JSON.stringify(player??{})});
+}
+
+/** League data uses the same authenticated transport as existing mobile endpoints. */
+export function leaguePoolRequest<T>(action: 'options' | 'search', body: object): Promise<T> {
+  return request<T>(`/league-pool/${action}`, { method: 'POST', body: JSON.stringify(body) });
+}
+
+export type MatchupSource = { key: string; country: string; leagueShortCode: string; team: string; competition: string; matchCount: number };
+export function getMatchupSources(playerId: string, sportmonksId?: number): Promise<MatchupSource[]> {
+  return request(`/matchup/players/${encodeURIComponent(playerId)}/sources${sportmonksId === undefined ? '' : `?sportmonksId=${sportmonksId}`}`);
+}
+export async function getMatchupSourcePlayer(playerId: string, sources: string[], sportmonksId?: number) {
+  const [row, available] = await Promise.all([
+    request<PlayerPoolRawRow>(`/matchup/players/${encodeURIComponent(playerId)}/data`, { method: 'POST', body: JSON.stringify({ sources, sportmonksId }) }),
+    sources.length ? getMatchupSources(playerId, sportmonksId) : Promise.resolve([] as MatchupSource[]),
+  ]);
+  const player = normalizePlayerPoolContent(row.content, playerId);
+  if (!player) throw new Error('Comparison data is unavailable.');
+  const selectedSources = available.filter(source => sources.includes(source.key));
+  let selectedTeamId: number | undefined;
+  let selectedLeagueId: number | undefined;
+  if (selectedSources.length === 1) {
+    try {
+      const ids = JSON.parse(selectedSources[0].key);
+      if (Array.isArray(ids)) {
+        selectedTeamId = toFiniteNumber(ids[0]);
+        selectedLeagueId = toFiniteNumber(ids[1]);
+      }
+    } catch {
+      // Older backends may return opaque source keys; the icon fallback remains available.
+    }
+  }
+  player.meta = {
+    ...player.meta,
+    sportmonksId: sportmonksId ?? player.meta?.sportmonksId,
+    ...(selectedTeamId ? { teamId: selectedTeamId, teamLogoUrl: sportmonksTeamImage(selectedTeamId) } : {}),
+    ...(selectedLeagueId ? { leagueId: selectedLeagueId, leagueLogoUrl: sportmonksLeagueImage(selectedLeagueId) } : {}),
+    comparisonSources: selectedSources.map(({competition,leagueShortCode,team}) => ({competition,leagueShortCode,team})),
+  };
+  return { id: playerId, player };
+}
+
+/** Historical season endpoints use the existing authenticated mobile transport. */
+export function seasonDataRequest<T>(path: string, body?: object): Promise<T> {
+  return request<T>(`/player-comp-season/${path}`, body === undefined ? undefined : { method: 'POST', body: JSON.stringify(body) });
+}
+
+export function teamPoolRequest<T>(action: 'options' | 'search', body: object): Promise<T> {
+  return request<T>(`/team-pool/${action}`, {method: 'POST', body: JSON.stringify(body)});
+}
+
+export function matchPoolRequest<T>(path: string, body?: object): Promise<T> {
+  return request<T>(path, body === undefined ? undefined : {method: 'POST', body: JSON.stringify(body)});
+}
+
+export function deleteSavedMatch(fixtureId: number): Promise<{ok:boolean}> {
+  return request(`/favorite-matches/fixtures/${fixtureId}`, {method:'DELETE'});
 }

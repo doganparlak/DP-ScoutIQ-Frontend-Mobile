@@ -7,6 +7,10 @@ import { ACCENT, TEXT, CARD, MUTED, DANGER } from '@/theme';
 import type { SpiderPoint } from './SpiderChart';
 
 type Props = {
+  hideTitle?: boolean;
+  expandable?: boolean;
+  accent?: string;
+  framed?: boolean;
   title?: string; // e.g. "Errors & Discipline"
   points: SpiderPoint[]; // label/value/min/max
   Icon?: React.ComponentType<{ size?: number; color?: string }>;
@@ -41,6 +45,10 @@ function formatValue(v: number, label: string) {
  */
 export default function ErrorsDisciplineTiles({
   title = 'Errors & Discipline',
+  hideTitle = false,
+  expandable = true,
+  accent = ACCENT,
+  framed = false,
   points,
   Icon,
   thresholds = { good: 0.33, warn: 0.66 },
@@ -99,18 +107,18 @@ export default function ErrorsDisciplineTiles({
     return t('riskBad', { defaultValue: 'Problem' });
   };
 
-  const canToggle = tiles.length > collapsedCount;
+  const canToggle = expandable && tiles.length > collapsedCount;
   const shown = collapsed && canToggle ? tiles.slice(0, collapsedCount) : tiles;
 
   return (
     <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 10 }}>
       {/* Header pill */}
-      <View
+      {!hideTitle && <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           alignSelf: 'flex-start',
-          backgroundColor: ACCENT,
+          backgroundColor: accent,
           borderRadius: 999,
           paddingHorizontal: 14,
           paddingVertical: 6,
@@ -119,7 +127,7 @@ export default function ErrorsDisciplineTiles({
       >
         <AutoIcon size={18} color="white" />
         <Text style={{ color: TEXT, fontWeight: '700', fontSize: 16 }}>{title}</Text>
-      </View>
+      </View>}
 
       {shown.map((m) => {
         const sev = severityFor(m.risk);
@@ -128,7 +136,7 @@ export default function ErrorsDisciplineTiles({
         const labelTr = String(t(`metric.${m.label}`, { defaultValue: m.label }));
 
         return (
-          <View key={m.label} style={{ marginTop: 6 }}>
+          <View key={m.label} style={[{ marginTop: 6 }, framed && {padding:14, borderWidth:1, borderColor:`${accent}55`, borderRadius:16, backgroundColor:`${accent}08`}]}>
             {/* Top row: label + severity + value */}
             <View
               style={{

@@ -40,6 +40,13 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // ScoutWise notification channel
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+      val channel = android.app.NotificationChannel(
+        "scoutwise_updates", "ScoutWise", android.app.NotificationManager.IMPORTANCE_DEFAULT
+      )
+      getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(channel)
+    }
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {

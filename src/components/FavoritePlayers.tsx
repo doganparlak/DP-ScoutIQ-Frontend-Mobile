@@ -1,6 +1,11 @@
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import { useMatchup } from '@/context/MatchupContext';
+import { portfolioViewportHeight } from '@/utils/portfolioLayout';
+import { FRAME_TITLE, FRAME_STRIPE } from '@/theme';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
+  ActivityIndicator,
   Text,
   StyleSheet,
   ScrollView,
@@ -9,9 +14,10 @@ import {
   Alert,
   Modal,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { X, UserX, FileText, FileClock, Users } from 'lucide-react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { Shirt, X, UserX, Users, UserRound } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
@@ -21,28 +27,37 @@ import {
   deleteFavoritePlayer,
   getFavoritePlayers,
   getScoutingReport,
+  getFavoriteScoutingReportSection,
   ROLE_PICKER_ORDER,
   rolePickerCode,
   type Plan,
   type FavoritePlayer,
   type ScoutingReportResponse,
 } from '../services/api';
+import { portfolioTeamShortName } from '@/utils/portfolioTeamShortName';
 import { countryToCode2 } from '../constants/countries';
 import PlayerCard from '../components/PlayerCard';
+import { normalizePlayerContract, type PlayerContract } from '@/utils/playerContract';
+import { matchesPortfolioFilters, type PortfolioFilters } from '@/utils/portfolioFilters';
 import { showInterstitialAndWaitSafely } from '../ads/interstitial';
-import { ProNotReadyScreen } from '../ads/pro';
+import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
 import {
   incrementPortfolioLineupLaunchCount,
-  incrementPortfolioReportOpenCount,
+  incrementReportActionCount,
   shouldShowPortfolioLineupInterstitial,
-  shouldShowPortfolioReportInterstitial,
+  shouldShowReportActionInterstitial,
 } from '../ads/adGating';
 import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
 import LineUp from './LineUp';
 
-type PlayerRow = {
+type PlayerRow = PlayerContract & {
+  sportmonksId?: number;
+  teamId?: number;
+  leagueId?: number;
+  playerId?: string;
   id: string;
   name: string;
+  imageUrl?: string;
   nationality?: string;
   age?: number;
   rolesShort: string[];
@@ -63,15 +78,13 @@ function roleMatchesSelection(playerRoles: string[], selectedRole: string) {
 
 const ROW_HEIGHT = 48;
 const COL = {
-  rep: 0.55,
-  name: 0.93,
-  nat: 0.93,
-  team: 1.0,
-  age: 0.8,
-  roles: 0.8,
-  form: 0.83,
-  pot: 0.83,
-  del: 0.55,
+  name: 1.0,
+  nat: 0.7,
+  team: 0.85,
+  age: 0.6,
+  roles: 0.7,
+  form: 0.7,
+  pot: 0.7,
 } as const;
 
 type SortKey = 'name' | 'nationality' | 'team' | 'age' | 'roles' | 'form' | 'potential';
@@ -149,6 +162,7 @@ function searchIncludes(value: string | undefined, query: string) {
 }
 
 type FavoritePlayersProps = {
+  workspaceFilters?: PortfolioFilters;
   plan?: Plan;
   profileTutorialStep?: ProfileTutorialStep | null;
   onProfileTutorialNext?: () => void;
@@ -156,12 +170,15 @@ type FavoritePlayersProps = {
 };
 
 export default function FavoritePlayers({
+  workspaceFilters,
   plan = 'Free',
   profileTutorialStep = null,
   onProfileTutorialNext,
   onProfileTutorialSkip,
 }: FavoritePlayersProps) {
   const { t } = useTranslation();
+  const { height: windowHeight } = useWindowDimensions();
+  const tableViewportHeight = workspaceFilters ? portfolioViewportHeight(windowHeight) : ROW_HEIGHT * 5 + 2;
   const tutorialLocked =
     profileTutorialStep === 'watchlist' ||
     profileTutorialStep === 'report' ||
@@ -171,12 +188,20 @@ export default function FavoritePlayers({
   const canPressTutorialLineup = profileTutorialStep === 'lineup';
 
   const [rows, setRows] = useState<PlayerRow[]>([]);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const deletingRef = React.useRef(new Set<string>());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  const sharedMatchup = useMatchup();
+  const matchupAds = useWorkspaceActionAd();
+  const matchupFull = sharedMatchup.rows.slice(0, sharedMatchup.mode).every(Boolean);
   const [proUpsellOpen, setProUpsellOpen] = useState(false);
   const [proUpsellSource, setProUpsellSource] = useState<'report' | 'lineup' | null>(null);
   const [lineupOpen, setLineupOpen] = useState(false);
 
+  const navigation = useNavigation<any>();
+  const [previewRow, setPreviewRow] = useState<PlayerRow | null>(null);
   const [previewPlayer, setPreviewPlayer] = useState<PlayerData | null>(null);
 
   const [qName, setQName] = useState('');
@@ -215,13 +240,23 @@ export default function FavoritePlayers({
   // The player currently tied to the ongoing ad / upsell / report flow
   const [activeReportPlayerId, setActiveReportPlayerId] = useState<string | null>(null);
 
+  const favoritesTranslation = React.useRef(t);
+  favoritesTranslation.current = t;
+
   const fetchFavorites = React.useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const favs = await getFavoritePlayers();
 
       const mapped: PlayerRow[] = favs.map((f: FavoritePlayer) => ({
         id: f.id,
+        playerId: f.playerId,
+        sportmonksId: f.sportmonksId,
+        teamId: f.teamId,
+        leagueId: f.leagueId,
+        imageUrl: f.imageUrl,
+        ...normalizePlayerContract(f),
         name: f.name,
         nationality: f.nationality || '',
         age: typeof f.age === 'number' ? f.age : undefined,
@@ -237,15 +272,21 @@ export default function FavoritePlayers({
 
       setRows(mapped);
     } catch (e: any) {
-      Alert.alert(t('favoritesError', 'Favorites error'), String(e?.message || e));
+      setLoadError(String(e?.message || e));
+      Alert.alert(favoritesTranslation.current('favoritesError', 'Favorites error'), String(e?.message || e));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, []);
 
   const toPlayerData = (p: PlayerRow): PlayerData => ({
     name: p.name,
     meta: {
+      ...normalizePlayerContract(p),
+      sportmonksId: p.sportmonksId,
+      teamId: p.teamId,
+      leagueId: p.leagueId,
+      imageUrl: p.imageUrl,
       nationality: p.nationality,
       age: p.age,
       roles: p.rolesShort,
@@ -259,10 +300,6 @@ export default function FavoritePlayers({
     },
     stats: [],
   });
-
-  useEffect(() => {
-    fetchFavorites();
-  }, [fetchFavorites]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -302,6 +339,7 @@ export default function FavoritePlayers({
     const maxF = maxForm ? Math.min(100, parseInt(maxForm, 10)) : undefined;
 
     const list = rows.filter((p) => {
+      if (workspaceFilters && !matchesPortfolioFilters(p, workspaceFilters)) return false;
       if (!searchIncludes(p.name, qName)) return false;
       if (!searchIncludes(p.nationality, qNat)) return false;
       if (!searchIncludes(p.league, qLeague)) return false;
@@ -357,6 +395,7 @@ export default function FavoritePlayers({
 
     return list;
   }, [
+    workspaceFilters,
     rows,
     qName,
     qNat,
@@ -373,7 +412,7 @@ export default function FavoritePlayers({
     sortKey,
     sortDir,
   ]);
-  const tableNeedsInnerScroll = filtered.length > 4;
+  const tableNeedsInnerScroll = filtered.length * (ROW_HEIGHT + 12) + 8 > tableViewportHeight;
 
   const clearFilters = () => {
     if (tutorialLocked) return;
@@ -401,22 +440,24 @@ export default function FavoritePlayers({
     setQueuedReportPlayer(player);
   };
 
-  // Opens report only when BOTH are true:
-  // 1) report is ready
-  // 2) access is granted
+  // Opens as soon as access is granted; the durable foundation arrives in place.
   useEffect(() => {
     if (!activeReportPlayerId) return;
     if (!reportAccessGranted.has(activeReportPlayerId)) return;
 
     const ready = readyReports.get(activeReportPlayerId);
-    if (!ready) return;
-
     const player = rows.find((r) => r.id === activeReportPlayerId);
     if (!player) return;
 
     setScoutPlayer(toPlayerData(player));
-    setScoutReport(ready);
-    setScoutOpen(true);
+    setScoutReport(ready ?? {
+      favorite_player_id: player.id,
+      status: 'processing',
+      content: '',
+      content_json: { sections: { analysis: { status: 'processing' } } },
+    });
+    setPreviewPlayer(null);
+    setTimeout(() => setScoutOpen(true), 250);
 
     setReportAccessGranted((prev) => {
       const next = new Set(prev);
@@ -452,7 +493,7 @@ export default function FavoritePlayers({
             form: row.form,
           };
 
-          const res = await getScoutingReport(playerId, payload);
+          const res = await getScoutingReport(playerId, payload, true);
 
           if (res.status === 'ready' && res.content) {
             setReadyReports((prev) => {
@@ -511,16 +552,18 @@ export default function FavoritePlayers({
           form: p.form,
         };
 
-        const res = await getScoutingReport(p.id, payload);
+        const res = await getScoutingReport(p.id, payload, true);
         if (cancelled) return;
 
-        if (res.status === 'ready' && res.content) {
+        if (res.status === 'ready' || res.status === 'processing') {
           setReadyReports((prev) => {
             const next = new Map(prev);
             next.set(p.id, res);
             return next;
           });
+        }
 
+        if (res.status === 'ready' && res.content) {
           setProcessingReports((prev) => {
             const next = new Set(prev);
             next.delete(p.id);
@@ -589,7 +632,8 @@ export default function FavoritePlayers({
         if (res.status === 'ready') {
           setScoutPlayer(toPlayerData(player));
           setScoutReport(res);
-          setScoutOpen(true);
+          setPreviewPlayer(null);
+    setTimeout(() => setScoutOpen(true), 250);
         }
       } catch (e: any) {
         Alert.alert(t('reportError', 'Report error'), String(e?.message || e));
@@ -603,9 +647,9 @@ export default function FavoritePlayers({
     const existing = readyReports.get(player.id);
     const grantReportAccessForFreeUser = async () => {
       try {
-        const nextCount = await incrementPortfolioReportOpenCount();
+        const nextCount = await incrementReportActionCount();
 
-        if (shouldShowPortfolioReportInterstitial(nextCount)) {
+        if (shouldShowReportActionInterstitial(nextCount)) {
           const shown = await showInterstitialAndWaitSafely();
           if (shown) {
             setReportAccessGranted((prev) => {
@@ -634,11 +678,12 @@ export default function FavoritePlayers({
       }
     };
 
-    // Paid plans: cached reports open immediately, free users are gated every third report click.
+    // Paid plans: cached reports open immediately, free users share the shared every-third report counter.
     if (hasAdFreeAccess && existing) {
       setScoutPlayer(toPlayerData(player));
       setScoutReport(existing);
-      setScoutOpen(true);
+      setPreviewPlayer(null);
+    setTimeout(() => setScoutOpen(true), 250);
       return;
     }
 
@@ -654,7 +699,8 @@ export default function FavoritePlayers({
       if (existing) {
         setScoutPlayer(toPlayerData(player));
         setScoutReport(existing);
-        setScoutOpen(true);
+        setPreviewPlayer(null);
+    setTimeout(() => setScoutOpen(true), 250);
       }
       return;
     }
@@ -678,19 +724,35 @@ export default function FavoritePlayers({
       return;
     }
 
-    // Free: gate every third report click while backend works.
+    // Free: gate every third report action while the backend works.
     await grantReportAccessForFreeUser();
   };
 
   const handleDelete = async (id: string) => {
-    if (tutorialLocked) return;
-
+    if (tutorialLocked || deletingRef.current.has(id)) return;
+    deletingRef.current.add(id);
+    setDeletingIds(new Set(deletingRef.current));
     try {
       await deleteFavoritePlayer(id);
-      setRows((s) => s.filter((x) => x.id !== id));
+      setRows(current => current.filter(player => player.id !== id));
     } catch (e: any) {
       Alert.alert(t('deleteFailed', 'Delete failed'), String(e?.message || e));
+    } finally {
+      deletingRef.current.delete(id);
+      setDeletingIds(new Set(deletingRef.current));
     }
+  };
+
+  const confirmDelete = (player: PlayerRow) => {
+    if (tutorialLocked || deletingRef.current.has(player.id)) return;
+    Alert.alert(
+      t('portfolioRemoveTitle', 'Remove from portfolio'),
+      t('portfolioRemoveConfirm', 'Remove {{name}} from your portfolio?', { name: player.name }),
+      [
+        { text: t('portfolioRemoveCancel', 'Cancel'), style: 'cancel' },
+        { text: t('portfolioRemoveAction', 'Remove'), style: 'destructive', onPress: () => { void handleDelete(player.id); } },
+      ],
+    );
   };
 
   const handleLineupPress = async () => {
@@ -734,50 +796,7 @@ export default function FavoritePlayers({
 
     const RowInner = (
       <View style={[styles.row, isHeader && styles.clickableHeaderRow, { minHeight: ROW_HEIGHT }]}>
-        {isHeader ? (
-          <View style={[styles.cell, { flex: COL.rep, alignItems: 'center' }]} />
-        ) : (
-          <View style={[styles.cell, { flex: COL.rep }, styles.iconCellLeft]}>
-            <Pressable
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                handleReportPress(item as PlayerRow);
-              }}
-              onPressIn={(e) => {
-                e?.stopPropagation?.();
-              }}
-              disabled={
-                processingReports.has((item as PlayerRow).id) ||
-                (tutorialLocked && !canPressTutorialReport)
-              }
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              accessibilityLabel={
-                processingReports.has((item as PlayerRow).id)
-                  ? t('reportGenerating', 'Report generating')
-                  : t('openScoutingReport', 'Open scouting report')
-              }
-              style={({ pressed }) => [
-                pressed &&
-                  (!tutorialLocked || canPressTutorialReport) &&
-                  !processingReports.has((item as PlayerRow).id) &&
-                  { opacity: 0.85 },
-              ]}
-            >
-              {() => {
-                const rowId = (item as PlayerRow).id;
-                const isProcessing = processingReports.has(rowId);
 
-                if (isProcessing) {
-                  return <FileClock size={20} color={ACCENT} strokeWidth={2.2} />;
-                }
-
-                return <FileText size={20} color={ACCENT} strokeWidth={2.2} />;
-              }}
-            </Pressable>
-          </View>
-        )}
-
-        <View style={styles.vsep} />
 
         {isHeader ? (
           <Pressable
@@ -815,7 +834,7 @@ export default function FavoritePlayers({
             ]}
           >
             <Text style={[styles.thText, { textAlign: 'center' }]}>
-              {t('tblNat', 'Nat.')}
+              {workspaceFilters ? t('portfolioCountry', 'Nat.') : t('tblNat', 'Nat.')}
               {chevron('nationality')}
             </Text>
           </Pressable>
@@ -844,8 +863,8 @@ export default function FavoritePlayers({
             </Text>
           </Pressable>
         ) : (
-          <Text numberOfLines={1} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
-            {(item as PlayerRow).team?.trim() || '—'}
+          <Text numberOfLines={1} accessibilityLabel={(item as PlayerRow).team || '—'} style={[styles.td, styles.cell, { flex: COL.team, textAlign: 'center' }]}>
+            {portfolioTeamShortName((item as PlayerRow).team)}
           </Text>
         )}
 
@@ -967,23 +986,21 @@ export default function FavoritePlayers({
         )}
 
         <View style={styles.vsep} />
-
-        {isHeader ? (
-          <View style={[styles.cell, { flex: COL.del }]} />
-        ) : (
-          <View style={[styles.cell, { flex: COL.del }, styles.iconCellRight]}>
+        <View style={styles.deleteCell}>
+          {isHeader ? <UserX size={14} color={MUTED} /> : (
             <Pressable
-              onPress={() => handleDelete((item as PlayerRow).id)}
-              disabled={tutorialLocked}
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              accessibilityLabel={t('removeFromFavorites', 'Remove from favorites')}
+              testID={`portfolio-delete-${(item as PlayerRow).id}`}
+              onPress={event => { event.stopPropagation(); confirmDelete(item as PlayerRow); }}
+              disabled={tutorialLocked || deletingIds.has((item as PlayerRow).id)}
+              accessibilityRole="button"
+              accessibilityLabel={t('portfolioRemovePlayer', 'Remove {{name}} from portfolio', { name: (item as PlayerRow).name })}
+              accessibilityState={{ disabled: tutorialLocked || deletingIds.has((item as PlayerRow).id), busy: deletingIds.has((item as PlayerRow).id) }}
+              style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed, tutorialLocked && styles.rowLocked]}
             >
-              {({ pressed }) => (
-                <UserX size={20} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-              )}
+              {deletingIds.has((item as PlayerRow).id) ? <ActivityIndicator size="small" color={DANGER} /> : <UserX size={18} color={DANGER} strokeWidth={2} />}
             </Pressable>
-          </View>
-        )}
+          )}
+        </View>
       </View>
     );
 
@@ -993,8 +1010,9 @@ export default function FavoritePlayers({
           RowInner
         ) : (
           <Pressable
-            disabled={tutorialLocked}
-            onPress={() => setPreviewPlayer(toPlayerData(item as PlayerRow))}
+            disabled={tutorialLocked && !canPressTutorialReport}
+            testID="portfolio-player-preview"
+            onPress={() => { setPreviewRow(item as PlayerRow); setPreviewPlayer(toPlayerData(item as PlayerRow)); }}
             style={({ pressed }) => [
               styles.clickableRow,
               pressed && !tutorialLocked && styles.clickableRowPressed,
@@ -1010,14 +1028,19 @@ export default function FavoritePlayers({
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, workspaceFilters && { marginHorizontal: 0, marginTop: 0 }]}>
+      {workspaceFilters && <View style={FRAME_STRIPE} />}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t('squadPortfolio', 'Squad Portfolio')}</Text>
+        {workspaceFilters && <Shirt size={20} color={ACCENT} />}
+        <Text style={[styles.sectionTitle, workspaceFilters && FRAME_TITLE]}>{workspaceFilters ? t('portfolioWorkspace', 'Player Portfolio') : t('squadPortfolio', 'Squad Portfolio')}</Text>
+        {workspaceFilters && <Text style={{ color: ACCENT, fontWeight: '800' }}>{filtered.length}</Text>}
         <Pressable
           onPress={handleLineupPress}
+          hitSlop={workspaceFilters ? 12 : undefined}
           disabled={tutorialLocked && !canPressTutorialLineup}
           style={({ pressed }) => [
             styles.lineupButton,
+            workspaceFilters && styles.workspaceLineupButton,
             tutorialLocked && !canPressTutorialLineup && styles.lineupButtonDisabled,
             canPressTutorialLineup && styles.lineupButtonTutorial,
             pressed && (!tutorialLocked || canPressTutorialLineup) && styles.lineupButtonPressed,
@@ -1061,6 +1084,7 @@ export default function FavoritePlayers({
         />
       </View>
 
+      {!workspaceFilters && <>
       <View style={styles.filters}>
         <View style={styles.filterCol}>
           <Text style={styles.filterLabel}>{t('fltName', 'Name')}</Text>
@@ -1224,6 +1248,7 @@ export default function FavoritePlayers({
         </Pressable>
       </View>
 
+      </>}
       <View style={profileTutorialStep === 'watchlist' ? styles.profileTutorialHint : undefined}>
         <TutorialHint
           visible={profileTutorialStep === 'watchlist'}
@@ -1245,9 +1270,9 @@ export default function FavoritePlayers({
           title={t('tutorialProfileReportTitle', 'Create a scouting report')}
           body={t(
             'tutorialProfileReportBody',
-            'Tap Lamine Yamal’s report icon to open a predefined scouting report with player data, role usage, strengths, and concerns.',
+            'Open Lamine Yamal’s row, then tap Scouting report in his player card.',
           )}
-          targetLabel={t('tutorialPressYamalReport', 'Press Lamine Yamal report icon')}
+          targetLabel={t('tutorialPressYamalReport', 'Open Lamine Yamal’s player card')}
           onSkipAll={onProfileTutorialSkip}
           arrow="none"
           targetArrow="down"
@@ -1257,18 +1282,18 @@ export default function FavoritePlayers({
       <View style={styles.table}>
         <View style={styles.tableTopBorder} />
 
-        {loading ? (
+        {loadError ? <View style={{ padding: 16, gap: 12 }}><Text style={{ color: MUTED }}>{t('favoritesError', 'Favorites error')}</Text><Pressable accessibilityRole="button" onPress={fetchFavorites}><Text style={{ color: ACCENT }}>{t('portfolioRetry', 'Retry')}</Text></Pressable></View> : loading ? (
           <View style={{ paddingVertical: 16 }}>
             <Text style={{ color: MUTED }}>{t('loadingFavorites', 'Loading favorites…')}</Text>
           </View>
         ) : (
-          <>
+          <View style={{ width: '100%' }}>
             <View style={styles.tableHeaderWrap}>
               {renderUnifiedRow('HEADER')}
             </View>
             <View style={styles.tableScrollWrap}>
               <ScrollView
-                style={{ maxHeight: ROW_HEIGHT * 5 + 2 }}
+                style={{ maxHeight: tableViewportHeight }}
                 contentContainerStyle={{ paddingRight: 5, paddingVertical: 4 }}
                 scrollIndicatorInsets={Platform.OS === 'ios' ? { right: -5 } : undefined}
                 nestedScrollEnabled={tableNeedsInnerScroll}
@@ -1277,9 +1302,10 @@ export default function FavoritePlayers({
                 showsVerticalScrollIndicator={tableNeedsInnerScroll}
               >
                 {filtered.map((item) => renderUnifiedRow(item))}
+                {filtered.length === 0 && <Text style={{ color: MUTED, padding: 16, textAlign: 'center' }}>{t('portfolioNoPlayers', 'No saved players match these filters.')}</Text>}
               </ScrollView>
             </View>
-          </>
+          </View>
         )}
 
         <View style={styles.tableBottomBorder} />
@@ -1289,7 +1315,9 @@ export default function FavoritePlayers({
         <Modal transparent visible animationType="fade" onRequestClose={() => setPreviewPlayer(null)}>
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCardWrap}>
-              <PlayerCard player={previewPlayer} titleAlign="center" />
+              <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:10}}>
+                <UserRound size={20} color={ACCENT}/>
+                <Text style={[FRAME_TITLE,{flex:1}]}>{t('playerCard', 'Player Card')}</Text>
               <Pressable
                 onPress={() => setPreviewPlayer(null)}
                 hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -1298,12 +1326,32 @@ export default function FavoritePlayers({
               >
                 {({ pressed }) => <X size={22} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />}
               </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={{ paddingBottom: 8 }}>
+              <PlayerCard player={previewPlayer} titleAlign="left"
+                reportState={previewRow && (processingReports.has(previewRow.id) || queuedReportPlayer?.id === previewRow.id) ? 'loading' : 'idle'}
+                onGenerateReport={async () => { if (previewRow) await handleReportPress(previewRow); }}
+                matchupDisabled={matchupAds.busy || matchupFull || (!!previewRow && sharedMatchup.rows.some(row => row?.id === previewRow.playerId))}
+               
+                onMatchup={tutorialLocked ? undefined : async () => {
+                  if (!previewRow || matchupAds.busy || matchupFull || sharedMatchup.rows.some(row => row?.id === previewRow.playerId)) return;
+                  if (!previewRow.playerId || !Number.isSafeInteger(previewRow.sportmonksId) || (previewRow.sportmonksId ?? 0) <= 0) { Alert.alert(t('matchupWorkspace'), t('portfolioPlayerUnavailable', 'This saved player could not be matched to the current player pool.')); return; }
+                  const entry = {id: previewRow.playerId, player: {...previewPlayer, meta: {...previewPlayer.meta, sportmonksId: previewRow.sportmonksId}}};
+                  try {
+                    await matchupAds.run('portfolioPlayerMatchupAdd', () => { sharedMatchup.add(entry); });
+                  } catch (error) {
+                    Alert.alert(t('matchupWorkspace'), String(error));
+                  }
+                }} />
+              </ScrollView>
+
             </View>
           </View>
         </Modal>
       )}
 
-      <ProNotReadyScreen
+      {matchupAds.fallback}
+      <PlusProUpsellScreen
         visible={proUpsellOpen}
         onClose={() => {
           setProUpsellOpen(false);
@@ -1353,6 +1401,19 @@ export default function FavoritePlayers({
           }}
           player={scoutPlayer}
           report={scoutReport}
+          plan={plan}
+          reloadReport={async()=>{
+            const row=rows.find(item=>item.id===scoutReport.favorite_player_id);
+            return getScoutingReport(scoutReport.favorite_player_id,row?{name:row.name,gender:row.gender,nationality:row.nationality,team:row.team,age:row.age,height:row.height,weight:row.weight,potential:row.potential,form:row.form}:{},true);
+          }}
+          loadReportSection={async(section)=>{
+            const row=rows.find(item=>item.id===scoutReport.favorite_player_id);
+            return getFavoriteScoutingReportSection(scoutReport.favorite_player_id,section,row?{name:row.name,gender:row.gender,nationality:row.nationality,team:row.team,age:row.age,height:row.height,weight:row.weight,potential:row.potential,form:row.form}:{});
+          }}
+          onReportUpdate={next=>{
+            setScoutReport(next);
+            setReadyReports(current=>{const updated=new Map(current);updated.set(next.favorite_player_id,next);return updated;});
+          }}
         />
       )}
     </View>
@@ -1399,6 +1460,7 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingHorizontal: 12,
   },
+  workspaceLineupButton: { minHeight: 20, height: 20, paddingHorizontal: 8 },
   lineupButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900' },
   lineupButtonDisabled: { opacity: 0.45 },
   lineupButtonPressed: { opacity: 0.82 },
@@ -1462,8 +1524,8 @@ const styles = StyleSheet.create({
   hsepThick: { height: 2, backgroundColor: LINE },
 
   cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
-  thText: { color: TEXT, fontSize: 12, lineHeight: 15, fontWeight: '800' },
-  td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 12.5 },
+  thText: { color: TEXT, fontSize: 11, lineHeight: 14, fontWeight: '800' },
+  td: { minWidth: 0, color: TEXT, flex: 1, fontSize: 11.5 },
   rolePillGroup: {
     minWidth: 0,
     overflow: 'hidden',
@@ -1498,6 +1560,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  deleteCell: { width: 32, alignItems: 'center', justifyContent: 'center' },
+  deleteButton: { width: 32, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  deleteButtonPressed: { backgroundColor: 'rgba(248,113,113,0.2)' },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
 
   modalBackdrop: {
@@ -1510,10 +1575,14 @@ const styles = StyleSheet.create({
   modalCardWrap: {
     width: '100%',
     maxWidth: 560,
+    maxHeight: '90%',
     borderRadius: 16,
-    overflow: 'visible',
-    padding: 2,
+    overflow: 'hidden',
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    padding: 12,
     position: 'relative',
   },
-  closeInsideCard: { position: 'absolute', top: 6, right: 6, zIndex: 10, padding: 6 },
+  closeInsideCard: { padding: 6 },
 });

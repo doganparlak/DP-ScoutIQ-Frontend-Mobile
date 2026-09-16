@@ -1,6 +1,6 @@
 // src/components/SpiderChart.tsx
 import * as React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import ErrorsDisciplineTiles from '@/components/ErrorsDisciplineTiles';
 import SpiderBarsFallback from '@/components/SpiderBarsFallback';
 import {
@@ -31,6 +31,8 @@ const MIN_RADAR_METRICS = 4;
 
 type Props = {
   title: string;
+  chartSize?: number;
+  hideTitle?: boolean;
   points: SpiderPoint[];
   Icon?: React.ComponentType<{ size?: number; color?: string }>;
 };
@@ -109,9 +111,11 @@ type NormalizedPoint = {
 
 const AVATAR = 34;
 
-export default function SpiderChart({ title, points, Icon,
+export default function SpiderChart({ title, points, Icon, chartSize, hideTitle = false,
  }: Props) {
   const { t } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
+  const [measuredWidth, setMeasuredWidth] = React.useState(0);
   const tTitle = (title || '').toLowerCase();
 
   // --- EARLY RETURN: Errors & Discipline uses tiles ---
@@ -196,26 +200,37 @@ export default function SpiderChart({ title, points, Icon,
 
   const spokes = withDisplay.map((_, i) => String(i + 1));
   const toSpoke = (x: number) => String(x);
+  const responsiveChartSize = chartSize ?? (measuredWidth > 0 ? measuredWidth : Math.max(220, windowWidth - 72));
+  const chartInset = Math.max(38, Math.min(54, responsiveChartSize * 0.145));
+  const chartPadding = { top: chartInset, bottom: chartInset, left: chartInset, right: chartInset };
 
   return (
-    <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8 }}>
+    <View
+      style={styles.card}
+      onLayout={({ nativeEvent }) => {
+        const nextWidth = Math.floor(nativeEvent.layout.width - 24);
+        if (nextWidth > 0 && nextWidth !== measuredWidth) setMeasuredWidth(nextWidth);
+      }}
+    >
       {/* header bubble with icon + title */}
-      <View style={styles.headerRow}>
+      {!hideTitle && <View style={styles.headerRow}>
         <View style={styles.titleFrame}>
           {AutoIcon ? <AutoIcon size={18} color="white" /> : null}
           <Text style={styles.title}>{title}</Text>
         </View>
-      </View>
+      </View>}
 
-      <VictoryChart
-        polar
-        height={360}
-        padding={{ top: 30, bottom: 40, left: 62, right: 82 }}
-        categories={{ x: spokes }}
-        domain={{ y: [0, 1] }}
-        startAngle={90}
-        endAngle={450}
-      >
+      <View style={styles.chartWrap}>
+        <VictoryChart
+          polar
+          width={responsiveChartSize}
+          height={responsiveChartSize}
+          padding={chartPadding}
+          categories={{ x: spokes }}
+          domain={{ y: [0, 1] }}
+          startAngle={90}
+          endAngle={450}
+        >
         <VictoryPolarAxis
           dependentAxis
           tickFormat={() => ''}
@@ -309,13 +324,16 @@ export default function SpiderChart({ title, points, Icon,
             }}
           />
         </VictoryGroup>
-      </VictoryChart>
+        </VictoryChart>
+      </View>
     </View>
   );
 }
 
 
 const styles = StyleSheet.create({
+  card: { width: '100%', backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8 },
+  chartWrap: { width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatar: {
     width: AVATAR,

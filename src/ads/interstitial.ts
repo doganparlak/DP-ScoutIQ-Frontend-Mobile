@@ -93,16 +93,24 @@ export function prepareInterstitial() {
   void loadInterstitial();
 }
 
-export function showInterstitialAndWaitSafely(): Promise<boolean> {
+export async function showInterstitialAndWaitSafely(): Promise<boolean> {
   if (showing || pendingShow) {
     logAdLifecycle('interstitial', 'show_skipped', { reason: 'busy' });
     return Promise.resolve(false);
   }
 
-  const a = getAd();
+  let a: InterstitialAd;
+  let ready: boolean;
+  try {
+    a = getAd();
+    ready = await loadInterstitial();
+  } catch {
+    loading = false;
+    pendingShow = false;
+    return false;
+  }
 
-  return new Promise(async (resolve) => {
-    const ready = await loadInterstitial();
+  return new Promise((resolve) => {
     if (!ready || showing || pendingShow) {
       logAdLifecycle('interstitial', 'show_skipped', { reason: ready ? 'busy' : 'not_ready' });
       resolve(false);
@@ -113,10 +121,13 @@ export function showInterstitialAndWaitSafely(): Promise<boolean> {
     Keyboard.dismiss();
 
     let finished = false;
+    let presentationTimer: ReturnType<typeof setTimeout> | undefined;
 
     const cleanup = () => {
       subClosed?.();
       subError?.();
+      subOpened?.();
+      clearTimeout(presentationTimer);
     };
 
     const finish = (shown: boolean) => {
@@ -135,15 +146,26 @@ export function showInterstitialAndWaitSafely(): Promise<boolean> {
       finish(false);
     });
 
+    const subOpened = a.addAdEventListener(AdEventType.OPENED, () => {
+      clearTimeout(presentationTimer);
+    });
+    // Bound presentation only; never time out while the user is watching an ad.
+    presentationTimer = setTimeout(() => finish(false), 10000);
     InteractionManager.runAfterInteractions(() => {
       setTimeout(() => {
+        if (finished) return;
         if (!loaded || showing) {
           logAdLifecycle('interstitial', 'show_skipped', { reason: loaded ? 'already_showing' : 'not_loaded' });
           finish(false);
           return;
         }
         logAdLifecycle('interstitial', 'show_called');
-        a.show();
+        try {
+          Promise.resolve(a.show()).catch(() => { loaded = false; finish(false); });
+        } catch {
+          loaded = false;
+          finish(false);
+        }
       }, 400);
     });
   });

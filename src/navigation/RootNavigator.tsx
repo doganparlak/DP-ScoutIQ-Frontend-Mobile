@@ -1,8 +1,11 @@
 // src/navigation/RootNavigator.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+import { registerPushNotifications } from '@/services/pushNotifications';
+import { trackScreen } from '@/services/telemetry';
 
 import MainTabs from '@/navigation/MainTabs';
 import WelcomeScreen from '@/screens/WelcomeScreen';
@@ -50,6 +53,11 @@ function AuthStack() {
 
 function AppStack() {
   React.useEffect(() => {
+    void registerPushNotifications(true).catch(error => {
+      if (__DEV__) console.warn('[Push notifications]', error);
+    });
+  }, []);
+  React.useEffect(() => {
     (async () => {
       try {
         await restoreSubscriptionIfAny();
@@ -65,6 +73,15 @@ function AppStack() {
 }
 
 export default function RootNavigator() {
+  const navigationRef = useNavigationContainerRef();
+  const lastScreen = React.useRef<string | undefined>(undefined);
+  const reportScreen = () => {
+    const screen = navigationRef.getCurrentRoute()?.name;
+    if (screen && screen !== lastScreen.current) {
+      lastScreen.current = screen;
+      trackScreen(screen);
+    }
+  };
   const [booting, setBooting] = useState(true);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
@@ -109,7 +126,7 @@ export default function RootNavigator() {
   if (booting || isAuthed === null) return <Splash />;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={reportScreen} onStateChange={reportScreen}>
       <Root.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={isAuthed ? 'App' : 'Auth'}

@@ -1,0 +1,64 @@
+{
+  "parameters": {
+    "ads_potential_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_matchup_launch_every": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_matchup_add_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_missing_score_action_every": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_portfolio_lineup_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_report_every": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_save_match_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_daily_hidden_portfolio_every": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_daily_revealed_portfolio_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_season_search_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    }
+  }
+}

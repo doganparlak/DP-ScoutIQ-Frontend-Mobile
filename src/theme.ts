@@ -54,3 +54,8 @@ export const shadows = {
     elevation: 4,
   },
 };
+
+// Shared section headings across pool, portfolio and matchup frames.
+export const FRAME_TITLE = { color: ACCENT, fontSize: 16, fontWeight: '800' as const };
+export const FRAME_STRIPE = { height: 4, borderRadius: 999, backgroundColor: ACCENT, marginBottom: 10 };
+export const FRAME_HEADING = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 };

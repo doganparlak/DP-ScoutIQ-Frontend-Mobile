@@ -5,17 +5,18 @@ import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { BG, PANEL, TEXT, ACCENT, MUTED, LINE } from '@/theme';
-import { getMe, type Plan } from '@/services/api';
+import { getMe } from '@/services/api';
+import { canUseChat } from '@/utils/chatAccess';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 
 const SHIFT_UP = 14;
 const SHIFT_UP_ANDROID = 44;
 const isAndroid = Platform.OS === 'android';
-const isProPlan = (plan: Plan | string | undefined | null) =>
-  plan === 'Pro Monthly' || plan === 'Pro Yearly';
 
 export default function ScoutWiseProScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const tutorial = useTutorial();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -24,7 +25,7 @@ export default function ScoutWiseProScreen() {
       (async () => {
         try {
           const me = await getMe();
-          if (alive && isProPlan(me?.plan)) {
+          if (alive && canUseChat(me) && !tutorial.active) {
             navigation.navigate('LegacyStrategy');
           }
         } catch (e: any) {
@@ -35,11 +36,11 @@ export default function ScoutWiseProScreen() {
       return () => {
         alive = false;
       };
-    }, [navigation]),
+    }, [navigation, tutorial.active]),
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <View style={styles.container}>
         <ScrollView
           style={styles.scroll}
@@ -67,6 +68,8 @@ export default function ScoutWiseProScreen() {
                 <Text style={styles.titlePro}> PRO</Text>
               </Text>
             </View>
+
+            <TutorialPageGuide page="pro" />
 
             <View style={styles.midWrap}>
               <Text style={styles.upgradeNow}>{t('goProCta', 'Upgrade to Pro now')}</Text>
@@ -117,14 +120,11 @@ export default function ScoutWiseProScreen() {
               <View style={styles.divider} />
 
               <View style={styles.bullets}>
-                <Benefit text={t('proBenefit1', 'A focused, ad-free experience')} />
-                <Benefit
-                  text={t(
-                    'proBenefit2',
-                    'Player discovery chat aligned with your team strategy',
-                  )}
-                />
-                <Benefit text={t('proBenefitThreeWay', '3-Way Comparison')} />
+                <Benefit text={t('proBenefit2', 'Player discovery aligned with your team strategy')} />
+                <Benefit text={t('proBenefitDetailedReports', 'Detailed pre-match, post-match, and team analysis reports')} />
+                <Benefit text={t('proBenefitThreeWay', '3- or 4-player comparison')} />
+                <Benefit text={t('proBenefitCustomComparison', 'Customizable comparison charts')} />
+                <Benefit text={t('proBenefit1', 'Ad-free experience')} />
                 <Benefit text={t('proBenefit4', 'Priority customer support')} />
                 <Benefit text={t('proBenefit5', 'Support the development of new features')} />
               </View>
@@ -178,7 +178,9 @@ function Benefit({ text }: { text: string }) {
     if (i18n.language?.startsWith('tr')) {
       apply('Reklamsız');
       apply('Takım stratejine');
-      apply("3'lü");
+      apply('Detaylı');
+      apply('3 veya 4');
+      apply('Kişiselleştirilebilir');
       apply('Öncelikli');
       apply('Yeni özelliklerin');
     } else {
@@ -186,7 +188,9 @@ function Benefit({ text }: { text: string }) {
       apply('Ad-Free');
       apply('team strategy');
       apply('Team strategy');
-      apply('3-Way');
+      apply('Detailed');
+      apply('3- or 4-player');
+      apply('Customizable');
       apply('Priority');
       apply('new features');
       apply('New Features');

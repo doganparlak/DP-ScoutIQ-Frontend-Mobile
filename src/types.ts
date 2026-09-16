@@ -1,3 +1,4 @@
+import { type PlayerContract } from '@/utils/playerContract';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type Role = 'system' | 'user' | 'assistant';
@@ -10,7 +11,19 @@ export interface ChatMessage {
 }
 
 export type MainTabsParamList = {
-  Strategy: undefined;
+  ManagePlan: undefined;
+  HelpCenter: undefined;
+  MatchPortfolio: undefined;
+  TeamAnalysis: { team?: import("./services/teamPool").Team } | undefined;
+  TeamPool: undefined;
+  LeaguePool: undefined;
+  MatchPool: undefined;
+  SeasonData: undefined;
+  Portfolio: undefined;
+  Matchup: undefined;
+  DailyScout: { visitKey?: number } | undefined;
+  Weekly: { visitKey?: number } | undefined;
+  Strategy: { matchupPlayer?: { id: string; player: PlayerData }; visitKey?: number } | undefined;
   Chat: NavigatorScreenParams<ScoutWiseProStackParamList> | undefined;
   Profile: undefined;
 };
@@ -41,7 +54,20 @@ export interface ChatResponse {
 }
 
 export type PlayerStat = { metric: string; value: number | string };
-export type PlayerMeta = {
+export type PlayerMeta = PlayerContract & {
+  sportmonksId?: number;
+  teamId?: number;
+  leagueId?: number;
+  seasonName?: string;
+  imageUrl?: string;
+  teamLogoUrl?: string;
+  leagueLogoUrl?: string;
+  contractTeamLogoUrl?: string;
+  playerCount?: number;
+  teamCount?: number;
+  matchCount?: number;
+  comparisonSources?: {competition:string;leagueShortCode?:string;team:string}[];
+  leagueFilters?: { leagues: string[]; countries: string[]; positions: string[] };
   nationality?: string;
   age?: number;
   roles?: string[];
@@ -57,7 +83,7 @@ export type PlayerMeta = {
   team?: string;
   league?: string;
 };
-export type PlayerData = { name: string; meta?: PlayerMeta; stats: PlayerStat[] };
+export type PlayerData = { entityType?: 'player' | 'league' | 'season'; name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 
 
 export type ChatData = { players: PlayerData[] };

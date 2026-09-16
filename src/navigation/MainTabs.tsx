@@ -1,13 +1,12 @@
+import { TeamAnalysisProvider } from '@/context/TeamAnalysisContext';
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  createBottomTabNavigator,
-  type BottomTabBarButtonProps,
-} from '@react-navigation/bottom-tabs';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-
+import { useFocusEffect } from '@react-navigation/native';
+import { PortfolioWorkspaceScreen, MatchupWorkspaceScreen, EmptyWorkspaceScreen } from '@/screens/WorkspaceScreens';
+import DailyScoutScreen from '@/screens/DailyScoutScreen';
+import WeeklySearchesScreen from '@/screens/WeeklySearchesScreen';
 import PlayerPoolScreen from '@/screens/PlayerPoolScreen';
 import ScoutWiseProScreen from '@/screens/ScoutWiseProScreen';
 import StrategyScreen from '@/screens/StrategyScreen';
@@ -15,63 +14,26 @@ import ChatScreen from '@/screens/ChatScreen';
 import MyProfileScreen from '@/screens/MyProfileScreen';
 import ManagePlanScreen from '@/screens/ManagePlanScreen';
 import HelpCenter from '@/screens/HelpCenterScreen';
-import { ACCENT, MUTED, PANEL, LINE } from '@/theme';
-import type {
-  MainTabsParamList,
-  RootStackParamList,
-  ScoutWiseProStackParamList,
-} from '@/types';
-import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
-import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
-import { TutorialProvider, useTutorial } from '@/components/Tutorial';
+import type { MainTabsParamList, RootStackParamList, ScoutWiseProStackParamList } from '@/types';
+import { TutorialProvider } from '@/components/Tutorial';
+import { canUseChat } from '@/utils/chatAccess';
 import { getMe, type Plan } from '@/services/api';
+import MainSidebar from './MainSidebar';
+import { MainNavigationContext } from './MainNavigationContext';
+import { BG } from '@/theme';
+import SeasonDataScreen from '@/screens/SeasonDataScreen';
+import TeamAnalysisScreen from '@/screens/TeamAnalysisScreen';
+import MatchPortfolioScreen from '@/screens/MatchPortfolioScreen';
+import MatchPoolScreen from '@/screens/MatchPoolScreen';
+import TeamPoolScreen from '@/screens/TeamPoolScreen';
+import LeaguePoolScreen from '@/screens/LeaguePoolScreen';
+import { MatchupProvider } from '@/context/MatchupContext';
 
-const TAB_BASE_HEIGHT = 70;
-const MAIN_TAB_ICON_SIZE = 30;
-const MAIN_TAB_ICON_LABEL_GAP = 8;
-const SIDE_TAB_VERTICAL_OFFSET = -4;
-
-const isProPlan = (plan: Plan | null) => plan === 'Pro Monthly' || plan === 'Pro Yearly';
-
-type MainTabIconSlotProps = {
-  children: React.ReactNode;
-};
-
-function MainTabIconSlot({ children }: MainTabIconSlotProps) {
-  return <View style={styles.mainTabIconSlot}>{children}</View>;
-}
-
+// Keep the existing route identities and nested stacks so tutorials, deep navigation,
+// and each section's state continue to work while the navigation UI becomes a drawer.
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 const ProfileStack = createNativeStackNavigator<RootStackParamList>();
 const ScoutWiseProStack = createNativeStackNavigator<ScoutWiseProStackParamList>();
-
-function TutorialLockedTabButton({
-  accessibilityState,
-  children,
-  onPress,
-  style,
-}: BottomTabBarButtonProps) {
-  const tutorial = useTutorial();
-  const locked = tutorial.active;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ ...accessibilityState, disabled: locked }}
-      disabled={locked}
-      onPress={onPress}
-      style={({ pressed }) => [
-        style,
-        locked && styles.tabButtonLocked,
-        pressed && !locked && styles.tabButtonPressed,
-      ]}
-    >
-      {children}
-    </Pressable>
-  );
-}
 
 function ProfileStackScreen() {
   return (
@@ -93,151 +55,7 @@ function ScoutWiseProStackScreen() {
   );
 }
 
-type FootballJerseyIconProps = {
-  size: number;
-  color: string;
-  strokeWidth?: number;
-};
-
-function FootballJerseyIcon({ size, color, strokeWidth = 2.2 }: FootballJerseyIconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M8.2 3.5 4.1 5.2 2.5 10l3.4 1.3 1-2.1v11.4h10.2V9.2l1 2.1 3.4-1.3-1.6-4.8-4.1-1.7a4 4 0 0 1-7.6 0Z"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <SvgText
-        x="12"
-        y="15"
-        fill={color}
-        fontSize="5.6"
-        fontWeight="800"
-        textAnchor="middle"
-      >
-        10
-      </SvgText>
-    </Svg>
-  );
-}
-
-type TacticsBoardIconProps = {
-  size: number;
-  color: string;
-  strokeWidth?: number;
-};
-
-function TacticsBoardIcon({ size, color, strokeWidth = 2.2 }: TacticsBoardIconProps) {
-  const pitchStrokeWidth = strokeWidth * 0.5;
-  const pitchOpacity = 0.75;
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect
-        x="4"
-        y="4.2"
-        width="16"
-        height="16.8"
-        rx="2.2"
-        stroke={color}
-        strokeWidth={strokeWidth}
-      />
-      <Path
-        d="M9.2 4.2V3.3h5.6v.9M9.4 20.9v-.9h5.2v.9"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M10.1 3.3c.4-.7 1-.9 1.9-.9s1.5.2 1.9.9"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-      />
-      <Line
-        x1="6.2"
-        y1="12"
-        x2="17.8"
-        y2="12"
-        stroke={color}
-        strokeWidth={pitchStrokeWidth}
-        strokeOpacity={pitchOpacity}
-        strokeLinecap="round"
-      />
-      <Circle
-        cx="12"
-        cy="12"
-        r="2.1"
-        stroke={color}
-        strokeWidth={pitchStrokeWidth}
-        strokeOpacity={pitchOpacity}
-      />
-      <Path
-        d="M8 5.9v2.7h8V5.9M8 18.1v-2.7h8v2.7"
-        stroke={color}
-        strokeWidth={pitchStrokeWidth}
-        strokeOpacity={pitchOpacity}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-type ScoutWiseProTabButtonProps = BottomTabBarButtonProps & {
-  onResolvePlan: () => Promise<Plan | null>;
-  t: TFunction;
-};
-
-function ScoutWiseProTabButton({
-  accessibilityState,
-  children,
-  style,
-  onResolvePlan,
-  t,
-}: ScoutWiseProTabButtonProps) {
-  const navigation = useNavigation<any>();
-  const tutorial = useTutorial();
-  const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
-  const locked = tutorial.active;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ ...accessibilityState, disabled: locked }}
-      accessibilityLabel={t('tabScoutWisePro', 'ScoutWise Pro')}
-      disabled={locked}
-      onPress={async () => {
-        const latestPlan = await onResolvePlan();
-
-        navigation.navigate('Chat', {
-          screen: isScoutWiseTutorial || isProPlan(latestPlan) ? 'LegacyStrategy' : 'ProHome',
-        });
-      }}
-      style={({ pressed }) => [
-        style,
-        locked && styles.tabButtonLocked,
-        pressed && !locked && styles.tabButtonPressed,
-      ]}
-    >
-      {children}
-    </Pressable>
-  );
-}
-
 export default function MainTabs() {
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const { width: windowWidth, fontScale } = useWindowDimensions();
-  const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
-  const androidBottom = Platform.OS === 'android' ? insets.bottom : 0;
-  const tabHeight = TAB_BASE_HEIGHT + androidBottom + (androidCompact ? 14 : 0);
-  const tabIconSize = androidCompact ? 26 : MAIN_TAB_ICON_SIZE;
-  const tabLabelMaxScale = Platform.OS === 'android' ? 1.08 : undefined;
-
   const [plan, setPlan] = React.useState<Plan | null>(null);
 
   const loadPlan = React.useCallback(async () => {
@@ -252,20 +70,20 @@ export default function MainTabs() {
     }
   }, []);
 
-  const resolvePlan = React.useCallback(async () => {
+  const resolveChatAccess = React.useCallback(async () => {
     try {
       const me = await getMe();
       if (me?.plan) {
         const latestPlan = me.plan as Plan;
         setPlan(latestPlan);
-        return latestPlan;
+        return canUseChat(me);
       }
     } catch (e: any) {
       console.log('RESOLVE PLAN ERROR:', e?.message ?? e);
     }
 
-    return plan;
-  }, [plan]);
+    return false;
+  }, []);
 
   React.useEffect(() => {
     loadPlan();
@@ -279,147 +97,40 @@ export default function MainTabs() {
 
   return (
     <TutorialProvider>
-      <Tab.Navigator
-        initialRouteName="Strategy"
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: PANEL,
-            borderTopColor: LINE,
-            borderTopWidth: 1,
-            height: tabHeight,
-            paddingBottom: androidBottom,
-            overflow: 'visible',
-          },
-          tabBarActiveTintColor: ACCENT,
-          tabBarInactiveTintColor: MUTED,
-          tabBarItemStyle: styles.mainTabItem,
-        }}
-      >
-        <Tab.Screen
-          name="Strategy"
-          component={PlayerPoolScreen}
-          options={{
-            tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
-            tabBarButton: (props) => <TutorialLockedTabButton {...props} />,
-            tabBarLabel: ({ color }) => (
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit={androidCompact}
-                minimumFontScale={0.7}
-                maxFontSizeMultiplier={tabLabelMaxScale}
-                style={[styles.mainTabLabel, androidCompact && styles.mainTabLabelCompact, { color }]}
-              >
-                {t('tabPlayerPool', 'Player Pool')}
-              </Text>
-            ),
-            tabBarIcon: ({ color }) => (
-              <MainTabIconSlot>
-                <FootballJerseyIcon size={tabIconSize} color={color} strokeWidth={2.2} />
-              </MainTabIconSlot>
-            ),
-          }}
-        />
-
-        <Tab.Screen
-          name="Chat"
-          component={ScoutWiseProStackScreen}
-          options={{
-            tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
-            tabBarLabel: ({ color }) => (
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit={androidCompact}
-                minimumFontScale={0.7}
-                maxFontSizeMultiplier={tabLabelMaxScale}
-                style={[styles.mainTabLabel, androidCompact && styles.mainTabLabelCompact, { color }]}
-              >
-                {t('tabScoutWisePro', 'ScoutWise Pro')}
-              </Text>
-            ),
-            tabBarIcon: ({ color }) => (
-              <MainTabIconSlot>
-                <TacticsBoardIcon
-                  size={tabIconSize}
-                  color={color}
-                  strokeWidth={2.2}
-                />
-              </MainTabIconSlot>
-            ),
-            tabBarButton: (props) => (
-              <ScoutWiseProTabButton
-                {...props}
-                onResolvePlan={resolvePlan}
-                t={t}
-              />
-            ),
-          }}
-        />
-
-        <Tab.Screen
-          name="Profile"
-          component={ProfileStackScreen}
-          options={{
-            tabBarItemStyle: [styles.mainTabItem, styles.sideTabOffset],
-            tabBarButton: (props) => <TutorialLockedTabButton {...props} />,
-            tabBarLabel: ({ color }) => (
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit={androidCompact}
-                minimumFontScale={0.7}
-                maxFontSizeMultiplier={tabLabelMaxScale}
-                style={[styles.mainTabLabel, androidCompact && styles.mainTabLabelCompact, { color }]}
-              >
-                {t('tabProfile', 'My Profile')}
-              </Text>
-            ),
-            tabBarIcon: ({ color }) => (
-              <MainTabIconSlot>
-                <Ionicons name="person-circle-outline" size={tabIconSize} color={color} />
-              </MainTabIconSlot>
-            ),
-          }}
-        />
-      </Tab.Navigator>
+      <MatchupProvider>
+      <TeamAnalysisProvider>
+      <MainNavigationContext.Provider value={true}>
+        <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: BG }}>
+          <Tab.Navigator
+            initialRouteName="Profile"
+            backBehavior="history"
+            tabBar={(props) => <MainSidebar {...props} resolveChatAccess={resolveChatAccess} />}
+            screenOptions={{
+              headerShown: false,
+              tabBarPosition: 'top',
+              sceneStyle: { backgroundColor: BG },
+            }}
+          >
+            <Tab.Screen name="Strategy" component={PlayerPoolScreen} />
+            <Tab.Screen name="Portfolio" component={PortfolioWorkspaceScreen} />
+            <Tab.Screen name="Matchup" component={MatchupWorkspaceScreen} />
+            <Tab.Screen name="MatchPortfolio" component={MatchPortfolioScreen} />
+            <Tab.Screen name="TeamAnalysis" component={TeamAnalysisScreen} />
+            <Tab.Screen name="TeamPool" component={TeamPoolScreen} />
+            <Tab.Screen name="LeaguePool" component={LeaguePoolScreen} />
+            <Tab.Screen name="MatchPool" component={MatchPoolScreen} />
+            <Tab.Screen name="SeasonData" component={SeasonDataScreen} />
+            <Tab.Screen name="DailyScout" component={DailyScoutScreen} />
+            <Tab.Screen name="Weekly" component={WeeklySearchesScreen} />
+            <Tab.Screen name="Chat" component={ScoutWiseProStackScreen} />
+            <Tab.Screen name="Profile" component={ProfileStackScreen} />
+            <Tab.Screen name="ManagePlan" component={ManagePlanScreen} />
+            <Tab.Screen name="HelpCenter" component={HelpCenter} />
+          </Tab.Navigator>
+        </SafeAreaView>
+      </MainNavigationContext.Provider>
+      </TeamAnalysisProvider>
+    </MatchupProvider>
     </TutorialProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  mainTabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 6,
-    paddingBottom: 4,
-  },
-  sideTabOffset: {
-    transform: [{ translateY: SIDE_TAB_VERTICAL_OFFSET }],
-  },
-  mainTabIconSlot: {
-    width: MAIN_TAB_ICON_SIZE,
-    height: MAIN_TAB_ICON_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mainTabLabel: {
-    height: 12,
-    lineHeight: 12,
-    marginTop: MAIN_TAB_ICON_LABEL_GAP,
-    fontSize: 10,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  mainTabLabelCompact: {
-    height: 14,
-    lineHeight: 14,
-    marginTop: 6,
-    fontSize: 9.5,
-    maxWidth: 112,
-  },
-  tabButtonPressed: {
-    opacity: 0.92,
-  },
-  tabButtonLocked: {
-    opacity: 0.55,
-  },
-});

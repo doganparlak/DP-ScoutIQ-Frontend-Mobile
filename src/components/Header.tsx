@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { ACCENT, BG, TEXT, LINE } from '@/theme';
 import { useTranslation } from 'react-i18next';
+import { useMainNavigation } from '@/navigation/MainNavigationContext';
 
 const scoutwiseLogo = require('../../assets/scoutwise_logo.png');
 
@@ -21,6 +22,17 @@ export default function Header({
   lineColor = LINE,
 }: HeaderProps) {
   const { t } = useTranslation();
+  const hasNavigationHeader = useMainNavigation();
+
+  if (hasNavigationHeader) {
+    return (
+      <View style={[styles.compactWrap, { backgroundColor }]}>
+        <Text style={[styles.compactSubtitle, { color: accentColor }]}>
+          {subtitle ?? t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -62,6 +74,8 @@ export default function Header({
 const ICON_SIZE = 30;
 
 const styles = StyleSheet.create({
+  compactWrap: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
+  compactSubtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
   wrap: {
     backgroundColor: BG,
     paddingTop: 60,

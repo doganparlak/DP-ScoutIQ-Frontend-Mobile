@@ -43,7 +43,6 @@ export default function LoginScreen() {
     [email, password]
   );
 
-  const goToMainTabs = () => navigation.replace('MainTabs', { screen: 'Strategy' });
   const handleForgotPassword = () => navigation.navigate('ResetPassword');
   const goToSignUp = () => navigation.navigate('SignUp');
 

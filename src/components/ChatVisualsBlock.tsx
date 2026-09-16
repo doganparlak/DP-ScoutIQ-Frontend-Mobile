@@ -218,9 +218,11 @@ function PlayerCardBlock({ players }: Props) {
         <PlayerCard
           key={p.name}
           player={p}
+          actionsInside
           onAddFavorite={async (player) => {
             try {
               await addFavoritePlayer({
+                ...player.meta,
                 name: player.name,
                 nationality: player.meta?.nationality,
                 age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,

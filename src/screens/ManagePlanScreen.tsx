@@ -48,6 +48,38 @@ const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
 const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
 const isPaidSubscription = (p: Plan) => p === 'No Ads Monthly' || isPro(p);
 
+const multiplyDisplayPrice = (displayPrice: string | undefined, multiplier: number) => {
+  if (!displayPrice) return null;
+
+  const match = displayPrice.match(/\d[\d\s.,]*/);
+  if (!match || match.index == null) return null;
+
+  const rawNumber = match[0].trim().replace(/\s/g, '');
+  const commaIndex = rawNumber.lastIndexOf(',');
+  const dotIndex = rawNumber.lastIndexOf('.');
+  const lastSeparatorIndex = Math.max(commaIndex, dotIndex);
+  const digitsAfterSeparator = lastSeparatorIndex >= 0
+    ? rawNumber.length - lastSeparatorIndex - 1
+    : 0;
+  const decimalSeparator = lastSeparatorIndex >= 0 && digitsAfterSeparator > 0 && digitsAfterSeparator <= 2
+    ? rawNumber[lastSeparatorIndex]
+    : null;
+  const decimalPlaces = decimalSeparator ? digitsAfterSeparator : 0;
+  const normalized = decimalSeparator
+    ? `${rawNumber.slice(0, lastSeparatorIndex).replace(/[.,]/g, '')}.${rawNumber.slice(lastSeparatorIndex + 1)}`
+    : rawNumber.replace(/[.,]/g, '');
+  const amount = Number(normalized);
+
+  if (!Number.isFinite(amount)) return null;
+
+  const multiplied = (amount * multiplier).toFixed(decimalPlaces);
+  const localizedNumber = decimalSeparator === ',' ? multiplied.replace('.', ',') : multiplied;
+  const prefix = displayPrice.slice(0, match.index);
+  const suffix = displayPrice.slice(match.index + match[0].length);
+
+  return `${prefix}${localizedNumber}${suffix}`;
+};
+
 //const log = (...args: any[]) => console.log('[IAP]', ...args);
 
 export default function ManagePlan() {
@@ -75,14 +107,26 @@ export default function ManagePlan() {
     [t],
   );
 
-  const tablePlanLabel = React.useCallback(
-    (p: Plan) => {
-      if (p === 'No Ads Monthly') return t('noAdsMonthlyTable', 'No Ads\nMonthly');
-      if (p === 'Pro Monthly') return t('proMonthly', 'Pro Monthly').replace(' ', '\n');
-      if (p === 'Pro Yearly') return t('proYearly', 'Pro Yearly').replace(' ', '\n');
-      return t('free', 'Free');
-    },
-    [t],
+  const planFeatures = React.useCallback((plan: Plan) => {
+    if (plan === 'Free') return [t('planFeatures_Free', 'Ad-supported')];
+    if (plan === 'No Ads Monthly') {
+      return [
+        t('planFeatures_NoAdsMonthly', 'Ad-free'),
+        t('planFeatures_ThreePlayer', '3-player comparison'),
+        t('planFeatures_DetailedReports', 'Detailed Reports & Insights'),
+      ];
+    }
+    return [
+      t('planFeatures_Pro', 'Ad-free'),
+      t('planFeatures_ThreeOrFourPlayer', '3- or 4-player comparison'),
+      t('planFeatures_CustomComparison', 'Customizable comparison'),
+      t('planFeatures_DetailedReports', 'Detailed Reports & Insights'),
+    ];
+  }, [t]);
+
+  const yearlyReferencePrice = React.useMemo(
+    () => multiplyDisplayPrice(priceMap['Pro Monthly'], 12),
+    [priceMap],
   );
 
   // ✅ pick SKU by selected plan
@@ -368,7 +412,7 @@ export default function ManagePlan() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -389,90 +433,77 @@ export default function ManagePlan() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
-          {/* 1) Plans table */}
-          <View style={[styles.row, styles.headerRow]}>
-            <Text style={[styles.cell, styles.headerCell, styles.planCol]}>
-              {t('plan', 'Plan')}
-            </Text>
-            <Text style={[styles.cell, styles.headerCell, styles.featureCol]}>
-              {t('tblFeatures', 'Features')}
-            </Text>
-            <Text style={[styles.cell, styles.headerCell, styles.durationCol]}>
-              {t('duration', 'Duration')}
-            </Text>
-            <Text style={[styles.cell, styles.headerCell, styles.priceCol]}>
-              {t('price', 'Price')}
-            </Text>
+          {/* 1) Mobile-first plan comparison */}
+          <View style={styles.planComparisonHeader}>
+            <Text style={styles.planComparisonTitle}>{t('tblFeatures', 'Features')}</Text>
+            <Text style={styles.planComparisonHint}>{t('planComparisonHint', 'Choose the plan that fits your workflow')}</Text>
           </View>
 
-          {PLANS.map(p => (
-            <Pressable
-              key={p.name}
-              onPress={() => setSelected(p.name)}
-              style={({ pressed }) => [
-                styles.row,
-                { backgroundColor: CARD },
-                selected === p.name && styles.rowActive,
-                pressed && { opacity: 0.9 },
-              ]}
-            >
-              <Text style={[styles.cell, styles.planCol, selected === p.name && styles.cellActive]}>
-                {tablePlanLabel(p.name)}
-              </Text>
+          <View style={styles.planCards}>
+            {PLANS.map(p => {
+              const active = selected === p.name;
+              const duration = p.name === 'Free'
+                ? t('durationUnlimited', 'Unlimited')
+                : p.name === 'No Ads Monthly' || p.name === 'Pro Monthly'
+                  ? t('duration_month', '1 month')
+                  : t('duration_year', '1 year');
+              return (
+                <Pressable
+                  key={p.name}
+                  onPress={() => setSelected(p.name)}
+                  style={({ pressed }) => [
+                    styles.planCard,
+                    active && styles.planCardActive,
+                    pressed && styles.planCardPressed,
+                  ]}
+                >
+                  <View style={styles.planCardTop}>
+                    <View style={styles.planIdentity}>
+                      <View style={[styles.planSelector, active && styles.planSelectorActive]}>
+                        {active ? <View style={styles.planSelectorDot} /> : null}
+                      </View>
+                      <View style={styles.planNameGroup}>
+                        <Text style={[styles.planName, active && styles.planNameActive]}>{planLabel(p.name)}</Text>
+                        <View style={styles.planSubtitleRow}>
+                          <Text style={styles.planDuration}>{duration}</Text>
+                          {p.name === 'Pro Yearly' ? (
+                            <>
+                              <Text style={styles.planSubtitleDivider}>•</Text>
+                              <Text style={[styles.planBestPrice, active && styles.planBestPriceActive]}>
+                                {t('proYearlySubtitle', 'Best price')}
+                              </Text>
+                            </>
+                          ) : null}
+                        </View>
+                      </View>
+                    </View>
+                    <View style={styles.planPriceGroup}>
+                      {p.name === 'Pro Yearly' ? (
+                        <View style={styles.discountBadge}><Text style={styles.discountBadgeText}>{t('proYearlyDiscount', '-30%')}</Text></View>
+                      ) : null}
+                      <View style={styles.planPriceRow}>
+                        {p.name === 'Pro Yearly' && yearlyReferencePrice ? (
+                          <Text style={styles.planOriginalPrice}>{yearlyReferencePrice}</Text>
+                        ) : null}
+                        <Text style={[styles.planPrice, active && styles.planPriceActive]}>
+                          {p.name === 'Free' ? t('freePrice', 'Free') : priceMap[p.name] ?? t('pricePending', '...')}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
 
-              <Text
-                style={[
-                  styles.cell,
-                  styles.featureCol,
-                  selected === p.name && styles.cellActive,
-                ]}
-              >
-                {p.name === 'Free'
-                  ? t('planFeatures_Free', 'Ad-supported')
-                  : p.name === 'No Ads Monthly'
-                    ? [
-                        t('planFeatures_NoAdsMonthly', 'Ad-free'),
-                        t('planFeatures_ThreeWay', 'Compare 3'),
-                      ].join('\n')
-                  : p.name === 'Pro Monthly'
-                    ? [
-                        t('planFeatures_Pro', 'Ad-free'),
-                        t('planFeatures_ProName', 'ScoutWise Pro'),
-                        t('planFeatures_ThreeWay', 'Compare 3'),
-                      ].join('\n')
-                    : [
-                        t('planFeatures_Pro', 'Ad-free'),
-                        t('planFeatures_ProName', 'ScoutWise Pro'),
-                        t('planFeatures_ThreeWay', 'Compare 3'),
-                        t('proYearlyDiscount', '- 30%'),
-                      ].join('\n')}
-              </Text>
-
-              <Text
-                style={[
-                  styles.cell,
-                  styles.durationCol,
-                  selected === p.name && styles.cellActive,
-                ]}
-              >
-                {p.name === 'Free'
-                  ? '-'
-                  : p.name === 'No Ads Monthly' || p.name === 'Pro Monthly'
-                    ? t('duration_month', '1 month')
-                    : t('duration_year', '1 year')}
-              </Text>
-
-              <Text
-                style={[
-                  styles.cell,
-                  styles.priceCol,
-                  selected === p.name && styles.cellActive,
-                ]}
-              >
-                {p.name === 'Free' ? '-' : priceMap[p.name] ?? t('pricePending', '...')}
-              </Text>
-            </Pressable>
-          ))}
+                  <View style={styles.planFeatureList}>
+                    {planFeatures(p.name).map(feature => (
+                      <View key={feature} style={[styles.planFeaturePill, active && styles.planFeaturePillActive]}>
+                        <View style={[styles.planFeatureDot, active && styles.planFeatureDotActive]} />
+                        <Text style={[styles.planFeatureText, active && styles.planFeatureTextActive]}>{feature}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {/* 1.5) Subscription end date (Pro only) */}
           {isPaidSubscription(currentPlan) && formattedEndDate && (
@@ -564,16 +595,16 @@ export default function ManagePlan() {
             </View>
 
             {[
-              t('proBenefit1', 'A focused, Ad-Free experience'),
-              t(
-                'proBenefit2',
-                'Player discovery chat aligned with your team strategy',
-              ),
-              t('proBenefitThreeWay', '3-Way Comparison'),
+              t('proBenefit2', 'Player discovery aligned with your team strategy'),
+              t('proBenefitDetailedReports', 'Detailed pre-match, post-match, and team analysis reports'),
+              t('proBenefitThreeWay', '3- or 4-player comparison'),
+              t('proBenefitCustomComparison', 'Customizable comparison charts'),
+              t('proBenefit1', 'Ad-free experience'),
               t('proBenefit4', 'Priority customer support'),
-              t('proBenefit5', 'Support the development of New Features'),
-            ].map((benefit) => (
+              t('proBenefit5', 'Support the development of new features'),
+            ].map((benefit, index) => (
               <View key={benefit} style={styles.proUpsellRow}>
+                <View style={styles.benefitNumber}><Text style={styles.benefitNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
                 <View style={styles.proUpsellCellWrap}>
                   <Text style={styles.proUpsellCell}>{benefit}</Text>
                 </View>
@@ -598,11 +629,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 24 },
 
-  planCol: { flex: 1.1, textAlign: 'center' },
-  featureCol: { flex: 1.4, textAlign: 'center' },
-  durationCol: { flex: 0.9, textAlign: 'center' },
-  priceCol: { flex: 1, textAlign: 'center' },
-
   // header (title below back)
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -623,19 +649,84 @@ const styles = StyleSheet.create({
 
   sectionTitle: { color: MUTED, fontWeight: '600', marginBottom: 10 },
 
-  // table rows
-  row: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderTopWidth: 1,
-    borderTopColor: LINE,
+  planComparisonHeader: { alignItems: 'center', gap: 4, marginBottom: 12 },
+  planComparisonTitle: { color: TEXT, fontSize: 18, fontWeight: '900' },
+  planComparisonHint: { color: MUTED, fontSize: 12, lineHeight: 17, textAlign: 'center' },
+  planCards: { gap: 10 },
+  planCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    padding: 13,
+    gap: 12,
   },
-  headerRow: { backgroundColor: '#151716', borderTopWidth: 0 },
-  rowActive: { backgroundColor: '#18221B', borderLeftWidth: 3, borderLeftColor: ACCENT },
-  cell: { flex: 1, color: TEXT, fontSize: 14, textAlign: 'center' },
-  cellActive: { color: ACCENT },
-  headerCell: { color: MUTED, fontWeight: '700' },
+  planCardActive: {
+    borderColor: ACCENT,
+    backgroundColor: '#15241A',
+    shadowColor: ACCENT,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  planCardPressed: { opacity: 0.9, transform: [{ scale: 0.992 }] },
+  planCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  planIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  planSelector: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#55605A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planSelectorActive: { borderColor: ACCENT },
+  planSelectorDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT },
+  planNameGroup: { flex: 1, minWidth: 0, gap: 2 },
+  planName: { color: TEXT, fontSize: 15, fontWeight: '800' },
+  planNameActive: { color: '#4ADE80' },
+  planSubtitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
+  planDuration: { color: MUTED, fontSize: 11, fontWeight: '600' },
+  planSubtitleDivider: { color: '#667069', fontSize: 10, fontWeight: '800' },
+  planBestPrice: { color: '#A7B5AC', fontSize: 11, fontWeight: '800' },
+  planBestPriceActive: { color: '#4ADE80' },
+  planPriceGroup: { alignItems: 'flex-end', gap: 5 },
+  planPriceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7 },
+  planOriginalPrice: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: '700',
+    textDecorationLine: 'line-through',
+  },
+  planPrice: { color: TEXT, fontSize: 14, fontWeight: '900' },
+  planPriceActive: { color: '#4ADE80' },
+  discountBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    backgroundColor: ACCENT,
+  },
+  discountBadgeText: { color: '#07150C', fontSize: 11, fontWeight: '900' },
+  planFeatureList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  planFeaturePill: {
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: '#111614',
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  planFeaturePillActive: { borderColor: 'rgba(22,163,74,0.48)', backgroundColor: 'rgba(22,163,74,0.10)' },
+  planFeatureDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#718078' },
+  planFeatureDotActive: { backgroundColor: '#4ADE80' },
+  planFeatureText: { flexShrink: 1, color: '#CAD4CE', fontSize: 11, lineHeight: 15, fontWeight: '700' },
+  planFeatureTextActive: { color: '#DDF5E5' },
 
   // subscription row
   subscriptionRow: {
@@ -728,6 +819,8 @@ const styles = StyleSheet.create({
   },
   proUpsellRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 10,
     borderTopWidth: 1,
@@ -737,14 +830,25 @@ const styles = StyleSheet.create({
   proUpsellHeaderRow: { backgroundColor: '#151716', borderTopWidth: 0 },
 
   // text
-  proUpsellCell: { textAlign: 'center', color: TEXT, fontSize: 13 },
-  proUpsellHeaderCell: { color: MUTED, fontWeight: '800' },
+  proUpsellCell: { textAlign: 'left', color: TEXT, fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  proUpsellHeaderCell: { color: MUTED, fontWeight: '800', textAlign: 'center' },
+  benefitNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(22,163,74,0.45)',
+    backgroundColor: 'rgba(22,163,74,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benefitNumberText: { color: ACCENT, fontSize: 10, fontWeight: '900' },
 
   // ✅ true "cell" wrapper for vertical alignment
   proUpsellCellWrap: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
 
   proUpsellFootnote: {

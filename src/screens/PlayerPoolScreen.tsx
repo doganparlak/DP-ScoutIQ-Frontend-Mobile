@@ -1,4 +1,6 @@
 import React from 'react';
+import { useMatchup } from '@/context/MatchupContext';
+import { getSharedMatchupComparison } from '@/services/leaguePool';
 import {
   ActivityIndicator,
   Alert,
@@ -13,28 +15,24 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { Crown, Eye, X } from 'lucide-react-native';
+import { BadgeCheck, Check, Eye, Minus, X } from 'lucide-react-native';
 
 import {
   incrementPotentialRevealCount,
-  incrementMatchupLaunchCount,
   incrementMatchupMissingScoreAddCount,
   incrementPlayerPoolMissingScoreActionCount,
-  incrementPortfolioReportOpenCount,
-  incrementWeeklyPopularRevealCount,
+  incrementReportActionCount,
   incrementPlayerCardPlanNudgeCount,
-  shouldShowMatchupLaunchInterstitial,
   shouldShowMatchupMissingScoreInterstitial,
   shouldShowPlayerPoolMissingScoreActionInterstitial,
-  shouldShowPortfolioReportInterstitial,
+  shouldShowReportActionInterstitial,
   shouldShowPotentialInterstitial,
-  shouldShowWeeklyPopularInterstitial,
   shouldShowPlayerCardPlanNudge,
 } from '@/ads/adGating';
 import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
-import { ProNotReadyScreen } from '@/ads/pro';
+import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
 import CandidatePlayers, {
   CANDIDATE_TABLE_VISIBLE_ROWS,
   ROW_HEIGHT,
@@ -43,12 +41,11 @@ import CandidatePlayers, {
 } from '@/components/CandidatePlayers';
 import ComparisonModal from '@/components/ComparisonModal';
 import { DailyScoutChallengeModal } from '@/components/DailyScoutChallenge';
-import Header from '@/components/Header';
 import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
 import ScoutingReport from '@/components/ScoutingReport';
 import SearchFilters from '@/components/SearchFilters';
-import { TutorialHint, useTutorial } from '@/components/Tutorial';
+import { TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
   ROLE_LONG_TO_SHORT,
@@ -59,8 +56,8 @@ import {
   getMatchupComparison,
   getMe,
   getPlayerPoolOptions,
-  getPlayerPoolScoutingReport,
-  getWeeklyPopularPlayers,
+  getPlayerPoolScoutingReportProgress,
+  getPlayerPoolScoutingReportSection,
   recordPlayerPoolSearchHit,
   revealPlayerPoolForm,
   revealPlayerPoolPotential,
@@ -69,6 +66,7 @@ import {
   type MatchupComparisonResponse,
   type Plan,
   type ScoutingReportResponse,
+  type PlayerIdentityPayload,
 } from '@/services/api';
 import { ACCENT, BG, PANEL, WORLD_CUP_COLORS } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -134,32 +132,8 @@ function optionExactMatch(option: string | null | undefined, value: string) {
   return Boolean(option) && normalizeSearchText(option || '') === normalizeSearchText(value);
 }
 
-function renderPlanNudgeBody(body: string) {
-  const lines = body.split('\n');
-
-  return lines.map((line, index) => {
-    const match = line.match(/^(Plus|Pro)(.*)$/);
-
-    return (
-      <React.Fragment key={`${line}-${index}`}>
-        {index > 0 ? '\n\n' : ''}
-        {match ? (
-          <>
-            <Text style={styles.playerCardPlanNudgePlanName}>{match[1]}</Text>
-            {match[2]}
-          </>
-        ) : (
-          line
-        )}
-      </React.Fragment>
-    );
-  });
-}
-
-
 function PlayerCardPlanNudge({
   title,
-  body,
   buttonLabel,
   onOpenPlans,
   onClose,
@@ -167,28 +141,66 @@ function PlayerCardPlanNudge({
   containerStyle,
 }: {
   title: string;
-  body: string;
   buttonLabel: string;
   onOpenPlans: () => void;
   onClose: () => void;
   worldCupMode: boolean;
   containerStyle?: StyleProp<ViewStyle>;
 }) {
+  const { t } = useTranslation();
   const accent = worldCupMode ? WORLD_CUP_COLORS.lavender : ACCENT;
+  const available = <Check size={14} color="#4ADE80" strokeWidth={3} />;
+  const unavailable = <Minus size={14} color="#68736C" strokeWidth={2.5} />;
+  const comparisonRows = [
+    { label: t('planFeatures_NoAdsMonthly', 'Ad-free'), plus: available, pro: available },
+    { label: t('planFeatures_DetailedReports', 'Detailed reports'), plus: available, pro: available },
+    {
+      label: t('plusProComparisonPlayers', 'Player comparison'),
+      plus: <Text style={styles.playerCardPlanNudgeValueText}>{t('plusProThreePlayers', '3 players')}</Text>,
+      pro: <Text style={styles.playerCardPlanNudgeValueText}>{t('plusProThreeOrFourPlayers', '3 or 4 players')}</Text>,
+    },
+    { label: t('planFeatures_CustomComparison', 'Customizable comparison'), plus: unavailable, pro: available },
+    { label: t('plusProChatAccess', 'ScoutWise chat'), plus: unavailable, pro: available },
+  ];
 
   return (
     <View style={[styles.playerCardPlanNudge, worldCupMode && { borderColor: accent, backgroundColor: 'rgba(167, 132, 244, 0.10)' }, containerStyle]}>
       <View style={styles.playerCardPlanNudgeTopRow}>
         <View style={[styles.playerCardPlanNudgeIcon, { borderColor: accent, backgroundColor: worldCupMode ? 'rgba(167, 132, 244, 0.16)' : 'rgba(22, 163, 74, 0.12)' }]}>
-          <Crown size={18} color={accent} strokeWidth={2.3} />
+          <BadgeCheck size={19} color={accent} strokeWidth={2.3} />
         </View>
-        <View style={styles.playerCardPlanNudgeCopy}>
-          <Text style={[styles.playerCardPlanNudgeTitle, { color: accent }]}>{title}</Text>
-          <Text style={styles.playerCardPlanNudgeBody}>{renderPlanNudgeBody(body)}</Text>
+        <View
+          style={[
+            styles.playerCardPlanNudgeCopy,
+            styles.playerCardPlanNudgeTitlePill,
+            { borderColor: `${accent}66` },
+          ]}
+        >
+          <Text style={[styles.playerCardPlanNudgeTitle, { color: accent, textShadowColor: `${accent}55` }]}>{title}</Text>
         </View>
         <Pressable onPress={onClose} hitSlop={10} style={({ pressed }) => [styles.playerCardPlanNudgeClose, pressed && styles.pressed]}>
           <X size={16} color="#8F8F99" strokeWidth={2.4} />
         </Pressable>
+      </View>
+      <View style={styles.playerCardPlanNudgeTable}>
+        <View style={[styles.playerCardPlanNudgeTableRow, styles.playerCardPlanNudgeTableHeader]}>
+          <View style={styles.playerCardPlanNudgeFeatureCell} />
+          <View style={[styles.playerCardPlanNudgeValueCell, styles.playerCardPlanNudgePlusCell]}>
+            <Text style={styles.playerCardPlanNudgePlusText}>{t('plusPlanName', 'PLUS')}</Text>
+          </View>
+          <View style={[styles.playerCardPlanNudgeValueCell, styles.playerCardPlanNudgeProCell]}>
+            <Text style={styles.playerCardPlanNudgeProText}>{t('proPlanName', 'PRO')}</Text>
+          </View>
+        </View>
+        {comparisonRows.map((row) => (
+          <View key={row.label} style={[styles.playerCardPlanNudgeTableRow, styles.playerCardPlanNudgeTableBorder]}>
+            <View style={styles.playerCardPlanNudgeFeatureCell}>
+              <Text style={styles.playerCardPlanNudgeFeatureText}>{row.label}</Text>
+            </View>
+            <View style={[styles.playerCardPlanNudgeValueCell, styles.playerCardPlanNudgePlusValue]}>{row.plus}</View>
+            <View style={[styles.playerCardPlanNudgeValueCell, styles.playerCardPlanNudgeProValue]}>{row.pro}</View>
+          </View>
+        ))}
       </View>
       <Pressable
         onPress={onOpenPlans}
@@ -209,7 +221,9 @@ export default function PlayerPoolScreen() {
   const navigation = useNavigation<any>();
   const tutorial = useTutorial();
   const [name, setName] = React.useState('');
-  const [gender, setGender] = React.useState<'' | 'male' | 'female'>('');
+  const [contractStatus, setContractStatus] = React.useState<'' | 'loan' | 'permanent'>('');
+  const [loanEndDate, setLoanEndDate] = React.useState('');
+  const [contractEndDate, setContractEndDate] = React.useState('');
   const [nationality, setNationality] = React.useState('');
   const [league, setLeague] = React.useState('');
   const [team, setTeam] = React.useState('');
@@ -224,6 +238,20 @@ export default function PlayerPoolScreen() {
   const [results, setResults] = React.useState<SearchResultRow[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = React.useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = React.useState<PlayerData | null>(null);
+  const [pendingPortfolioMatchup, setPendingPortfolioMatchup] = React.useState<string | null>(null);
+  const route = useRoute<import('@react-navigation/native').RouteProp<import('@/types').MainTabsParamList, 'Strategy'>>();
+  React.useEffect(() => {
+    const incoming = route.params?.matchupPlayer;
+    if (!incoming) return;
+    setRevealedPotentialForCard(false);
+    setRevealedFormForCard(false);
+    currentCardRenderIdRef.current = `${incoming.id}:${Date.now()}`;
+    setSelectedPlayerId(incoming.id);
+    setSelectedPlayer(incoming.player);
+    setPendingPortfolioMatchup(incoming.id);
+    navigation.setParams({ matchupPlayer: undefined });
+  }, [route.params?.visitKey, route.params?.matchupPlayer, navigation]);
+
   const [revealedPotentialForCard, setRevealedPotentialForCard] = React.useState(false);
   const [revealedFormForCard, setRevealedFormForCard] = React.useState(false);
   const [searching, setSearching] = React.useState(false);
@@ -234,18 +262,16 @@ export default function PlayerPoolScreen() {
   const [sortOpen, setSortOpen] = React.useState(false);
   const [plan, setPlan] = React.useState<Plan>('Free');
   const [proUpsellOpen, setProUpsellOpen] = React.useState(false);
-  const [threeWayProPromptOpen, setThreeWayProPromptOpen] = React.useState(false);
+  const [matchupUpgradeMode, setMatchupUpgradeMode] = React.useState<3 | 4 | null>(null);
   const [playerCardPlanNudgeVisible, setPlayerCardPlanNudgeVisible] = React.useState(false);
   const [matchupPlanNudgeDismissed, setMatchupPlanNudgeDismissed] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<CandidateSortKey>('name');
   const [sortDir, setSortDir] = React.useState<SortDir>('asc');
-  const [weeklyPopularOpen, setWeeklyPopularOpen] = React.useState(false);
-  const [weeklyPopularLoading, setWeeklyPopularLoading] = React.useState(false);
-  const [weeklyPopularRows, setWeeklyPopularRows] = React.useState<SearchResultRow[]>([]);
-  const [matchupMode, setMatchupMode] = React.useState<2 | 3>(2);
-  const [matchupRow1, setMatchupRow1] = React.useState<SearchResultRow | null>(null);
-  const [matchupRow2, setMatchupRow2] = React.useState<SearchResultRow | null>(null);
-  const [matchupRow3, setMatchupRow3] = React.useState<SearchResultRow | null>(null);
+  const sharedMatchup = useMatchup();
+  const { mode: matchupMode, setMode: setMatchupMode, setRow1: setMatchupRow1, setRow2: setMatchupRow2, setRow3: setMatchupRow3, setRow4: setMatchupRow4 } = sharedMatchup;
+  const [matchupRow1, matchupRow2, matchupRow3, matchupRow4] = sharedMatchup.rows;
+  const isFocused = useIsFocused();
+  const [planResolved, setPlanResolved] = React.useState(false);
   const [addingMatchupPlayer, setAddingMatchupPlayer] = React.useState(false);
   const [comparisonOpen, setComparisonOpen] = React.useState(false);
   const [comparisonLoading, setComparisonLoading] = React.useState(false);
@@ -256,7 +282,9 @@ export default function PlayerPoolScreen() {
   const [scoutOpen, setScoutOpen] = React.useState(false);
   const [scoutPlayer, setScoutPlayer] = React.useState<PlayerData | null>(null);
   const [scoutReport, setScoutReport] = React.useState<ScoutingReportResponse | null>(null);
-  const [worldCupMode, setWorldCupMode] = React.useState(false);
+  const [scoutReportPayload,setScoutReportPayload]=React.useState<PlayerIdentityPayload|null>(null);
+  const [scoutReportPlayerId,setScoutReportPlayerId]=React.useState<string|null>(null);
+  const worldCupMode: boolean = false;
   const [countryOptions, setCountryOptions] = React.useState<string[]>([...PLAYER_POOL_COUNTRIES]);
   const [leagueOptions, setLeagueOptions] = React.useState<string[]>([]);
   const [teamOptions, setTeamOptions] = React.useState<string[]>([...PLAYER_POOL_TEAM_NAMES]);
@@ -264,11 +292,26 @@ export default function PlayerPoolScreen() {
     [...PLAYER_POOL_POSITION_OPTIONS],
   );
   const scrollRef = React.useRef<ScrollView | null>(null);
+  const matchupTop = React.useRef(0);
+  const scrollToMatchup = React.useCallback(() => {
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, matchupTop.current - 12), animated: true }));
+  }, []);
   const currentCardRenderIdRef = React.useRef<string | null>(null);
   const countedCardRenderIdRef = React.useRef<string | null>(null);
-  const lastCardAppearanceRenderIdRef = React.useRef<string | null>(null);
   const isPlayerPoolTutorialActive = tutorial.active && tutorial.stage === 'playerPool';
   const canUseThreeWayComparison = plan === 'No Ads Monthly' || plan === 'Pro Monthly' || plan === 'Pro Yearly';
+  const canUseFourWayComparison = plan === 'Pro Monthly' || plan === 'Pro Yearly';
+  React.useEffect(() => {
+    if (isFocused && planResolved && !canUseThreeWayComparison && matchupMode > 2) {
+      setMatchupMode(2);
+      setMatchupRow3(null);
+      setMatchupRow4(null);
+    } else if (isFocused && planResolved && !canUseFourWayComparison && matchupMode === 4) {
+      setMatchupMode(3);
+      setMatchupRow4(null);
+    }
+  }, [canUseFourWayComparison, canUseThreeWayComparison, matchupMode, isFocused, planResolved]);
+
 
   const refreshCurrentPlan = React.useCallback(async () => {
     try {
@@ -281,6 +324,7 @@ export default function PlayerPoolScreen() {
           ? currentPlan
           : 'Free';
       setPlan(normalizedPlan);
+      setPlanResolved(true);
     } catch {
       setPlan('Free');
     }
@@ -308,7 +352,7 @@ export default function PlayerPoolScreen() {
         : area === 'weekly'
         ? 150
         : area === 'filters'
-        ? 210
+        ? 0
         : area === 'candidates'
           ? 600
           : area === 'form'
@@ -327,7 +371,9 @@ export default function PlayerPoolScreen() {
     if (!isPlayerPoolTutorialActive || tutorial.playerPoolStep !== 'filters') return;
 
     setName('Lamine Yamal');
-    setGender('');
+    setContractStatus('');
+    setLoanEndDate('');
+    setContractEndDate('');
     setNationality('');
     setLeague('');
     setTeam('');
@@ -345,11 +391,7 @@ export default function PlayerPoolScreen() {
   React.useEffect(() => {
     if (!isPlayerPoolTutorialActive) return;
 
-    if (tutorial.playerPoolStep === 'worldCupMode') {
-      scrollToTutorialArea('worldCup');
-    } else if (tutorial.playerPoolStep === 'weeklyPopularButton') {
-      scrollToTutorialArea('weekly');
-    } else if (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady') {
+    if (tutorial.playerPoolStep === 'candidates' || tutorial.playerPoolStep === 'viniciusReady') {
       scrollToTutorialArea('candidates');
     } else if (
       tutorial.playerPoolStep === 'card' ||
@@ -363,7 +405,7 @@ export default function PlayerPoolScreen() {
       tutorial.playerPoolStep === 'addYamalToMatchup' ||
       tutorial.playerPoolStep === 'addViniciusToMatchup'
     ) {
-      scrollToTutorialArea('matchupAdd');
+      scrollToTutorialArea('card');
     } else if (tutorial.playerPoolStep === 'launchMatchup') {
       scrollToTutorialArea('matchup');
     }
@@ -371,7 +413,6 @@ export default function PlayerPoolScreen() {
 
   const skipPlayerPoolTutorial = React.useCallback(() => {
     setComparisonOpen(false);
-    setWeeklyPopularOpen(false);
     setProUpsellOpen(false);
     tutorial.skipTutorial();
     navigation.navigate('Strategy');
@@ -447,23 +488,11 @@ export default function PlayerPoolScreen() {
     return matches.slice(0, 6);
   }, [league, leagueOptions]);
 
-  const renderGenderLabel = React.useCallback(() => {
-    if (gender === 'male') return t('genderMale', 'Male');
-    if (gender === 'female') return t('genderFemale', 'Female');
-    return t('gender', 'Gender');
-  }, [gender, t]);
-
-  const cycleGender = React.useCallback(() => {
-    setGender((current) => {
-      if (current === '') return 'male';
-      if (current === 'male') return 'female';
-      return '';
-    });
-  }, []);
-
   const clearFilters = React.useCallback(() => {
     setName('');
-    setGender('');
+    setContractStatus('');
+    setLoanEndDate('');
+    setContractEndDate('');
     setNationality('');
     setLeague('');
     setTeam('');
@@ -480,7 +509,6 @@ export default function PlayerPoolScreen() {
     setSelectedPlayer(null);
     currentCardRenderIdRef.current = null;
     countedCardRenderIdRef.current = null;
-    lastCardAppearanceRenderIdRef.current = null;
     setPlayerCardPlanNudgeVisible(false);
     setRevealedPotentialForCard(false);
     setRevealedFormForCard(false);
@@ -492,13 +520,11 @@ export default function PlayerPoolScreen() {
     setMatchupRow1(null);
     setMatchupRow2(null);
     setMatchupRow3(null);
+    setMatchupRow4(null);
     setComparisonOpen(false);
     setComparisonLoading(false);
     setComparisonError(null);
     setComparisonData(null);
-    setWeeklyPopularOpen(false);
-    setWeeklyPopularRows([]);
-    setWeeklyPopularLoading(false);
     setProUpsellOpen(false);
   }, [clearFilters]);
 
@@ -541,7 +567,9 @@ export default function PlayerPoolScreen() {
     const searchName = tutorialName ?? name;
     const payload: PlayerPoolSearchInput = {
       name: searchName.trim() || undefined,
-      gender: gender || undefined,
+      contractStatus: contractStatus || undefined,
+      loanEndDate: contractStatus === 'permanent' ? undefined : loanEndDate || undefined,
+      contractEndDate: contractEndDate || undefined,
       nationality: worldCupMode ? undefined : nationality.trim() || undefined,
       nationalityExact: worldCupMode
         ? undefined
@@ -570,7 +598,7 @@ export default function PlayerPoolScreen() {
       const firstRow = next[0];
       currentCardRenderIdRef.current = firstRow ? `${firstRow.id}:${Date.now()}` : null;
       countedCardRenderIdRef.current = null;
-      if (!firstRow) setPlayerCardPlanNudgeVisible(false);
+      setPlayerCardPlanNudgeVisible(false);
       setResults(next);
       setSelectedPlayerId(firstRow?.id ?? null);
       setSelectedPlayer(firstRow?.player ?? null);
@@ -588,7 +616,6 @@ export default function PlayerPoolScreen() {
       setSelectedPlayer(null);
       currentCardRenderIdRef.current = null;
       countedCardRenderIdRef.current = null;
-      lastCardAppearanceRenderIdRef.current = null;
       setPlayerCardPlanNudgeVisible(false);
       setRevealedPotentialForCard(false);
       setRevealedFormForCard(false);
@@ -597,7 +624,9 @@ export default function PlayerPoolScreen() {
       setSearching(false);
     }
   }, [
-    gender,
+    contractStatus,
+    loanEndDate,
+    contractEndDate,
     isPlayerPoolTutorialActive,
     maxAge,
     maxHeight,
@@ -615,29 +644,6 @@ export default function PlayerPoolScreen() {
     tutorial,
     worldCupMode,
   ]);
-
-  React.useEffect(() => {
-    const renderId = currentCardRenderIdRef.current;
-
-    if (plan !== 'Free' || isPlayerPoolTutorialActive || !selectedPlayerId || !selectedPlayer || !renderId) {
-      setPlayerCardPlanNudgeVisible(false);
-      return;
-    }
-
-    if (lastCardAppearanceRenderIdRef.current === renderId) return;
-
-    lastCardAppearanceRenderIdRef.current = renderId;
-    let alive = true;
-
-    (async () => {
-      const count = await incrementPlayerCardPlanNudgeCount();
-      if (alive) setPlayerCardPlanNudgeVisible(shouldShowPlayerCardPlanNudge(count));
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [isPlayerPoolTutorialActive, plan, selectedPlayer, selectedPlayerId]);
 
   const recordSelectedCardInterestOnce = React.useCallback(() => {
     if (isPlayerPoolTutorialActive) return;
@@ -789,46 +795,6 @@ export default function PlayerPoolScreen() {
     worldCupMode,
   ]);
 
-  const onRevealWeeklyPopular = React.useCallback(async () => {
-    if (weeklyPopularLoading) return;
-
-    try {
-      setWeeklyPopularLoading(true);
-      setWeeklyPopularOpen(true);
-
-      if (plan === 'Free' && !isPlayerPoolTutorialActive) {
-        const nextCount = await incrementWeeklyPopularRevealCount();
-        if (shouldShowWeeklyPopularInterstitial(nextCount)) {
-          const ok = await showInterstitialAndWaitSafely();
-          if (!ok) {
-            setProUpsellOpen(true);
-          }
-        }
-      }
-
-      const nextRows = await getWeeklyPopularPlayers(10, worldCupMode);
-      setWeeklyPopularRows(nextRows);
-      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularButton') {
-        tutorial.setPlayerPoolStep('weeklyPopularList');
-      }
-    } catch (err: any) {
-      setWeeklyPopularOpen(false);
-      Alert.alert(
-        t('weeklyPopularRevealFailed', 'Popular players failed'),
-        String(err?.message || err),
-      );
-    } finally {
-      setWeeklyPopularLoading(false);
-    }
-  }, [isPlayerPoolTutorialActive, plan, t, tutorial, weeklyPopularLoading, worldCupMode]);
-
-  const closeWeeklyPopular = React.useCallback(() => {
-    setWeeklyPopularOpen(false);
-    if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularList') {
-      tutorial.setPlayerPoolStep('filters');
-    }
-  }, [isPlayerPoolTutorialActive, tutorial]);
-
   const selectedPlayerForCard = React.useMemo(() => {
     if (!selectedPlayer) return null;
 
@@ -854,10 +820,11 @@ export default function PlayerPoolScreen() {
   }, [selectedPlayerForCard, selectedPlayerId]);
 
   type MissingScoreGateSource = 'matchup' | 'playerCard';
-  type ScoreEnsureOptions = { requirePotential?: boolean };
+  type ScoreEnsureOptions = { requirePotential?: boolean; skipGate?: boolean };
+  type MissingScoreGateResult = { scheduled: boolean; access: boolean };
 
-  const runMissingScoreGateForFreeUser = React.useCallback(async (source: MissingScoreGateSource) => {
-    if (plan !== 'Free' || isPlayerPoolTutorialActive) return;
+  const runMissingScoreGateForFreeUser = React.useCallback(async (source: MissingScoreGateSource): Promise<MissingScoreGateResult> => {
+    if (plan !== 'Free' || isPlayerPoolTutorialActive) return { scheduled: false, access: true };
 
     if (source === 'matchup') {
       const nextCount = await incrementMatchupMissingScoreAddCount();
@@ -866,8 +833,9 @@ export default function PlayerPoolScreen() {
         if (!ok) {
           setProUpsellOpen(true);
         }
+        return { scheduled: true, access: ok };
       }
-      return;
+      return { scheduled: false, access: true };
     }
 
     const nextCount = await incrementPlayerPoolMissingScoreActionCount();
@@ -876,7 +844,9 @@ export default function PlayerPoolScreen() {
       if (!ok) {
         setProUpsellOpen(true);
       }
+      return { scheduled: true, access: ok };
     }
+    return { scheduled: false, access: true };
   }, [isPlayerPoolTutorialActive, plan]);
 
   const ensureSelectedPlayerScores = React.useCallback(async (
@@ -898,7 +868,7 @@ export default function PlayerPoolScreen() {
         ? Math.round(selectedPlayer.meta.form)
         : undefined;
 
-    if (!startedFullyRevealed) {
+    if (!startedFullyRevealed && !options.skipGate) {
       await runMissingScoreGateForFreeUser(gateSource);
     }
 
@@ -971,6 +941,7 @@ export default function PlayerPoolScreen() {
   }, [readyReportsByPlayerId, reportLoadingPlayerId, selectedPlayerId]);
 
   const buildReportPayload = React.useCallback((player: PlayerData) => ({
+    sportmonksId: player.meta?.sportmonksId,
     playerId: selectedPlayerId ?? undefined,
     worldCupMode,
     name: player.name,
@@ -987,9 +958,9 @@ export default function PlayerPoolScreen() {
 
   const grantReportAccessForFreeUser = React.useCallback(async () => {
     try {
-      const nextCount = await incrementPortfolioReportOpenCount();
+      const nextCount = await incrementReportActionCount();
 
-      if (shouldShowPortfolioReportInterstitial(nextCount)) {
+      if (shouldShowReportActionInterstitial(nextCount)) {
         const shown = await showInterstitialAndWaitSafely();
         if (shown) return true;
 
@@ -1010,6 +981,7 @@ export default function PlayerPoolScreen() {
 
     await addFavoritePlayer({
       playerId: selectedPlayerId ?? undefined,
+      sportmonksId: playerToSave.meta?.sportmonksId,
       name: playerToSave.name,
       nationality: playerToSave.meta?.nationality,
       age: typeof playerToSave.meta?.age === 'number' ? playerToSave.meta.age : undefined,
@@ -1042,31 +1014,43 @@ export default function PlayerPoolScreen() {
       recordSelectedCardInterestOnce();
 
       const reportRequiresPotentialOnCard = !worldCupMode;
-      const startedFullyRevealed = reportRequiresPotentialOnCard
-        ? revealedPotentialForCard && revealedFormForCard
-        : revealedFormForCard;
+      // Reports use the shared report cadence regardless of score visibility.
       const enriched = await ensureSelectedPlayerScores('playerCard', {
         requirePotential: reportRequiresPotentialOnCard,
+        skipGate: true,
       });
       const reportPlayer = enriched?.player ?? player;
       const hasAccess =
-        plan !== 'Free' || !startedFullyRevealed || await grantReportAccessForFreeUser();
+        plan !== 'Free' ||
+        isPlayerPoolTutorialActive ||
+        await grantReportAccessForFreeUser();
       const payload = buildReportPayload(reportPlayer);
-
-      const report = await getPlayerPoolScoutingReport(payload);
-
-      if (report.status !== 'ready' || !report.content) {
-        throw new Error(t('reportFailedBody', 'Could not generate the report. Please try again later.'));
-      }
-
-      setReadyReportsByPlayerId((current) => ({ ...current, [selectedPlayerId]: report }));
 
       if (hasAccess) {
         setScoutPlayer(reportPlayer);
-        setScoutReport(report);
+        setScoutReport({
+          favorite_player_id: selectedPlayerId,
+          status: 'processing',
+          content: '',
+          content_json: { sections: { analysis: { status: 'processing' } } },
+        });
+        setScoutReportPayload(payload);
+        setScoutReportPlayerId(selectedPlayerId);
         setScoutOpen(true);
       }
+
+      const report = await getPlayerPoolScoutingReportProgress(payload);
+
+      if (report.status === 'failed' || report.status === 'error') {
+        throw new Error(t('reportFailedBody', 'Could not generate the report. Please try again later.'));
+      }
+      if(report.status==='ready')setReadyReportsByPlayerId((current) => ({ ...current, [selectedPlayerId]: report }));
+
+      if (hasAccess) {
+        setScoutReport(report);
+      }
     } catch (err: any) {
+      setScoutReport((current) => current?.status === 'processing' ? { ...current, status: 'failed' } : current);
       Alert.alert(t('reportError', 'Report error'), String(err?.message || err));
     } finally {
       setReportLoadingPlayerId(null);
@@ -1075,11 +1059,13 @@ export default function PlayerPoolScreen() {
     buildReportPayload,
     ensureSelectedPlayerScores,
     grantReportAccessForFreeUser,
+    isPlayerPoolTutorialActive,
     plan,
     recordSelectedCardInterestOnce,
     reportLoadingPlayerId,
     revealedFormForCard,
     revealedPotentialForCard,
+    runMissingScoreGateForFreeUser,
     selectedPlayerId,
     t,
     worldCupMode,
@@ -1087,11 +1073,19 @@ export default function PlayerPoolScreen() {
 
   const addSelectedPlayerToMatchup = React.useCallback(async () => {
     if (addingMatchupPlayer || !selectedPlayerId || !selectedPlayerForMatchup) return;
+    if ([matchupRow1, matchupRow2, matchupRow3, matchupRow4].slice(0, matchupMode).every(Boolean)) return;
     if (
       matchupRow1?.id === selectedPlayerForMatchup.id ||
       matchupRow2?.id === selectedPlayerForMatchup.id ||
-      (matchupMode === 3 && matchupRow3?.id === selectedPlayerForMatchup.id)
+      (matchupMode >= 3 && matchupRow3?.id === selectedPlayerForMatchup.id) ||
+      (matchupMode === 4 && matchupRow4?.id === selectedPlayerForMatchup.id)
     ) {
+      return;
+    }
+
+    const stableId = selectedPlayerForMatchup.player.meta?.sportmonksId;
+    if (!Number.isSafeInteger(stableId) || (stableId ?? 0) <= 0) {
+      Alert.alert(t('matchupComparisonFailed', 'Matchup comparison failed'), t('matchupMissingStableId', 'Player identity is unavailable. Please search for the player again.'));
       return;
     }
 
@@ -1107,30 +1101,16 @@ export default function PlayerPoolScreen() {
       setAddingMatchupPlayer(false);
     }
 
-    if (!matchupRow1) {
-      setMatchupRow1(matchupPlayer);
-      recordSelectedCardInterestOnce();
-      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addYamalToMatchup') {
-        setName('Vinicius Junior');
-        onSearch('Vinicius Junior');
-      }
-      return;
-    }
-
-    if (!matchupRow2) {
-      setMatchupRow2(matchupPlayer);
-      recordSelectedCardInterestOnce();
-      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addViniciusToMatchup') {
-        tutorial.setPlayerPoolStep('launchMatchup');
-      }
-      return;
-    }
-
-    if (matchupMode === 3 && !matchupRow3) {
-      setMatchupRow3(matchupPlayer);
-      recordSelectedCardInterestOnce();
+    sharedMatchup.add(matchupPlayer);
+    recordSelectedCardInterestOnce();
+    if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addYamalToMatchup') {
+      setName('Vinicius Junior'); onSearch('Vinicius Junior');
+    } else if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'addViniciusToMatchup') {
+      tutorial.setPlayerPoolStep('launchMatchup');
     }
   }, [
+    sharedMatchup.add,
+    matchupRow4,
     addingMatchupPlayer,
     ensureSelectedPlayerScoresForMatchup,
     isPlayerPoolTutorialActive,
@@ -1146,41 +1126,19 @@ export default function PlayerPoolScreen() {
     tutorial,
   ]);
 
-  const onLaunchMatchup = React.useCallback(async () => {
-    if (!matchupRow1 || !matchupRow2 || (matchupMode === 3 && !matchupRow3) || comparisonLoading) return;
+  React.useEffect(() => {
+    if (!pendingPortfolioMatchup || pendingPortfolioMatchup !== selectedPlayerId) return;
+    setPendingPortfolioMatchup(null);
+    void addSelectedPlayerToMatchup().then(scrollToMatchup);
+  }, [pendingPortfolioMatchup, selectedPlayerId, addSelectedPlayerToMatchup, scrollToMatchup]);
 
-    try {
-      setComparisonOpen(true);
-      setComparisonLoading(true);
-      setComparisonError(null);
-      setComparisonData(null);
+  const comparisonRequest = React.useRef(0);
+  React.useEffect(() => {
+    comparisonRequest.current++;
+    setComparisonOpen(false); setComparisonData(null); setComparisonLoading(false);
+  }, [matchupRow1, matchupRow2, matchupRow3, matchupRow4, matchupMode, isFocused]);
 
-      if (plan === 'Free' && !isPlayerPoolTutorialActive) {
-        const nextCount = await incrementMatchupLaunchCount();
-        if (shouldShowMatchupLaunchInterstitial(nextCount)) {
-          const ok = await showInterstitialAndWaitSafely();
-          if (!ok) {
-            setProUpsellOpen(true);
-          }
-        }
-      }
-
-      const nextComparison = await getMatchupComparison(
-        matchupRow1.id,
-        matchupRow2.id,
-        worldCupMode,
-        matchupMode === 3 ? matchupRow3?.id : undefined,
-      );
-      setComparisonData(nextComparison);
-      if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'launchMatchup') {
-        tutorial.setPlayerPoolStep('comparison');
-      }
-    } catch (err: any) {
-      setComparisonError(err?.message ?? t('matchupComparisonFailed', 'Matchup comparison failed'));
-    } finally {
-      setComparisonLoading(false);
-    }
-  }, [comparisonLoading, isPlayerPoolTutorialActive, matchupMode, matchupRow1, matchupRow2, matchupRow3, plan, t, tutorial, worldCupMode]);
+  const onLaunchMatchup = React.useCallback(() => { navigation.navigate('Matchup'); }, [navigation]);
 
   const candidateTableHeight = React.useMemo(() => {
     if (results.length === 0) {
@@ -1279,12 +1237,6 @@ export default function PlayerPoolScreen() {
     return list;
   }, [results, sortDir, sortKey, worldCupMode]);
 
-  const weeklyPopularLabel = worldCupMode
-    ? t('revealWorldCupTopSearches', 'Reveal World Cup Top Searches')
-    : t('revealWeeklyPopularPlayers', 'Reveal Weekly Top Searches');
-  const weeklyPopularLabelUpper = weeklyPopularLabel.toLocaleUpperCase(
-    i18n.language?.startsWith('tr') ? 'tr-TR' : undefined,
-  );
   const playerPoolTheme = React.useMemo(
     () =>
       worldCupMode
@@ -1308,11 +1260,6 @@ export default function PlayerPoolScreen() {
           },
     [worldCupMode],
   );
-  const worldCupTutorialStepActive =
-    isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'worldCupMode';
-  const worldCupSwitchLocked =
-    isPlayerPoolTutorialActive && tutorial.playerPoolStep !== 'worldCupMode';
-
   return (
     <KeyboardAvoidingView
       style={[styles.safe, { backgroundColor: playerPoolTheme.bg }]}
@@ -1326,169 +1273,15 @@ export default function PlayerPoolScreen() {
           contentContainerStyle={styles.content}
           scrollEnabled
         >
-          <Header
-            backgroundColor={BG}
-            textColor={playerPoolTheme.text}
-            accentColor={ACCENT}
-            lineColor={worldCupMode ? WORLD_CUP_COLORS.mint : playerPoolTheme.line}
-            subtitle={t(
-              'playerPoolHeaderSubtitle',
-              'Discover 52,000+ players from 113 leagues worldwide.',
-            )}
-          />
-
-        <TutorialHint
-          visible={worldCupTutorialStepActive}
-          title={t('tutorialWorldCupModeTitle', 'World Cup mode')}
-          body={t(
-            'tutorialWorldCupModeBody',
-            'Enable this to use the World Cup data in the player pool section. You can switch it on or off here to decide the data to be used.',
-          )}
-          actionLabel={t('tutorialContinueToWeeklyPopular', 'Continue to Weekly Top Searches')}
-          onAction={() => {
-            setWorldCupMode(false);
-            tutorial.setPlayerPoolStep('weeklyPopularButton');
-          }}
-          onSkipAll={skipPlayerPoolTutorial}
-          arrow="none"
-        />
-
-        <Pressable
-          onPress={() => {
-            if (worldCupSwitchLocked) return;
-            setWorldCupMode((value) => !value);
-          }}
-          disabled={worldCupSwitchLocked}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: worldCupMode }}
-          accessibilityLabel={t('worldCupMode', 'World Cup mode')}
-          style={({ pressed }) => [
-            styles.worldCupSwitch,
-            worldCupMode && styles.worldCupSwitchActive,
-            worldCupSwitchLocked && !worldCupMode && styles.worldCupSwitchMuted,
-            {
-              backgroundColor: worldCupMode ? WORLD_CUP_COLORS.panel : 'rgba(255,255,255,0.035)',
-              borderColor: worldCupMode ? WORLD_CUP_COLORS.mint : ACCENT,
-            },
-            pressed && !worldCupSwitchLocked && styles.pressed,
-          ]}
-        >
-          <View pointerEvents="none" style={styles.worldCupRibbon}>
-            {WORLD_CUP_COLORS.palette.map((color, index) => (
-              <View key={`${color}-${index}`} style={[styles.worldCupRibbonBand, { backgroundColor: color }]} />
-            ))}
-          </View>
-
-          <View style={styles.worldCupTextWrap}>
-            <View style={styles.worldCupBadgeRow}>
-              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.mint }]} />
-              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.lime }]} />
-              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.orange }]} />
-              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.blue }]} />
-              <View style={[styles.worldCupDot, { backgroundColor: WORLD_CUP_COLORS.lavender }]} />
-            </View>
-            <Text
-              style={[
-                styles.worldCupTitle,
-                worldCupMode && {
-                  color: WORLD_CUP_COLORS.mint,
-                  textShadowColor: 'rgba(98, 246, 210, 0.25)',
-                  textShadowRadius: 8,
-                },
-              ]}
-            >
-              {t('worldCupModeTitle', 'World Cup Mode')}
-            </Text>
-            <Text style={[styles.worldCupSubtitle, { color: worldCupMode ? WORLD_CUP_COLORS.muted : '#7A7A85' }]}>
-              {worldCupMode
-                ? t('worldCupDataInPlace', 'World Cup data in place.')
-                : t('clubDataInPlace', 'Club data in place.')}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.worldCupStatusPill,
-              {
-                borderColor: worldCupMode ? WORLD_CUP_COLORS.purple : 'rgba(255,255,255,0.14)',
-                backgroundColor: worldCupMode ? 'rgba(92, 0, 230, 0.22)' : 'rgba(255,255,255,0.05)',
-              },
-            ]}
-          >
-            <Text style={[styles.worldCupStatusText, { color: worldCupMode ? '#FFFFFF' : '#7A7A85' }]}>
-              {worldCupMode ? t('worldCupModeOn', 'ON') : t('worldCupModeOff', 'OFF')}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.worldCupTrack,
-              {
-                backgroundColor: worldCupMode ? WORLD_CUP_COLORS.purple : 'rgba(255,255,255,0.12)',
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.worldCupKnob,
-                {
-                  transform: [{ translateX: worldCupMode ? 24 : 0 }],
-                  backgroundColor: worldCupMode ? WORLD_CUP_COLORS.darkGreen : '#FFFFFF',
-                },
-              ]}
-            />
-          </View>
-        </Pressable>
-
-        <TutorialHint
-          visible={isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularButton'}
-          title={t('tutorialWeeklyPopularButtonTitle', 'Weekly popular players')}
-          body={t(
-            'tutorialWeeklyPopularButtonBody',
-            'This button reveals the most searched players of the week.',
-          )}
-          targetLabel={t('tutorialPressWeeklyPopular', 'Press Weekly Top Searches')}
-          onSkipAll={skipPlayerPoolTutorial}
-          arrow="none"
-        />
-
-        <Pressable
-          onPress={onRevealWeeklyPopular}
-          disabled={isPlayerPoolTutorialActive && tutorial.playerPoolStep !== 'weeklyPopularButton'}
-          style={({ pressed }) => [
-            styles.popularButton,
-            {
-              borderColor: worldCupMode ? WORLD_CUP_COLORS.coral : playerPoolTheme.line,
-              backgroundColor: worldCupMode ? 'rgba(255, 143, 145, 0.13)' : playerPoolTheme.glow,
-            },
-            isPlayerPoolTutorialActive &&
-              tutorial.playerPoolStep !== 'weeklyPopularButton' &&
-              styles.popularButtonLocked,
-            pressed && styles.pressed,
-          ]}
-        >
-          {weeklyPopularLoading ? (
-            <ActivityIndicator size="small" color={playerPoolTheme.accent} />
-          ) : (
-            <Eye size={18} color={worldCupMode ? WORLD_CUP_COLORS.coral : playerPoolTheme.accent} strokeWidth={2.2} />
-          )}
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.popularButtonText,
-              { color: worldCupMode ? WORLD_CUP_COLORS.coral : playerPoolTheme.accent },
-            ]}
-          >
-            {weeklyPopularLabelUpper}
-          </Text>
-        </Pressable>
-
         <SearchFilters
           name={name}
           setName={setName}
-          gender={gender}
-          renderGenderLabel={renderGenderLabel}
-          cycleGender={cycleGender}
+          contractStatus={contractStatus}
+          setContractStatus={setContractStatus}
+          loanEndDate={loanEndDate}
+          setLoanEndDate={setLoanEndDate}
+          contractEndDate={contractEndDate}
+          setContractEndDate={setContractEndDate}
           nationality={nationality}
           setNationality={setNationality}
           selectedNationality={selectedNationality}
@@ -1540,6 +1333,8 @@ export default function PlayerPoolScreen() {
           } : undefined}
         />
 
+        <TutorialPageGuide page="playerPool" frame={0} onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+
         <CandidatePlayers
           results={results}
           sortedResults={sortedResults}
@@ -1552,21 +1347,19 @@ export default function PlayerPoolScreen() {
           setSortOpen={setSortOpen}
           sortKey={sortKey}
           cycleSort={cycleSort}
-          weeklyPopularRows={weeklyPopularRows}
-          weeklyPopularOpen={weeklyPopularOpen}
-          weeklyPopularLoading={weeklyPopularLoading}
-          onCloseWeeklyPopular={closeWeeklyPopular}
-          weeklyPopularTutorialVisible={
-            isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'weeklyPopularList'
-          }
-          onWeeklyPopularTutorialSkipAll={skipPlayerPoolTutorial}
           onSelectRow={(row) => {
             setRevealedPotentialForCard(false);
             setRevealedFormForCard(false);
+            setPlayerCardPlanNudgeVisible(false);
             currentCardRenderIdRef.current = `${row.id}:${Date.now()}`;
             countedCardRenderIdRef.current = null;
             setSelectedPlayerId(row.id);
             setSelectedPlayer(row.player);
+            if (planResolved && plan === 'Free' && !isPlayerPoolTutorialActive) {
+              void incrementPlayerCardPlanNudgeCount().then((count) => {
+                setPlayerCardPlanNudgeVisible(shouldShowPlayerCardPlanNudge(count));
+              });
+            }
           }}
           tutorialStep={
             isPlayerPoolTutorialActive &&
@@ -1594,22 +1387,13 @@ export default function PlayerPoolScreen() {
             activeRow: 'rgba(182, 240, 0, 0.10)',
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
-          weeklyPopularTheme={worldCupMode ? {
-            panel: WORLD_CUP_COLORS.panel,
-            card: WORLD_CUP_COLORS.card,
-            line: WORLD_CUP_COLORS.coral,
-            accent: WORLD_CUP_COLORS.coral,
-            accentSoft: 'rgba(255, 143, 145, 0.13)',
-            activeRow: 'rgba(255, 143, 145, 0.12)',
-            muted: WORLD_CUP_COLORS.muted,
-          } : undefined}
-          previewPlayerCardTheme={worldCupMode ? {
-            cardBackground: WORLD_CUP_COLORS.purple,
-            accent: WORLD_CUP_COLORS.lavender,
-          } : undefined}
         />
 
+        <TutorialPageGuide page="playerPool" frame={1} onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+
         <PlayerCardPP
+          onMatchup={async () => { await addSelectedPlayerToMatchup(); }}
+          matchupDisabled={addingMatchupPlayer || [matchupRow1, matchupRow2, matchupRow3, matchupRow4].slice(0, matchupMode).every(Boolean) || [matchupRow1, matchupRow2, matchupRow3, matchupRow4].slice(0, matchupMode).some(row => row?.id === selectedPlayerId)}
           selectedPlayer={selectedPlayer}
           selectedPlayerForCard={selectedPlayerForCard}
           onRevealPotential={onRevealPotential}
@@ -1654,40 +1438,46 @@ export default function PlayerPoolScreen() {
                   navigation.navigate('Profile', { screen: 'ManagePlan' });
                 }}
                 worldCupMode={worldCupMode}
-                title={t('playerCardPlanNudgeTitle', 'Access The Full Experience')}
-                body={t('playerCardPlanNudgeBody', 'Plus unlocks ad-free ScoutWise with 3-way comparison.\nPro adds strategy-aware player discovery through ScoutWise chat.')}
+                title={t('playerCardPlanNudgeTitle', 'Discover Plus & Pro')}
                 buttonLabel={t('viewPlans', 'View Plans')}
               />
             ) : null
           }
         />
 
+        <TutorialPageGuide page="playerPool" frame={2} onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+        <View onLayout={event => { matchupTop.current = event.nativeEvent.layout.y; }}>
         <MatchupCenter
-          selectedPlayer={selectedPlayerForMatchup}
           row1={matchupRow1}
           row2={matchupRow2}
           row3={matchupRow3}
+          row4={matchupRow4}
           matchupMode={matchupMode}
           onMatchupModeChange={(mode) => {
             if (mode === 3 && !canUseThreeWayComparison) {
-              setThreeWayProPromptOpen(true);
+              setMatchupUpgradeMode(3);
               return;
             }
-            if (mode === 2) {
-              const retainedRows = [matchupRow1, matchupRow2, matchupRow3].filter(Boolean).slice(0, 2);
+            if (mode === 4 && !canUseFourWayComparison) {
+              setMatchupUpgradeMode(4);
+              return;
+            }
+            if (mode < matchupMode) {
+              const retainedRows = [matchupRow1, matchupRow2, matchupRow3, matchupRow4].filter(Boolean).slice(0, mode);
               setMatchupRow1(retainedRows[0] ?? null);
               setMatchupRow2(retainedRows[1] ?? null);
-              setMatchupRow3(null);
+              setMatchupRow3(retainedRows[2] ?? null);
+              setMatchupRow4(retainedRows[3] ?? null);
             }
             setMatchupMode(mode);
           }}
-          onAddSelectedPlayer={addSelectedPlayerToMatchup}
           onLaunchMatchup={onLaunchMatchup}
-          launchDisabled={!matchupRow1 || !matchupRow2 || (matchupMode === 3 && !matchupRow3)}
+          launchDisabled={!matchupRow1 || !matchupRow2 || (matchupMode >= 3 && !matchupRow3) || (matchupMode === 4 && !matchupRow4)}
           launchLoading={comparisonLoading}
-          onRemoveRow1={() => setMatchupRow1(null)}
-          onRemoveRow2={() => setMatchupRow2(null)}
-          onRemoveRow3={() => setMatchupRow3(null)}
+          onRemoveRow1={() => sharedMatchup.removeAt(0)}
+          onRemoveRow2={() => sharedMatchup.removeAt(1)}
+          onRemoveRow3={() => sharedMatchup.removeAt(2)}
+          onRemoveRow4={() => sharedMatchup.removeAt(3)}
           tutorialStep={isPlayerPoolTutorialActive ? tutorial.playerPoolStep : null}
           onTutorialSkipAll={skipPlayerPoolTutorial}
           tutorialActive={isPlayerPoolTutorialActive}
@@ -1702,6 +1492,7 @@ export default function PlayerPoolScreen() {
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
+        </View>
         {plan === 'Free' &&
         !isPlayerPoolTutorialActive &&
         matchupMode === 2 &&
@@ -1716,8 +1507,7 @@ export default function PlayerPoolScreen() {
               navigation.navigate('Profile', { screen: 'ManagePlan' });
             }}
             worldCupMode={worldCupMode}
-            title={t('playerCardPlanNudgeTitle', 'Access The Full Experience')}
-            body={t('playerCardPlanNudgeBody', 'Plus unlocks ad-free ScoutWise with 3-way comparison.\nPro adds strategy-aware player discovery through ScoutWise chat.')}
+            title={t('playerCardPlanNudgeTitle', 'Discover Plus & Pro')}
             buttonLabel={t('viewPlans', 'View Plans')}
             containerStyle={styles.matchupPlanNudge}
           />
@@ -1728,8 +1518,11 @@ export default function PlayerPoolScreen() {
           error={comparisonError}
           player1={comparisonData?.player1 ?? (matchupRow1 ? { id: matchupRow1.id, player: matchupRow1.player } : null)}
           player2={comparisonData?.player2 ?? (matchupRow2 ? { id: matchupRow2.id, player: matchupRow2.player } : null)}
-          player3={comparisonData?.player3 ?? (matchupMode === 3 && matchupRow3 ? { id: matchupRow3.id, player: matchupRow3.player } : null)}
+          player4={comparisonData?.player4 ?? (matchupMode === 4 && matchupRow4 ? { id: matchupRow4.id, player: matchupRow4.player } : null)}
+          player3={comparisonData?.player3 ?? (matchupMode >= 3 && matchupRow3 ? { id: matchupRow3.id, player: matchupRow3.player } : null)}
           onClose={() => {
+            comparisonRequest.current++;
+            setComparisonLoading(false);
             setComparisonOpen(false);
             if (isPlayerPoolTutorialActive && tutorial.playerPoolStep === 'comparison') {
               tutorial.moveToProfile();
@@ -1756,17 +1549,24 @@ export default function PlayerPoolScreen() {
             onClose={() => setScoutOpen(false)}
             player={scoutPlayer}
             report={scoutReport}
+            plan={plan}
+            reloadReport={scoutReportPayload?()=>getPlayerPoolScoutingReportProgress(scoutReportPayload):undefined}
+            loadReportSection={scoutReportPayload?(section)=>getPlayerPoolScoutingReportSection(scoutReportPayload,section):undefined}
+            onReportUpdate={next=>{
+              setScoutReport(next);
+              if(next.status==='ready'&&scoutReportPlayerId)setReadyReportsByPlayerId(current=>({...current,[scoutReportPlayerId]:next}));
+            }}
           />
         ) : null}
-        <ProNotReadyScreen
+        <PlusProUpsellScreen
           visible={proUpsellOpen}
           onClose={() => setProUpsellOpen(false)}
         />
         <Modal
-          visible={threeWayProPromptOpen}
+          visible={matchupUpgradeMode !== null}
           transparent
           animationType="fade"
-          onRequestClose={() => setThreeWayProPromptOpen(false)}
+          onRequestClose={() => setMatchupUpgradeMode(null)}
         >
           <View style={styles.proPromptBackdrop}>
             <View
@@ -1778,28 +1578,39 @@ export default function PlayerPoolScreen() {
                 },
               ]}
             >
-              <View style={[styles.proPromptIconWrap, worldCupMode && { borderColor: WORLD_CUP_COLORS.mint }]}>
-                <Crown size={24} color={worldCupMode ? WORLD_CUP_COLORS.mint : ACCENT} strokeWidth={2.2} />
+              <View style={styles.proPromptHeader}>
+                <View style={[styles.proPromptIconWrap, worldCupMode && { borderColor: WORLD_CUP_COLORS.mint }]}>
+                  <BadgeCheck size={20} color={worldCupMode ? WORLD_CUP_COLORS.mint : ACCENT} strokeWidth={2.3} />
+                </View>
+                <Text style={styles.proPromptTitle}>
+                  {matchupUpgradeMode === 3
+                    ? i18n.language.startsWith('tr')
+                      ? <><Text style={styles.proPromptPlus}>PLUS</Text> veya <Text style={styles.proPromptPro}>PRO</Text> ile 3’lü karşılaştırma</>
+                      : <><Text style={styles.proPromptPlus}>PLUS</Text> or <Text style={styles.proPromptPro}>PRO</Text> for a 3-way matchup</>
+                    : i18n.language.startsWith('tr')
+                      ? <><Text style={styles.proPromptPro}>PRO</Text> ile 4’lü karşılaştırma</>
+                      : <><Text style={styles.proPromptPro}>PRO</Text> for a 4-way matchup</>}
+                </Text>
               </View>
-              <Text style={[styles.proPromptTitle, worldCupMode && { color: WORLD_CUP_COLORS.mint }]}>
-                {t('threeWayProTitle', 'Unlock 3-Way Comparison')}
-              </Text>
               <Text style={styles.proPromptBody}>
-                {t(
-                  'threeWayProBody',
-                  'Move to a Plus or Pro plan to compare three players at once with full ScoutWise metrics and charts.',
-                )}
+                {matchupUpgradeMode === 3
+                  ? i18n.language.startsWith('tr')
+                    ? <>Bu özelliğe erişmek için <Text style={styles.proPromptPlus}>PLUS</Text> veya <Text style={styles.proPromptPro}>PRO</Text>’ya geç.</>
+                    : <>Switch to <Text style={styles.proPromptPlus}>PLUS</Text> or <Text style={styles.proPromptPro}>PRO</Text> to access this feature.</>
+                  : i18n.language.startsWith('tr')
+                    ? <>Bu özelliğe erişmek için <Text style={styles.proPromptPro}>PRO</Text>’ya geç.</>
+                    : <>Switch to <Text style={styles.proPromptPro}>PRO</Text> to access this feature.</>}
               </Text>
               <View style={styles.proPromptActions}>
                 <Pressable
-                  onPress={() => setThreeWayProPromptOpen(false)}
+                  onPress={() => setMatchupUpgradeMode(null)}
                   style={({ pressed }) => [styles.proPromptSecondary, pressed && styles.pressed]}
                 >
                   <Text style={styles.proPromptSecondaryText}>{t('notNow', 'Not now')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    setThreeWayProPromptOpen(false);
+                    setMatchupUpgradeMode(null);
                     navigation.navigate('Profile', { screen: 'ManagePlan' });
                   }}
                   style={({ pressed }) => [
@@ -1835,119 +1646,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   content: {
-    paddingTop: 0,
+    paddingTop: 16,
     paddingBottom: 32,
     gap: 16,
-  },
-  worldCupSwitch: {
-    minHeight: 90,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingTop: 22,
-    paddingBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    overflow: 'hidden',
-  },
-  worldCupSwitchActive: {
-    shadowColor: '#62F6D2',
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  worldCupSwitchMuted: {
-    opacity: 0.55,
-  },
-  worldCupRibbon: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 10,
-    flexDirection: 'row',
-  },
-  worldCupRibbonBand: {
-    flex: 1,
-  },
-  worldCupTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  worldCupBadgeRow: {
-    flexDirection: 'row',
-    gap: 5,
-    marginBottom: 7,
-  },
-  worldCupDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  worldCupEyebrow: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  worldCupTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
-    marginTop: 2,
-  },
-  worldCupSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  worldCupStatusPill: {
-    minWidth: 48,
-    minHeight: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  worldCupStatusText: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  worldCupTrack: {
-    width: 54,
-    height: 30,
-    borderRadius: 15,
-    padding: 3,
-    justifyContent: 'center',
-  },
-  worldCupKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
-  popularButton: {
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderRadius: 14,
-    paddingHorizontal: 8,
-  },
-  popularButtonLocked: {
-    opacity: 0.45,
-  },
-  popularButtonText: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: '900',
-    textAlign: 'center',
   },
   playerCardPlanNudge: {
     marginTop: 12,
@@ -1978,20 +1679,97 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  playerCardPlanNudgeTitlePill: {
+    minHeight: 34,
+    justifyContent: 'center',
+    borderRadius: 11,
+    borderWidth: 1,
+    backgroundColor: 'rgba(8, 18, 13, 0.72)',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
   playerCardPlanNudgeTitle: {
-    fontSize: 13,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
-  playerCardPlanNudgeBody: {
-    color: '#9A9AA3',
-    fontSize: 12,
+  playerCardPlanNudgeTable: {
+    overflow: 'hidden',
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#26362E',
+    backgroundColor: '#131916',
+  },
+  playerCardPlanNudgeTableRow: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  playerCardPlanNudgeTableHeader: {
+    minHeight: 34,
+    backgroundColor: '#101512',
+  },
+  playerCardPlanNudgeTableBorder: {
+    borderTopWidth: 1,
+    borderTopColor: '#26362E',
+  },
+  playerCardPlanNudgeFeatureCell: {
+    flex: 1.4,
+    minWidth: 0,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  playerCardPlanNudgeValueCell: {
+    flex: 0.72,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    borderLeftWidth: 1,
+    borderLeftColor: '#26362E',
+  },
+  playerCardPlanNudgePlusCell: {
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+  },
+  playerCardPlanNudgeProCell: {
+    backgroundColor: 'rgba(22, 163, 74, 0.11)',
+  },
+  playerCardPlanNudgePlusValue: {
+    backgroundColor: 'rgba(56, 189, 248, 0.025)',
+  },
+  playerCardPlanNudgeProValue: {
+    backgroundColor: 'rgba(22, 163, 74, 0.035)',
+  },
+  playerCardPlanNudgePlusText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  playerCardPlanNudgeProText: {
+    color: '#4ADE80',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  playerCardPlanNudgeFeatureText: {
+    color: '#D4DED8',
+    fontSize: 10,
+    lineHeight: 13,
     fontWeight: '700',
-    lineHeight: 17,
-    marginTop: 3,
   },
-  playerCardPlanNudgePlanName: {
-    color: ACCENT,
-    fontWeight: '900',
+  playerCardPlanNudgeValueText: {
+    color: '#F2F5F3',
+    fontSize: 9,
+    lineHeight: 11,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   playerCardPlanNudgeClose: {
     width: 26,
@@ -2030,13 +1808,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(36, 245, 166, 0.34)',
     backgroundColor: PANEL,
     padding: 18,
-    alignItems: 'center',
     gap: 12,
   },
+  proPromptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+  },
   proPromptIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1,
     borderColor: 'rgba(36, 245, 166, 0.42)',
     backgroundColor: 'rgba(22, 163, 74, 0.12)',
@@ -2044,18 +1827,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   proPromptTitle: {
-    color: ACCENT,
-    fontSize: 17,
-    fontWeight: '900',
-    textAlign: 'center',
+    flex: 1,
+    color: '#F4F6F5',
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '800',
   },
   proPromptBody: {
     color: '#9A9AA3',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
-    textAlign: 'center',
   },
+  proPromptPlus: { color: '#38BDF8', fontWeight: '900' },
+  proPromptPro: { color: ACCENT, fontWeight: '900' },
   proPromptActions: {
     flexDirection: 'row',
     gap: 10,

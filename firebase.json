@@ -1,0 +1,15 @@
+{
+  "react-native": {
+    "analytics_auto_collection_enabled": true,
+    "crashlytics_auto_collection_enabled": true,
+    "crashlytics_debug_enabled": true,
+    "google_analytics_automatic_screen_reporting_enabled": false,
+    "messaging_ios_foreground_presentation_options": [
+      "sound",
+      "banner",
+      "list"
+    ],
+    "messaging_android_notification_channel_id": "scoutwise_updates",
+    "perf_auto_collection_enabled": true
+  }
+}

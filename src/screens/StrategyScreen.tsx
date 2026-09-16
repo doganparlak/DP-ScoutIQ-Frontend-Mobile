@@ -1,4 +1,5 @@
 // src/screens/StrategyScreen.tsx
+import { canUseChat } from '@/utils/chatAccess';
 import * as React from 'react';
 import {
   View,
@@ -18,7 +19,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
 import DataUsage from '@/components/DataUsage';
-import { TutorialHint, useTutorial } from '@/components/Tutorial';
+import { TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import { BG, ACCENT, ACCENT_DARK, MUTED, TEXT, PANEL, LINE } from '@/theme';
 import type { MainTabsParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ export default function StrategyScreen() {
     'We play in a 4-3-3 formation with pressing high on the pitch when out of possession.',
   );
   const scrollRef = React.useRef<ScrollView | null>(null);
+  const tutorialPreviewWasActive = React.useRef(false);
 
   const [dataUsageOpen, setDataUsageOpen] = React.useState(false);
   const [aiConsent, setAiConsent] = React.useState(false);
@@ -56,6 +58,27 @@ export default function StrategyScreen() {
   React.useEffect(() => {
     loadConsent();
   }, [loadConsent]);
+
+  React.useEffect(() => {
+    const previewActive = tutorial.active && tutorial.activePage === 'pro';
+    if (previewActive) {
+      tutorialPreviewWasActive.current = true;
+      return;
+    }
+    if (!tutorialPreviewWasActive.current) return;
+    tutorialPreviewWasActive.current = false;
+    getMe().then(me => {
+      if (!canUseChat(me)) {
+        (navigation as any).navigate('ProHome');
+      }
+    }).catch(() => (navigation as any).navigate('ProHome'));
+  }, [navigation, tutorial.active, tutorial.activePage]);
+
+  React.useEffect(() => {
+    if (tutorial.active && tutorial.activePage === 'pro' && tutorial.activeFrame === 1) {
+      (navigation as any).navigate('LegacyChat');
+    }
+  }, [navigation, tutorial.active, tutorial.activeFrame, tutorial.activePage]);
 
   React.useEffect(() => {
     if (
@@ -85,8 +108,15 @@ export default function StrategyScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadConsent();
-    }, [loadConsent])
+      let active = true;
+      void loadConsent().catch(() => {});
+      if (!tutorial.active) {
+        getMe().then(me => {
+          if (active && !canUseChat(me)) (navigation as any).navigate('ProHome');
+        }).catch(() => {});
+      }
+      return () => { active = false; };
+    }, [loadConsent, navigation, tutorial.active])
   );
 
   const handleConsentToggle = async () => {
@@ -104,16 +134,16 @@ export default function StrategyScreen() {
   };
 
   const handleStart = () => {
-    if (loadingConsent || savingConsent) return;
-    if (!aiConsent && !isScoutWiseTutorial) return;
+    if (!tutorial.active && (loadingConsent || savingConsent)) return;
+    if (!aiConsent && !tutorial.active) return;
     if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'startChat') {
       tutorial.setScoutWiseStep('chatInput');
     }
     navigation.getParent()?.navigate('Chat', { screen: 'LegacyChat' } as never);
   };
 
-  const buttonsDisabled = isScoutWiseTutorial ? false : loadingConsent || savingConsent || !aiConsent;
-  const showConsentUI = !isScoutWiseTutorial && !loadingConsent && !savingConsent && !aiConsent;
+  const buttonsDisabled = tutorial.active ? false : loadingConsent || savingConsent || !aiConsent;
+  const showConsentUI = !tutorial.active && !loadingConsent && !savingConsent && !aiConsent;
 
   return (
     <KeyboardAvoidingView
@@ -134,6 +164,9 @@ export default function StrategyScreen() {
             contentContainerStyle={{ paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
           >
+            <View style={[styles.tutorialCardWidth, styles.tutorialInline]}>
+              <TutorialPageGuide page="pro" frame={0} onShow={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} />
+            </View>
             <View style={styles.tutorialCardWidth}>
               <TutorialHint
                 visible={isScoutWiseTutorial && tutorial.scoutWiseStep === 'setStrategy'}
@@ -277,6 +310,7 @@ const styles = StyleSheet.create({
   tutorialCardWidth: {
     marginHorizontal: 16,
   },
+  tutorialInline: { marginBottom: 20 },
 
   aiDisclosureText: {
     color: TEXT,

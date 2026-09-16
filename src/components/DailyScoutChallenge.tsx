@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,13 +9,12 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { ListOrdered, Target, Trophy, X } from 'lucide-react-native';
-import { useTranslation } from 'react-i18next';
+} from "react-native";
+import { ListOrdered, Target, Trophy, X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
-import PlayerCard from '@/components/PlayerCard';
+import DailyScoutPlayerCard from "@/components/DailyScoutPlayerCard";
 import {
-  addFavoritePlayer,
   getDailyScoutChallenge,
   getDailyScoutLeaderboard,
   setDailyScoutNickname,
@@ -23,11 +22,12 @@ import {
   submitDailyScoutAnswer,
   type DailyScoutChallenge,
   type DailyScoutLeaderboard,
-} from '@/services/api';
-import { ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from '@/theme';
-import type { PlayerData } from '@/types';
+} from "@/services/api";
+import { ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from "@/theme";
 
 type ChallengeModalProps = {
+  embedded?: boolean;
+  onOpenLeaderboard?: () => void;
   visible?: boolean;
   autoOpen?: boolean;
   onClose?: () => void;
@@ -48,14 +48,17 @@ export function DailyScoutChallengeFrame({
     <View style={styles.profileFrame}>
       <View style={styles.challengeHeader}>
         <View style={styles.iconBubble}>
-          <Trophy size={18} color={ACCENT} strokeWidth={2.5} />
+          <Target size={18} color={ACCENT} strokeWidth={2.5} />
         </View>
         <View style={styles.titleTextWrap}>
           <Text style={styles.profileFrameTitle}>
-            {t('dailyScoutChallengeTitle', 'Daily Scout Challenge')}
+            {t("dailyScoutChallengeTitle", "Daily Scout Challenge")}
           </Text>
           <Text style={styles.subtitle}>
-            {t('dailyScoutAccountBody', 'Play today or check this week\'s scoreboard.')}
+            {t(
+              "dailyScoutAccountBody",
+              "Play today or check this week's scoreboard.",
+            )}
           </Text>
         </View>
       </View>
@@ -72,7 +75,7 @@ export function DailyScoutChallengeFrame({
         >
           <Target size={15} color={ACCENT} strokeWidth={2.5} />
           <Text style={styles.framePrimaryText}>
-            {t('dailyScoutOpenChallenge', 'Open Challenge')}
+            {t("dailyScoutOpenChallenge", "Open Challenge")}
           </Text>
         </Pressable>
 
@@ -87,7 +90,7 @@ export function DailyScoutChallengeFrame({
         >
           <ListOrdered size={15} color={TEXT} strokeWidth={2.4} />
           <Text style={styles.frameSecondaryText}>
-            {t('dailyScoutWeeklyScoreboard', 'Weekly Scoreboard')}
+            {t("dailyScoutWeeklyScoreboard", "Weekly Scoreboard")}
           </Text>
         </Pressable>
       </View>
@@ -99,46 +102,36 @@ function useLocalizedText() {
   const { i18n } = useTranslation();
   return React.useCallback(
     (value?: { en: string; tr: string } | null) =>
-      i18n.language?.startsWith('tr') ? value?.tr || value?.en || '' : value?.en || value?.tr || '',
+      i18n.language?.startsWith("tr")
+        ? value?.tr || value?.en || ""
+        : value?.en || value?.tr || "",
     [i18n.language],
   );
 }
 
-function favoriteInputFromPlayer(player: PlayerData) {
-  return {
-    name: player.name,
-    nationality: player.meta?.nationality,
-    age: player.meta?.age,
-    potential: player.meta?.potential,
-    form: player.meta?.form,
-    gender: player.meta?.gender,
-    height: player.meta?.height,
-    weight: player.meta?.weight,
-    team: player.meta?.team,
-    league: player.meta?.league,
-    formRevealed: true,
-    roles: player.meta?.roles ?? [],
-  };
-}
-
 function isNicknameTakenError(message: string) {
-  return message.toLowerCase().includes('nickname is already taken');
+  return message.toLowerCase().includes("nickname is already taken");
 }
 
 export function DailyScoutChallengeModal({
   visible,
+  embedded = false,
+  onOpenLeaderboard,
   autoOpen = false,
   onClose,
 }: ChallengeModalProps) {
   const { t } = useTranslation();
   const localized = useLocalizedText();
   const [internalOpen, setInternalOpen] = React.useState(false);
-  const [challenge, setChallenge] = React.useState<DailyScoutChallenge | null>(null);
+  const [challenge, setChallenge] = React.useState<DailyScoutChallenge | null>(
+    null,
+  );
   const [loading, setLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState(false);
   const [submittingId, setSubmittingId] = React.useState<string | null>(null);
   const [savingNickname, setSavingNickname] = React.useState(false);
-  const [nickname, setNickname] = React.useState('');
-  const controlled = typeof visible === 'boolean';
+  const [nickname, setNickname] = React.useState("");
+  const controlled = typeof visible === "boolean";
   const open = controlled ? !!visible : internalOpen;
 
   const close = React.useCallback(() => {
@@ -146,23 +139,21 @@ export function DailyScoutChallengeModal({
     onClose?.();
   }, [controlled, onClose]);
 
-  const loadChallenge = React.useCallback(
-    async (shouldAutoOpen: boolean) => {
-      try {
-        setLoading(true);
-        const next = await getDailyScoutChallenge();
-        setChallenge(next);
-        if (shouldAutoOpen && next.attempt.status === 'available') {
-          setInternalOpen(true);
-        }
-      } catch {
-        // The challenge should never block Player Pool.
-      } finally {
-        setLoading(false);
+  const loadChallenge = React.useCallback(async (shouldAutoOpen: boolean) => {
+    try {
+      setLoading(true);
+      setLoadError(false);
+      const next = await getDailyScoutChallenge();
+      setChallenge(next);
+      if (shouldAutoOpen && next.attempt.status === "available") {
+        setInternalOpen(true);
       }
-    },
-    [],
-  );
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     if (autoOpen) loadChallenge(true);
@@ -172,8 +163,8 @@ export function DailyScoutChallengeModal({
     if (visible) loadChallenge(false);
   }, [loadChallenge, visible]);
 
-  const completed = challenge?.attempt.status === 'completed';
-  const skipped = challenge?.attempt.status === 'skipped';
+  const completed = challenge?.attempt.status === "completed";
+  const skipped = challenge?.attempt.status === "skipped";
   const needsNickname = completed && challenge?.attempt.needsNickname;
 
   const handleSkip = async () => {
@@ -183,7 +174,10 @@ export function DailyScoutChallengeModal({
       setChallenge(next);
       close();
     } catch (err: any) {
-      Alert.alert(t('dailyScoutErrorTitle', 'Challenge failed'), String(err?.message || err));
+      Alert.alert(
+        t("dailyScoutErrorTitle", "Challenge failed"),
+        String(err?.message || err),
+      );
     } finally {
       setLoading(false);
     }
@@ -191,7 +185,7 @@ export function DailyScoutChallengeModal({
 
   const handleDismiss = async () => {
     if (loading || submittingId || savingNickname) return;
-    if (challenge?.attempt.status === 'available') {
+    if (challenge?.attempt.status === "available") {
       await handleSkip();
       return;
     }
@@ -203,10 +197,16 @@ export function DailyScoutChallengeModal({
 
     try {
       setSubmittingId(choiceId);
-      const next = await submitDailyScoutAnswer(challenge.challengeId, choiceId);
+      const next = await submitDailyScoutAnswer(
+        challenge.challengeId,
+        choiceId,
+      );
       setChallenge(next);
     } catch (err: any) {
-      Alert.alert(t('dailyScoutErrorTitle', 'Challenge failed'), String(err?.message || err));
+      Alert.alert(
+        t("dailyScoutErrorTitle", "Challenge failed"),
+        String(err?.message || err),
+      );
     } finally {
       setSubmittingId(null);
     }
@@ -227,13 +227,16 @@ export function DailyScoutChallengeModal({
             }
           : current,
       );
-      setNickname('');
+      setNickname("");
     } catch (err: any) {
       const message = String(err?.message || err);
       Alert.alert(
-        t('dailyScoutNicknameFailed', 'Nickname failed'),
+        t("dailyScoutNicknameFailed", "Nickname failed"),
         isNicknameTakenError(message)
-          ? t('dailyScoutNicknameTaken', 'This nickname is already taken for this week.')
+          ? t(
+              "dailyScoutNicknameTaken",
+              "This nickname is already taken for this week.",
+            )
           : message,
       );
     } finally {
@@ -241,56 +244,116 @@ export function DailyScoutChallengeModal({
     }
   };
 
-  return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={handleDismiss}>
-      <View style={styles.backdrop}>
-        <View style={styles.modal}>
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <View style={styles.iconBubble}>
-                <Trophy size={18} color={ACCENT} strokeWidth={2.4} />
-              </View>
-              <View style={styles.titleTextWrap}>
-                <Text style={styles.title}>{t('dailyScoutChallengeTitle', 'Daily Scout Challenge')}</Text>
-                <Text style={styles.subtitle}>
-                  {t('dailyScoutChallengeSubtitle', 'Pick the best scouting profile from today\'s trio.')}
-                </Text>
-              </View>
-            </View>
-            <Pressable onPress={handleDismiss} hitSlop={10} style={styles.closeButton}>
-              <X size={18} color={DANGER} />
+  const challengeHeader = (
+    <View style={styles.header}>
+      <View style={styles.titleRow}>
+        <View style={styles.iconBubble}>
+          <Target size={18} color={ACCENT} strokeWidth={2.4} />
+        </View>
+        <View style={styles.titleTextWrap}>
+          <Text style={styles.title}>
+            {t("dailyScoutChallengeTitle", "Daily Scout Challenge")}
+          </Text>
+          <Text style={styles.subtitle}>
+            {t(
+              "dailyScoutChallengeSubtitle",
+              "Pick the best scouting profile from today's trio.",
+            )}
+          </Text>
+        </View>
+      </View>
+      {!embedded && (
+        <Pressable
+          onPress={handleDismiss}
+          hitSlop={10}
+          style={styles.closeButton}
+        >
+          <X size={18} color={DANGER} />
+        </Pressable>
+      )}
+    </View>
+  );
+  const content = (
+    <View style={embedded ? { flex: 1 } : styles.backdrop}>
+      <View style={embedded ? { flex: 1 } : styles.modal}>
+        {!embedded && challengeHeader}
+        <ScrollView
+          contentContainerStyle={
+            embedded ? styles.embeddedScrollContent : styles.scrollContent
+          }
+        >
+          {embedded && (
+            <Pressable
+              testID="daily-scout-weekly-scores"
+              accessibilityRole="button"
+              onPress={onOpenLeaderboard}
+              style={styles.weeklyScoreButton}
+            >
+              <ListOrdered size={20} color={ACCENT} />
+              <Text style={styles.weeklyScoreText}>
+                {t("dailyScoutWeeklyScoreboard")}
+              </Text>
             </Pressable>
-          </View>
-
-          {loading && !challenge ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color={ACCENT} />
-            </View>
-          ) : (
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+          )}
+          <View
+            testID="daily-scout-question-frame"
+            style={embedded ? styles.questionFrame : undefined}
+          >
+            {embedded && challengeHeader}
+            <View style={embedded ? styles.questionBody : { gap: 12 }}>
               <Text style={styles.question}>
-                {t('dailyScoutFixedQuestion', "Which player best fits today's scouting strategy?")}
+                {t(
+                  "dailyScoutFixedQuestion",
+                  "Which player best fits today's scouting strategy?",
+                )}
               </Text>
 
               {!!localized(challenge?.strategy) && (
                 <View style={styles.strategyBox}>
                   <Text style={styles.strategyLabel}>
-                    {t('dailyScoutStrategyLabel', "Today's strategy")}
+                    {t("dailyScoutStrategyLabel", "Today's strategy")}
                   </Text>
-                  <Text style={styles.strategyText}>{localized(challenge?.strategy)}</Text>
+                  <Text style={styles.strategyText}>
+                    {localized(challenge?.strategy)}
+                  </Text>
                 </View>
               )}
-
+            </View>
+          </View>
+          {loadError ? (
+            <Pressable
+              onPress={() => loadChallenge(false)}
+              style={styles.skipButton}
+            >
+              <Text style={styles.skipButtonText}>
+                {t("portfolioRetry", "Try again")}
+              </Text>
+            </Pressable>
+          ) : loading && !challenge ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator color={ACCENT} />
+            </View>
+          ) : (
+            <>
               {completed && (
-                <View style={[styles.resultBox, challenge.attempt.isCorrect ? styles.resultGood : styles.resultBad]}>
+                <View
+                  style={[
+                    styles.resultBox,
+                    challenge.attempt.isCorrect
+                      ? styles.resultGood
+                      : styles.resultBad,
+                  ]}
+                >
                   <Text style={styles.resultTitle}>
                     {challenge.attempt.isCorrect
-                      ? t('dailyScoutCorrect', 'Correct pick')
-                      : t('dailyScoutWrong', 'Wrong pick')}
+                      ? t("dailyScoutCorrect", "Correct pick")
+                      : t("dailyScoutWrong", "Wrong pick")}
                   </Text>
-                  <Text style={styles.resultText}>{localized(challenge.explanation)}</Text>
+                  <Text style={styles.resultText}>
+                    {localized(challenge.explanation)}
+                  </Text>
                   <Text style={styles.scoreText}>
-                    {t('dailyScoutScoreEarned', '{{score}} pts earned', {
+                    {t("dailyScoutScoreEarned", "{{score}} pts earned", {
                       score: challenge.attempt.score ?? 0,
                     })}
                   </Text>
@@ -298,16 +361,25 @@ export function DailyScoutChallengeModal({
                   {needsNickname && (
                     <View style={styles.nicknameBoxInline}>
                       <Text style={styles.nicknameTitle}>
-                        {t('dailyScoutNicknameTitle', 'Choose your scoreboard name')}
+                        {t(
+                          "dailyScoutNicknameTitle",
+                          "Choose your scoreboard name",
+                        )}
                       </Text>
                       <Text style={styles.nicknameText}>
-                        {t('dailyScoutNicknameBody', 'Set it once for this week so your score can appear on the board.')}
+                        {t(
+                          "dailyScoutNicknameBody",
+                          "Set it once for this week so your score can appear on the board.",
+                        )}
                       </Text>
                       <TextInput
                         value={nickname}
                         onChangeText={setNickname}
                         maxLength={24}
-                        placeholder={t('dailyScoutNicknamePlaceholder', 'Nickname')}
+                        placeholder={t(
+                          "dailyScoutNicknamePlaceholder",
+                          "Nickname",
+                        )}
                         placeholderTextColor={MUTED}
                         style={styles.nicknameInput}
                       />
@@ -316,7 +388,8 @@ export function DailyScoutChallengeModal({
                         onPress={handleNickname}
                         style={({ pressed }) => [
                           styles.primaryButton,
-                          (savingNickname || nickname.trim().length < 2) && styles.disabledButton,
+                          (savingNickname || nickname.trim().length < 2) &&
+                            styles.disabledButton,
                           pressed && styles.pressed,
                         ]}
                       >
@@ -324,7 +397,7 @@ export function DailyScoutChallengeModal({
                           <ActivityIndicator size="small" color={TEXT} />
                         ) : (
                           <Text style={styles.primaryButtonText}>
-                            {t('dailyScoutSaveNickname', 'Save nickname')}
+                            {t("dailyScoutSaveNickname", "Save nickname")}
                           </Text>
                         )}
                       </Pressable>
@@ -334,24 +407,32 @@ export function DailyScoutChallengeModal({
               )}
 
               {challenge?.choices.map((choice, index) => {
-                const isWinner = completed && String(choice.id) === String(challenge.winnerPlayerId);
-                const isChosen = completed && String(choice.id) === String(challenge.attempt.chosenPlayerId);
+                const isWinner =
+                  completed &&
+                  String(choice.id) === String(challenge.winnerPlayerId);
+                const isChosen =
+                  completed &&
+                  String(choice.id) ===
+                    String(challenge.attempt.chosenPlayerId);
                 const wrongChosen = isChosen && !isWinner;
-                const optionLetter = ['A', 'B', 'C'][index] ?? String(index + 1);
+                const optionLetter =
+                  ["A", "B", "C"][index] ?? String(index + 1);
 
                 return (
-                  <Pressable
+                  <View
                     key={choice.id}
-                    disabled={completed || !!submittingId}
-                    onPress={() => handleAnswer(choice.id)}
-                    style={({ pressed }) => [
+                    testID={`daily-scout-option-${index + 1}`}
+                    style={[
                       styles.choice,
+                      embedded && styles.embeddedChoice,
                       isWinner && styles.choiceCorrect,
                       wrongChosen && styles.choiceWrong,
-                      pressed && !completed && styles.pressed,
                     ]}
                   >
-                    <View
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={completed || !!submittingId}
+                      onPress={() => handleAnswer(choice.id)}
                       style={[
                         styles.optionHeader,
                         isWinner && styles.optionHeaderCorrect,
@@ -359,47 +440,67 @@ export function DailyScoutChallengeModal({
                       ]}
                     >
                       <View style={styles.optionBadge}>
-                        <Text style={styles.optionBadgeText}>{optionLetter}</Text>
+                        <Text style={styles.optionBadgeText}>
+                          {optionLetter}
+                        </Text>
                       </View>
                       <Text style={styles.optionHeaderText}>
                         {completed
                           ? isWinner
-                            ? t('dailyScoutCorrectOption', 'Correct option')
+                            ? t("dailyScoutCorrectOption", "Correct option")
                             : isChosen
-                              ? t('dailyScoutYourPick', 'Your pick')
-                              : t('dailyScoutOption', 'Option {{letter}}', { letter: optionLetter })
-                          : t('dailyScoutTapOption', 'Tap to choose Option {{letter}}', { letter: optionLetter })}
+                              ? t("dailyScoutYourPick", "Your pick")
+                              : t("dailyScoutOption", "Option {{letter}}", {
+                                  letter: optionLetter,
+                                })
+                          : t(
+                              "dailyScoutTapOption",
+                              "Tap to choose Option {{letter}}",
+                              { letter: optionLetter },
+                            )}
                       </Text>
-                    </View>
-                    <PlayerCard
+                    </Pressable>
+                    <DailyScoutPlayerCard
+                      id={choice.id}
                       player={choice.player}
-                      onAddFavorite={async (player) => {
-                        await addFavoritePlayer({
-                          ...favoriteInputFromPlayer(player),
-                          playerId: choice.id,
-                        });
-                        return true;
-                      }}
-                      visualTheme={{ cardBackground: CARD, accent: ACCENT }}
+                      onNavigate={close}
                     />
                     {submittingId === choice.id && (
                       <View style={styles.choiceLoader}>
                         <ActivityIndicator color={ACCENT} />
                       </View>
                     )}
-                  </Pressable>
+                  </View>
                 );
               })}
 
-              {!completed && (
-                <Pressable disabled={loading} onPress={handleSkip} style={styles.skipButton}>
-                  <Text style={styles.skipButtonText}>{t('dailyScoutSkipToday', 'Skip today')}</Text>
+              {!completed && !skipped && (
+                <Pressable
+                  disabled={loading}
+                  onPress={handleSkip}
+                  style={styles.skipButton}
+                >
+                  <Text style={styles.skipButtonText}>
+                    {t("dailyScoutSkipToday", "Skip today")}
+                  </Text>
                 </Pressable>
               )}
-            </ScrollView>
+            </>
           )}
-        </View>
+        </ScrollView>
       </View>
+    </View>
+  );
+  return embedded ? (
+    content
+  ) : (
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      onRequestClose={handleDismiss}
+    >
+      {content}
     </Modal>
   );
 }
@@ -412,7 +513,8 @@ export function DailyScoutLeaderboardModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [leaderboard, setLeaderboard] = React.useState<DailyScoutLeaderboard | null>(null);
+  const [leaderboard, setLeaderboard] =
+    React.useState<DailyScoutLeaderboard | null>(null);
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -425,7 +527,10 @@ export function DailyScoutLeaderboardModal({
         const next = await getDailyScoutLeaderboard(20);
         if (alive) setLeaderboard(next);
       } catch (err: any) {
-        Alert.alert(t('dailyScoutLeaderboardFailed', 'Scoreboard failed'), String(err?.message || err));
+        Alert.alert(
+          t("dailyScoutLeaderboardFailed", "Scoreboard failed"),
+          String(err?.message || err),
+        );
       } finally {
         if (alive) setLoading(false);
       }
@@ -437,7 +542,12 @@ export function DailyScoutLeaderboardModal({
   }, [t, visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.backdrop}>
         <View style={styles.modal}>
           <View style={styles.header}>
@@ -446,15 +556,21 @@ export function DailyScoutLeaderboardModal({
                 <Trophy size={18} color={ACCENT} strokeWidth={2.4} />
               </View>
               <View>
-                <Text style={styles.title}>{t('dailyScoutLeaderboardTitle', 'Weekly Scoreboard')}</Text>
+                <Text style={styles.title}>
+                  {t("dailyScoutLeaderboardTitle", "Weekly Scoreboard")}
+                </Text>
                 <Text style={styles.subtitle}>
-                  {t('dailyScoutLeaderboardWeek', 'Week of {{week}}', {
-                    week: leaderboard?.weekStart ?? '-',
+                  {t("dailyScoutLeaderboardWeek", "Week of {{week}}", {
+                    week: leaderboard?.weekStart ?? "-",
                   })}
                 </Text>
               </View>
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              style={styles.closeButton}
+            >
               <X size={18} color={MUTED} />
             </Pressable>
           </View>
@@ -467,16 +583,21 @@ export function DailyScoutLeaderboardModal({
             <ScrollView contentContainerStyle={styles.leaderboardContent}>
               {(leaderboard?.rows ?? []).length === 0 ? (
                 <Text style={styles.emptyText}>
-                  {t('dailyScoutLeaderboardEmpty', 'No scores yet this week.')}
+                  {t("dailyScoutLeaderboardEmpty", "No scores yet this week.")}
                 </Text>
               ) : (
                 leaderboard?.rows.map((row, index) => (
-                  <View key={`${row.nickname}-${index}`} style={styles.leaderboardRow}>
+                  <View
+                    key={`${row.nickname}-${index}`}
+                    style={styles.leaderboardRow}
+                  >
                     <Text style={styles.rank}>{index + 1}</Text>
                     <Text style={styles.nickname}>{row.nickname}</Text>
                     <View style={styles.scoreBlock}>
                       <Text style={styles.scoreNumber}>{row.score}</Text>
-                      <Text style={styles.scoreLabel}>{t('dailyScoutPoints', 'pts')}</Text>
+                      <Text style={styles.scoreLabel}>
+                        {t("dailyScoutPoints", "pts")}
+                      </Text>
                     </View>
                     <Text style={styles.recordText}>
                       {row.correct}/{row.played}
@@ -493,21 +614,45 @@ export function DailyScoutLeaderboardModal({
 }
 
 const styles = StyleSheet.create({
+  embeddedScrollContent: { gap: 16, paddingBottom: 24 },
+  questionFrame: {
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 20,
+    backgroundColor: PANEL,
+    overflow: "hidden",
+  },
+  questionBody: { padding: 14, gap: 12 },
+  embeddedChoice: { borderColor: ACCENT },
+  weeklyScoreButton: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 16,
+    backgroundColor: "rgba(22,163,74,0.10)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 14,
+    gap: 10,
+  },
+  weeklyScoreText: { color: ACCENT, fontSize: 14, fontWeight: "900" },
+
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "center",
     paddingHorizontal: 14,
     paddingTop: 48,
     paddingBottom: 26,
   },
   modal: {
-    maxHeight: '88%',
+    maxHeight: "88%",
     borderRadius: 20,
     borderWidth: 1,
     borderColor: ACCENT,
     backgroundColor: PANEL,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   profileFrame: {
     marginHorizontal: 16,
@@ -519,27 +664,27 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  profileFrameTitle: { color: ACCENT, fontSize: 16, fontWeight: '900' },
+  profileFrameTitle: { color: ACCENT, fontSize: 16, fontWeight: "900" },
   challengeHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  frameActions: { flexDirection: 'row', gap: 10 },
+  frameActions: { flexDirection: "row", gap: 10 },
   framePrimary: {
     flex: 1,
     minHeight: 44,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: "rgba(22, 163, 74, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 7,
     paddingHorizontal: 8,
   },
-  framePrimaryText: { color: ACCENT, fontWeight: '900', fontSize: 13 },
+  framePrimaryText: { color: ACCENT, fontWeight: "900", fontSize: 13 },
   frameSecondary: {
     flex: 1,
     minHeight: 44,
@@ -547,71 +692,75 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 7,
     paddingHorizontal: 8,
   },
-  frameSecondaryText: { color: TEXT, fontWeight: '800', fontSize: 13 },
+  frameSecondaryText: { color: TEXT, fontWeight: "800", fontSize: 13 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: 10,
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    backgroundColor: "rgba(22, 163, 74, 0.09)",
   },
-  titleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  titleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   iconBubble: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    backgroundColor: "rgba(22, 163, 74, 0.13)",
   },
   titleTextWrap: { flex: 1, minWidth: 0 },
-  title: { color: TEXT, fontSize: 18, fontWeight: '900' },
-  subtitle: { color: MUTED, marginTop: 3, fontSize: 12, fontWeight: '700' },
+  title: { color: TEXT, fontSize: 18, fontWeight: "900" },
+  subtitle: { color: MUTED, marginTop: 3, fontSize: 12, fontWeight: "700" },
   closeButton: { padding: 4 },
-  loadingWrap: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
+  loadingWrap: {
+    minHeight: 220,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   scrollContent: { padding: 14, gap: 12 },
-  question: { color: TEXT, fontSize: 16, fontWeight: '900', lineHeight: 22 },
+  question: { color: TEXT, fontSize: 16, fontWeight: "900", lineHeight: 22 },
   strategyBox: {
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+    backgroundColor: "rgba(22, 163, 74, 0.10)",
     padding: 12,
     gap: 4,
   },
-  strategyLabel: { color: ACCENT, fontWeight: '900', fontSize: 12 },
-  strategyText: { color: TEXT, fontWeight: '800', lineHeight: 19 },
+  strategyLabel: { color: ACCENT, fontWeight: "900", fontSize: 12 },
+  strategyText: { color: TEXT, fontWeight: "800", lineHeight: 19 },
   choice: {
     borderWidth: 2,
     borderColor: LINE,
     borderRadius: 18,
-    overflow: 'hidden',
+    overflow: "hidden",
     backgroundColor: CARD,
   },
   choiceCorrect: {
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+    backgroundColor: "rgba(22, 163, 74, 0.10)",
   },
   choiceWrong: {
     borderColor: DANGER,
-    backgroundColor: 'rgba(229, 72, 77, 0.10)',
+    backgroundColor: "rgba(229, 72, 77, 0.10)",
   },
   choiceLoader: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.28)",
   },
   optionHeader: {
     minHeight: 40,
@@ -619,40 +768,46 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "rgba(255,255,255,0.035)",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   optionHeaderCorrect: {
     borderBottomColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.16)',
+    backgroundColor: "rgba(22, 163, 74, 0.16)",
   },
   optionHeaderWrong: {
     borderBottomColor: DANGER,
-    backgroundColor: 'rgba(229, 72, 77, 0.14)',
+    backgroundColor: "rgba(229, 72, 77, 0.14)",
   },
   optionBadge: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: ACCENT,
   },
-  optionBadgeText: { color: TEXT, fontWeight: '900', fontSize: 13 },
-  optionHeaderText: { color: TEXT, fontWeight: '900', fontSize: 13 },
+  optionBadgeText: { color: TEXT, fontWeight: "900", fontSize: 13 },
+  optionHeaderText: { color: TEXT, fontWeight: "900", fontSize: 13 },
   resultBox: {
     borderRadius: 16,
     borderWidth: 1,
     padding: 12,
     gap: 6,
   },
-  resultGood: { borderColor: ACCENT, backgroundColor: 'rgba(22, 163, 74, 0.12)' },
-  resultBad: { borderColor: DANGER, backgroundColor: 'rgba(229, 72, 77, 0.11)' },
-  resultTitle: { color: TEXT, fontWeight: '900', fontSize: 15 },
-  resultText: { color: MUTED, lineHeight: 19, fontWeight: '600' },
-  scoreText: { color: ACCENT, fontWeight: '900' },
+  resultGood: {
+    borderColor: ACCENT,
+    backgroundColor: "rgba(22, 163, 74, 0.12)",
+  },
+  resultBad: {
+    borderColor: DANGER,
+    backgroundColor: "rgba(229, 72, 77, 0.11)",
+  },
+  resultTitle: { color: TEXT, fontWeight: "900", fontSize: 15 },
+  resultText: { color: MUTED, lineHeight: 19, fontWeight: "600" },
+  scoreText: { color: ACCENT, fontWeight: "900" },
   nicknameBox: {
     borderWidth: 1,
     borderColor: LINE,
@@ -668,7 +823,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 8,
   },
-  nicknameTitle: { color: TEXT, fontWeight: '900', fontSize: 15 },
+  nicknameTitle: { color: TEXT, fontWeight: "900", fontSize: 15 },
   nicknameText: { color: MUTED, lineHeight: 18 },
   nicknameInput: {
     borderWidth: 1,
@@ -678,23 +833,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: TEXT,
     backgroundColor: BG,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   primaryButton: {
     minHeight: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: ACCENT,
   },
-  primaryButtonText: { color: TEXT, fontWeight: '900' },
+  primaryButtonText: { color: TEXT, fontWeight: "900" },
   disabledButton: { opacity: 0.45 },
   skipButton: {
-    alignSelf: 'center',
+    alignSelf: "center",
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  skipButtonText: { color: MUTED, fontWeight: '800' },
+  skipButtonText: { color: MUTED, fontWeight: "800" },
   pressed: { opacity: 0.86 },
   leaderboardContent: { padding: 14, gap: 8 },
   leaderboardRow: {
@@ -703,16 +858,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     backgroundColor: CARD,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     paddingHorizontal: 12,
   },
-  rank: { width: 26, color: ACCENT, fontWeight: '900', fontSize: 16 },
-  nickname: { flex: 1, color: TEXT, fontWeight: '900' },
-  scoreBlock: { alignItems: 'flex-end' },
-  scoreNumber: { color: TEXT, fontWeight: '900', fontSize: 16 },
-  scoreLabel: { color: MUTED, fontWeight: '700', fontSize: 11 },
-  recordText: { width: 44, textAlign: 'right', color: MUTED, fontWeight: '800' },
-  emptyText: { color: MUTED, textAlign: 'center', paddingVertical: 30, fontWeight: '700' },
+  rank: { width: 26, color: ACCENT, fontWeight: "900", fontSize: 16 },
+  nickname: { flex: 1, color: TEXT, fontWeight: "900" },
+  scoreBlock: { alignItems: "flex-end" },
+  scoreNumber: { color: TEXT, fontWeight: "900", fontSize: 16 },
+  scoreLabel: { color: MUTED, fontWeight: "700", fontSize: 11 },
+  recordText: {
+    width: 44,
+    textAlign: "right",
+    color: MUTED,
+    fontWeight: "800",
+  },
+  emptyText: {
+    color: MUTED,
+    textAlign: "center",
+    paddingVertical: 30,
+    fontWeight: "700",
+  },
 });
