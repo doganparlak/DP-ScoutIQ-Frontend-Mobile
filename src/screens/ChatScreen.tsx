@@ -1,6 +1,6 @@
 // src/screens/ChatScreen.tsx
 import ChatAccessModal from '@/components/ChatAccessModal';
-import { canUseChat } from '@/utils/chatAccess';
+import { canUseChat, isChatCreditPlan } from '@/utils/chatAccess';
 import * as React from 'react';
 import {
   View,
@@ -552,7 +552,7 @@ export default function ChatScreen() {
             <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
           </TouchableOpacity>
 
-          {!tutorial.active && profile?.plan === 'Free' && (
+          {!tutorial.active && profile && isChatCreditPlan(profile.plan) && (
             <View style={styles.creditSlot}>
               <View style={styles.creditBadge}>
                 <Text accessibilityLiveRegion="polite" style={styles.creditText} numberOfLines={1} maxFontSizeMultiplier={1.3}>
