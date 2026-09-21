@@ -118,6 +118,7 @@ export default function ManagePlan() {
     }
     return [
       t('planFeatures_Pro', 'Ad-free'),
+      'ScoutWise Pro',
       t('planFeatures_ThreeOrFourPlayer', '3- or 4-player comparison'),
       t('planFeatures_CustomComparison', 'Customizable comparison'),
       t('planFeatures_DetailedReports', 'Detailed Reports & Insights'),

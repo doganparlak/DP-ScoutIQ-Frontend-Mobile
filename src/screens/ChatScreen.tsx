@@ -554,10 +554,14 @@ export default function ChatScreen() {
 
           {!tutorial.active && profile && isChatCreditPlan(profile.plan) && (
             <View style={styles.creditSlot}>
-              <View style={styles.creditBadge}>
-                <Text accessibilityLiveRegion="polite" style={styles.creditText} numberOfLines={1} maxFontSizeMultiplier={1.3}>
-                  <Text style={styles.creditCount}>{profile.freeChatMessagesRemaining ?? 0}</Text>
-                  {(profile.freeChatMessagesRemaining ?? 0) === 1 ? ' credit' : ' credits'}
+              <View
+                style={styles.creditBadge}
+                accessible
+                accessibilityLiveRegion="polite"
+                accessibilityLabel={`${profile.freeChatMessagesRemaining ?? 0} ${t('chatCredits', 'Credits')}`}
+              >
+                <Text style={styles.creditText} numberOfLines={1}>
+                  {profile.freeChatMessagesRemaining ?? 0} {t('chatCredits', 'Credits')}
                 </Text>
               </View>
             </View>
@@ -666,21 +670,20 @@ const styles = StyleSheet.create({
   },
   creditBadge: {
     maxWidth: '100%',
-    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(36,245,166,0.24)',
-    backgroundColor: 'rgba(36,245,166,0.09)',
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(36,245,166,0.10)',
   },
   creditText: {
     color: ACCENT,
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
-  },
-  creditCount: {
-    fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
   visualCardWidth: {
