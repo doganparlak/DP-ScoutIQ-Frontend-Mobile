@@ -1,4 +1,5 @@
 import { preserveComparisonIdentity } from "@/utils/comparisonGroups";
+import PlanManagementButton from './PlanManagementButton';
 import React from "react";
 import { Alert, Modal, Pressable, Text, View, StyleSheet } from "react-native";
 import { BadgeCheck } from "lucide-react-native";
@@ -290,17 +291,10 @@ export default function SharedMatchupCenter({
               >
                 <Text style={styles.body}>{t("notNow")}</Text>
               </Pressable>
-              <Pressable
-                style={[styles.button, { borderColor: ACCENT }]}
-                onPress={() => {
-                  setUpgrade(null);
-                  navigation.navigate("Profile", { screen: "ManagePlan" });
-                }}
-              >
-                <Text style={{ color: ACCENT, fontWeight: "800" }}>
-                  {t("managePlan")}
-                </Text>
-              </Pressable>
+              <PlanManagementButton onPress={() => {
+                setUpgrade(null);
+                setTimeout(() => navigation.navigate("Profile", { screen: "ManagePlan" }), 350);
+              }} />
             </View>
           </View>
         </View>

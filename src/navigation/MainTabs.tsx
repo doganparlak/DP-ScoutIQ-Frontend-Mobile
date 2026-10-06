@@ -1,3 +1,4 @@
+import SimilarPlayersScreen from '@/screens/SimilarPlayersScreen';
 import { TeamAnalysisProvider } from '@/context/TeamAnalysisContext';
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,8 +26,10 @@ import SeasonDataScreen from '@/screens/SeasonDataScreen';
 import TeamAnalysisScreen from '@/screens/TeamAnalysisScreen';
 import MatchPortfolioScreen from '@/screens/MatchPortfolioScreen';
 import MatchPoolScreen from '@/screens/MatchPoolScreen';
+import TeamPortfolioScreen from '@/screens/TeamPortfolioScreen';
 import TeamPoolScreen from '@/screens/TeamPoolScreen';
 import LeaguePoolScreen from '@/screens/LeaguePoolScreen';
+import LeaguePerformanceScreen from '@/screens/LeaguePerformanceScreen';
 import { MatchupProvider } from '@/context/MatchupContext';
 
 // Keep the existing route identities and nested stacks so tutorials, deep navigation,
@@ -114,10 +117,13 @@ export default function MainTabs() {
             <Tab.Screen name="Strategy" component={PlayerPoolScreen} />
             <Tab.Screen name="Portfolio" component={PortfolioWorkspaceScreen} />
             <Tab.Screen name="Matchup" component={MatchupWorkspaceScreen} />
+            <Tab.Screen name="TeamPortfolio" component={TeamPortfolioScreen} />
             <Tab.Screen name="MatchPortfolio" component={MatchPortfolioScreen} />
+            <Tab.Screen name="SimilarPlayers" component={SimilarPlayersScreen} />
             <Tab.Screen name="TeamAnalysis" component={TeamAnalysisScreen} />
             <Tab.Screen name="TeamPool" component={TeamPoolScreen} />
             <Tab.Screen name="LeaguePool" component={LeaguePoolScreen} />
+            <Tab.Screen name="LeaguePerformance" component={LeaguePerformanceScreen} />
             <Tab.Screen name="MatchPool" component={MatchPoolScreen} />
             <Tab.Screen name="SeasonData" component={SeasonDataScreen} />
             <Tab.Screen name="DailyScout" component={DailyScoutScreen} />

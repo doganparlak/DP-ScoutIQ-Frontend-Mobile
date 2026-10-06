@@ -16,7 +16,10 @@ export type MainTabsParamList = {
   MatchPortfolio: undefined;
   TeamAnalysis: { team?: import("./services/teamPool").Team } | undefined;
   TeamPool: undefined;
+  TeamPortfolio: undefined;
+  SimilarPlayers: {reference?: import('./services/similarPlayers').SimilarReference; visitKey?: number} | undefined;
   LeaguePool: undefined;
+  LeaguePerformance: undefined;
   MatchPool: undefined;
   SeasonData: undefined;
   Portfolio: undefined;

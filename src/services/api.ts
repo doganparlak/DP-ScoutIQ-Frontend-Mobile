@@ -525,7 +525,7 @@ function physicalMeasurement(value: unknown): number | undefined {
   return parsed !== undefined && parsed > 0 ? parsed : undefined;
 }
 
-function normalizePlayerPoolContent(content: unknown, fallbackId: string): PlayerData | null {
+export function normalizePlayerPoolContent(content: unknown, fallbackId: string): PlayerData | null {
   let source = content;
 
   if (typeof source === 'string') {
@@ -1118,4 +1118,19 @@ export function matchPoolRequest<T>(path: string, body?: object): Promise<T> {
 
 export function deleteSavedMatch(fixtureId: number): Promise<{ok:boolean}> {
   return request(`/favorite-matches/fixtures/${fixtureId}`, {method:'DELETE'});
+}
+
+/** Organization center uses the existing mobile authentication and refresh transport. */
+export function leaguePerformanceRequest<T>(path: '/league-performance/options' | '/league-performance/search' | '/league-standings' | '/league-insights', body: object): Promise<T> {
+  return request<T>(path, {method: 'POST', body: JSON.stringify(body)});
+}
+export async function getLeaguePerformancePlayer(playerId: number): Promise<{id: string; player: PlayerData}> {
+  const row = await request<PlayerPoolRawRow>(`/league-insights/players/${playerId}`);
+  const player = normalizePlayerPoolContent(row.content, String(playerId));
+  if (!player) throw new Error('Player card unavailable');
+  return {id: String(row.id), player};
+}
+
+export function teamPortfolioRequest<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: object): Promise<T> {
+  return request<T>(path, {method, ...(body === undefined ? {} : {body: JSON.stringify(body)})});
 }

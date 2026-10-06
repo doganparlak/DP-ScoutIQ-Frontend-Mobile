@@ -59,6 +59,26 @@
         "value": "4"
       },
       "valueType": "NUMBER"
+    },
+    "ads_league_search_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER"
+    },
+    "ads_save_team_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER",
+      "description": "Free users: show an interstitial every fourth Team Pool save action."
+    },
+    "ads_similar_search_every": {
+      "defaultValue": {
+        "value": "4"
+      },
+      "valueType": "NUMBER",
+      "description": "Free users: interstitial every fourth explicit similar-player search."
     }
   }
 }

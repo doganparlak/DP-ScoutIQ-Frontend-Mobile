@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LayoutDashboard, CreditCard, CircleHelp, Target, BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ClipboardList, Database, Shield, Trophy, Search, GitCompareArrows, ChevronRight, Menu, MessageSquareText, UserRound, X } from 'lucide-react-native';
+import { Table2, LayoutDashboard, CreditCard, CircleHelp, UsersRound, Target, BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ClipboardList, Database, ShieldCheck, Shield, Trophy, Search, GitCompareArrows, ChevronRight, Menu, MessageSquareText, UserRound, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTutorial } from '@/components/Tutorial';
 import { ACCENT, BG, TEXT } from '@/theme';
@@ -30,14 +30,17 @@ const items = [
   { route: 'Chat', label: 'tabScoutWisePro', fallback: 'ScoutWise Pro', Icon: MessageSquareText, group: '', groupFallback: '' },
   { route: 'Weekly', label: 'tabWeeklySearches', fallback: 'Weekly Searches', Icon: Search, group: 'interactionCenter', groupFallback: 'Interaction Center' },
   { route: 'DailyScout', label: 'dailyScoutChallengeTitle', fallback: 'Daily Scout Challenge', Icon: Target, group: '', groupFallback: '' },
+  { route: 'LeaguePerformance', label: 'leaguePerformanceWorkspace', fallback: 'League Performance', Icon: Table2, group: 'organizationCenter', groupFallback: 'Organization Center' },
   { route: 'Strategy', label: 'tabPlayerPool', fallback: 'Player Pool', Icon: UserRound, group: 'dataCenter', groupFallback: 'Data Center' },
   { route: 'TeamPool', label: 'teamPoolWorkspace', fallback: 'Team Pool', Icon: Shield, group: '', groupFallback: '' },
   { route: 'LeaguePool', label: 'leaguePoolWorkspace', fallback: 'League Pool', Icon: Trophy, group: '', groupFallback: '' },
   { route: 'MatchPool', label: 'matchPoolWorkspace', fallback: 'Match Pool', Icon: CalendarSearch, group: '', groupFallback: '' },
   { route: 'SeasonData', label: 'seasonDataWorkspace', fallback: 'Season Data', Icon: Database, group: '', groupFallback: '' },
   { route: 'Portfolio', label: 'portfolioWorkspace', fallback: 'Player Portfolio', Icon: ClipboardList, group: 'portfolioCenter', groupFallback: 'Portfolio Center' },
+  { route: 'TeamPortfolio', label: 'teamPortfolioWorkspace', fallback: 'Team Portfolio', Icon: ShieldCheck, group: '', groupFallback: '' },
   { route: 'MatchPortfolio', label: 'matchPortfolioWorkspace', fallback: 'Match Portfolio', Icon: BookMarked, group: '', groupFallback: '' },
   { route: 'Matchup', label: 'matchupWorkspace', fallback: 'Matchup Center', Icon: GitCompareArrows, group: 'analysisCenter', groupFallback: 'Analysis Center' },
+  { route: 'SimilarPlayers', label: 'similarPlayersWorkspace', fallback: 'Similar Player Center', Icon: UsersRound, group: '', groupFallback: '' },
   { route: 'TeamAnalysis', label: 'teamAnalysisWorkspace', fallback: 'Team Analysis Center', Icon: BarChart3, group: '', groupFallback: '' },
   { route: 'ManagePlan', label: 'managePlan', fallback: 'Manage Plan', Icon: CreditCard, group: 'settingsGroup', groupFallback: 'Settings' },
   { route: 'HelpCenter', label: 'helpCenter', fallback: 'Help Center', Icon: CircleHelp, group: '', groupFallback: '' },
@@ -71,11 +74,14 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
     Strategy: 'playerPool',
     TeamPool: 'teamPool',
     LeaguePool: 'leaguePool',
+    LeaguePerformance: 'leaguePerformance',
     MatchPool: 'matchPool',
     SeasonData: 'seasonData',
     Portfolio: 'playerPortfolio',
+    TeamPortfolio: 'teamPortfolio',
     MatchPortfolio: 'matchPortfolio',
     Matchup: 'matchup',
+    SimilarPlayers: 'similarPlayers',
     TeamAnalysis: 'teamAnalysis',
   } as Partial<Record<string, string | null>>)[currentRoute] ?? null;
   const tutorialFrame = currentRoute === 'Chat' && nestedRoute === 'LegacyChat' ? 1 : 0;

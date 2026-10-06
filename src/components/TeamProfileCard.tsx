@@ -2,6 +2,9 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   BarChart3,
+  BookmarkPlus,
+  Check,
+  FileText,
   Building2,
   Globe2,
   MapPin,
@@ -16,12 +19,26 @@ export default function TeamProfileCard({
   team,
   tr,
   onAnalyze,
+  onSave,
+  onOpenReport,
+  saved = false,
+  saving = false,
+  reportBusy = false,
 }: {
   team: Team;
   tr: boolean;
   onAnalyze?: () => void;
+  onSave?: () => void;
+  onOpenReport?: () => void;
+  saved?: boolean; saving?: boolean; reportBusy?: boolean;
 }) {
   return (
+    <>
+      {(onAnalyze || onSave || onOpenReport) && <View style={s.actions}>
+        {onSave && <Pressable accessibilityRole="button" disabled={saved || saving} accessibilityState={{disabled: saved || saving, busy: saving}} onPress={onSave} style={[s.button, (saved || saving) && {opacity: .65}]}>{saved ? <Check size={18} color={ACCENT} /> : <BookmarkPlus size={18} color={ACCENT} />}<Text style={s.actionText}>{saved ? (tr ? 'Kaydedildi' : 'Saved') : saving ? (tr ? 'Kaydediliyor…' : 'Saving…') : (tr ? 'Kaydet' : 'Save')}</Text></Pressable>}
+        {onOpenReport && <Pressable accessibilityRole="button" disabled={reportBusy} onPress={onOpenReport} style={[s.button, reportBusy && {opacity: .5}]}><FileText size={18} color={ACCENT} /><Text style={s.actionText}>{reportBusy ? (tr ? 'Rapor yükleniyor…' : 'Loading report…') : (tr ? 'Raporu Aç' : 'Open Report')}</Text></Pressable>}
+        {onAnalyze && <Pressable accessibilityRole="button" onPress={onAnalyze} style={s.button}><BarChart3 size={18} color={ACCENT} /><Text style={s.actionText}>{tr ? 'Takımı Analiz Et' : 'Analyze Team'}</Text></Pressable>}
+      </View>}
     <View style={s.card}>
       <View style={s.identity}>
         <View style={s.logo}>
@@ -36,7 +53,7 @@ export default function TeamProfileCard({
           )}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.label}>{tr ? "TAKIM PROFİLİ" : "TEAM PROFILE"}</Text>
+          <Text style={s.eyebrow}>{tr ? "TAKIM PROFİLİ" : "TEAM PROFILE"}</Text>
           <Text style={s.name}>{team.name}</Text>
           <Text style={s.label}>
             {team.country}
@@ -44,14 +61,6 @@ export default function TeamProfileCard({
           </Text>
         </View>
       </View>
-      {onAnalyze && (
-        <Pressable onPress={onAnalyze} style={s.button}>
-          <BarChart3 size={18} color={ACCENT} />
-          <Text style={{ color: ACCENT, fontWeight: "800" }}>
-            {tr ? "Takımı Analiz Et" : "Analyze Team"}
-          </Text>
-        </Pressable>
-      )}
       <View style={s.tiles}>
         {[
           [Globe2, tr ? "Ülke" : "Country", team.country],
@@ -71,6 +80,7 @@ export default function TeamProfileCard({
         ))}
       </View>
     </View>
+    </>
   );
 }
 const s = StyleSheet.create({
@@ -92,13 +102,21 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  eyebrow: { color: '#91A99B', fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
   label: { fontSize: 12, color: MUTED, fontWeight: "700", marginBottom: 6 },
   name: { fontSize: 23, fontWeight: "900", color: TEXT, marginBottom: 6 },
+  actions: {flexDirection: 'row', gap: 6, marginBottom: 14},
+  actionText: {color: ACCENT, fontWeight: '800', fontSize: 13, flexShrink: 1, textAlign: 'center'},
   button: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
     borderWidth: 1,
     borderColor: ACCENT,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(22,163,74,0.06)",
+    paddingHorizontal: 6,
+    paddingVertical: 9,
     flexDirection: "row",
     gap: 8,
     alignItems: "center",

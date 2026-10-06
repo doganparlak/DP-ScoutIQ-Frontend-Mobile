@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Search, X, ListFilter } from 'lucide-react-native';
+import { ChevronDown, Search, X, ListFilter, CalendarX2 } from 'lucide-react-native';
 
 import { ContractStatusFilter, ContractDateFilter, type ContractStatus } from '@/components/ContractFilters';
 import { TutorialHint } from '@/components/Tutorial';
@@ -115,7 +115,7 @@ export default function SearchFilters({
   theme,
   worldCupMode = false,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const controlsLocked = tutorialActive;
   const searchEnabled = !tutorialActive || tutorialStep === 'search';
   const inputStyle = theme
@@ -130,7 +130,7 @@ export default function SearchFilters({
       <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
       <View style={[FRAME_HEADING, { marginBottom: 10 }]}><ListFilter size={20} color={theme?.accent ?? ACCENT} /><Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
         {t('playerPoolFilters', 'Player search filters')}
-      </Text></View>
+      </Text>{!worldCupMode && <Pressable accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr')?'Tarihleri temizle':'Clear dates'} disabled={controlsLocked || (!contractEndDate && !loanEndDate)} hitSlop={8} style={{marginLeft:'auto',opacity:(controlsLocked||(!contractEndDate&&!loanEndDate)) ? 0.4 : 1}} onPress={()=>{setContractEndDate('');setLoanEndDate('');}}><CalendarX2 size={20} color={theme?.accent ?? ACCENT}/></Pressable>}</View>
 
       <View style={styles.tutorialGap}>
         <TutorialHint

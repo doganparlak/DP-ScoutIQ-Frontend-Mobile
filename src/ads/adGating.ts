@@ -150,6 +150,8 @@ const WORKSPACE_AD_ACTIONS = {
   teamAnalysisReport: { key: REPORT_ACTION_KEY, frequency: 'ads_report_every' },
   preMatchReport: { key: REPORT_ACTION_KEY, frequency: 'ads_report_every' },
   postMatchReport: { key: REPORT_ACTION_KEY, frequency: 'ads_report_every' },
+  similarPlayersSearch: { key: 'ads.similarPlayers.searchActionCount.v1', frequency: 'ads_similar_search_every' },
+  saveTeam: { key: 'ads.team.saveActionCount.v1', frequency: 'ads_save_team_every' },
   saveMatch: { key: 'ads.match.saveActionCount.v1', frequency: 'ads_save_match_every' },
   portfolioPlayerMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   dailyScoutMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
@@ -157,6 +159,7 @@ const WORKSPACE_AD_ACTIONS = {
   dailyScoutRevealedScorePortfolioAdd: { key: 'ads.dailyScout.revealedScorePortfolioAddCount.v1', frequency: 'ads_daily_revealed_portfolio_every' },
   leagueMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   seasonMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
+  leaguePerformanceSearch: { key: 'ads.leaguePerformance.searchActionCount.v1', frequency: 'ads_league_search_every' },
   seasonSearch: { key: 'ads.seasonData.searchActionCount.v1', frequency: 'ads_season_search_every' },
 } as const;
 

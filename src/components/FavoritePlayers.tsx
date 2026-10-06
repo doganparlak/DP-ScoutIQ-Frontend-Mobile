@@ -1328,7 +1328,8 @@ export default function FavoritePlayers({
               </Pressable>
               </View>
               <ScrollView contentContainerStyle={{ paddingBottom: 8 }}>
-              <PlayerCard player={previewPlayer} titleAlign="left"
+              <PlayerCard player={previewPlayer} titleAlign="left" similarPlayerId={previewRow?.playerId || undefined} similarDisabled={tutorialLocked || matchupAds.busy}
+                beforeFindSimilar={async()=>{setPreviewPlayer(null);await new Promise<void>(resolve=>setTimeout(resolve,350));}}
                 reportState={previewRow && (processingReports.has(previewRow.id) || queuedReportPlayer?.id === previewRow.id) ? 'loading' : 'idle'}
                 onGenerateReport={async () => { if (previewRow) await handleReportPress(previewRow); }}
                 matchupDisabled={matchupAds.busy || matchupFull || (!!previewRow && sharedMatchup.rows.some(row => row?.id === previewRow.playerId))}

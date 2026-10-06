@@ -18,6 +18,7 @@ Open scoutwise-prod → Remote Config (use Search for products). Create the para
 | ads_daily_hidden_portfolio_every | 3 | Daily Scout portfolio add, hidden scores |
 | ads_daily_revealed_portfolio_every | 4 | Daily Scout portfolio add, revealed scores |
 | ads_season_search_every | 4 | Season search |
+| ads_league_search_every | 4 | League Performance manual Search presses; automatic loads, filter changes and result selection do not count |
 
 Only whole numbers 2–100 are accepted. Missing/invalid values use the corresponding in-app default. This does not create guaranteed ad impressions: existing eligibility, ad availability, and other checks still apply.
 
@@ -39,3 +40,7 @@ Firebase Console publication and a live remote-value fetch must be verified sepa
 - iOS simulator build passed; installed and launched on iPhone 16 Pro (iOS 18.6).
 - Runtime refresh completed with `lastError: null`; all ten parameters currently report `default` as their source and retain the expected 3/4 intervals. A published remote override has not yet been verified.
 - Regression script passed. Full TypeScript check still reports nine existing errors in unrelated SafeAreaView imports and leaguePool; none in the modified Remote Config, ad gating, or App files.
+
+- `ads_save_team_every`: 4 — Free Team Pool saves; Plus/Pro skip ads, with the existing upsell fallback when an ad cannot be shown.
+
+- `ads_similar_search_every`: 4 — Free similar-player searches; shared upsell fallback, paid users skip ads.

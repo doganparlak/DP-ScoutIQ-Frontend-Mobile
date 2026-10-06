@@ -57,7 +57,7 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
     setScores(previous => ({ ...previous, [kind]: Math.round(value) }));
   });
   return <View style={{ gap: 12, padding: 8 }}>
-    <PlayerCard player={shownPlayer} titleAlign="left" addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || ads.busy || alreadyInMatchup || matchupFull}
+    <PlayerCard player={shownPlayer} similarPlayerId={id} similarDisabled={busy||ads.busy} beforeFindSimilar={async()=>{onNavigate?.();await new Promise<void>(resolve=>setTimeout(resolve,350));}} titleAlign="left" addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || ads.busy || alreadyInMatchup || matchupFull}
       onAddFavorite={async () => !!await perform(async () => {
         // Capture visibility before ensureScores automatically reveals missing values.
         const action = scores.potential !== undefined && scores.form !== undefined
@@ -103,7 +103,7 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
     <View style={{ flexDirection: 'row', gap: 10 }}>
       {(['potential', 'form'] as const).map(kind => scores[kind] === undefined && <Pressable key={kind} accessibilityRole="button" disabled={busy} onPress={() => { void reveal(kind); }} style={{ flex: 1, borderWidth: 1, borderColor: ACCENT, borderRadius: 12, minHeight: 44, padding: 10, justifyContent: 'center', opacity: busy ? 0.5 : 1 }}><Text style={{ color: ACCENT, textAlign: 'center', fontWeight: '800' }}>{t(kind === 'potential' ? 'revealPotential' : 'revealForm', kind === 'potential' ? 'Potansiyeli Hesapla' : 'Formu Hesapla')}</Text></Pressable>)}
     </View>
-    {report && <ScoutingReport visible={reportOpen} onClose={() => setReportOpen(false)} player={shownPlayer} report={report} plan={plan} reloadReport={reportPayload?()=>getPlayerPoolScoutingReportProgress(reportPayload):undefined} loadReportSection={reportPayload?(section)=>getPlayerPoolScoutingReportSection(reportPayload,section):undefined} onReportUpdate={setReport}/>} 
+    {report && <ScoutingReport onBeforeFindSimilar={onNavigate} visible={reportOpen} onClose={() => setReportOpen(false)} player={shownPlayer} report={report} plan={plan} reloadReport={reportPayload?()=>getPlayerPoolScoutingReportProgress(reportPayload):undefined} loadReportSection={reportPayload?(section)=>getPlayerPoolScoutingReportSection(reportPayload,section):undefined} onReportUpdate={setReport}/>} 
     {ads.fallback}
     <PlusProUpsellScreen visible={upsell} onClose={() => setUpsell(false)} />
   </View>;

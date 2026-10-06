@@ -74,8 +74,8 @@ function AndroidContractDateSelector({ value, onChange, locale }: { value: Date;
   </View>;
 }
 
-export function ContractStatusFilter({ value, onChange, disabled }: {
-  value: ContractStatus; onChange: (value: ContractStatus) => void; disabled?: boolean;
+export function ContractStatusFilter({ value, onChange, disabled, aligned = false }: {
+  value: ContractStatus; onChange: (value: ContractStatus) => void; disabled?: boolean; aligned?: boolean;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
@@ -84,9 +84,9 @@ export function ContractStatusFilter({ value, onChange, disabled }: {
     { value: 'loan', label: t('contractLoan', 'On loan') },
     { value: 'permanent', label: t('contractPermanent', 'Permanent') },
   ];
-  return <View style={styles.field}>
-    <Text style={styles.label}>{t('contractStatus', 'Contract status')}</Text>
-    <Pressable testID="contract-status" accessibilityRole="button" accessibilityLabel={t('contractStatus', 'Contract status')} accessibilityState={{ disabled, expanded: open }} disabled={disabled} onPress={() => setOpen(true)} style={styles.input}>
+  return <View style={[styles.field, aligned && {gap:7}]}>
+    <Text style={[styles.label, aligned && {lineHeight:18}]}>{t('contractStatus', 'Contract status')}</Text>
+    <Pressable testID="contract-status" accessibilityRole="button" accessibilityLabel={t('contractStatus', 'Contract status')} accessibilityState={{ disabled, expanded: open }} disabled={disabled} onPress={() => setOpen(true)} style={[styles.input, aligned && {minHeight:46,paddingVertical:12}]}>
       <Text style={styles.value}>{options.find(option => option.value === value)?.label}</Text><ChevronDown size={16} color={MUTED} />
     </Pressable>
     <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -101,8 +101,8 @@ export function ContractStatusFilter({ value, onChange, disabled }: {
   </View>;
 }
 
-export function ContractDateFilter({ label, value, onChange, disabled = false, testID }: {
-  label: string; value: string; onChange: (value: string) => void; disabled?: boolean; testID: string;
+export function ContractDateFilter({ label, value, onChange, disabled = false, testID, aligned = false }: {
+  label: string; value: string; onChange: (value: string) => void; disabled?: boolean; testID: string; aligned?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = React.useState(false);
@@ -110,9 +110,9 @@ export function ContractDateFilter({ label, value, onChange, disabled = false, t
   const locale = i18n.language.startsWith('tr') ? 'tr-TR' : 'en-GB';
   const display = value ? parseDate(value).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : t('contractSelectDate', 'Select date');
   React.useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
-  return <View style={[styles.field, disabled && { opacity: 0.4 }]}>
-    <Text style={styles.label}>{label}</Text>
-    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={`${label}: ${display}`} accessibilityState={{ disabled }} disabled={disabled} style={styles.input} onPress={() => { setDraft(value ? parseDate(value) : new Date()); setOpen(true); }}>
+  return <View style={[styles.field, aligned && {gap:7}, disabled && { opacity: 0.4 }]}>
+    <Text style={[styles.label, aligned && {lineHeight:18}]}>{label}</Text>
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={`${label}: ${display}`} accessibilityState={{ disabled }} disabled={disabled} style={[styles.input, aligned && {minHeight:46,paddingVertical:12}]} onPress={() => { setDraft(value ? parseDate(value) : new Date()); setOpen(true); }}>
       <Text style={[styles.value, { color: value ? TEXT : MUTED }]}>{display}</Text><CalendarDays size={17} color="#20C997" />
     </Pressable>
     {value && !disabled ? <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${t('contractClearDate', 'Clear date')}`} onPress={() => onChange('')}><Text style={styles.clear}>{t('contractClearDate', 'Clear date')}</Text></Pressable> : null}

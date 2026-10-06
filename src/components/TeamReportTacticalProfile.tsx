@@ -11,12 +11,12 @@ import ReportPlayerPortrait from './ReportPlayerPortrait';
 import TeamReportLockedDetail from './TeamReportLockedDetail';
 type Item={title?:string;name?:string;imageUrl?:string|null;position?:string;metrics:{label:string;value:string}[];analysis:string[]};
 type Profile={themes:Item[];players:Item[]};
-export default function TeamReportTacticalProfile({team,matches,tr,kind,active,free,onOpenPlans}:{team:Team;matches:PlayedMatch[];tr:boolean;kind:'attack'|'defense';active:boolean;free:boolean;onOpenPlans:()=>void}){
+export default function TeamReportTacticalProfile({team,matches,tr,kind,active,free,onOpenPlans,reportId}:{team:Team;matches:PlayedMatch[];tr:boolean;kind:'attack'|'defense';active:boolean;free:boolean;onOpenPlans:()=>void;reportId?:string}){
  const [mode,setMode]=useState<'strategy'|'players'>('strategy'),[profile,setProfile]=useState<Profile|null>(null),[error,setError]=useState(false),[retry,setRetry]=useState(0);
  const [requested,setRequested]=useState(false);
  useEffect(()=>{if(active)setRequested(true);},[active]);
  const key=matches.map(m=>m.fixtureId).join(',');
- useEffect(()=>{if(!requested)return;let cancelled=false;setProfile(null);setError(false);matchPoolRequest<Profile>(`/team-analysis/report-profile/${kind}`,{teamId:Number(team.id),leagueId:team.leagueId,fixtureIds:matches.map(m=>m.fixtureId)}).then(p=>{if(!cancelled)setProfile(p);}).catch(()=>{if(!cancelled)setError(true);});return()=>{cancelled=true;};},[team.id,key,kind,tr,retry,requested,free]);
+ useEffect(()=>{if(!requested)return;let cancelled=false;setProfile(null);setError(false);matchPoolRequest<Profile>(`/team-analysis/report-profile/${kind}`,{teamId:Number(team.id),leagueId:team.leagueId,fixtureIds:matches.map(m=>m.fixtureId),reportId}).then(p=>{if(!cancelled)setProfile(p);}).catch(()=>{if(!cancelled)setError(true);});return()=>{cancelled=true;};},[team.id,key,kind,tr,retry,requested,free,reportId]);
  const attack=kind==='attack',accent=attack?ACCENT:'#FB923C';
  const strategy=attack?(tr?'Takım Hücum\nPlanı':'Team Attack Plan'):(tr?'Takım Savunma\nPlanı':'Team Defense Plan');
  const players=attack?(tr?'Kilit Hücum Oyuncuları':'Key Attacking Players'):(tr?'Kilit Savunma Oyuncuları':'Key Defensive Players');

@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-native";
+import { useNavigation, type NavigationProp, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import {
   Shirt,
+  ShieldCheck,
   BookMarked,
   GitCompareArrows,
   FileText,
@@ -12,8 +13,12 @@ import { useMatchup } from "@/context/MatchupContext";
 import { matchPoolRequest } from "@/services/api";
 import { PANEL, TEXT, ACCENT } from "@/theme";
 
+import type { MainTabsParamList } from '@/types';
+
 type Summary = {
   portfolioPlayers: number;
+  portfolioTeams: number;
+  readyTeamReports: number;
   portfolioMatches: number;
   readyPlayerReports: number;
   readyPostMatchReports: number;
@@ -21,6 +26,7 @@ type Summary = {
 };
 export default function ProfileSummary() {
   const { i18n } = useTranslation();
+  const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const tr = i18n.language.startsWith("tr");
   const { rows, mode } = useMatchup();
   const { width, fontScale } = useWindowDimensions();
@@ -56,40 +62,43 @@ export default function ProfileSummary() {
       : summary && summary[key] != null
         ? String(summary[key])
         : "—";
-  const pills = [
+  const pills: {label:string;value:string;Icon:typeof Shirt;color:string;route:'Portfolio'|'TeamPortfolio'|'MatchPortfolio'|'Matchup'}[] = [
     {
       label: tr ? "Portföy Oyuncuları" : "Portfolio Players",
-      value: count("portfolioPlayers"),
+      value: count("portfolioPlayers"), route: "Portfolio",
       Icon: Shirt,
       color: ACCENT,
     },
+    {label: tr ? "Portföy Takımları" : "Portfolio Teams", value: count("portfolioTeams"), route: "TeamPortfolio", Icon: ShieldCheck, color: ACCENT},
     {
       label: tr ? "Portföy Maçları" : "Portfolio Matches",
-      value: count("portfolioMatches"),
+      value: count("portfolioMatches"), route: "MatchPortfolio",
       Icon: BookMarked,
       color: ACCENT,
     },
     {
       label: tr ? "Eşleşme Merkezi" : "Matchup Center",
       value: `${rows.slice(0, mode).filter(Boolean).length}/${mode}`,
+      route: "Matchup",
       Icon: GitCompareArrows,
       color: "#C084FC",
     },
     {
       label: tr ? "Oyuncu Raporların" : "Your Player Reports",
-      value: count("readyPlayerReports"),
+      value: count("readyPlayerReports"), route: "Portfolio",
       Icon: FileText,
       color: "#38BDF8",
     },
+    {label: tr ? "Takım Raporların" : "Your Team Reports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: "#38BDF8"},
     {
       label: tr ? "Maç Önü Raporların" : "Your Pre-Match Reports",
-      value: count("readyPreMatchReports"),
+      value: count("readyPreMatchReports"), route: "MatchPortfolio",
       Icon: FileText,
       color: "#38BDF8",
     },
     {
       label: tr ? "Maç Sonu Raporların" : "Your Post-Match Reports",
-      value: count("readyPostMatchReports"),
+      value: count("readyPostMatchReports"), route: "MatchPortfolio",
       Icon: FileText,
       color: "#38BDF8",
     },
@@ -100,13 +109,15 @@ export default function ProfileSummary() {
   return (
     <View style={s.grid}>
       {pillRows.map((row, index) => <View key={index} style={s.pillRow}>
-      {row.map(({ label, value, Icon, color }) => (
-        <View
+      {row.map(({ label, value, Icon, color, route }) => (
+        <Pressable
           key={label}
-          accessible
+          accessibilityRole="button"
+          onPress={() => navigation.navigate(route)}
           accessibilityLabel={`${label}: ${value}`}
-          style={[
+          style={({pressed}) => [
             s.pill,
+            pressed && {opacity:0.75},
             {
               minHeight: singleColumn ? 100 : 112,
               borderColor: `${color}55`,
@@ -120,7 +131,7 @@ export default function ProfileSummary() {
             <Text style={[s.value, { color }]}>{value}</Text>
           </View>
           <Text style={s.label}>{label}</Text>
-        </View>
+        </Pressable>
       ))}</View>)}
       {failed && (
         <Text style={s.error}>

@@ -1,9 +1,11 @@
+import {playerActionLayout, PLAYER_ACTION_TONES} from '@/utils/playerCardActions';
+import FindSimilarPlayerButton from './FindSimilarPlayerButton';
 import ActionSpinner from './ActionSpinner';
 import { useOptionalMatchup } from '@/context/MatchupContext';
 import { FRAME_TITLE, FRAME_HEADING } from '@/theme';
 // src/components/PlayerCard.tsx
 import * as React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
 import { UserRound, ArrowLeftRight, CalendarDays, Check, FileClock, FileText, MapPin, Plus, Shield, ShieldCheck, Trophy } from 'lucide-react-native';
 import { formatPlayerContractDate } from '@/utils/playerContract';
 import { CARD, TEXT, MUTED, ACCENT, LINE, DANGER } from '@/theme';
@@ -16,6 +18,9 @@ type Props = {
   player: PlayerData;
   heading?: string;
   actionsInside?: boolean;
+  similarPlayerId?: string;
+  beforeFindSimilar?: () => void | Promise<void>;
+  similarDisabled?: boolean;
   onMatchup?: () => void | Promise<void>;
   matchupDisabled?: boolean;
   onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
@@ -116,6 +121,9 @@ export default function PlayerCard({
   player,
   heading,
   actionsInside = false,
+  similarPlayerId,
+  beforeFindSimilar,
+  similarDisabled = false,
   onMatchup,
   matchupDisabled = false,
   onAddFavorite,
@@ -128,6 +136,11 @@ export default function PlayerCard({
   visualTheme,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const {width,fontScale}=useWindowDimensions();
+  const [actionWidth,setActionWidth]=React.useState(Math.max(160,width-64));
+  const count=1+Number(!!onAddFavorite)+Number(!!onGenerateReport)+Number(!!onMatchup);
+  const actionLayout=playerActionLayout(actionWidth,fontScale,count);
+  const actionCell={flexBasis:actionLayout.basis,flexGrow:1,flexShrink:0};
   const matchup = useOptionalMatchup();
   const matchupFull = !!matchup && matchup.rows.slice(0, matchup.mode).every(Boolean);
   const [matchBusy, setMatchBusy] = React.useState(false);
@@ -209,17 +222,18 @@ export default function PlayerCard({
     typeof meta?.weight === 'number' && meta.weight > 0 ? { label: t('weight', 'Weight'), value: `${meta.weight} kg` } : null,
   ].filter((value): value is { label: string; value: string } => !!value);
 
-  const headerActions = ((heading || onAddFavorite || onGenerateReport || onMatchup) && <View style={styles.headerActions}>{heading && <View style={[FRAME_HEADING, { flexShrink: 1 }]}><UserRound size={20} color={cardAccent} /><Text style={[styles.heading, FRAME_TITLE]}>{heading}</Text></View>}
-      {(onAddFavorite || onGenerateReport || onMatchup) && <View style={[styles.actions, heading ? { flex: 1 } : undefined]}>
-        {onAddFavorite && <TouchableOpacity accessibilityRole="button" accessibilityLabel={isAdded ? t('addedToFavorites', 'Added to favorites') : t('addToFavorites', 'Add to favorites')} accessibilityState={{ disabled, busy: isAdding && !isAdded }} disabled={disabled} onPress={handleAdd} style={[styles.action, { borderColor: cardAccent }, addFavoriteDisabled && styles.disabled]}>
+  const headerActions = ((heading || player) && <View style={styles.headerActions}>{heading && <View style={[FRAME_HEADING, { flexShrink: 1 }]}><UserRound size={20} color={cardAccent} /><Text style={[styles.heading, FRAME_TITLE]}>{heading}</Text></View>}
+      {player && <View onLayout={event=>{const measured=event.nativeEvent.layout.width;if(measured>0&&Math.abs(measured-actionWidth)>1)setActionWidth(measured);}} style={styles.actions}>
+        {onAddFavorite && <TouchableOpacity accessibilityRole="button" accessibilityLabel={isAdded ? t('addedToFavorites', 'Added to favorites') : t('addToFavorites', 'Add to favorites')} accessibilityState={{ disabled, busy: isAdding && !isAdded }} disabled={disabled} onPress={handleAdd} style={[styles.action, actionCell, { borderColor: cardAccent,backgroundColor:'rgba(22,163,74,.10)' }, addFavoriteDisabled && styles.disabled]}>
           {isAdded ? <Check size={17} color={cardAccent} /> : isAdding ? <ActionSpinner size={17} color={cardAccent} /> : <Plus size={17} color={cardAccent} />}
-          <Text style={[styles.actionText, { color: cardAccent }]}>{isAdded ? t('playerCardSaved', 'Saved') : t('playerCardPortfolio', 'Portfolio')}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText, { color: cardAccent }]}>{isAdded ? t('playerCardSaved', 'Saved') : t('playerCardPortfolio', 'Portfolio')}</Text>
         </TouchableOpacity>}
-        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, styles.reportAction, reportButtonDisabled && styles.disabled]}>
-          {reportLoading ? <ActionSpinner size={17} color={cardAccent} /> : <FileText size={17} color={cardAccent} />}
-          <Text style={styles.actionText}>{t('playerCardReport', 'Report')}</Text>
+        <FindSimilarPlayerButton player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:'rgba(45,212,191,.08)'}]} accent={PLAYER_ACTION_TONES.similar}/>
+        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, reportButtonDisabled && styles.disabled]}>
+          {reportLoading ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.report} /> : <FileText size={17} color={PLAYER_ACTION_TONES.report} />}
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.report}]}>{t('playerCardReport', 'Report')}</Text>
         </TouchableOpacity>}
-        {onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { void runAction('match'); }} style={[styles.action, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={cardAccent}/> : <ArrowLeftRight size={17} color={matchupFull ? MUTED : cardAccent} />}<Text style={[styles.actionText, matchupFull && {color:MUTED}]}>{matchupFull ? (i18n.language.startsWith('tr') ? 'Eşleşme Dolu' : 'Matchup Full') : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
+        {onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { void runAction('match'); }} style={[styles.action, actionCell, styles.matchupAction, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.matchup}/> : <ArrowLeftRight size={17} color={matchupFull ? MUTED : PLAYER_ACTION_TONES.matchup} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.matchup}, matchupFull && {color:MUTED}]}>{matchupFull ? (i18n.language.startsWith('tr') ? 'Eşleşme Dolu' : 'Matchup Full') : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
       </View>}
     </View>);
 
@@ -329,5 +343,5 @@ const styles = StyleSheet.create({
   section: { gap: 9 }, rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, roleChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.02)' }, roleCode: { fontSize: 12, fontWeight: '900' }, rolePercentage: { fontSize: 11, color: '#B6C5BC', fontWeight: '700' },
   scores: { paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(145,169,155,0.16)', gap: 12 },
   heading: { color: ACCENT, fontSize: 17, fontWeight: '800', flexShrink: 1, maxWidth: '100%' }, headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 },
-  actions: { flexDirection: 'row', flexWrap: 'nowrap', gap: 6, minWidth: 240, flexGrow: 1 }, action: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6, paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.06)' }, reportAction: { borderColor: 'rgba(145,169,155,0.28)', backgroundColor: 'rgba(255,255,255,0.025)' }, actionText: { color: '#DCE8E0', fontWeight: '800', fontSize: 11, flexShrink: 1 }, disabled: { opacity: 0.45 }, savedNotice: { flexDirection: 'row', alignItems: 'center', gap: 6 }, savedText: { color: '#B6C5BC', fontSize: 11, flexShrink: 1 },
+  actions: { width:'100%',flexBasis:'100%',flexDirection: 'row', flexWrap: 'nowrap', gap: 6 }, action: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 3, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.06)' }, reportAction: { borderColor: PLAYER_ACTION_TONES.report, backgroundColor: 'rgba(142,183,207,.08)' }, matchupAction:{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:'rgba(180,163,211,.08)'}, actionText: { color: '#DCE8E0', fontWeight: '800', fontSize: 11, flexShrink: 1 }, disabled: { opacity: 0.45 }, savedNotice: { flexDirection: 'row', alignItems: 'center', gap: 6 }, savedText: { color: '#B6C5BC', fontSize: 11, flexShrink: 1 },
 });

@@ -539,6 +539,7 @@ export default function TeamAnalysisScreen() {
                 setReportLoading(true);
                 try {
                   const payload = {
+                    team,
                     teamId: Number(team.id),
                     leagueId: team.leagueId,
                     fixtureIds: selected.map((m) => m.fixtureId),

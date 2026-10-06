@@ -53,7 +53,7 @@ export default function TeamAnalysisReportModal({
   useEffect(()=>{
     if(!assessmentRequested||!data?.reports?.length)return;
     let cancelled=false;setAssessment(null);setAssessmentError(false);
-    matchPoolRequest<TeamAssessment>('/team-analysis/report-profile/assessment',{teamId:Number(team.id),leagueId:team.leagueId,fixtureIds:matches.map(m=>m.fixtureId)}).then(result=>{if(!cancelled)setAssessment(result);}).catch(()=>{if(!cancelled)setAssessmentError(true);});
+    matchPoolRequest<TeamAssessment>('/team-analysis/report-profile/assessment',{teamId:Number(team.id),leagueId:team.leagueId,fixtureIds:matches.map(m=>m.fixtureId),reportId:data?.reportId}).then(result=>{if(!cancelled)setAssessment(result);}).catch(()=>{if(!cancelled)setAssessmentError(true);});
     return()=>{cancelled=true;};
   },[assessmentRequested,assessmentRetry,team.id,matchKey,tr,data?.reports,plan]);
   const insets=useSafeAreaInsets();
@@ -69,7 +69,7 @@ export default function TeamAnalysisReportModal({
     if(index===1)return <TeamReportFormResults team={team} matches={matches} tr={tr}/>;
 
     if(index===2&&data?.reports?.length)return <TeamReportSquad team={team} reports={data.reports} matches={matches.length} tr={tr}/>;
-    if((index===6||index===7)&&data?.reports?.length)return <TeamReportTacticalProfile team={team} matches={matches} tr={tr} kind={index===6?'attack':'defense'} active={page===index} free={plan==='Free'} onOpenPlans={onOpenPlans}/>;
+    if((index===6||index===7)&&data?.reports?.length)return <TeamReportTacticalProfile team={team} matches={matches} tr={tr} kind={index===6?'attack':'defense'} active={page===index} free={plan==='Free'} onOpenPlans={onOpenPlans} reportId={data?.reportId}/>;
     if((index===8||index===9)&&data?.reports?.length)return <TeamReportAssessment team={team} matches={matches.length} tr={tr} weak={index===9} profile={assessment?.[index===9?'weaknesses':'strengths']} error={assessmentError} onRetry={()=>setAssessmentRetry(r=>r+1)} free={plan==='Free'} onOpenPlans={onOpenPlans}/>;
     if(loading)return <View style={modal.center}><ActionSpinner color={ACCENT} size={28}/><Text style={modal.subtitle}>{tr?'Seçilen maçlar analiz ediliyor…':'Analyzing selected matches…'}</Text></View>;
     if(error)return <Text style={modal.subtitle}>{error}</Text>;

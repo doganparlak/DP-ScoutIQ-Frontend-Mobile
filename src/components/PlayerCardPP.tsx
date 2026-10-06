@@ -113,6 +113,8 @@ export default function PlayerCardPP({
           />
           <PlayerCard
             player={selectedPlayerForCard ?? selectedPlayer}
+            similarPlayerId={!worldCupMode ? selectedPlayerId ?? undefined : undefined}
+            similarDisabled={tutorialActive || revealingPotential || revealingForm}
             matchupDisabled={matchupDisabled}
             onMatchup={canPressMatchup ? onMatchup : undefined}
             heading={t("playerCard", "Player Card")}

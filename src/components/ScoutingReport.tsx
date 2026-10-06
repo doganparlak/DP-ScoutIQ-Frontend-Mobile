@@ -52,6 +52,7 @@ import {
 type Props = {
   visible: boolean;
   onClose: () => void;
+  onBeforeFindSimilar?: () => void | Promise<void>;
   player: PlayerData;
   report: ScoutingReportResponse;
   plan?: Plan;
@@ -538,7 +539,7 @@ function ReportMetricPage({ group, name, imageUrl, report }: { group: ReturnType
   </View>;
 }
 
-export default function ScoutingReport({ visible, onClose, player, report: initialReport, plan = 'Free', reloadReport, loadReportSection, onReportUpdate }: Props) {
+export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, player, report: initialReport, plan = 'Free', reloadReport, loadReportSection, onReportUpdate }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [page, setPage] = useState(0);
@@ -588,7 +589,7 @@ export default function ScoutingReport({ visible, onClose, player, report: initi
       title: t('player', 'Player'),
       node: (
         <View style={styles.playerPage}>
-          <PlayerCard player={reportDisplayPlayer} titleAlign="center" />
+          <PlayerCard player={reportDisplayPlayer} titleAlign="center" beforeFindSimilar={async()=>{onClose();await onBeforeFindSimilar?.();await new Promise<void>(resolve=>setTimeout(resolve,350));}} />
 
           <Text style={styles.createdByTitle}>
             {!!t('createdByPrefix', { defaultValue: '' }) && (
@@ -767,7 +768,7 @@ export default function ScoutingReport({ visible, onClose, player, report: initi
     });
 
     return out;
-  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection]);
+  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar]);
 
   const activeNarrativeSection = pages[page]?.key === 'strengths' ? 'strengths' : pages[page]?.key === 'weaknesses' ? 'weaknesses' : pages[page]?.key === 'conclusion' ? 'role_usage' : null;
   useEffect(()=>{

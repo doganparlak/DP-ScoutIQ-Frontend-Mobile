@@ -1,3 +1,4 @@
+import PlanManagementButton from '@/components/PlanManagementButton';
 import React from 'react';
 import { useMatchup } from '@/context/MatchupContext';
 import { getSharedMatchupComparison } from '@/services/leaguePool';
@@ -1608,19 +1609,10 @@ export default function PlayerPoolScreen() {
                 >
                   <Text style={styles.proPromptSecondaryText}>{t('notNow', 'Not now')}</Text>
                 </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setMatchupUpgradeMode(null);
-                    navigation.navigate('Profile', { screen: 'ManagePlan' });
-                  }}
-                  style={({ pressed }) => [
-                    styles.proPromptPrimary,
-                    worldCupMode && { backgroundColor: WORLD_CUP_COLORS.mint, borderColor: WORLD_CUP_COLORS.mint },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={styles.proPromptPrimaryText}>{t('managePlan', 'Manage Plan')}</Text>
-                </Pressable>
+                <PlanManagementButton onPress={() => {
+                  setMatchupUpgradeMode(null);
+                  setTimeout(() => navigation.navigate('Profile', { screen: 'ManagePlan' }), 350);
+                }} />
               </View>
             </View>
           </View>

@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BarChart3, BookMarked, BookOpenCheck,
   CalendarSearch, ClipboardList, Database,
-  GitCompareArrows, LayoutDashboard, MessageSquareText, Search, Shield,
-  Target, Trophy, UserRound, X,
+  GitCompareArrows, LayoutDashboard, MessageSquareText, Search, Shield, ShieldCheck,
+  Table2, Target, Trophy, UserRound, UsersRound, X,
 } from 'lucide-react-native';
 
 import { ACCENT, LINE, MUTED, PANEL, TEXT } from '@/theme';
@@ -130,15 +130,20 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     { page: 'teamPool', route: 'TeamPool', title: t('teamCard', 'Team Card'), Icon: Shield, summary: t('tutorialTeamPoolAnalyze'), details: [] },
     { page: 'leaguePool', route: 'LeaguePool', title: t('leaguePoolWorkspace', 'League Pool'), Icon: Trophy, summary: t('tutorialLeaguePoolSearch'), details: [] },
     { page: 'leaguePool', route: 'LeaguePool', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialLeaguePoolMatchup'), details: [] },
+    { page: 'leaguePerformance', route: 'LeaguePerformance', title: t('leaguePerformanceGuideSearchTitle'), Icon: Search, summary: t('tutorialLeaguePerformanceSearch'), details: [] },
+    { page: 'leaguePerformance', route: 'LeaguePerformance', title: t('leaguePerformanceGuideStandingsTitle'), Icon: Table2, summary: t('tutorialLeaguePerformanceStandings'), details: [] },
     { page: 'matchPool', route: 'MatchPool', title: t('matchPoolWorkspace', 'Match Pool'), Icon: CalendarSearch, summary: t('tutorialMatchPoolSearch'), details: [] },
     { page: 'matchPool', route: 'MatchPool', title: t('matchCard', 'Match Card'), Icon: CalendarSearch, summary: t('tutorialMatchPoolCard'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('seasonDataWorkspace', 'Season Data'), Icon: Database, summary: t('tutorialSeasonSearch'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('careerHistory', 'Career History'), Icon: Database, summary: t('tutorialSeasonHistory'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialSeasonMatchup'), details: [] },
     { page: 'playerPortfolio', route: 'Portfolio', title: t('portfolioWorkspace', 'Player Portfolio'), Icon: ClipboardList, summary: t('tutorialPlayerPortfolioSummary'), details: [] },
+    { page: 'teamPortfolio', route: 'TeamPortfolio', title: t('teamPortfolioWorkspace'), Icon: ShieldCheck, summary: t('tutorialTeamPortfolioFilters'), details: [t('tutorialTeamPortfolioRows')] },
     { page: 'matchPortfolio', route: 'MatchPortfolio', title: t('matchPortfolioWorkspace', 'Match Portfolio'), Icon: BookMarked, summary: t('helpGuideMatchPortfolioSummary'), details: [t('helpGuideMatchPortfolio2'), t('helpGuideMatchPortfolio3')] },
     { page: 'matchup', route: 'Matchup', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('helpGuideMatchupSummary'), details: [t('helpGuideMatchup1')] },
     { page: 'matchup', route: 'Matchup', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('helpGuideMatchup2'), details: [t('helpGuideMatchup3')] },
+    { page: 'similarPlayers', route: 'SimilarPlayers', title: t('similarPlayersFiltersTitle'), Icon: Search, summary: t('tutorialSimilarPlayersFilters'), details: [] },
+    { page: 'similarPlayers', route: 'SimilarPlayers', title: t('similarPlayersResultsTitle'), Icon: UsersRound, summary: t('tutorialSimilarPlayersResults'), details: [] },
     { page: 'teamAnalysis', route: 'TeamAnalysis', title: t('teamAnalysisWorkspace', 'Team Analysis Center'), Icon: BarChart3, summary: t('helpGuideTeamAnalysisSummary'), details: [t('helpGuideTeamAnalysis1'), t('helpGuideTeamAnalysis2')] },
     { page: 'teamAnalysis', route: 'TeamAnalysis', title: t('teamAnalysisWorkspace', 'Team Analysis Center'), Icon: BarChart3, summary: t('helpGuideTeamAnalysis3'), details: [] },
   ], [t]);
@@ -254,7 +259,7 @@ export function useTutorial() {
   return context;
 }
 
-export function TutorialPageGuide({ page, frame = 0, onShow }: { page: string; frame?: number; onShow?: (y: number) => void }) {
+export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3 }: { page: string; frame?: number; onShow?: (y: number) => void; summaryLines?: number }) {
   const guide = React.useContext(EmbeddedGuideContext);
   const { t } = useTranslation();
   if (!guide?.active || guide.current.page !== page || guide.frameIndex !== frame) return null;
@@ -272,7 +277,7 @@ export function TutorialPageGuide({ page, frame = 0, onShow }: { page: string; f
       </View>
       <Pressable accessibilityLabel={t('tutorialClose', 'Close guide')} onPress={guide.finish} hitSlop={6} style={({ pressed }) => [styles.guideCloseButton, pressed && styles.pressed]}><X size={16} color="#F87171" /></Pressable>
     </View>
-    <Text numberOfLines={3} style={styles.guideSummary}>{guide.current.summary}</Text>
+    <Text numberOfLines={summaryLines} style={styles.guideSummary}>{guide.current.summary}</Text>
     <View style={styles.guideActions}>
       <Pressable disabled={guide.frameIndex === 0} onPress={guide.previous} accessibilityLabel={t('tutorialPrevious', 'Previous')} style={({ pressed }) => [styles.guideBack, guide.frameIndex === 0 && styles.guideDisabled, pressed && styles.pressed]}><ArrowLeft size={16} color={TEXT} /></Pressable>
       <Pressable onPress={guide.next} style={({ pressed }) => [styles.guidePrimary, pressed && styles.pressed]}><Text style={styles.guidePrimaryText}>{guide.frameIndex === guide.frameTotal - 1 ? t('tutorialDone', 'Done') : t('tutorialNext', 'Next')}</Text><ArrowRight size={16} color="#07110B" /></Pressable>

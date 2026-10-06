@@ -6,9 +6,12 @@ export const remoteConfigDefaults = {
   "ads_portfolio_lineup_every": 4,
   "ads_report_every": 3,
   "ads_save_match_every": 4,
+  "ads_save_team_every": 4,
+  "ads_similar_search_every": 4,
   "ads_daily_hidden_portfolio_every": 3,
   "ads_daily_revealed_portfolio_every": 4,
-  "ads_season_search_every": 4
+  "ads_season_search_every": 4,
+  "ads_league_search_every": 4
 } as const;
 
 export type AdFrequencyKey = keyof typeof remoteConfigDefaults;

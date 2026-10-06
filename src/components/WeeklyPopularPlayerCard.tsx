@@ -72,7 +72,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
   }
 
   return <View>
-    <PlayerCard player={shownPlayer} visualTheme={{ cardBackground: '#19221D', accent: ACCENT }}
+    <PlayerCard player={shownPlayer} similarPlayerId={id} similarDisabled={busy} visualTheme={{ cardBackground: '#19221D', accent: ACCENT }}
       addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || full || alreadyAdded}
       reportState={report?.status === 'ready' ? 'ready' : 'idle'}
       onAddFavorite={async () => !!await perform(async () => {

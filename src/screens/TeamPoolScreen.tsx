@@ -1,3 +1,5 @@
+import {useWorkspaceActionAd} from '@/ads/useWorkspaceActionAd';
+import {getFavoriteTeams, saveFavoriteTeam} from '@/services/teamPortfolio';
 import TeamProfileCard from "@/components/TeamProfileCard";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
@@ -10,6 +12,7 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
   Pressable,
@@ -99,6 +102,7 @@ export default function TeamPoolScreen() {
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const nav = useNavigation<any>();
+  const ads = useWorkspaceActionAd();
   const { height, width } = useWindowDimensions();
   const [filters, setFilters] = useState(EMPTY),
     [options, setOptions] = useState<TeamOptions>({
@@ -106,6 +110,23 @@ export default function TeamPoolScreen() {
       leagues: [],
       teams: [],
     });
+  const [savedTeams, setSavedTeams] = useState<Set<string>>(new Set());
+  const [savingTeam, setSavingTeam] = useState('');
+  const saveLock = useRef(false);
+  const saveMounted = useRef(true);
+  useEffect(() => {saveMounted.current = true; return () => {saveMounted.current = false;};}, []);
+  useFocusEffect(React.useCallback(() => {
+    let alive = true;
+    getFavoriteTeams().then(favorites => {if (alive) setSavedTeams(new Set(favorites.map(row => row.team.id)));}).catch(() => {});
+    return () => {alive = false;};
+  }, []));
+  async function saveTeam(team: Team) {
+    if (saveLock.current || savedTeams.has(team.id)) return;
+    saveLock.current = true; setSavingTeam(team.id);
+    try {await ads.run('saveTeam', async () => {await saveFavoriteTeam(team); if (saveMounted.current) setSavedTeams(current => new Set([...current, team.id]));});}
+    catch (error) {if (saveMounted.current) Alert.alert(tr ? 'Takım kaydedilemedi' : 'Could not save team', error instanceof Error ? error.message : String(error));}
+    finally {saveLock.current = false; if (saveMounted.current) setSavingTeam('');}
+  }
   const [rows, setRows] = useState<Team[]>([]),
     [selectedId, setSelectedId] = useState(""),
     [loading, setLoading] = useState(false),
@@ -434,6 +455,9 @@ export default function TeamPoolScreen() {
               <TeamProfileCard
                 team={selected}
                 tr={tr}
+                onSave={() => void saveTeam(selected)}
+                saved={savedTeams.has(selected.id)}
+                saving={savingTeam === selected.id}
                 onAnalyze={() => nav.navigate("TeamAnalysis", { team: selected })}
               />
               {showPlanNudge && plan === "Free" ? (
@@ -510,6 +534,7 @@ export default function TeamPoolScreen() {
           </View>
         </Modal>
       </ScrollView>
+      {ads.fallback}
       <TeamSuggestionsOverlay
         anchor={teamAnchor}
         visible={
