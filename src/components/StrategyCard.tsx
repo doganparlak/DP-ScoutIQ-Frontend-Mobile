@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
-import { Save, RotateCcw } from 'lucide-react-native';
+import { Save, RotateCcw, ClipboardPenLine } from 'lucide-react-native';
 import { ACCENT, BG, MUTED, PANEL, LINE, shadows } from '@/theme';
 import { loadStrategy, saveStrategy } from '@/storage';
 import { useTranslation } from 'react-i18next';
@@ -94,11 +94,11 @@ export default function StrategyCard({
 
   return (
     <View style={[styles.card, shadows.card]}>
-      <Text style={styles.title}>
-        {t('strategyTitle', 'Team Strategy / Scouting Philosophy')}
-      </Text>
+      <View style={{flexDirection:"row",alignItems:"center",justifyContent:"center",alignSelf:"center",maxWidth:"100%",gap:8,marginBottom:8}}><ClipboardPenLine size={24} color={ACCENT}/><Text style={[styles.title,{flexShrink:1,minWidth:0,textAlign:"left",marginBottom:0}]}>
+        {t('strategyTitle', 'Team Strategy')}
+      </Text></View>
       <Text style={styles.hint}>
-        {t('strategyHint', 'Add principles, roster notes, playstyle or scouting goals. ScoutWise will use it as context.')}
+        {t('strategyHint', 'Add principles, roster notes and playstyle.')}
       </Text>
 
       <TextInput

@@ -24,7 +24,7 @@ function extractMessage(messages: Array<Pick<ChatMessage, 'role' | 'content'>>):
 }
 
 /** --- Frontend-facing data types (you can move these to @/types later) --- */
-export type PlayerStat = { metric: string; value: number };
+export type PlayerStat = import('@/types').PlayerStat;
 export type PlayerMeta = PlayerContract & {
   sportmonksId?: number;
   teamId?: number;
@@ -344,6 +344,7 @@ export type FavoritePlayer = PlayerContract & {
 };
 
 export type PlayerPoolSearchInput = {
+  limit?: number;
   contractStatus?: 'loan' | 'permanent';
   loanEndDate?: string;
   contractEndDate?: string;
@@ -1133,4 +1134,15 @@ export async function getLeaguePerformancePlayer(playerId: number): Promise<{id:
 
 export function teamPortfolioRequest<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: object): Promise<T> {
   return request<T>(path, {method, ...(body === undefined ? {} : {body: JSON.stringify(body)})});
+}
+
+// Pro workspace uses the same authenticated transport and pool normalizer.
+export async function proWorkspaceRequest<T>(action: string, payload: unknown): Promise<T> {
+  return request<T>(`/pro/${action}`, {method: 'POST', body: JSON.stringify(payload)});
+}
+export function normalizeProPlayer(row: {id: string | number; content: Record<string, unknown>}): {id: string; player: PlayerData} {
+  const id = String(row.id);
+  const player = normalizePlayerPoolContent(row.content, id);
+  if (!player) throw new Error('Player profile unavailable');
+  return {id, player};
 }

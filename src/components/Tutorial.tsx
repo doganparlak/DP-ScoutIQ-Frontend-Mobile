@@ -1,13 +1,14 @@
 import React from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View, ScrollView, type ScrollViewProps } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BarChart3, BookMarked, BookOpenCheck,
-  CalendarSearch, ClipboardList, Database,
+  CalendarSearch, ClipboardList, ClipboardPenLine, Compass, Database,
   GitCompareArrows, LayoutDashboard, MessageSquareText, Search, Shield, ShieldCheck,
   Table2, Target, Trophy, UserRound, UsersRound, X,
 } from 'lucide-react-native';
 
+import {useFocusEffect} from '@react-navigation/native';
 import { ACCENT, LINE, MUTED, PANEL, TEXT } from '@/theme';
 import { getMe, updateTutorialCompletion } from '@/services/api';
 
@@ -55,6 +56,8 @@ type TutorialContextValue = {
   activationKey: number;
   activePage: string | null;
   activeFrame: number;
+  proGuidePage: string | null;
+  setProGuidePage: React.Dispatch<React.SetStateAction<string | null>>;
   setPlayerPoolStep: (step: PlayerPoolTutorialStep) => void;
   setProfileStep: (step: ProfileTutorialStep) => void;
   setScoutWiseStep: (step: ScoutWiseTutorialStep) => void;
@@ -91,6 +94,7 @@ const EmbeddedGuideContext = React.createContext<EmbeddedGuideValue | null>(null
 
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const [active, setActive] = React.useState(false);
+  const [proGuidePage,setProGuidePage]=React.useState<string|null>(null);
   const [postTutorialReady] = React.useState(false);
   const [stage, setStage] = React.useState<TutorialStage>('done');
   const [playerPoolStep, setPlayerPoolStep] = React.useState<PlayerPoolTutorialStep>('filters');
@@ -119,8 +123,24 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
 
   const guides = React.useMemo<Guide[]>(() => [
     { page: 'panel', route: 'Profile', title: t('tabProfile', 'Panel'), Icon: LayoutDashboard, summary: t('helpGuidePanelSummary'), details: [t('helpGuidePanel1'), t('helpGuidePanel2')] },
-    { page: 'pro', route: 'Chat', nestedRoute: 'LegacyStrategy', title: t('tabStrategy', 'Strategy'), Icon: MessageSquareText, summary: t('tutorialStrategySummary'), details: [] },
-    { page: 'pro', route: 'Chat', nestedRoute: 'LegacyChat', title: t('tabScoutWisePro', 'ScoutWise Pro'), Icon: MessageSquareText, summary: t('tutorialProChatSummary'), details: [] },
+    { page: 'proChat', route: 'Chat', nestedRoute: 'ProHome', title: t('tabScoutWisePro', 'ScoutWise Pro'), Icon: MessageSquareText, summary: t('tutorialProChatSummary'), details: [] },
+    { page: 'proWelcome', route: 'Chat', nestedRoute: 'ProHome', title: t('proWelcomeGuideTitle'), Icon: MessageSquareText, summary: t('proWelcomeGuideStep1'), details: [] },
+    { page: 'proDirect', route: 'Chat', nestedRoute: 'ProHome', title: t('proDirectGuideTitle'), Icon: Search, summary: t('proDirectGuideStep1'), details: [] },
+    { page: 'proDirect', route: 'Chat', nestedRoute: 'ProHome', title: t('proDirectGuideTitle'), Icon: Search, summary: t('proDirectGuideStep2'), details: [] },
+    { page: 'proDiscovery', route: 'Chat', nestedRoute: 'ProHome', title: t('proDiscoveryGuideTitle'), Icon: Compass, summary: t('proDiscoveryGuideStep1'), details: [] },
+    { page: 'proDiscovery', route: 'Chat', nestedRoute: 'ProHome', title: t('proDiscoveryGuideTitle'), Icon: Compass, summary: t('proDiscoveryGuideStep2'), details: [] },
+    { page: 'proInspect', route: 'Chat', nestedRoute: 'ProHome', title: t('proInspectGuideTitle'), Icon: UserRound, summary: t('proInspectGuideStep1'), details: [] },
+    { page: 'proInspect', route: 'Chat', nestedRoute: 'ProHome', title: t('proInspectGuideTitle'), Icon: UserRound, summary: t('proInspectGuideStep2'), details: [] },
+    { page: 'proSimilar', route: 'Chat', nestedRoute: 'ProHome', title: t('proSimilarGuideTitle'), Icon: UsersRound, summary: t('proSimilarGuideStep1'), details: [] },
+    { page: 'proSimilar', route: 'Chat', nestedRoute: 'ProHome', title: t('proSimilarGuideTitle'), Icon: UsersRound, summary: t('proSimilarGuideStep2'), details: [] },
+    { page: 'proFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proFitGuideTitle'), Icon: Target, summary: t('proFitGuideStep1'), details: [] },
+    { page: 'proTeamFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proTeamFitGuideTitle'), Icon: Shield, summary: t('proTeamFitGuideStep1'), details: [] },
+    { page: 'proTeamFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proTeamFitGuideTitle'), Icon: Shield, summary: t('proTeamFitGuideStep2'), details: [] },
+    { page: 'proLeagueFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proLeagueFitGuideTitle'), Icon: Trophy, summary: t('proLeagueFitGuideStep1'), details: [] },
+    { page: 'proLeagueFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proLeagueFitGuideTitle'), Icon: Trophy, summary: t('proLeagueFitGuideStep2'), details: [] },
+    { page: 'proStrategyFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proStrategyFitGuideTitle'), Icon: ClipboardPenLine, summary: t('proStrategyFitGuideStep1'), details: [] },
+    { page: 'proStrategyFit', route: 'Chat', nestedRoute: 'ProHome', title: t('proStrategyFitGuideTitle'), Icon: ClipboardPenLine, summary: t('proStrategyFitGuideStep2'), details: [] },
+    { page: 'proStrategy', route: 'Chat', nestedRoute: 'LegacyStrategy', title: t('proStrategyGuideTitle'), Icon: ClipboardPenLine, summary: t('proStrategyGuideStep1'), details: [] },
     { page: 'weekly', route: 'Weekly', title: t('tabWeeklySearches', 'Weekly Popular Players'), Icon: Search, summary: t('helpGuideWeeklySummary'), details: [t('helpGuideWeekly1'), t('helpGuideWeekly2')] },
     { page: 'daily', route: 'DailyScout', title: t('dailyScoutChallengeTitle', 'Daily Scout Challenge'), Icon: Target, summary: t('helpGuideDailySummary'), details: [t('helpGuideDaily1'), t('helpGuideDaily2')] },
     { page: 'playerPool', route: 'Strategy', title: t('tabPlayerPool', 'Player Pool'), Icon: UserRound, summary: t('tutorialPlayerPoolSearch'), details: [] },
@@ -180,7 +200,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = React.useMemo<TutorialContextValue>(() => ({
-    active, activePage: active ? current.page : null, activeFrame: frameIndex, stage, postTutorialReady, playerPoolStep, profileStep, scoutWiseStep, activationKey,
+    proGuidePage, setProGuidePage, active, activePage: active ? current.page : null, activeFrame: frameIndex, stage, postTutorialReady, playerPoolStep, profileStep, scoutWiseStep, activationKey,
     setPlayerPoolStep, setProfileStep, setScoutWiseStep,
     moveToProfile: () => setStage('done'),
     moveToScoutWise: () => setStage('done'),
@@ -189,7 +209,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     activateTutorial,
     completeTutorial: async () => closeTutorial(),
     skipTutorial: async () => closeTutorial(),
-  }), [activateTutorial, activationKey, active, closeTutorial, current.page, frameIndex, openPageTutorial, playerPoolStep, postTutorialReady, profileStep, scoutWiseStep, stage]);
+  }), [proGuidePage, activateTutorial, activationKey, active, closeTutorial, current.page, frameIndex, openPageTutorial, playerPoolStep, postTutorialReady, profileStep, scoutWiseStep, stage]);
 
   const embeddedGuide = React.useMemo<EmbeddedGuideValue>(() => ({
     active, current, frameIndex, frameTotal: frameIndices.length, previous, next,
@@ -259,14 +279,39 @@ export function useTutorial() {
   return context;
 }
 
-export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3 }: { page: string; frame?: number; onShow?: (y: number) => void; summaryLines?: number }) {
+const GuideScrollContext=React.createContext<{scroll:React.RefObject<ScrollView|null>;content:React.RefObject<View|null>}|null>(null);
+export const ProGuidedScrollView=React.forwardRef<ScrollView,ScrollViewProps>(function ProGuidedScrollView({children,contentContainerStyle,...props},forwardedRef){
+  const scroll=React.useRef<ScrollView>(null),content=React.useRef<View>(null);
+  React.useImperativeHandle(forwardedRef,()=>scroll.current!);
+  const layout=StyleSheet.flatten(contentContainerStyle);
+  const context=React.useMemo(()=>({scroll,content}),[]);
+  return <GuideScrollContext.Provider value={context}><ScrollView {...props} ref={scroll} contentContainerStyle={contentContainerStyle}><View ref={content} collapsable={false} style={{width:'100%',minWidth:0,gap:layout?.gap}}>{children}</View></ScrollView></GuideScrollContext.Provider>;
+});
+export function useProPageGuide(page:string){
+  const {setProGuidePage,closeTutorial}=useTutorial();
+  useFocusEffect(React.useCallback(()=>{
+    setProGuidePage(page);
+    return ()=>{setProGuidePage(current=>current===page?null:current);closeTutorial();};
+  },[page,setProGuidePage,closeTutorial]));
+}
+
+export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3, enabled=true }: { page: string; frame?: number; onShow?: (y: number) => void; summaryLines?: number; enabled?: boolean }) {
   const guide = React.useContext(EmbeddedGuideContext);
+  const guideScroll=React.useContext(GuideScrollContext),guideRef=React.useRef<View>(null);
   const { t } = useTranslation();
-  if (!guide?.active || guide.current.page !== page || guide.frameIndex !== frame) return null;
+  if (!enabled || !guide?.active || guide.current.page !== page || guide.frameIndex !== frame) return null;
   const Icon = guide.current.Icon;
   return <View
+    ref={guideRef}
     style={styles.embeddedGuideCard}
-    onLayout={event => onShow?.(event.nativeEvent.layout.y)}
+    onLayout={event => {
+      if(onShow){onShow(event.nativeEvent.layout.y);return;}
+      if(!guideScroll)return;
+      requestAnimationFrame(()=>{
+        const target=guideScroll.content.current;
+        if(target)guideRef.current?.measureLayout(target,(_x,y)=>guideScroll.scroll.current?.scrollTo({y:Math.max(0,y-12),animated:true}),()=>{});
+      });
+    }}
   >
     <View style={styles.guideTrack}><View style={[styles.guideTrackFill, { width: `${((guide.frameIndex + 1) / guide.frameTotal) * 100}%` }]} /></View>
     <View style={styles.guideIdentity}>

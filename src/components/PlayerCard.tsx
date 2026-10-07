@@ -1,4 +1,4 @@
-import {playerActionLayout, PLAYER_ACTION_TONES} from '@/utils/playerCardActions';
+import {playerActionLayout, PLAYER_ACTION_TONES, PLAYER_CARD_PROFILE_GAP} from '@/utils/playerCardActions';
 import FindSimilarPlayerButton from './FindSimilarPlayerButton';
 import ActionSpinner from './ActionSpinner';
 import { useOptionalMatchup } from '@/context/MatchupContext';
@@ -6,7 +6,7 @@ import { FRAME_TITLE, FRAME_HEADING } from '@/theme';
 // src/components/PlayerCard.tsx
 import * as React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
-import { UserRound, ArrowLeftRight, CalendarDays, Check, FileClock, FileText, MapPin, Plus, Shield, ShieldCheck, Trophy } from 'lucide-react-native';
+import { UserRound, ArrowLeftRight, CalendarDays, Check, FileClock, FileText, Target, MapPin, Plus, Shield, ShieldCheck, Trophy } from 'lucide-react-native';
 import { formatPlayerContractDate } from '@/utils/playerContract';
 import { CARD, TEXT, MUTED, ACCENT, LINE, DANGER } from '@/theme';
 import type { PlayerData } from '@/types';
@@ -18,6 +18,11 @@ type Props = {
   player: PlayerData;
   heading?: string;
   actionsInside?: boolean;
+  hideActions?: boolean;
+  hideScores?: boolean;
+  proActions?: boolean;
+  onCheckFit?: () => void;
+  onFindSimilar?: () => void | Promise<void>;
   similarPlayerId?: string;
   beforeFindSimilar?: () => void | Promise<void>;
   similarDisabled?: boolean;
@@ -121,6 +126,11 @@ export default function PlayerCard({
   player,
   heading,
   actionsInside = false,
+  hideActions = false,
+  hideScores = false,
+  proActions = false,
+  onCheckFit,
+  onFindSimilar,
   similarPlayerId,
   beforeFindSimilar,
   similarDisabled = false,
@@ -138,7 +148,7 @@ export default function PlayerCard({
   const { t, i18n } = useTranslation();
   const {width,fontScale}=useWindowDimensions();
   const [actionWidth,setActionWidth]=React.useState(Math.max(160,width-64));
-  const count=1+Number(!!onAddFavorite)+Number(!!onGenerateReport)+Number(!!onMatchup);
+  const count=1+Number(!!onAddFavorite)+Number(!!onGenerateReport)+Number(proActions ? !!onCheckFit : !!onMatchup);
   const actionLayout=playerActionLayout(actionWidth,fontScale,count);
   const actionCell={flexBasis:actionLayout.basis,flexGrow:1,flexShrink:0};
   const matchup = useOptionalMatchup();
@@ -197,6 +207,8 @@ export default function PlayerCard({
       else setIsAdding(false); // handled failure => re-enable
     } catch {
       setIsAdding(false);
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -222,18 +234,20 @@ export default function PlayerCard({
     typeof meta?.weight === 'number' && meta.weight > 0 ? { label: t('weight', 'Weight'), value: `${meta.weight} kg` } : null,
   ].filter((value): value is { label: string; value: string } => !!value);
 
-  const headerActions = ((heading || player) && <View style={styles.headerActions}>{heading && <View style={[FRAME_HEADING, { flexShrink: 1 }]}><UserRound size={20} color={cardAccent} /><Text style={[styles.heading, FRAME_TITLE]}>{heading}</Text></View>}
-      {player && <View onLayout={event=>{const measured=event.nativeEvent.layout.width;if(measured>0&&Math.abs(measured-actionWidth)>1)setActionWidth(measured);}} style={styles.actions}>
+  const headerActions = ((heading || (player && !hideActions)) && <View style={styles.headerActions}>{heading && <View style={[FRAME_HEADING, { flexShrink: 1 }]}><UserRound size={20} color={cardAccent} /><Text style={[styles.heading, FRAME_TITLE]}>{heading}</Text></View>}
+      {player && !hideActions && <View onLayout={event=>{const measured=event.nativeEvent.layout.width;if(measured>0&&Math.abs(measured-actionWidth)>1)setActionWidth(measured);}} style={styles.actions}>
         {onAddFavorite && <TouchableOpacity accessibilityRole="button" accessibilityLabel={isAdded ? t('addedToFavorites', 'Added to favorites') : t('addToFavorites', 'Add to favorites')} accessibilityState={{ disabled, busy: isAdding && !isAdded }} disabled={disabled} onPress={handleAdd} style={[styles.action, actionCell, { borderColor: cardAccent,backgroundColor:'rgba(22,163,74,.10)' }, addFavoriteDisabled && styles.disabled]}>
           {isAdded ? <Check size={17} color={cardAccent} /> : isAdding ? <ActionSpinner size={17} color={cardAccent} /> : <Plus size={17} color={cardAccent} />}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText, { color: cardAccent }]}>{isAdded ? t('playerCardSaved', 'Saved') : t('playerCardPortfolio', 'Portfolio')}</Text>
         </TouchableOpacity>}
-        <FindSimilarPlayerButton player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:'rgba(45,212,191,.08)'}]} accent={PLAYER_ACTION_TONES.similar}/>
-        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, reportButtonDisabled && styles.disabled]}>
-          {reportLoading ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.report} /> : <FileText size={17} color={PLAYER_ACTION_TONES.report} />}
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.report}]}>{t('playerCardReport', 'Report')}</Text>
+        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, proActions && {borderColor: PLAYER_ACTION_TONES.similar, backgroundColor:'rgba(45,212,191,.08)'}, reportButtonDisabled && styles.disabled]}>
+          {reportLoading ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.report} /> : <FileText size={17} color={proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report} />}
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report}]}>{t('playerCardReport', 'Report')}</Text>
         </TouchableOpacity>}
-        {onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { void runAction('match'); }} style={[styles.action, actionCell, styles.matchupAction, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.matchup}/> : <ArrowLeftRight size={17} color={matchupFull ? MUTED : PLAYER_ACTION_TONES.matchup} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.matchup}, matchupFull && {color:MUTED}]}>{matchupFull ? (i18n.language.startsWith('tr') ? 'Eşleşme Dolu' : 'Matchup Full') : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
+        {!proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:'rgba(45,212,191,.08)'}]} accent={PLAYER_ACTION_TONES.similar}/>}
+        {proActions && onCheckFit && <TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr') ? 'Uyum' : 'Fit'} disabled={similarDisabled || reportBusy || isAdding} onPress={onCheckFit} style={[styles.action, actionCell, styles.reportAction, {borderColor: PLAYER_ACTION_TONES.report}, (similarDisabled || reportBusy || isAdding) && styles.disabled]}><Target size={17} color={PLAYER_ACTION_TONES.report}/><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color: PLAYER_ACTION_TONES.report}]}>{i18n.language.startsWith('tr') ? 'Uyum' : 'Fit'}</Text></TouchableOpacity>}
+        {proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:'rgba(180,163,211,.08)'}]} accent={PLAYER_ACTION_TONES.matchup}/>}
+        {!proActions && onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { void runAction('match'); }} style={[styles.action, actionCell, styles.matchupAction, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.matchup}/> : <ArrowLeftRight size={17} color={matchupFull ? MUTED : PLAYER_ACTION_TONES.matchup} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.matchup}, matchupFull && {color:MUTED}]}>{matchupFull ? (i18n.language.startsWith('tr') ? 'Eşleşme Dolu' : 'Matchup Full') : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
       </View>}
     </View>);
 
@@ -308,7 +322,7 @@ export default function PlayerCard({
           </View>)}
         </View>
       </View>}
-      {(isValidPotential(potential) || isValidPotential(form)) && <View style={styles.scores}>
+      {!hideScores && (isValidPotential(potential) || isValidPotential(form)) && <View style={styles.scores}>
         {isValidPotential(potential) && <ScoreBar label={t('potential', 'Potential')} value={potentialInt} colorOverride={visualTheme?.accent} accessibilityLabel={t('potentialA11y', 'Potential {{val}} out of 100', { val: potentialInt })} />}
         {isValidPotential(form) && <ScoreBar label={t('form', 'Form')} value={formInt} colorOverride={visualTheme?.accent} accessibilityLabel={t('formA11y', 'Form {{val}} out of 100', { val: formInt })} />}
       </View>}
@@ -342,6 +356,6 @@ const styles = StyleSheet.create({
   datesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, dateTile: { flexGrow: 1, flexBasis: 110, gap: 7, borderRadius: 11, padding: 10, backgroundColor: 'rgba(255,255,255,0.03)' }, dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 }, dateLabel: { color: '#A9BCAF', fontSize: 10, flexShrink: 1 }, dateValue: { color: '#F0F5F2', fontSize: 13, fontWeight: '800' },
   section: { gap: 9 }, rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, roleChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.02)' }, roleCode: { fontSize: 12, fontWeight: '900' }, rolePercentage: { fontSize: 11, color: '#B6C5BC', fontWeight: '700' },
   scores: { paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(145,169,155,0.16)', gap: 12 },
-  heading: { color: ACCENT, fontSize: 17, fontWeight: '800', flexShrink: 1, maxWidth: '100%' }, headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 },
+  heading: { color: ACCENT, fontSize: 17, fontWeight: '800', flexShrink: 1, maxWidth: '100%' }, headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: PLAYER_CARD_PROFILE_GAP },
   actions: { width:'100%',flexBasis:'100%',flexDirection: 'row', flexWrap: 'nowrap', gap: 6 }, action: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 3, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.06)' }, reportAction: { borderColor: PLAYER_ACTION_TONES.report, backgroundColor: 'rgba(142,183,207,.08)' }, matchupAction:{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:'rgba(180,163,211,.08)'}, actionText: { color: '#DCE8E0', fontWeight: '800', fontSize: 11, flexShrink: 1 }, disabled: { opacity: 0.45 }, savedNotice: { flexDirection: 'row', alignItems: 'center', gap: 6 }, savedText: { color: '#B6C5BC', fontSize: 11, flexShrink: 1 },
 });

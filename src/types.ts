@@ -34,7 +34,7 @@ export type MainTabsParamList = {
 export type ScoutWiseProStackParamList = {
   ProHome: undefined;
   LegacyStrategy: undefined;
-  LegacyChat: undefined;
+  ProPlans: undefined;
 };
 
 export type RootStackParamList = {

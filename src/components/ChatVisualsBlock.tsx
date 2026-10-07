@@ -99,7 +99,7 @@ function hasPitchMapData(player: PlayerData) {
   return Object.keys(counts).length > 0 || namesSeen.length > 0;
 }
 
-function ChatPitchMap({ player }: { player: PlayerData }) {
+export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?: boolean }) {
   const { t } = useTranslation();
   const { counts, namesSeen, total } = getPlayerPositionSource(player);
   const zoneCounts = normalizePitchZoneCounts(counts);
@@ -120,11 +120,11 @@ function ChatPitchMap({ player }: { player: PlayerData }) {
     }));
 
   return (
-    <View style={styles.pitchBubble}>
+    <View style={[styles.pitchBubble, pro && {padding:0, backgroundColor:'transparent'}]}>
       <View style={styles.pitchHeader}>
-        <View style={styles.categoryTitleFrame}>
-          <MapIcon size={18} color="white" strokeWidth={2.4} />
-          <Text style={styles.pitchTitle}>{t('pitchMap', 'Pitch Map')}</Text>
+        <View style={[styles.categoryTitleFrame, pro && {backgroundColor:'transparent',paddingHorizontal:0,paddingVertical:0}]}>
+          <MapIcon size={18} color={pro ? ACCENT : "white"} strokeWidth={2.4} />
+          <Text style={[styles.pitchTitle, pro && {color:ACCENT,fontSize:16,fontWeight:'800'}]}>{t('pitchMap', 'Pitch Map')}</Text>
         </View>
       </View>
       <View style={styles.pitchMapStage}>

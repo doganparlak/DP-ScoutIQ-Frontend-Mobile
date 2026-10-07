@@ -6,6 +6,7 @@ import {
   View,
   StyleSheet,
   FlatList,
+  ScrollView,
   Alert,
   TouchableOpacity,
   Text,
@@ -19,13 +20,15 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import ChatInput from '@/components/ChatInput';
+import ProDirectPlayerSearch from '@/components/ProDirectPlayerSearch';
 import MessageBubble from '@/components/MessageBubble';
-import WelcomeCard from '@/components/WelcomeCard';
+import ProWorkspaceWelcome, {type ProWorkspaceMode} from '@/components/ProWorkspaceWelcome';
+import {LayoutGrid,RotateCcw} from 'lucide-react-native';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
-import { TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
+import { ProGuidedScrollView, useProPageGuide, TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 
 import { getMe, healthcheck, sendChat, resetSession, type Profile } from '@/services/api';
-import { ACCENT, BG } from '@/theme';
+import { ACCENT, BG, PANEL, TEXT, MUTED } from '@/theme';
 import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
 import type { ChatMessage, PlayerData } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -105,15 +108,30 @@ export default function ChatScreen() {
     getMe().then(me => {
       if (!active) return;
       setProfile(me);
-      if (!tutorial.active && !canUseChat(me)) navigation.navigate('ProHome');
+
     }).catch(() => {});
     return () => { active = false; };
   }, [navigation, tutorial.active]));
+  const [menuOpen,setMenuOpen]=useState(true);
+  const [activeMode,setActiveMode]=useState<ProWorkspaceMode|null>(null);
+  const [workspaceReady,setWorkspaceReady]=useState(false);
+  const [proChildGuidePage,setProChildGuidePage]=useState('proDirect');
+  const [resetting,setResetting]=useState(false);
+  const directOpened = useRef('');
+  const listOffset=useRef(0),restoreOffset=useRef<number|null>(null),resetLock=useRef(false);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessageExt[]>([]);
   const [sending, setSending] = useState(false);
   const [strategy, setStrategy] = useState('');
+  useFocusEffect(React.useCallback(() => {
+    let active = true;
+    void loadStrategy().then(value => {if (active) setStrategy(value);}).catch(() => {});
+    return () => {active = false;};
+  }, []));
   const [sessionId, setSessionId] = useState<string>('');
+  const [directBusy, setDirectBusy] = useState(false);
+  const directBusyRef = useRef(false), activeModeRef = useRef(activeMode);
+  activeModeRef.current = activeMode;
 
   // The drawer header places this screen below window Y=0. Keyboard coordinates
   // are window-based, so measure that offset instead of assuming a header height.
@@ -156,6 +174,7 @@ export default function ChatScreen() {
     return () => { show.remove(); hide.remove(); };
   }, [measureKeyboardOffset]);
 
+  useProPageGuide(menuOpen?'proWelcome':((activeMode==='direct'||activeMode==='discovery')?proChildGuidePage:'proChat'));
   const flatRef = useRef<FlatList<ChatMessageExt>>(null);
   const pendingIdRef = React.useRef<string | null>(null);
   const tutorialPreviewWasActive = React.useRef(false);
@@ -179,6 +198,7 @@ export default function ChatScreen() {
     if (tutorial.active && tutorial.activePage === 'pro' && tutorial.activeFrame === 0) {
       navigation.navigate('LegacyStrategy');
     }
+    if (tutorial.active && tutorial.activePage === 'pro' && tutorial.activeFrame === 1) setMenuOpen(false);
   }, [navigation, tutorial.active, tutorial.activeFrame, tutorial.activePage]);
 
   // AppState + retry bookkeeping
@@ -212,6 +232,7 @@ export default function ChatScreen() {
       setSessionId(sid);
       setMessages(hist as ChatMessageExt[]);
       setStrategy(strat);
+      setWorkspaceReady(true);
 
       const ok = await healthcheck();
       if (!ok) {
@@ -239,12 +260,13 @@ export default function ChatScreen() {
 
   // persist chat locally
   useEffect(() => {
+    if (!workspaceReady || resetting) return;
     const id = setTimeout(() => {
       saveHistory(messages as ChatMessage[]);
     }, 1000); // 300–1000ms is fine
 
     return () => clearTimeout(id);
-  }, [messages]);
+  }, [messages,workspaceReady,resetting]);
 
   function append(msg: Omit<ChatMessageExt, 'id' | 'createdAt'> & { id?: string }) {
     const withMeta: ChatMessageExt = {
@@ -417,7 +439,7 @@ export default function ChatScreen() {
       }
 
       // Retry pending chat when returning to active
-      if (nextState === 'active' && pendingRequestRef.current && !sendingRef.current) {
+      if (nextState === 'active' && activeModeRef.current !== 'direct' && !directBusyRef.current && pendingRequestRef.current && !sendingRef.current) {
         const req = pendingRequestRef.current;
         if (!req) return;
 
@@ -430,7 +452,7 @@ export default function ChatScreen() {
   }, []);
 
   async function send(text: string) {
-    if (!text.trim() || sendingRef.current) return;
+    if (!text.trim() || sendingRef.current || !workspaceReady || resetting) return;
     if (tutorial.active) {
       Keyboard.dismiss();
       setAccessModal('tutorial');
@@ -450,6 +472,13 @@ export default function ChatScreen() {
       sendingRef.current = false;
       Keyboard.dismiss();
       setAccessModal('exhausted');
+      return;
+    }
+
+    if (!currentProfile.consent) {
+      sendingRef.current=false;
+      Keyboard.dismiss();
+      navigation.navigate('LegacyStrategy');
       return;
     }
 
@@ -490,21 +519,31 @@ export default function ChatScreen() {
     void runAttempt(payload, sessionId, requestId);
   }
 
-  // Fresh conversation: clears server memory + local state (user action)
-  async function startNewChat() {
-    try {
-      await resetSession(sessionId);
-    } catch {}
-    setMessages([]);
-    pendingRequestRef.current = null;
-    pendingIdRef.current = null;
-
-    // reset attempt tracking
-    attemptSeqRef.current = 0;
-    inFlightAttemptRef.current = 0;
-    bgDuringAttemptRef.current = {};
-
-    setSending(false);
+  function openMenu(){Keyboard.dismiss();setMenuOpen(true);}
+  function resumeWorkspace(){restoreOffset.current=listOffset.current;setMenuOpen(false);}
+  function selectMode(mode:ProWorkspaceMode){
+    if (!workspaceReady || resetting || sending || directBusyRef.current) return;
+    if (!tutorial.active && !profile) return;
+    directOpened.current = sessionId;
+    setActiveMode(mode);resumeWorkspace();
+    if (!tutorial.active && !profile?.consent) navigation.navigate('LegacyStrategy');
+  }
+  async function startNewWorkspace(){
+    if(resetLock.current||sendingRef.current||directBusyRef.current||!workspaceReady)return;
+    resetLock.current=true;setResetting(true);Keyboard.dismiss();
+    const previous=sessionId;
+    try{
+      // A fresh token makes this workspace independent of old server cleanup.
+      const fresh=await getSessionId(true);
+      await saveHistory([]);
+      setSessionId(fresh);setMessages([]);setInputText('');setActiveMode(null);
+      pendingRequestRef.current=null;pendingIdRef.current=null;
+      inFlightAttemptRef.current=++attemptSeqRef.current;bgDuringAttemptRef.current={};
+      sendingRef.current=false;setSending(false);listOffset.current=0;restoreOffset.current=null;
+      setMenuOpen(true);
+      if(previous)void resetSession(previous).catch(()=>{});
+    }catch(error){Alert.alert(t('chatFailedTitle','Workspace could not be created'),String(error));}
+    finally{resetLock.current=false;setResetting(false);}
   }
 
   const empty = messages.length === 0;
@@ -542,42 +581,10 @@ export default function ChatScreen() {
         <Header />
 
         <View style={styles.toolbar}>
-          <TouchableOpacity
-            onPress={startNewChat}
-            disabled={sending}
-            style={styles.newChatBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('newChat', 'New Chat')}
-          >
-            <Text style={styles.newChatText}>{t('newChat', 'New Chat')}</Text>
-          </TouchableOpacity>
-
-          {!tutorial.active && profile && isChatCreditPlan(profile.plan) && (
-            <View style={styles.creditSlot}>
-              <View
-                style={styles.creditBadge}
-                accessible
-                accessibilityLiveRegion="polite"
-                accessibilityLabel={`${profile.freeChatMessagesRemaining ?? 0} ${t('chatCredits', 'Credits')}`}
-              >
-                <Text style={styles.creditText} numberOfLines={1}>
-                  {profile.freeChatMessagesRemaining ?? 0} {t('chatCredits', 'Credits')}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate('LegacyStrategy')}
-            disabled={isScoutWiseTutorial}
-            style={[styles.strategyBtn, isScoutWiseTutorial && styles.toolbarBtnDisabled]}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isScoutWiseTutorial }}
-            accessibilityLabel={t('tabStrategy', 'Strategy')}
-          >
-            <Text style={styles.strategyBtnText}>{t('tabStrategy', 'Strategy')}</Text>
-          </TouchableOpacity>
+          {!menuOpen&&<TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr')?'Menüye Dön':'Back to Menu'} onPress={openMenu} style={styles.workspaceButton}><LayoutGrid size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{i18n.language.startsWith('tr')?'Menü':'Menu'}</Text></TouchableOpacity>}
+          <TouchableOpacity onPress={()=>void startNewWorkspace()} disabled={sending||directBusy||resetting||!workspaceReady||isScoutWiseTutorial} style={[styles.workspaceButton,(sending||directBusy||resetting||!workspaceReady||isScoutWiseTutorial)&&styles.toolbarBtnDisabled]} accessibilityRole="button" accessibilityLabel={t('newWorkspace','New Workspace')}><RotateCcw size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{t('newWorkspace','New Workspace')}</Text></TouchableOpacity>
         </View>
+        {!tutorial.active&&profile&&isChatCreditPlan(profile.plan)&&<View style={{alignItems:'flex-end',paddingHorizontal:16,paddingBottom:8}}><View style={styles.creditBadge}><Text style={styles.creditText}>{i18n.language.startsWith('tr')?'Kalan Pro deneme hakkı':'Pro trial credits remaining'}: {profile.freeChatMessagesRemaining??0}/5</Text></View></View>}
 
         <ChatAccessModal visible={accessModal !== null} tutorial={accessModal === 'tutorial'} onClose={() => setAccessModal(null)} onAction={() => {
           const preview = accessModal === 'tutorial';
@@ -585,13 +592,15 @@ export default function ChatScreen() {
           if (preview) { tutorial.completeTutorial(); navigation.navigate('ProHome'); }
           else { navigation.getParent()?.navigate('Profile', { screen: 'ManagePlan' }); }
         }} />
+        {directOpened.current === sessionId && !!sessionId && <View style={{flex: !menuOpen && (activeMode === 'direct'||activeMode === 'discovery') ? 1 : 0, display: !menuOpen && (activeMode === 'direct'||activeMode === 'discovery') ? 'flex' : 'none'}}><ProDirectPlayerSearch onGuidePageChange={setProChildGuidePage} trial={!!profile&&isChatCreditPlan(profile.plan)} mode={activeMode==='discovery'?'discovery':'direct'} key={sessionId} sessionId={sessionId} strategy={strategy} onEditStrategy={() => navigation.navigate('LegacyStrategy')} onAccessRequired={() => setAccessModal('exhausted')} onBusyChange={busy => {directBusyRef.current = busy; setDirectBusy(busy);}} onCreditsChanged={() => {void getMe().then(setProfile).catch(() => {});}} /></View>}
+        {menuOpen?<ProGuidedScrollView style={{flex:1}} contentContainerStyle={{padding:16,paddingBottom:32}} keyboardShouldPersistTaps="handled"><ProWorkspaceWelcome trial={!!profile&&isChatCreditPlan(profile.plan)} disabled={!workspaceReady||resetting||sending||directBusy} onSelect={selectMode} onResume={activeMode||messages.length||inputText?resumeWorkspace:undefined}/>{!tutorial.active&&profile&&!canUseChat(profile)&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('ProPlans')} style={{padding:16,alignItems:'center'}}><Text style={{color:ACCENT,fontWeight:'800'}}>{i18n.language.startsWith('tr')?'Pro Planlarını İncele':'Explore Pro Plans'}</Text></TouchableOpacity>}</ProGuidedScrollView>:(activeMode === 'direct'||activeMode === 'discovery') ? null : <>
         <FlatList
           ref={flatRef}
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          ListHeaderComponent={<View style={styles.tutorialGuide}><TutorialPageGuide page="pro" frame={1} onShow={() => flatRef.current?.scrollToOffset({ offset: 0, animated: true })} /></View>}
-          ListEmptyComponent={<WelcomeCard />}
+          ListHeaderComponent={<View style={styles.tutorialGuide}><TutorialPageGuide page="proChat" frame={0} onShow={() => flatRef.current?.scrollToOffset({ offset: 0, animated: true })} /></View>}
+          ListEmptyComponent={<View style={{marginHorizontal:16,padding:18,borderWidth:1,borderColor:ACCENT,borderRadius:18,backgroundColor:PANEL,gap:10}}><Text style={{color:TEXT,fontSize:18,fontWeight:'800'}}>ScoutWise Pro</Text><Text style={{color:MUTED,fontSize:14,lineHeight:21}}>{t('chatPlaceholder','Type your message…')}</Text></View>}
           contentContainerStyle={
             empty
               ? { paddingTop: 12, paddingBottom: 24, gap: 8, flexGrow: 1 }
@@ -607,6 +616,8 @@ export default function ChatScreen() {
           maxToRenderPerBatch={6}
           windowSize={7}
           updateCellsBatchingPeriod={50}
+          onScroll={event=>{listOffset.current=event.nativeEvent.contentOffset.y;}}
+          onContentSizeChange={()=>{if(restoreOffset.current!==null){const offset=restoreOffset.current;restoreOffset.current=null;flatRef.current?.scrollToOffset({offset,animated:false});}}}
           scrollEventThrottle={16}
         />
 
@@ -632,10 +643,11 @@ export default function ChatScreen() {
         </View>
 
         <ChatInput
+          placeholder={undefined}
           value={inputText}
           onChangeText={setInputText}
           onSend={send}
-          disabled={sending || (isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse')}
+          disabled={!workspaceReady || resetting || sending || (isScoutWiseTutorial && tutorial.scoutWiseStep === 'chatResponse')}
           tutorialActive={
             isScoutWiseTutorial &&
             (tutorial.scoutWiseStep === 'chatInput' || tutorial.scoutWiseStep === 'chatResponse')
@@ -646,6 +658,7 @@ export default function ChatScreen() {
             navigation.navigate('Strategy');
           }}
         />
+        </>}
       </View>
     </KeyboardAvoidingView>
     </View>
@@ -661,7 +674,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap:8,
   },
+  workspaceButton:{flex:1,minWidth:0,minHeight:46,borderWidth:1,borderColor:ACCENT,borderRadius:12,paddingHorizontal:6,paddingVertical:8,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},
+  workspaceButtonText:{color:ACCENT,fontSize:12,lineHeight:17,fontWeight:'800',flexShrink:1,textAlign:'center'},
   creditSlot: {
     flex: 1,
     minWidth: 0,

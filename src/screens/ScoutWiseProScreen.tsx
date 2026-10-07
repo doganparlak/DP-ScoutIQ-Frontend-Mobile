@@ -2,12 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 
 import { BG, PANEL, TEXT, ACCENT, MUTED, LINE } from '@/theme';
-import { getMe } from '@/services/api';
-import { canUseChat } from '@/utils/chatAccess';
-import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
+import { TutorialPageGuide } from '@/components/Tutorial';
 
 const SHIFT_UP = 14;
 const SHIFT_UP_ANDROID = 44;
@@ -16,28 +14,6 @@ const isAndroid = Platform.OS === 'android';
 export default function ScoutWiseProScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
-  const tutorial = useTutorial();
-
-  useFocusEffect(
-    React.useCallback(() => {
-      let alive = true;
-
-      (async () => {
-        try {
-          const me = await getMe();
-          if (alive && canUseChat(me) && !tutorial.active) {
-            navigation.navigate('LegacyStrategy');
-          }
-        } catch (e: any) {
-          console.log('PRO SCREEN PLAN CHECK ERROR:', e?.message ?? e);
-        }
-      })();
-
-      return () => {
-        alive = false;
-      };
-    }, [navigation, tutorial.active]),
-  );
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>

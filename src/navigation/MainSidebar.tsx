@@ -68,7 +68,7 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
   const nestedRoute = nestedState?.routes?.[nestedState.index ?? 0]?.name;
   const tutorialPage = ({
     Profile: nestedRoute && nestedRoute !== 'MyProfile' ? null : 'panel',
-    Chat: 'pro',
+    Chat: nestedRoute==='LegacyStrategy'?'proStrategy':nestedRoute==='ProPlans'?null:(tutorial.proGuidePage||'proWelcome'),
     Weekly: 'weekly',
     DailyScout: 'daily',
     Strategy: 'playerPool',
@@ -84,7 +84,7 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
     SimilarPlayers: 'similarPlayers',
     TeamAnalysis: 'teamAnalysis',
   } as Partial<Record<string, string | null>>)[currentRoute] ?? null;
-  const tutorialFrame = currentRoute === 'Chat' && nestedRoute === 'LegacyChat' ? 1 : 0;
+  const tutorialFrame = 0;
   const previousRoute = React.useRef(currentRoute);
 
   React.useEffect(() => {
@@ -145,10 +145,10 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
       selecting.current = true;
       setPending(true);
       try {
-        const allowed = await resolveChatAccess();
+        await resolveChatAccess();
         if (!mounted.current) return;
         navigation.navigate('Chat', {
-          screen: allowed ? 'LegacyStrategy' : 'ProHome',
+          screen: 'ProHome',
         });
       } finally {
         selecting.current = false;
@@ -189,9 +189,6 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
               if (tutorial.active && tutorial.activePage === tutorialPage) {
                 tutorial.closeTutorial();
                 return;
-              }
-              if (currentRoute === 'Chat' && nestedRoute !== 'LegacyChat' && nestedRoute !== 'LegacyStrategy') {
-                navigation.navigate('Chat', { screen: 'LegacyStrategy' });
               }
               tutorial.openPageTutorial(tutorialPage, tutorialFrame);
             }}

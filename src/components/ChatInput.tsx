@@ -10,6 +10,7 @@ type Props = {
   onChangeText: (t: string) => void;
   onSend: (text: string) => void;
   disabled?: boolean;
+  placeholder?: string;
   tutorialActive?: boolean;
   tutorialVisible?: boolean;
   onTutorialSkipAll?: () => void;
@@ -20,6 +21,7 @@ export default function ChatInput({
   onChangeText,
   onSend,
   disabled,
+  placeholder,
   tutorialActive = false,
   tutorialVisible = false,
   onTutorialSkipAll,
@@ -59,7 +61,7 @@ export default function ChatInput({
           ref={inputRef}
           value={value}
           onChangeText={tutorialActive ? undefined : onChangeText}
-          placeholder={t('chatPlaceholder', 'Type your message…')}
+          placeholder={placeholder ?? t('chatPlaceholder', 'Type your message…')}
           placeholderTextColor={MUTED}
           style={styles.input}
           multiline

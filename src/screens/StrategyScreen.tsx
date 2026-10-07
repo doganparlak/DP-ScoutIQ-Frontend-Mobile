@@ -19,7 +19,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
 import DataUsage from '@/components/DataUsage';
-import { TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
+import { ProGuidedScrollView, useProPageGuide, TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import { BG, ACCENT, ACCENT_DARK, MUTED, TEXT, PANEL, LINE } from '@/theme';
 import type { MainTabsParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,7 @@ export default function StrategyScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
   const tutorial = useTutorial();
+  useProPageGuide('proStrategy');
   const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
   const tutorialStrategy = t(
     'tutorialStrategyPresetText',
@@ -76,7 +77,7 @@ export default function StrategyScreen() {
 
   React.useEffect(() => {
     if (tutorial.active && tutorial.activePage === 'pro' && tutorial.activeFrame === 1) {
-      (navigation as any).navigate('LegacyChat');
+      (navigation as any).navigate('ProHome');
     }
   }, [navigation, tutorial.active, tutorial.activeFrame, tutorial.activePage]);
 
@@ -108,15 +109,8 @@ export default function StrategyScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      let active = true;
       void loadConsent().catch(() => {});
-      if (!tutorial.active) {
-        getMe().then(me => {
-          if (active && !canUseChat(me)) (navigation as any).navigate('ProHome');
-        }).catch(() => {});
-      }
-      return () => { active = false; };
-    }, [loadConsent, navigation, tutorial.active])
+    }, [loadConsent])
   );
 
   const handleConsentToggle = async () => {
@@ -134,12 +128,11 @@ export default function StrategyScreen() {
   };
 
   const handleStart = () => {
-    if (!tutorial.active && (loadingConsent || savingConsent)) return;
-    if (!aiConsent && !tutorial.active) return;
     if (isScoutWiseTutorial && tutorial.scoutWiseStep === 'startChat') {
       tutorial.setScoutWiseStep('chatInput');
     }
-    navigation.getParent()?.navigate('Chat', { screen: 'LegacyChat' } as never);
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.getParent()?.navigate('Chat', { screen: 'ProHome' } as never);
   };
 
   const buttonsDisabled = tutorial.active ? false : loadingConsent || savingConsent || !aiConsent;
@@ -159,13 +152,13 @@ export default function StrategyScreen() {
         <View style={styles.wrap}>
           <Header />
 
-          <ScrollView
+          <ProGuidedScrollView
             ref={scrollRef}
             contentContainerStyle={{ paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={[styles.tutorialCardWidth, styles.tutorialInline]}>
-              <TutorialPageGuide page="pro" frame={0} onShow={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} />
+              <TutorialPageGuide page="proStrategy" frame={0} summaryLines={0} onShow={() => scrollRef.current?.scrollTo({ y: 0, animated: true })} />
             </View>
             <View style={styles.tutorialCardWidth}>
               <TutorialHint
@@ -224,17 +217,17 @@ export default function StrategyScreen() {
 
               <Pressable
                 onPress={handleStart}
-                disabled={buttonsDisabled || (isScoutWiseTutorial && tutorial.scoutWiseStep !== 'startChat')}
+                disabled={isScoutWiseTutorial && tutorial.scoutWiseStep !== 'startChat'}
                 accessibilityRole="button"
-                accessibilityLabel={t('startChatting', 'Start Chatting')}
+                accessibilityLabel={t('backToProWorkspace', 'Return to Workspace')}
                 style={({ pressed }) => [
                   styles.startBtn,
-                  (buttonsDisabled || (isScoutWiseTutorial && tutorial.scoutWiseStep !== 'startChat')) && styles.startBtnDisabled,
+                  (isScoutWiseTutorial && tutorial.scoutWiseStep !== 'startChat') && styles.startBtnDisabled,
                   pressed && !buttonsDisabled ? styles.startBtnPressed : null,
                 ]}
               >
                 <Text style={styles.startBtnText}>
-                  {t('startChatting', 'Start Chatting')}
+                  {t('backToProWorkspace', 'Return to Workspace')}
                 </Text>
               </Pressable>
 
@@ -268,7 +261,7 @@ export default function StrategyScreen() {
                   : t('updateStrategyHint', 'You can update your strategy anytime.')}
               </Text>
             </View>
-          </ScrollView>
+          </ProGuidedScrollView>
 
           <Modal
             visible={dataUsageOpen}

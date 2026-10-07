@@ -5,3 +5,6 @@ export function playerActionLayout(width:number,fontScale:number,count=4){
   return {columns,basis:Math.max(0,(available-6*(columns-1))/columns-.5)};
 }
 export const PLAYER_ACTION_TONES={portfolio:'#22C55E',similar:'#2DD4BF',report:'#8EB7CF',matchup:'#B4A3D3'};
+
+/** Space between player actions and the profile, shared by regular and Pro cards. */
+export const PLAYER_CARD_PROFILE_GAP = 10;

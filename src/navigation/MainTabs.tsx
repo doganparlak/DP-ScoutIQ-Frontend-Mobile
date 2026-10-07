@@ -51,9 +51,9 @@ function ProfileStackScreen() {
 function ScoutWiseProStackScreen() {
   return (
     <ScoutWiseProStack.Navigator screenOptions={{ headerShown: false }}>
-      <ScoutWiseProStack.Screen name="ProHome" component={ScoutWiseProScreen} />
+      <ScoutWiseProStack.Screen name="ProHome" component={ChatScreen} />
       <ScoutWiseProStack.Screen name="LegacyStrategy" component={StrategyScreen} />
-      <ScoutWiseProStack.Screen name="LegacyChat" component={ChatScreen} />
+      <ScoutWiseProStack.Screen name="ProPlans" component={ScoutWiseProScreen} />
     </ScoutWiseProStack.Navigator>
   );
 }

@@ -23,5 +23,5 @@ export const getTeamOptions = (filters: TeamFilters) =>
     country: filters.country,
     league: filters.league,
   });
-export const searchTeams = (filters: TeamFilters) =>
-  teamPoolRequest<Team[]>("search", { ...filters, limit: 50 });
+export const searchTeams = (filters: TeamFilters, limit = 50) =>
+  teamPoolRequest<Team[]>("search", { ...filters, limit });

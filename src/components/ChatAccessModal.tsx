@@ -12,11 +12,11 @@ export default function ChatAccessModal({ visible, tutorial, onClose, onAction }
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
     <View style={s.backdrop}><View style={s.prompt}>
       <View style={s.header}><View style={s.icon}><BadgeCheck size={20} color={ACCENT} strokeWidth={2.3} /></View>
-        <Text style={s.title}>{tutorial ? (tr ? 'ScoutWise PRO’yu keşfet' : 'Explore ScoutWise PRO') : (tr ? 'ScoutWise PRO ile devam et' : 'Continue with ScoutWise PRO')}</Text>
+        <Text style={s.title}>{tutorial ? (tr ? 'ScoutWise PRO’yu keşfet' : 'Explore ScoutWise PRO') : tr ? <><Text style={{color:ACCENT}}>PRO</Text> ile Devam Et</> : <>Continue with <Text style={{color:ACCENT}}>PRO</Text></>}</Text>
       </View>
       <Text style={s.body}>{tutorial
-        ? (tr ? 'Bu ekran eğitim önizlemesidir. Mesaj gönderilmez ve ücretsiz mesaj hakkın kullanılmaz. Eğitimi tamamladıktan sonra Free hesabınla bir defaya mahsus 5 ücretsiz mesaj gönderebilirsin.' : 'This is a tutorial preview. No message is sent and no free message is used. After the tutorial, your Free account can try ScoutWise with a one-time allowance of 5 messages.')
-        : (tr ? 'Ücretsiz mesaj hakkın kalmadı. Sohbete devam etmek için PRO’ya geç.' : 'You have no free messages remaining. Upgrade to PRO to continue chatting.')}</Text>
+        ? (tr ? 'Bu ekran eğitim önizlemesidir; Pro deneme hakkın kullanılmaz. Free ve Plus hesapları ScoutWise Pro analizlerini bir defaya mahsus 5 deneme hakkıyla deneyebilir.' : 'This is a tutorial preview; no Pro trial credit is used. Free and Plus accounts can try ScoutWise Pro analyses with a one-time allowance of 5 trial credits.')
+        : (tr ? <>Yeni analizler oluşturmak için şimdi <Text style={{color:ACCENT,fontWeight:'800'}}>PRO</Text>’ya geç.</> : <>Upgrade to <Text style={{color:ACCENT,fontWeight:'800'}}>PRO</Text> now to generate new analyses.</>)}</Text>
       <View style={s.actions}>
         <Pressable style={s.button} onPress={onClose}><Text style={s.body}>{t('notNow', 'Not now')}</Text></Pressable>
         <Pressable style={[s.button, { borderColor: ACCENT }]} onPress={onAction}><Text style={s.action}>{tutorial ? (tr ? 'Eğitimi tamamla' : 'Finish tutorial') : t('managePlan', 'Manage plan')}</Text></Pressable>

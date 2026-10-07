@@ -15,7 +15,7 @@ import { getLeaguePerformancePlayer, type LeagueBestPlayer } from '@/services/le
 import { addFavoritePlayer, getMe, getPlayerPoolScoutingReportProgress, getPlayerPoolScoutingReportSection, revealPlayerPoolForm, revealPlayerPoolPotential, type PlayerData, type PlayerIdentityPayload, type Plan, type ScoutingReportResponse } from '@/services/api';
 
 type Entry = {id: string; player: PlayerData};
-export default function LeaguePlayerCardModal({winner, initialEntry, inline = false, actionsDisabled = false, onClose}: {winner?: LeagueBestPlayer; initialEntry?: Entry; inline?: boolean; actionsDisabled?: boolean; onClose: () => void}) {
+export default function LeaguePlayerCardModal({winner, initialEntry, inline = false, actionsDisabled = false, initialAction, onMatchupAdded, proMode = false, onCheckFit, onFindSimilar, renderPlayerCard, onClose}: {winner?: LeagueBestPlayer; initialEntry?: Entry; inline?: boolean; actionsDisabled?: boolean; proMode?: boolean; onCheckFit?: () => void; onFindSimilar?: () => void | Promise<void>; renderPlayerCard?: (props: React.ComponentProps<typeof PlayerCard>) => React.ReactNode; initialAction?: 'matchup'; onMatchupAdded?: () => void; onClose: () => void}) {
   const {t, i18n} = useTranslation();
   const tr = i18n.language.startsWith('tr');
   const focused = useIsFocused();
@@ -45,6 +45,13 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     getMe().then(profile => {if (alive) setPlan(profile.plan as Plan);}).catch(() => {});
     return () => {alive = false; mounted.current = false;};
   }, [winner?.playerId, initialEntry?.id]);
+  const initialActionRun = React.useRef(false);
+  React.useEffect(() => {
+    if (focused && entry && initialAction === 'matchup' && !initialActionRun.current) {
+      initialActionRun.current = true;
+      void run('matchup');
+    }
+  }, [focused, entry?.id, initialAction]);
   const close = () => {if (!locked.current) onClose();};
   async function hideCardForPresentation() {
     if (inline || !cardShowing.current) return;
@@ -64,8 +71,9 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
   };
   const full = matchup.rows.slice(0, matchup.mode).every(Boolean);
   const alreadyAdded = !!entry && matchup.rows.some(row => row?.id === entry.id);
-  async function ensureScores(): Promise<Entry> {
+  async function ensureScores(forPortfolio = false): Promise<Entry> {
     if (!entry) throw new Error(tr ? 'Oyuncu kartı yüklenemedi.' : 'Player card unavailable.');
+    if (proMode && !forPortfolio) return entry;
     const meta = entry.player.meta || {};
     const [potential, form] = await Promise.all([
       !isPlayerScore(meta.potential) ? revealPlayerPoolPotential(entry.id).then(value => Math.round(value.potential)) : Promise.resolve(meta.potential),
@@ -80,7 +88,11 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     if (locked.current || actionsDisabled || !entry) return false;
     if (kind === 'matchup') {
       const latest = currentMatchup.current;
-      if (latest.rows.slice(0, latest.mode).every(Boolean) || latest.rows.some(row => row?.id === entry.id)) return false;
+      if (latest.rows.some(row => row?.id === entry.id)) {onMatchupAdded?.(); return true;}
+      if (latest.rows.slice(0, latest.mode).every(Boolean)) {
+        Alert.alert(tr ? 'Eşleşme alanı dolu' : 'Comparison is full', tr ? 'Eşleşme Merkezi’nde bir oyuncuyu kaldırıp tekrar dene.' : 'Remove a player in Matchup Center and try again.');
+        return false;
+      }
       const stableId = entry.player.meta?.sportmonksId;
       if (!Number.isSafeInteger(stableId) || (stableId ?? 0) <= 0) {
         Alert.alert(t('matchupComparisonFailed', 'Matchup comparison failed'), t('matchupMissingStableId', 'Player identity is unavailable. Please search for the player again.'));
@@ -99,7 +111,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
         await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation);
         if (mounted.current && !upsellShowing.current) setCardVisible(true);
       }
-      const enriched = await ensureScores();
+      const enriched = await ensureScores(kind === 'portfolio');
       const player = enriched.player, meta = player.meta || {};
       if (kind === 'portfolio') {
         await addFavoritePlayer({playerId: enriched.id, sportmonksId: meta.sportmonksId, name: player.name, nationality: meta.nationality, age: meta.age, potential: meta.potential, form: meta.form, gender: meta.gender, height: meta.height, weight: meta.weight, team: meta.team, league: meta.league, roles: meta.roles || []});
@@ -112,7 +124,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
         }
       } else {
         const hasAccess = await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation);
-        const payload: PlayerIdentityPayload = {playerId: enriched.id, sportmonksId: meta.sportmonksId, worldCupMode: false, name: player.name, nationality: meta.nationality, gender: meta.gender, team: meta.team, league: meta.league, age: meta.age, height: meta.height, weight: meta.weight, potential: meta.potential, form: meta.form};
+        const payload: PlayerIdentityPayload = {playerId: enriched.id, sportmonksId: meta.sportmonksId, worldCupMode: false, name: player.name, nationality: meta.nationality, gender: meta.gender, team: meta.team, league: meta.league, age: meta.age, height: meta.height, weight: meta.weight, potential: proMode ? undefined : meta.potential, form: proMode ? undefined : meta.form};
         if (hasAccess) {
           await hideCardForPresentation();
           setReportPlayer(player); setReportPayload(payload);
@@ -134,9 +146,11 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
       locked.current = false; setBusy(false);
       if (mounted.current && !openedReport && !upsellShowing.current) setCardVisible(true);
     }
+    if (success && kind === 'matchup') onMatchupAdded?.();
     return success;
   }
-  const cardBody = (entry ? <PlayerCard player={entry.player} similarPlayerId={entry.id} similarDisabled={busy || actionsDisabled} beforeFindSimilar={async()=>{if(!inline){onClose();await new Promise<void>(resolve=>setTimeout(resolve,350));}}} titleAlign="left" addFavoriteDisabled={busy || actionsDisabled} onAddFavorite={() => run('portfolio')} onGenerateReport={async () => {await run('report');}} reportState={busy ? 'loading' : report?.status === 'ready' ? 'ready' : 'idle'} reportDisabled={busy || actionsDisabled} matchupDisabled={busy || actionsDisabled || full || alreadyAdded} onMatchup={async () => {await run('matchup');}} /> : <Status busy={!error} error={error} text={error ? (tr ? 'Bu oyuncu henüz oyuncu havuzunda mevcut değil veya kartı yüklenemedi.' : 'This player is not yet available in the player pool or the card could not be loaded.') : (tr ? 'Oyuncu kartı yükleniyor…' : 'Loading player card…')} />);
+  const playerCard = entry ? <PlayerCard hideScores={proMode} proActions={proMode} onFindSimilar={onFindSimilar} onCheckFit={onCheckFit} player={entry.player} similarPlayerId={entry.id} similarDisabled={busy || actionsDisabled} beforeFindSimilar={async()=>{if(!inline){onClose();await new Promise<void>(resolve=>setTimeout(resolve,350));}}} titleAlign="left" addFavoriteDisabled={busy || actionsDisabled} onAddFavorite={() => run('portfolio')} onGenerateReport={async () => {await run('report');}} reportState={busy ? 'loading' : report?.status === 'ready' ? 'ready' : 'idle'} reportDisabled={busy || actionsDisabled} matchupDisabled={busy || actionsDisabled || full || alreadyAdded} onMatchup={async () => {await run('matchup');}} /> : null;
+  const cardBody = (entry ? (renderPlayerCard ? renderPlayerCard(playerCard!.props) : playerCard) : <Status busy={!error} error={error} text={error ? (tr ? 'Bu oyuncu henüz oyuncu havuzunda mevcut değil veya kartı yüklenemedi.' : 'This player is not yet available in the player pool or the card could not be loaded.') : (tr ? 'Oyuncu kartı yükleniyor…' : 'Loading player card…')} />);
   const cardContent = inline ? <View style={{paddingBottom:8}}>{cardBody}</View> : <ScrollView contentContainerStyle={{paddingBottom:8}}>{cardBody}</ScrollView>;
   return <>
     {inline ? cardContent : <Modal transparent visible={focused && cardVisible && !reportOpen} animationType="fade" onRequestClose={close}>
@@ -147,7 +161,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
       </View></View>
     </Modal>}
     <PlusProUpsellScreen visible={focused && upsellOpen} onClose={closeUpsell} />
-    {report && reportPlayer && reportPayload && <ScoutingReport visible={focused && reportOpen} player={reportPlayer} report={report} plan={plan} onClose={() => {setReportOpen(false); setTimeout(() => {if (mounted.current) setCardVisible(true);}, 350);}} reloadReport={() => getPlayerPoolScoutingReportProgress(reportPayload)} loadReportSection={section => getPlayerPoolScoutingReportSection(reportPayload, section)} onReportUpdate={setReport} />}
+    {report && reportPlayer && reportPayload && <ScoutingReport hidePlayerActions={proMode} visible={focused && reportOpen} player={reportPlayer} report={report} plan={plan} onClose={() => {setReportOpen(false); setTimeout(() => {if (mounted.current) setCardVisible(true);}, 350);}} reloadReport={() => getPlayerPoolScoutingReportProgress(reportPayload)} loadReportSection={section => getPlayerPoolScoutingReportSection(reportPayload, section)} onReportUpdate={setReport} />}
   </>;
 }
 const styles = StyleSheet.create({

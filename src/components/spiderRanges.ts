@@ -189,7 +189,7 @@ Object.keys(RANGES).forEach((label) => {
 });
 
 /** Resolve any raw label to a canonical label we know in RANGES */
-function canonicalizeLabel(raw: string): string {
+export function canonicalizeLabel(raw: string): string {
   const norm = mkKey(raw || '');
   // First, alias map (handles %-variants, pluralization etc.)
   const aliasHit = ALIAS[norm];
