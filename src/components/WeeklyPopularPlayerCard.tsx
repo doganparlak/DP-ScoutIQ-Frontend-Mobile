@@ -1,4 +1,6 @@
+import { isAdFlowCancelled } from '@/ads/presentation';
 import React from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { Alert, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useMatchup } from '@/context/MatchupContext';
@@ -22,6 +24,7 @@ import { ACCENT } from '@/theme';
 
 export default function WeeklyPopularPlayerCard({ id, player }: { id: string; player: PlayerData }) {
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const matchup = useMatchup();
   const tutorial = useTutorial();
   const [shownPlayer, setShownPlayer] = React.useState(player);
@@ -42,6 +45,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
     setBusy(true);
     try { return await action(); }
     catch (error: any) {
+      if (isAdFlowCancelled(error)) return false;
       Alert.alert(t('error', 'Error'), String(error?.message || error));
       return false;
     } finally { lock.current = false; setBusy(false); }
@@ -57,7 +61,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
       : action === 'matchup'
         ? shouldShowMatchupMissingScoreInterstitial(await incrementMatchupMissingScoreAddCount())
         : shouldShowPlayerPoolMissingScoreActionInterstitial(await incrementPlayerPoolMissingScoreActionCount());
-    if (!due || await showInterstitialAndWaitSafely()) return true;
+    if (!due || await showInterstitialAndWaitSafely({ action: 'popular_player', isActive: () => navigation.isFocused() })) return true;
     setUpsell(true);
     // Player-pool score actions continue with the upsell fallback; reports wait.
     return action !== 'report';

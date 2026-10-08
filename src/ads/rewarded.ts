@@ -1,5 +1,5 @@
 // src/ads/rewarded.ts
-import { RewardedAd, AdEventType, RewardedAdEventType } from 'react-native-google-mobile-ads';
+import { RewardedAd, AdEventType, RewardedAdEventType, TestIds } from 'react-native-google-mobile-ads';
 import { InteractionManager, Keyboard, Platform } from 'react-native';
 import { logAdLifecycle } from './logging';
 
@@ -10,7 +10,7 @@ const ANDROID_REWARDED = 'ca-app-pub-2754612075301490/7680436978';
 // REAL ca-app-pub-2754612075301490/7680436978
 // TEST ca-app-pub-3940256099942544/5224354917
 
-const UNIT_ID = Platform.OS === 'ios' ? IOS_REWARDED : ANDROID_REWARDED;
+const UNIT_ID = __DEV__ ? TestIds.REWARDED : Platform.OS === 'ios' ? IOS_REWARDED : ANDROID_REWARDED;
 
 let ad: RewardedAd | null = null;
 let loaded = false;

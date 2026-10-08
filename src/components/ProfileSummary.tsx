@@ -4,14 +4,16 @@ import { useNavigation, type NavigationProp, useFocusEffect } from "@react-navig
 import { useTranslation } from "react-i18next";
 import {
   Shirt,
+  Gem,
+  Goal,
   ShieldCheck,
   BookMarked,
   GitCompareArrows,
   FileText,
 } from "lucide-react-native";
 import { useMatchup } from "@/context/MatchupContext";
-import { matchPoolRequest } from "@/services/api";
-import { PANEL, TEXT, ACCENT } from "@/theme";
+import { matchPoolRequest, type Profile } from "@/services/api";
+import { PANEL, TEXT, ACCENT, FEATURE_COLORS } from "@/theme";
 
 import type { MainTabsParamList } from '@/types';
 
@@ -23,13 +25,16 @@ type Summary = {
   readyPlayerReports: number;
   readyPostMatchReports: number;
   readyPreMatchReports: number;
+  weeklyScorePredictions?: number;
 };
-export default function ProfileSummary() {
+export default function ProfileSummary({ profile, profileLoading }: { profile: Profile | null; profileLoading: boolean }) {
   const { i18n } = useTranslation();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const tr = i18n.language.startsWith("tr");
   const { rows, mode } = useMatchup();
   const { width, fontScale } = useWindowDimensions();
+  const [gridWidth, setGridWidth] = useState<number | null>(null);
+  const [contentSize, setContentSize] = useState({ key: '', height: 0 });
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -62,77 +67,99 @@ export default function ProfileSummary() {
       : summary && summary[key] != null
         ? String(summary[key])
         : "—";
-  const pills: {label:string;value:string;Icon:typeof Shirt;color:string;route:'Portfolio'|'TeamPortfolio'|'MatchPortfolio'|'Matchup'}[] = [
+  const activePro = !!profile && (profile.plan === 'Pro Monthly' || profile.plan === 'Pro Yearly') &&
+    !!profile.subscriptionEndAt && new Date(profile.subscriptionEndAt).getTime() > Date.now();
+  const proCredits = profileLoading ? '…' : !profile ? '—' : activePro ? '∞' : String(Math.max(0, profile.freeChatMessagesRemaining ?? 0));
+  const pills: {label:string;value:string;Icon:typeof Shirt;color:string;route:'Portfolio'|'TeamPortfolio'|'MatchPortfolio'|'Matchup'|'Chat'|'ScorePrediction'}[] = [
     {
-      label: tr ? "Portföy Oyuncuları" : "Portfolio Players",
+      label: tr ? "Portföy\nOyuncuların" : "Portfolio\nPlayers",
       value: count("portfolioPlayers"), route: "Portfolio",
       Icon: Shirt,
       color: ACCENT,
     },
-    {label: tr ? "Portföy Takımları" : "Portfolio Teams", value: count("portfolioTeams"), route: "TeamPortfolio", Icon: ShieldCheck, color: ACCENT},
     {
-      label: tr ? "Portföy Maçları" : "Portfolio Matches",
+      label: tr ? "Portföy\nMaçların" : "Portfolio\nMatches",
       value: count("portfolioMatches"), route: "MatchPortfolio",
       Icon: BookMarked,
       color: ACCENT,
     },
+    {label: tr ? "Portföy\nTakımların" : "Portfolio\nTeams", value: count("portfolioTeams"), route: "TeamPortfolio", Icon: ShieldCheck, color: ACCENT},
     {
       label: tr ? "Eşleşme Merkezi" : "Matchup Center",
       value: `${rows.slice(0, mode).filter(Boolean).length}/${mode}`,
       route: "Matchup",
       Icon: GitCompareArrows,
-      color: "#C084FC",
+      color: "#B4A3D3",
+    },
+    {
+      label: tr ? "ScoutWise Pro Kredin" : "ScoutWise Pro Credits",
+      value: proCredits, route: "Chat",
+      Icon: Gem,
+      color: FEATURE_COLORS.pro,
+    },
+    {
+      label: tr ? "Haftalık Skor\nTahminlerin" : "Weekly Score\nPredictions",
+      value: `${count("weeklyScorePredictions")}/10`, route: "ScorePrediction",
+      Icon: Goal, color: FEATURE_COLORS.scorePrediction,
     },
     {
       label: tr ? "Oyuncu Raporların" : "Your Player Reports",
       value: count("readyPlayerReports"), route: "Portfolio",
       Icon: FileText,
-      color: "#38BDF8",
-    },
-    {label: tr ? "Takım Raporların" : "Your Team Reports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: "#38BDF8"},
-    {
-      label: tr ? "Maç Önü Raporların" : "Your Pre-Match Reports",
-      value: count("readyPreMatchReports"), route: "MatchPortfolio",
-      Icon: FileText,
-      color: "#38BDF8",
+      color: "#22D3EE",
     },
     {
-      label: tr ? "Maç Sonu Raporların" : "Your Post-Match Reports",
-      value: count("readyPostMatchReports"), route: "MatchPortfolio",
-      Icon: FileText,
-      color: "#38BDF8",
+      label: tr ? "Maç\nÖnü/Sonu\nRaporların" : "Pre/Post-Match\nReports",
+      value: loading ? "…" : summary ? String(summary.readyPreMatchReports + summary.readyPostMatchReports) : "—",
+      route: "MatchPortfolio", Icon: FileText, color: "#22D3EE",
     },
+    {label: tr ? "Takım Raporların" : "Your Team Reports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: "#22D3EE"},
   ];
-  const singleColumn = width < 350 || fontScale > 1.3;
-  const columns = singleColumn ? 1 : width >= 750 ? 3 : 2;
+  const availableWidth = gridWidth ?? Math.max(0, width - 32);
+  const minimumCellWidth = 104 * Math.max(1, fontScale);
+  const columns = availableWidth >= minimumCellWidth * 3 + 20 ? 3 : availableWidth >= minimumCellWidth * 2 + 10 ? 2 : 1;
+  const layoutKey = `${availableWidth}:${fontScale}:${i18n.language}:${columns}`;
+  const cellHeight = Math.max(112, (contentSize.key === layoutKey ? contentSize.height : 0) + 24);
   const pillRows = Array.from({ length: Math.ceil(pills.length / columns) }, (_, index) => pills.slice(index * columns, (index + 1) * columns));
   return (
-    <View style={s.grid}>
+    <View style={s.grid} onLayout={event => {
+      const nextWidth = event.nativeEvent.layout.width;
+      setGridWidth(current => current !== null && Math.abs(current - nextWidth) < .5 ? current : nextWidth);
+    }}>
       {pillRows.map((row, index) => <View key={index} style={s.pillRow}>
       {row.map(({ label, value, Icon, color, route }) => (
         <Pressable
           key={label}
           accessibilityRole="button"
-          onPress={() => navigation.navigate(route)}
-          accessibilityLabel={`${label}: ${value}`}
+          onPress={() => route === 'Chat' ? navigation.navigate('Chat', { screen: 'ProHome' }) : navigation.navigate(route)}
+          accessibilityLabel={`${label.replace(/\s+/g, ' ')}: ${value === '∞' ? (tr ? 'Sınırsız' : 'Unlimited') : value}`}
           style={({pressed}) => [
             s.pill,
             pressed && {opacity:0.75},
             {
-              minHeight: singleColumn ? 100 : 112,
+              minHeight: cellHeight,
               borderColor: `${color}55`,
             },
           ]}
         >
-          <View style={s.top}>
+          <View style={s.pillContent} onLayout={event => {
+            const height = Math.ceil(event.nativeEvent.layout.height);
+            setContentSize(current => current.key === layoutKey && current.height >= height ? current : {
+              key: layoutKey, height: current.key === layoutKey ? Math.max(current.height, height) : height,
+            });
+          }}>
+          <View style={[s.top, { height: Math.ceil(36 * Math.max(1, Math.min(fontScale, 1.5))) }]}>
             <View style={[s.icon, { backgroundColor: `${color}16` }]}>
               <Icon size={19} color={color} />
             </View>
-            <Text style={[s.value, { color }]}>{value}</Text>
+            <Text style={[s.value, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} maxFontSizeMultiplier={1.5}>{value}</Text>
           </View>
-          <Text style={s.label}>{label}</Text>
+          <Text style={s.label}>{route === 'Chat' ? <>ScoutWise <Text style={{color, fontWeight: '800'}}>Pro</Text>{tr ? ' Kredin' : ' Credits'}</> : label}</Text>
+          </View>
         </Pressable>
-      ))}</View>)}
+      ))}
+      {Array.from({ length: columns - row.length }, (_, spacer) => <View key={`spacer-${spacer}`} style={{flex: 1}} />)}
+      </View>)}
       {failed && (
         <Text style={s.error}>
           {tr
@@ -157,23 +184,25 @@ const s = StyleSheet.create({
     backgroundColor: PANEL,
     borderWidth: 1,
     borderRadius: 24,
-    padding: 14,
+    padding: 12,
     gap: 9,
   },
+  pillContent: { gap: 9, minWidth: 0, width: "100%" },
   top: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 6,
   },
   icon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
-  value: { fontSize: 24, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  label: { color: TEXT, fontSize: 12, lineHeight: 18, fontWeight: "600" },
+  value: { fontSize: 24, fontWeight: "800", fontVariant: ["tabular-nums"], flex: 1, minWidth: 0, textAlign: "right", includeFontPadding: false },
+  label: { color: TEXT, fontSize: 12, lineHeight: 18, fontWeight: "600", minHeight: 54 },
   error: { color: "#AEB7B0", fontSize: 12 },
 });

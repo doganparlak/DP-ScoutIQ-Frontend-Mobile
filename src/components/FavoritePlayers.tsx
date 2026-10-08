@@ -1,3 +1,4 @@
+import { isAdFlowCancelled } from '@/ads/presentation';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { useMatchup } from '@/context/MatchupContext';
 import { portfolioViewportHeight } from '@/utils/portfolioLayout';
@@ -650,7 +651,8 @@ export default function FavoritePlayers({
         const nextCount = await incrementReportActionCount();
 
         if (shouldShowReportActionInterstitial(nextCount)) {
-          const shown = await showInterstitialAndWaitSafely();
+          if (previewPlayer) { setPreviewPlayer(null); await new Promise<void>(resolve => setTimeout(resolve, 350)); }
+          const shown = await showInterstitialAndWaitSafely({ action: 'player_portfolio', isActive: () => navigation.isFocused() });
           if (shown) {
             setReportAccessGranted((prev) => {
               const next = new Set(prev);
@@ -671,7 +673,8 @@ export default function FavoritePlayers({
           return next;
         });
         return true;
-      } catch {
+      } catch (error) {
+        if (isAdFlowCancelled(error)) return false;
         setProUpsellSource('report');
         setProUpsellOpen(true);
         return false;
@@ -755,34 +758,27 @@ export default function FavoritePlayers({
     );
   };
 
+  const lineupOpening = React.useRef(false);
   const handleLineupPress = async () => {
-    if (tutorialLocked && !canPressTutorialLineup) return;
-
-    setLineupOpen(true);
-
-    if (profileTutorialStep === 'lineup') {
-      onProfileTutorialNext?.();
-      return;
-    }
-
-    const hasAdFreeAccess = plan !== 'Free';
-    if (hasAdFreeAccess) return;
-
+    if (lineupOpening.current) return;
+    lineupOpening.current = true;
     try {
-      const nextCount = await incrementPortfolioLineupLaunchCount();
-      if (!shouldShowPortfolioLineupInterstitial(nextCount)) {
-        return;
+      if (tutorialLocked && !canPressTutorialLineup) return;
+      if (profileTutorialStep === 'lineup') {
+        setLineupOpen(true); onProfileTutorialNext?.(); return;
       }
-
-      const shown = await showInterstitialAndWaitSafely();
-      if (!shown) {
-        setProUpsellSource('lineup');
-        setProUpsellOpen(true);
+      if (plan !== 'Free') { setLineupOpen(true); return; }
+      try {
+        const nextCount = await incrementPortfolioLineupLaunchCount();
+        if (!shouldShowPortfolioLineupInterstitial(nextCount)) { setLineupOpen(true); return; }
+        const shown = await showInterstitialAndWaitSafely({ action: 'portfolio_lineup', isActive: () => navigation.isFocused() });
+        if (shown) { if (navigation.isFocused()) setLineupOpen(true); }
+        else { setProUpsellSource('lineup'); setProUpsellOpen(true); }
+      } catch (error) {
+        if (isAdFlowCancelled(error)) return;
+        setProUpsellSource('lineup'); setProUpsellOpen(true);
       }
-    } catch {
-      setProUpsellSource('lineup');
-      setProUpsellOpen(true);
-    }
+    } finally { lineupOpening.current = false; }
   };
 
   const renderUnifiedRow = (item: PlayerRow | 'HEADER') => {
@@ -1358,13 +1354,14 @@ export default function FavoritePlayers({
           setProUpsellOpen(false);
           const source = proUpsellSource;
           setProUpsellSource(null);
+          if (source === 'lineup') setTimeout(() => { if (navigation.isFocused()) setLineupOpen(true); }, 450);
 
           if (source === 'report' && activeReportPlayerId) {
-            setReportAccessGranted((prev) => {
+            setTimeout(() => { if (!navigation.isFocused()) return; setReportAccessGranted((prev) => {
               const next = new Set(prev);
               next.add(activeReportPlayerId);
               return next;
-            });
+            }); }, 450);
           }
         }}
       />

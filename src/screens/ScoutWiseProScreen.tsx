@@ -96,13 +96,14 @@ export default function ScoutWiseProScreen() {
               <View style={styles.divider} />
 
               <View style={styles.bullets}>
-                <Benefit text={t('proBenefit2', 'Player discovery aligned with your team strategy')} />
-                <Benefit text={t('proBenefitDetailedReports', 'Detailed pre-match, post-match, and team analysis reports')} />
-                <Benefit text={t('proBenefitThreeWay', '3- or 4-player comparison')} />
-                <Benefit text={t('proBenefitCustomComparison', 'Customizable comparison charts')} />
-                <Benefit text={t('proBenefit1', 'Ad-free experience')} />
-                <Benefit text={t('proBenefit4', 'Priority customer support')} />
-                <Benefit text={t('proBenefit5', 'Support the development of new features')} />
+                <Benefit text={t('proBenefitUnlimited', "Unlimited access to ScoutWise Pro")} />
+                <Benefit text={t('proBenefitFit', "Team, league and team strategy fit analysis")} />
+                <Benefit text={t('proBenefitSimilar', "Discover alternative profiles with detailed similar-player analysis")} />
+                <Benefit text={t('proBenefitLeaguePerformance', "League performance analysis with advanced metrics")} />
+                <Benefit text={t('proBenefitDetailedReports', "Detailed scouting, pre-match, post-match and team analysis reports")} />
+                <Benefit text={t('proBenefitThreeWay', "3- or 4-player comparison")} />
+                <Benefit text={t('proBenefitCustomComparison', "Customizable comparison charts")} />
+                <Benefit text={t('proBenefit1', "Ad-free experience")} />
               </View>
             </View>
 
@@ -153,23 +154,24 @@ function Benefit({ text }: { text: string }) {
 
     if (i18n.language?.startsWith('tr')) {
       apply('Reklamsız');
-      apply('Takım stratejine');
+      apply('sınırsız erişim');
+      apply('uyum analizi');
+      apply('Gelişmiş metriklerle');
       apply('Detaylı');
       apply('3 veya 4');
       apply('Kişiselleştirilebilir');
-      apply('Öncelikli');
-      apply('Yeni özelliklerin');
+
     } else {
       apply('ad-free');
       apply('Ad-Free');
-      apply('team strategy');
-      apply('Team strategy');
+      apply('Unlimited access');
+      apply('fit analysis');
+      apply('advanced metrics');
+      apply('detailed');
       apply('Detailed');
       apply('3- or 4-player');
       apply('Customizable');
-      apply('Priority');
-      apply('new features');
-      apply('New Features');
+
     }
 
     return out;

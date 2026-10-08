@@ -16,31 +16,40 @@ import {
   FavoriteMatch,
   MatchFixture,
   matchReportAction,
+  matchSaveType,
 } from "@/services/matchPool";
 export default function MatchReportActions({
   fixture,
   favorites,
   tr,
   onOpenPlans,
+  phaseOnly = false,
+  strictPhase = false,
+  topSpacing = 12,
 }: {
   fixture: MatchFixture;
   favorites: FavoriteMatch[];
   tr: boolean;
   onOpenPlans: () => void;
+  phaseOnly?: boolean;
+  strictPhase?: boolean;
+  topSpacing?: number;
 }) {
   const ads = useWorkspaceActionAd();
   const [preMatchOpen, setPreMatchOpen] = useState(false);
   const [postMatchOpen, setPostMatchOpen] = useState(false);
+  const phase = matchSaveType(fixture);
+  const types = phaseOnly ? (phase ? [phase] : []) : ["pre_match", "post_match"] as const;
   return (
-    <View style={s.row}>
+    <View style={[s.row, { marginTop: topSpacing }]}>
       {ads.fallback}
-      {(["pre_match", "post_match"] as const).map((type) => {
+      {types.map((type) => {
         const saved = favorites.find(
           (f) =>
             f.fixture.fixtureId === fixture.fixtureId && f.reportType === type,
         );
         const action = matchReportAction(fixture, type, saved);
-        const enabled = action === "generate" || action === "view" || action === "processing";
+        const enabled = (!strictPhase || phase === type) && (action === "generate" || action === "view" || action === "processing");
         const title =
           type === "pre_match"
             ? tr
@@ -91,7 +100,7 @@ export default function MatchReportActions({
   );
 }
 const s = StyleSheet.create({
-  row: { flexDirection: "row", gap: 12, marginTop: 12, alignItems: "center" },
+  row: { flexDirection: "row", gap: 12, alignItems: "center" },
   button: {
     flex: 1,
     minWidth: 0,

@@ -6,10 +6,10 @@ import {
 } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Table2, LayoutDashboard, CreditCard, CircleHelp, UsersRound, Target, BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ClipboardList, Database, ShieldCheck, Shield, Trophy, Search, GitCompareArrows, ChevronRight, Menu, MessageSquareText, UserRound, X } from 'lucide-react-native';
+import { Table2, LayoutDashboard, CreditCard, CircleHelp, UsersRound, Target, BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ClipboardList, Database, ShieldCheck, Shield, Trophy, Search, GitCompareArrows, ChevronRight, Menu, Gem, Goal, UserRound, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTutorial } from '@/components/Tutorial';
-import { ACCENT, BG, TEXT } from '@/theme';
+import { ACCENT, BG, TEXT, FEATURE_COLORS } from '@/theme';
 
 const logo = require('../../assets/scoutwise_logo.png');
 
@@ -27,9 +27,10 @@ function SidebarBrandMark() {
 
 const items = [
   { route: 'Profile', label: 'tabProfile', fallback: 'Panel', Icon: LayoutDashboard, group: 'navigationWorkspace', groupFallback: 'YOUR WORKSPACE' },
-  { route: 'Chat', label: 'tabScoutWisePro', fallback: 'ScoutWise Pro', Icon: MessageSquareText, group: '', groupFallback: '' },
+  { route: 'Chat', label: 'tabScoutWisePro', fallback: 'ScoutWise Pro', Icon: Gem, group: '', groupFallback: '' },
   { route: 'Weekly', label: 'tabWeeklySearches', fallback: 'Weekly Searches', Icon: Search, group: 'interactionCenter', groupFallback: 'Interaction Center' },
   { route: 'DailyScout', label: 'dailyScoutChallengeTitle', fallback: 'Daily Scout Challenge', Icon: Target, group: '', groupFallback: '' },
+  { route: 'ScorePrediction', label: 'scorePredictionTitle', fallback: 'Score Prediction League', Icon: Goal, group: '', groupFallback: '' },
   { route: 'LeaguePerformance', label: 'leaguePerformanceWorkspace', fallback: 'League Performance', Icon: Table2, group: 'organizationCenter', groupFallback: 'Organization Center' },
   { route: 'Strategy', label: 'tabPlayerPool', fallback: 'Player Pool', Icon: UserRound, group: 'dataCenter', groupFallback: 'Data Center' },
   { route: 'TeamPool', label: 'teamPoolWorkspace', fallback: 'Team Pool', Icon: Shield, group: '', groupFallback: '' },
@@ -71,6 +72,7 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
     Chat: nestedRoute==='LegacyStrategy'?'proStrategy':nestedRoute==='ProPlans'?null:(tutorial.proGuidePage||'proWelcome'),
     Weekly: 'weekly',
     DailyScout: 'daily',
+    ScorePrediction: 'scorePrediction',
     Strategy: 'playerPool',
     TeamPool: 'teamPool',
     LeaguePool: 'leaguePool',
@@ -258,7 +260,10 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
             <ScrollView contentContainerStyle={styles.links} showsVerticalScrollIndicator={false}>
               {items.map((item) => {
                 const active = item.route === currentRoute;
-                const color = active ? '#4ADE80' : item.route === 'Chat' ? '#34D399' : '#E5EBE7';
+                const prediction = item.route === 'ScorePrediction';
+                const pro = item.route === 'Chat';
+                const color = prediction ? FEATURE_COLORS.scorePrediction : pro ? FEATURE_COLORS.pro : active ? '#4ADE80' : '#E5EBE7';
+                const featureActive = active && pro ? { borderColor: color, backgroundColor: 'rgba(251,191,36,0.12)' } : undefined;
                 return (
                   <React.Fragment key={item.route}>
                   {!!item.group && <Text style={[styles.sectionLabel, { marginTop: 12 }]}>{t(item.group, item.groupFallback)}</Text>}
@@ -268,10 +273,10 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
                     accessibilityState={{ selected: active, disabled: pending }}
                     disabled={pending}
                     onPress={() => { void select(item); }}
-                    style={({ pressed }) => [styles.navItem, active && styles.activeItem, pressed && styles.pressed]}
+                    style={({ pressed }) => [styles.navItem, active && styles.activeItem, featureActive, pressed && styles.pressed]}
                   >
-                    {active && <View style={styles.activeMarker} />}
-                    <View style={[styles.navIcon, active && styles.activeIcon]}><item.Icon size={21} color={color} /></View>
+                    {active && <View style={[styles.activeMarker, (prediction || pro) && { backgroundColor: color }]} />}
+                    <View style={[styles.navIcon, pro && styles.proIcon, active && styles.activeIcon, featureActive]}><item.Icon size={21} color={color} /></View>
                     <Text style={[styles.navLabel, { color }]}>{t(item.label, item.fallback)}</Text>
                     {pending && item.route === 'Chat'
                       ? <ActivityIndicator size="small" color={ACCENT} />
@@ -318,6 +323,7 @@ const styles = StyleSheet.create({
   links: { paddingTop: 28, gap: 12, paddingBottom: 24 },
   sectionLabel: { color: '#94A79B', fontSize: 10, fontWeight: '800', letterSpacing: 1.7, marginLeft: 4, marginBottom: 4 },
   navItem: { minHeight: 68, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, borderWidth: 1, borderColor: 'rgba(87,111,98,0.25)', backgroundColor: 'rgba(255,255,255,0.024)', overflow: 'hidden' },
+  proIcon: { borderColor: 'rgba(251,191,36,0.28)', backgroundColor: 'rgba(251,191,36,0.09)' },
   activeItem: { borderColor: 'rgba(22,163,74,0.62)', backgroundColor: 'rgba(22,163,74,0.14)' },
   activeMarker: { position: 'absolute', left: 0, top: 21, width: 3, height: 26, backgroundColor: ACCENT, borderTopRightRadius: 3, borderBottomRightRadius: 3 },
   navIcon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)' },

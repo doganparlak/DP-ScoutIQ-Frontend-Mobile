@@ -1,3 +1,4 @@
+import { isAdFlowCancelled } from '@/ads/presentation';
 import React from 'react';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { Alert, Pressable, Text, View } from 'react-native';
@@ -33,7 +34,7 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
   const gateReport = async (free: boolean) => {
     if (!free) return true;
     const count = await incrementReportActionCount();
-    if (shouldShowReportActionInterstitial(count) && !await showInterstitialAndWaitSafely()) {
+    if (shouldShowReportActionInterstitial(count) && !await showInterstitialAndWaitSafely({ action: 'daily_scout_report', isActive: () => navigation.isFocused() })) {
       setUpsell(true);
       return false;
     }
@@ -43,7 +44,7 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
     if (lock.current) return false;
     lock.current = true; setBusy(true);
     try { return await action(); }
-    catch (error: any) { Alert.alert(t('dailyScoutErrorTitle'), String(error?.message || error)); return false; }
+    catch (error: any) { if (isAdFlowCancelled(error)) return false; Alert.alert(t('dailyScoutErrorTitle'), String(error?.message || error)); return false; }
     finally { lock.current = false; setBusy(false); }
   };
   const ensureScores = async () => {

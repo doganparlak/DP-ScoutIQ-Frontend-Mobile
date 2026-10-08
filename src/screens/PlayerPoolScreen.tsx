@@ -1,3 +1,4 @@
+import { isAdFlowCancelled } from '@/ads/presentation';
 import PlanManagementButton from '@/components/PlanManagementButton';
 import React from 'react';
 import { useMatchup } from '@/context/MatchupContext';
@@ -665,7 +666,7 @@ export default function PlayerPoolScreen() {
       if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementPotentialRevealCount();
         if (shouldShowPotentialInterstitial(nextCount)) {
-          const ok = await showInterstitialAndWaitSafely();
+          const ok = await showInterstitialAndWaitSafely({ action: 'player_pool', isActive: () => navigation.isFocused() });
           if (!ok) {
             setProUpsellOpen(true);
           }
@@ -710,6 +711,7 @@ export default function PlayerPoolScreen() {
         tutorial.setPlayerPoolStep('revealForm');
       }
     } catch (err: any) {
+      if (isAdFlowCancelled(err)) return;
       Alert.alert(t('potentialRevealFailed', 'Potential reveal failed'), String(err?.message || err));
     } finally {
       setRevealingPotential(false);
@@ -735,7 +737,7 @@ export default function PlayerPoolScreen() {
       if (plan === 'Free' && !isPlayerPoolTutorialActive) {
         const nextCount = await incrementPotentialRevealCount();
         if (shouldShowPotentialInterstitial(nextCount)) {
-          const ok = await showInterstitialAndWaitSafely();
+          const ok = await showInterstitialAndWaitSafely({ action: 'player_pool', isActive: () => navigation.isFocused() });
           if (!ok) {
             setProUpsellOpen(true);
           }
@@ -780,6 +782,7 @@ export default function PlayerPoolScreen() {
         tutorial.setPlayerPoolStep('addPortfolio');
       }
     } catch (err: any) {
+      if (isAdFlowCancelled(err)) return;
       Alert.alert(t('formRevealFailed', 'Form reveal failed'), String(err?.message || err));
     } finally {
       setRevealingForm(false);
@@ -830,7 +833,7 @@ export default function PlayerPoolScreen() {
     if (source === 'matchup') {
       const nextCount = await incrementMatchupMissingScoreAddCount();
       if (shouldShowMatchupMissingScoreInterstitial(nextCount)) {
-        const ok = await showInterstitialAndWaitSafely();
+        const ok = await showInterstitialAndWaitSafely({ action: 'player_pool', isActive: () => navigation.isFocused() });
         if (!ok) {
           setProUpsellOpen(true);
         }
@@ -841,7 +844,7 @@ export default function PlayerPoolScreen() {
 
     const nextCount = await incrementPlayerPoolMissingScoreActionCount();
     if (shouldShowPlayerPoolMissingScoreActionInterstitial(nextCount)) {
-      const ok = await showInterstitialAndWaitSafely();
+      const ok = await showInterstitialAndWaitSafely({ action: 'player_pool', isActive: () => navigation.isFocused() });
       if (!ok) {
         setProUpsellOpen(true);
       }
@@ -962,7 +965,7 @@ export default function PlayerPoolScreen() {
       const nextCount = await incrementReportActionCount();
 
       if (shouldShowReportActionInterstitial(nextCount)) {
-        const shown = await showInterstitialAndWaitSafely();
+        const shown = await showInterstitialAndWaitSafely({ action: 'player_pool', isActive: () => navigation.isFocused() });
         if (shown) return true;
 
         setProUpsellOpen(true);
@@ -970,7 +973,8 @@ export default function PlayerPoolScreen() {
       }
 
       return true;
-    } catch {
+    } catch (error) {
+      if (isAdFlowCancelled(error)) return false;
       setProUpsellOpen(true);
       return false;
     }
@@ -1051,6 +1055,7 @@ export default function PlayerPoolScreen() {
         setScoutReport(report);
       }
     } catch (err: any) {
+      if (isAdFlowCancelled(err)) return;
       setScoutReport((current) => current?.status === 'processing' ? { ...current, status: 'failed' } : current);
       Alert.alert(t('reportError', 'Report error'), String(err?.message || err));
     } finally {
@@ -1096,6 +1101,7 @@ export default function PlayerPoolScreen() {
       const enriched = await ensureSelectedPlayerScoresForMatchup();
       if (enriched) matchupPlayer = enriched;
     } catch (err: any) {
+      if (isAdFlowCancelled(err)) return;
       Alert.alert(t('matchupComparisonFailed', 'Matchup comparison failed'), String(err?.message || err));
       return;
     } finally {

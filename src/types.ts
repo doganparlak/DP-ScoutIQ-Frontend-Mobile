@@ -25,6 +25,7 @@ export type MainTabsParamList = {
   Portfolio: undefined;
   Matchup: undefined;
   DailyScout: { visitKey?: number } | undefined;
+  ScorePrediction: undefined;
   Weekly: { visitKey?: number } | undefined;
   Strategy: { matchupPlayer?: { id: string; player: PlayerData }; visitKey?: number } | undefined;
   Chat: NavigatorScreenParams<ScoutWiseProStackParamList> | undefined;

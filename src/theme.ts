@@ -4,6 +4,7 @@ export const CARD  = '#1F2220';   // lightest dark for cards/blocks
 export const TEXT  = '#FFFFFF';   // primary text (white)
 export const ACCENT= '#16A34A';   // football green (≈ Tailwind green-600)
 export const ACCENT_DARK = '#15803D';
+export const FEATURE_COLORS = { pro: '#FBBF24', scorePrediction: '#60A5FA' } as const;
 export const MUTED = '#7A7A85';   // subtle, softer gray
 export const LINE  = '#1F2937';   // borders/dividers (slate-800)
 export const DANGER = '#E5484D';

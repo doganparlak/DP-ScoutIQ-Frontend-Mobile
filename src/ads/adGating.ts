@@ -1,5 +1,8 @@
 import { getAdFrequency } from '../services/remoteConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { prepareInterstitial } from './interstitial';
+import { assertAdActionAvailable } from './presentation';
+import type { AdFrequencyKey } from '../services/remoteConfigDefaults';
 
 const POTENTIAL_KEY = 'ads.playerPool.potentialRevealCount.v1';
 const MATCHUP_LAUNCH_KEY = 'ads.playerPool.matchupLaunchCount.v1';
@@ -30,11 +33,7 @@ export function shouldShowPotentialInterstitial(revealCount: number) {
 }
 
 export async function incrementPotentialRevealCount(): Promise<number> {
-  const raw = await AsyncStorage.getItem(POTENTIAL_KEY);
-  const current = raw ? parseInt(raw, 10) : 0;
-  const next = (Number.isFinite(current) ? current : 0) + 1;
-  await AsyncStorage.setItem(POTENTIAL_KEY, String(next));
-  return next;
+  return incrementStoredCount(POTENTIAL_KEY, 'ads_potential_every');
 }
 
 export function shouldShowMatchupLaunchInterstitial(launchCount: number) {
@@ -42,11 +41,7 @@ export function shouldShowMatchupLaunchInterstitial(launchCount: number) {
 }
 
 export async function incrementMatchupLaunchCount(): Promise<number> {
-  const raw = await AsyncStorage.getItem(MATCHUP_LAUNCH_KEY);
-  const current = raw ? parseInt(raw, 10) : 0;
-  const next = (Number.isFinite(current) ? current : 0) + 1;
-  await AsyncStorage.setItem(MATCHUP_LAUNCH_KEY, String(next));
-  return next;
+  return incrementStoredCount(MATCHUP_LAUNCH_KEY, 'ads_matchup_launch_every');
 }
 
 export function shouldShowMatchupMissingScoreInterstitial(addCount: number) {
@@ -59,14 +54,17 @@ export function shouldShowPlayerPoolMissingScoreActionInterstitial(addCount: num
 
 // Serialize increments per key so actions from different cards cannot lose a count.
 const pendingCounts = new Map<string, Promise<number>>();
-async function incrementStoredCount(key: string): Promise<number> {
+async function incrementStoredCount(key: string, frequency?: AdFrequencyKey, owner?: symbol): Promise<number> {
+  if (frequency) assertAdActionAvailable(owner);
   const pending = (pendingCounts.get(key) ?? Promise.resolve(0))
     .catch(() => 0)
     .then(async () => {
+      if (frequency) assertAdActionAvailable(owner);
       const raw = await AsyncStorage.getItem(key);
       const current = raw ? parseInt(raw, 10) : 0;
       const next = (Number.isFinite(current) ? current : 0) + 1;
       await AsyncStorage.setItem(key, String(next));
+      if (frequency && next % getAdFrequency(frequency) === getAdFrequency(frequency) - 1) prepareInterstitial(frequency);
       return next;
     });
   pendingCounts.set(key, pending);
@@ -78,11 +76,11 @@ async function incrementStoredCount(key: string): Promise<number> {
 }
 
 export async function incrementMatchupMissingScoreAddCount(): Promise<number> {
-  return incrementStoredCount(MATCHUP_ADD_KEY);
+  return incrementStoredCount(MATCHUP_ADD_KEY, 'ads_matchup_add_every');
 }
 
 export async function incrementPlayerPoolMissingScoreActionCount(): Promise<number> {
-  return incrementStoredCount(PLAYER_POOL_MISSING_SCORE_ACTION_KEY);
+  return incrementStoredCount(PLAYER_POOL_MISSING_SCORE_ACTION_KEY, 'ads_missing_score_action_every');
 }
 
 export async function incrementPlayerCardPlanNudgeCount(): Promise<number> {
@@ -130,11 +128,7 @@ export function shouldShowPortfolioLineupInterstitial(launchCount: number) {
 }
 
 export async function incrementPortfolioLineupLaunchCount(): Promise<number> {
-  const raw = await AsyncStorage.getItem(PORTFOLIO_LINEUP_KEY);
-  const current = raw ? parseInt(raw, 10) : 0;
-  const next = (Number.isFinite(current) ? current : 0) + 1;
-  await AsyncStorage.setItem(PORTFOLIO_LINEUP_KEY, String(next));
-  return next;
+  return incrementStoredCount(PORTFOLIO_LINEUP_KEY, 'ads_portfolio_lineup_every');
 }
 
 export function shouldShowReportActionInterstitial(actionCount: number) {
@@ -142,7 +136,7 @@ export function shouldShowReportActionInterstitial(actionCount: number) {
 }
 
 export async function incrementReportActionCount(): Promise<number> {
-  return incrementStoredCount(REPORT_ACTION_KEY);
+  return incrementStoredCount(REPORT_ACTION_KEY, 'ads_report_every');
 }
 
 // Report and Matchup sources share counters; other actions retain independent counters.
@@ -165,8 +159,8 @@ const WORKSPACE_AD_ACTIONS = {
 
 export type WorkspaceAdAction = keyof typeof WORKSPACE_AD_ACTIONS;
 
-export async function incrementWorkspaceActionAndShouldShowAd(action: WorkspaceAdAction) {
+export async function incrementWorkspaceActionAndShouldShowAd(action: WorkspaceAdAction, owner?: symbol) {
   const { key, frequency } = WORKSPACE_AD_ACTIONS[action];
-  const count = await incrementStoredCount(key);
+  const count = await incrementStoredCount(key, frequency, owner);
   return count % getAdFrequency(frequency) === 0;
 }

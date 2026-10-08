@@ -1,3 +1,4 @@
+import { isAdFlowCancelled } from '@/ads/presentation';
 import React from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { UserRound, X } from 'lucide-react-native';
@@ -52,6 +53,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
       void run('matchup');
     }
   }, [focused, entry?.id, initialAction]);
+  const focusedRef = React.useRef(focused); focusedRef.current = focused;
   const close = () => {if (!locked.current) onClose();};
   async function hideCardForPresentation() {
     if (inline || !cardShowing.current) return;
@@ -108,7 +110,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
       const missingScores = !hasPlayerScores(entry.player.meta);
       // Report cadence is independent of missing-score reveals.
       if (kind !== 'report') {
-        await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation);
+        await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation, () => mounted.current && focusedRef.current);
         if (mounted.current && !upsellShowing.current) setCardVisible(true);
       }
       const enriched = await ensureScores(kind === 'portfolio');
@@ -123,7 +125,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
           success = true;
         }
       } else {
-        const hasAccess = await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation);
+        const hasAccess = await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation, () => mounted.current && focusedRef.current);
         const payload: PlayerIdentityPayload = {playerId: enriched.id, sportmonksId: meta.sportmonksId, worldCupMode: false, name: player.name, nationality: meta.nationality, gender: meta.gender, team: meta.team, league: meta.league, age: meta.age, height: meta.height, weight: meta.weight, potential: proMode ? undefined : meta.potential, form: proMode ? undefined : meta.form};
         if (hasAccess) {
           await hideCardForPresentation();
@@ -138,6 +140,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
         success = hasAccess;
       }
     } catch (err) {
+      if (isAdFlowCancelled(err)) return false;
       setReportOpen(false);
       if (openedReport) await new Promise<void>(resolve => setTimeout(resolve, 350));
       openedReport = false;

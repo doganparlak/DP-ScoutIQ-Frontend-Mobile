@@ -82,6 +82,13 @@ const multiplyDisplayPrice = (displayPrice: string | undefined, multiplier: numb
 
 //const log = (...args: any[]) => console.log('[IAP]', ...args);
 
+function PlanFeatureLabel({ label, color }: { label: string; color: string }) {
+  const emphasis = label.match(/^(?:3’lü ve 4’lü|3- and 4-way|2’li|3’lü|2-way|3-way|Temel|Genişletilmiş|Kapsamlı|Sınırlı|Sınırsız|Detaylı|Özel|Reklamlı|Reklamsız|Basic|Extended|Comprehensive|Limited|Unlimited|Detailed|Custom|Ad-free|With ads)(?=\s|$)/u)?.[0];
+  return <Text style={styles.planFeatureText}>
+    {emphasis ? <><Text style={{ color, fontWeight: '900' }}>{emphasis}</Text>{label.slice(emphasis.length)}</> : label}
+  </Text>;
+}
+
 export default function ManagePlan() {
   const nav = useNavigation();
   const { t } = useTranslation();
@@ -91,6 +98,11 @@ export default function ManagePlan() {
 
   const [currentPlan, setCurrentPlan] = React.useState<Plan>('Free');
   const [selected, setSelected] = React.useState<Plan>('Free');
+  const [proBillingPlan, setProBillingPlan] = React.useState<Plan>('Pro Monthly');
+
+  React.useEffect(() => {
+    if (selected === 'Pro Monthly' || selected === 'Pro Yearly') setProBillingPlan(selected);
+  }, [selected]);
   const [saving, setSaving] = React.useState(false);
   const [subscriptionEndAt, setSubscriptionEndAt] = React.useState<string | null>(null);
   const [iapReady, setIapReady] = React.useState(false);
@@ -108,21 +120,12 @@ export default function ManagePlan() {
   );
 
   const planFeatures = React.useCallback((plan: Plan) => {
-    if (plan === 'Free') return [t('planFeatures_Free', 'Ad-supported')];
-    if (plan === 'No Ads Monthly') {
-      return [
-        t('planFeatures_NoAdsMonthly', 'Ad-free'),
-        t('planFeatures_ThreePlayer', '3-player comparison'),
-        t('planFeatures_DetailedReports', 'Detailed Reports & Insights'),
-      ];
-    }
-    return [
-      t('planFeatures_Pro', 'Ad-free'),
-      'ScoutWise Pro',
-      t('planFeatures_ThreeOrFourPlayer', '3- or 4-player comparison'),
-      t('planFeatures_CustomComparison', 'Customizable comparison'),
-      t('planFeatures_DetailedReports', 'Detailed Reports & Insights'),
-    ];
+    const keys = plan === 'Free'
+      ? ['Ads', 'LimitedPro', 'BasicSimilar', 'BasicLeague', 'LimitedReports', 'TwoWay']
+      : plan === 'No Ads Monthly'
+        ? ['NoAds', 'LimitedPro', 'MoreSimilar', 'ExtendedLeague', 'DetailedReports', 'ThreeWay']
+        : ['NoAds', 'UnlimitedPro', 'ComprehensiveSimilar', 'DetailedLeague', 'DetailedReports', 'FourWay', 'Custom'];
+    return keys.map(key => t(`planPill${key}`));
   }, [t]);
 
   const yearlyReferencePrice = React.useMemo(
@@ -145,8 +148,8 @@ export default function ManagePlan() {
   }, [selected]);
 
   const PLANS: Array<{ name: Plan }> = React.useMemo(
-    () => [{ name: 'Free' }, { name: 'No Ads Monthly' }, { name: 'Pro Monthly' }, { name: 'Pro Yearly' }],
-    [],
+    () => [{ name: 'Free' }, { name: 'No Ads Monthly' }, { name: proBillingPlan }],
+    [proBillingPlan],
   );
 
   // ---- Load /me once ----
@@ -443,28 +446,32 @@ export default function ManagePlan() {
           <View style={styles.planCards}>
             {PLANS.map(p => {
               const active = selected === p.name;
+              const proCard = isPro(p.name);
+              const featureColor = proCard ? '#4ADE80' : p.name === 'No Ads Monthly' ? '#38BDF8' : '#CBD5E1';
               const duration = p.name === 'Free'
                 ? t('durationUnlimited', 'Unlimited')
                 : p.name === 'No Ads Monthly' || p.name === 'Pro Monthly'
                   ? t('duration_month', '1 month')
                   : t('duration_year', '1 year');
               return (
-                <Pressable
-                  key={p.name}
-                  onPress={() => setSelected(p.name)}
-                  style={({ pressed }) => [
-                    styles.planCard,
-                    active && styles.planCardActive,
-                    pressed && styles.planCardPressed,
-                  ]}
+                <View
+                  key={proCard ? 'pro' : p.name}
+                  style={[styles.planCard, active && styles.planCardActive]}
                 >
-                  <View style={styles.planCardTop}>
+                  <Pressable
+                    onPress={() => setSelected(p.name)}
+                    disabled={saving}
+                    accessibilityRole="radio"
+                    accessibilityState={{checked: active, disabled: saving}}
+                    accessibilityLabel={`${t('choose', 'Choose')} ${planLabel(p.name)}`}
+                    style={({pressed}) => [styles.planCardTop, pressed && {opacity: .75}]}
+                  >
                     <View style={styles.planIdentity}>
                       <View style={[styles.planSelector, active && styles.planSelectorActive]}>
                         {active ? <View style={styles.planSelectorDot} /> : null}
                       </View>
                       <View style={styles.planNameGroup}>
-                        <Text style={[styles.planName, active && styles.planNameActive]}>{planLabel(p.name)}</Text>
+                        <Text style={[styles.planName, active && styles.planNameActive]}>{proCard ? 'Pro' : planLabel(p.name)}</Text>
                         <View style={styles.planSubtitleRow}>
                           <Text style={styles.planDuration}>{duration}</Text>
                           {p.name === 'Pro Yearly' ? (
@@ -491,17 +498,33 @@ export default function ManagePlan() {
                         </Text>
                       </View>
                     </View>
-                  </View>
+                  </Pressable>
+
+                  {proCard && <View style={styles.billingSection}>
+                    <View accessibilityRole="radiogroup" accessibilityLabel={t('planBillingPeriod', 'Billing period')} style={styles.billingSwitch}>
+                      {(['Pro Monthly', 'Pro Yearly'] as const).map(period => {
+                        const chosen = proBillingPlan === period;
+                        return <Pressable key={period} disabled={saving}
+                          accessibilityRole="radio" accessibilityState={{checked: chosen, disabled: saving}}
+                          accessibilityLabel={planLabel(period)}
+                          onPress={() => {setProBillingPlan(period); setSelected(period);}}
+                          style={({pressed}) => [styles.billingOption, chosen && styles.billingOptionActive, pressed && {opacity: .75}]}>
+                          <Text style={[styles.billingOptionText, chosen && styles.billingOptionTextActive]}>{t(period === 'Pro Monthly' ? 'planBillingMonthly' : 'planBillingYearly')}</Text>
+                        </Pressable>;
+                      })}
+                    </View>
+                    <Text style={styles.billingHint}>{t('planBillingSameFeatures', 'The same Pro features, with your preferred billing period.')}</Text>
+                  </View>}
 
                   <View style={styles.planFeatureList}>
                     {planFeatures(p.name).map(feature => (
                       <View key={feature} style={[styles.planFeaturePill, active && styles.planFeaturePillActive]}>
                         <View style={[styles.planFeatureDot, active && styles.planFeatureDotActive]} />
-                        <Text style={[styles.planFeatureText, active && styles.planFeatureTextActive]}>{feature}</Text>
+                        <PlanFeatureLabel label={feature} color={featureColor} />
                       </View>
                     ))}
                   </View>
-                </Pressable>
+                </View>
               );
             })}
           </View>
@@ -525,33 +548,6 @@ export default function ManagePlan() {
                   <Text style={styles.currentPillText}>{planLabel(currentPlan)}</Text>
                 </View>
               </View>
-            </View>
-          </View>
-
-          {/* 3) Select plan (segmented) */}
-          <View style={{ marginTop: 8 }}>
-            <Text style={styles.label}>{t('selectPlan', 'Select plan')}</Text>
-            <View style={styles.options}>
-              {PLANS.map(p => {
-                const active = selected === p.name;
-                return (
-                  <Pressable
-                    key={p.name}
-                    onPress={() => setSelected(p.name)}
-                    style={({ pressed }) => [
-                      styles.option,
-                      active && styles.optionActive,
-                      pressed && { transform: [{ scale: 0.98 }] },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${t('choose', 'Choose')} ${planLabel(p.name)}`}
-                  >
-                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
-                      {planLabel(p.name)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
             </View>
           </View>
 
@@ -596,13 +592,14 @@ export default function ManagePlan() {
             </View>
 
             {[
-              t('proBenefit2', 'Player discovery aligned with your team strategy'),
-              t('proBenefitDetailedReports', 'Detailed pre-match, post-match, and team analysis reports'),
-              t('proBenefitThreeWay', '3- or 4-player comparison'),
-              t('proBenefitCustomComparison', 'Customizable comparison charts'),
-              t('proBenefit1', 'Ad-free experience'),
-              t('proBenefit4', 'Priority customer support'),
-              t('proBenefit5', 'Support the development of new features'),
+              t('proBenefitUnlimited', "Unlimited access to ScoutWise Pro"),
+              t('proBenefitFit', "Team, league and team strategy fit analysis"),
+              t('proBenefitSimilar', "Discover alternative profiles with detailed similar-player analysis"),
+              t('proBenefitLeaguePerformance', "League performance analysis with advanced metrics"),
+              t('proBenefitDetailedReports', "Detailed scouting, pre-match, post-match and team analysis reports"),
+              t('proBenefitThreeWay', "3- or 4-player comparison"),
+              t('proBenefitCustomComparison', "Customizable comparison charts"),
+              t('proBenefit1', "Ad-free experience"),
             ].map((benefit, index) => (
               <View key={benefit} style={styles.proUpsellRow}>
                 <View style={styles.benefitNumber}><Text style={styles.benefitNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
@@ -672,8 +669,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   planCardPressed: { opacity: 0.9, transform: [{ scale: 0.992 }] },
-  planCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  planIdentity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  planCardTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  planIdentity: { flexGrow: 1, flexBasis: 155, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   planSelector: {
     width: 22,
     height: 22,
@@ -693,8 +690,8 @@ const styles = StyleSheet.create({
   planSubtitleDivider: { color: '#667069', fontSize: 10, fontWeight: '800' },
   planBestPrice: { color: '#A7B5AC', fontSize: 11, fontWeight: '800' },
   planBestPriceActive: { color: '#4ADE80' },
-  planPriceGroup: { alignItems: 'flex-end', gap: 5 },
-  planPriceRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7 },
+  planPriceGroup: { flexGrow: 1, alignItems: 'flex-end', gap: 5 },
+  planPriceRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7 },
   planOriginalPrice: {
     color: MUTED,
     fontSize: 11,
@@ -710,6 +707,13 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
   discountBadgeText: { color: '#07150C', fontSize: 11, fontWeight: '900' },
+  billingSection: { gap: 8 },
+  billingSwitch: { flexDirection: 'row', gap: 6, borderRadius: 14, padding: 5, borderWidth: 1, borderColor: LINE, backgroundColor: BG },
+  billingOption: { flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
+  billingOptionActive: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,.15)' },
+  billingOptionText: { color: MUTED, fontSize: 13, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
+  billingOptionTextActive: { color: '#4ADE80', fontWeight: '900' },
+  billingHint: { color: MUTED, fontSize: 11, lineHeight: 17 },
   planFeatureList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   planFeaturePill: {
     maxWidth: '100%',
@@ -726,8 +730,7 @@ const styles = StyleSheet.create({
   planFeaturePillActive: { borderColor: 'rgba(22,163,74,0.48)', backgroundColor: 'rgba(22,163,74,0.10)' },
   planFeatureDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#718078' },
   planFeatureDotActive: { backgroundColor: '#4ADE80' },
-  planFeatureText: { flexShrink: 1, color: '#CAD4CE', fontSize: 11, lineHeight: 15, fontWeight: '700' },
-  planFeatureTextActive: { color: '#DDF5E5' },
+  planFeatureText: { flexShrink: 1, color: '#CAD4CE', fontSize: 11, lineHeight: 15, fontWeight: '600' },
 
   // subscription row
   subscriptionRow: {

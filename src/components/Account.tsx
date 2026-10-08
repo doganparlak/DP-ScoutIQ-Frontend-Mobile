@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import type { Plan } from "@/services/api";
 import { useLanguage } from "@/context/LanguageProvider";
 
+
 type Props = {
   plan: Plan;
   onLogout: () => void;

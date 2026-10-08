@@ -8,9 +8,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BG } from '../theme';
 import type { RootStackParamList } from '../types';
 import { logout, getMe } from '../services/api';
-import type { Plan } from '@/services/api';
+import type { Plan, Profile } from '@/services/api';
 
 import Account from '@/components/Account';
+import AdPrivacyOptions from '@/ads/AdPrivacyOptions';
 import ProfileSummary from '@/components/ProfileSummary';
 import { ProfileTutorialModal, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
@@ -23,14 +24,18 @@ export default function MyProfileScreen() {
   const tutorial = useTutorial();
   const scrollRef = React.useRef<ScrollView | null>(null);
 
-  const [plan, setPlan] = useState<Plan>('Free');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const plan = (profile?.plan ?? 'Free') as Plan;
 
   const loadMe = useCallback(async () => {
     try {
       const me = await getMe();
-      if (me?.plan) setPlan(me.plan as Plan);
+      setProfile(me);
     } catch {
-      // ignore
+      // Keep any previously loaded profile available.
+    } finally {
+      setProfileLoading(false);
     }
   }, []);
 
@@ -83,7 +88,8 @@ export default function MyProfileScreen() {
         <View style={styles.tutorialGuide}>
           <TutorialPageGuide page="panel" onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         </View>
-        <ProfileSummary />
+        <ProfileSummary profile={profile} profileLoading={profileLoading} />
+        <AdPrivacyOptions />
       </ScrollView>
 
       <ProfileTutorialModal

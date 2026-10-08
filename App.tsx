@@ -8,7 +8,7 @@ import { initializeTelemetry } from '@/services/telemetry';
 import RootNavigator from '@/navigation/RootNavigator';
 import '@/i18n';
 import { LanguageProvider } from '@/context/LanguageProvider';
-import mobileAds from 'react-native-google-mobile-ads';
+import { initializeAdvertising } from '@/ads/initialization';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 export default function App() {
   const [headless, setHeadless] = React.useState<boolean | null>(null);
@@ -32,16 +32,7 @@ function InteractiveApp() {
     initializeTelemetry();
   }, []);
 
-  // /**
-  React.useEffect(() => {
-    mobileAds()
-      .initialize()
-      .then(() => {
-        //console.log('[ADS] initialized');
-      })
-      .catch((e) => {});
-  }, []);
-  // */
+  React.useEffect(() => { void initializeAdvertising(); }, []);
 
   return (
     <SafeAreaProvider>

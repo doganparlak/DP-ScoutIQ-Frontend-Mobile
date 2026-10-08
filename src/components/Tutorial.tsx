@@ -5,7 +5,7 @@ import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BarChart3, BookMarked, BookOpenCheck,
   CalendarSearch, ClipboardList, ClipboardPenLine, Compass, Database,
   GitCompareArrows, LayoutDashboard, MessageSquareText, Search, Shield, ShieldCheck,
-  Table2, Target, Trophy, UserRound, UsersRound, X,
+  Table2, Target, Goal, Trophy, UserRound, UsersRound, X,
 } from 'lucide-react-native';
 
 import {useFocusEffect} from '@react-navigation/native';
@@ -143,6 +143,8 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     { page: 'proStrategy', route: 'Chat', nestedRoute: 'LegacyStrategy', title: t('proStrategyGuideTitle'), Icon: ClipboardPenLine, summary: t('proStrategyGuideStep1'), details: [] },
     { page: 'weekly', route: 'Weekly', title: t('tabWeeklySearches', 'Weekly Popular Players'), Icon: Search, summary: t('helpGuideWeeklySummary'), details: [t('helpGuideWeekly1'), t('helpGuideWeekly2')] },
     { page: 'daily', route: 'DailyScout', title: t('dailyScoutChallengeTitle', 'Daily Scout Challenge'), Icon: Target, summary: t('helpGuideDailySummary'), details: [t('helpGuideDaily1'), t('helpGuideDaily2')] },
+    { page: 'scorePrediction', route: 'ScorePrediction', title: t('scorePredictionTitle'), Icon: Goal, summary: t('scorePredictionGuide1'), details: [] },
+    { page: 'scorePrediction', route: 'ScorePrediction', title: t('scorePredictionRankingTitle'), Icon: Trophy, summary: t('scorePredictionGuide2'), details: [] },
     { page: 'playerPool', route: 'Strategy', title: t('tabPlayerPool', 'Player Pool'), Icon: UserRound, summary: t('tutorialPlayerPoolSearch'), details: [] },
     { page: 'playerPool', route: 'Strategy', title: t('playerCard', 'Player Card'), Icon: UserRound, summary: t('tutorialPlayerPoolCard'), details: [] },
     { page: 'playerPool', route: 'Strategy', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialPlayerPoolMatchup'), details: [] },

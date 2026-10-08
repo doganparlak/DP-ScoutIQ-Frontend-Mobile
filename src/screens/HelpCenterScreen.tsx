@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ChevronDown, CircleHelp,
   ClipboardList, CreditCard, Database, GitCompareArrows, LayoutDashboard,
-  MessageSquareText, Search, Shield, Target, Trash2, Trophy, UserRound,
+  Gem, Search, Shield, ShieldCheck, Table2, Target, Trash2, Goal, Trophy, UserRound, UsersRound,
 } from 'lucide-react-native';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking, Platform
@@ -22,6 +22,7 @@ import { sendReachOut } from '@/services/api';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
+type HelpGuide = { key: string; group: string; title: string; Icon: typeof Search; summary: string; steps: string[] };
 
 const LEGAL_URLS = {
   en: {
@@ -151,19 +152,23 @@ export default function HelpCenter() {
     [t],
   );
 
-  const guides = useMemo(() => [
+  const guides = useMemo<HelpGuide[]>(() => [
     { key: 'panel', group: t('navigationWorkspace', 'YOUR WORKSPACE'), title: t('tabProfile', 'Panel'), Icon: LayoutDashboard, summary: t('helpGuidePanelSummary'), steps: [t('helpGuidePanel1'), t('helpGuidePanel2'), t('helpGuidePanel3')] },
-    { key: 'pro', group: t('navigationWorkspace', 'YOUR WORKSPACE'), title: t('tabScoutWisePro', 'ScoutWise Pro'), Icon: MessageSquareText, summary: t('helpGuideProSummary'), steps: [t('helpGuidePro1'), t('helpGuidePro2'), t('helpGuidePro3')] },
+    { key: 'pro', group: t('navigationWorkspace', 'YOUR WORKSPACE'), title: t('tabScoutWisePro', 'ScoutWise Pro'), Icon: Gem, summary: t('helpGuideProSummary'), steps: [t('helpGuidePro1'), t('helpGuidePro2'), t('helpGuidePro3')] },
     { key: 'weekly', group: t('interactionCenter', 'INTERACTION CENTER'), title: t('tabWeeklySearches', 'Weekly Searches'), Icon: Search, summary: t('helpGuideWeeklySummary'), steps: [t('helpGuideWeekly1'), t('helpGuideWeekly2')] },
     { key: 'daily', group: t('interactionCenter', 'INTERACTION CENTER'), title: t('dailyScoutChallengeTitle', 'Daily Scout Challenge'), Icon: Target, summary: t('helpGuideDailySummary'), steps: [t('helpGuideDaily1'), t('helpGuideDaily2'), t('helpGuideDaily3')] },
+    { key: 'scorePrediction', group: t('interactionCenter', 'INTERACTION CENTER'), title: t('scorePredictionTitle'), Icon: Goal, summary: t('scorePredictionHelpSummary'), steps: [t('scorePredictionGuide1'), t('scorePredictionGuide2')] },
+    { key: 'leaguePerformance', group: t('organizationCenter', 'ORGANIZATION CENTER'), title: t('leaguePerformanceWorkspace', 'League Performance'), Icon: Table2, summary: t('helpGuideLeaguePerformanceSummary'), steps: [t('helpGuideLeaguePerformance1'), t('helpGuideLeaguePerformance2'), t('helpGuideLeaguePerformance3')] },
     { key: 'playerPool', group: t('dataCenter', 'DATA CENTER'), title: t('tabPlayerPool', 'Player Pool'), Icon: UserRound, summary: t('helpGuidePlayerPoolSummary'), steps: [t('helpGuidePlayerPool1'), t('helpGuidePlayerPool2'), t('helpGuidePlayerPool3')] },
     { key: 'teamPool', group: t('dataCenter', 'DATA CENTER'), title: t('teamPoolWorkspace', 'Team Pool'), Icon: Shield, summary: t('helpGuideTeamPoolSummary'), steps: [t('helpGuideTeamPool1'), t('helpGuideTeamPool2'), t('helpGuideTeamPool3')] },
     { key: 'leaguePool', group: t('dataCenter', 'DATA CENTER'), title: t('leaguePoolWorkspace', 'League Pool'), Icon: Trophy, summary: t('helpGuideLeaguePoolSummary'), steps: [t('helpGuideLeaguePool1'), t('helpGuideLeaguePool2'), t('helpGuideLeaguePool3')] },
     { key: 'matchPool', group: t('dataCenter', 'DATA CENTER'), title: t('matchPoolWorkspace', 'Match Pool'), Icon: CalendarSearch, summary: t('helpGuideMatchPoolSummary'), steps: [t('helpGuideMatchPool1'), t('helpGuideMatchPool2'), t('helpGuideMatchPool3')] },
     { key: 'seasonData', group: t('dataCenter', 'DATA CENTER'), title: t('seasonDataWorkspace', 'Season Data'), Icon: Database, summary: t('helpGuideSeasonSummary'), steps: [t('helpGuideSeason1'), t('helpGuideSeason2'), t('helpGuideSeason3')] },
     { key: 'playerPortfolio', group: t('portfolioCenter', 'PORTFOLIO CENTER'), title: t('portfolioWorkspace', 'Player Portfolio'), Icon: ClipboardList, summary: t('helpGuidePlayerPortfolioSummary'), steps: [t('helpGuidePlayerPortfolio1'), t('helpGuidePlayerPortfolio2'), t('helpGuidePlayerPortfolio3')] },
+    { key: 'teamPortfolio', group: t('portfolioCenter', 'PORTFOLIO CENTER'), title: t('teamPortfolioWorkspace', 'Team Portfolio'), Icon: ShieldCheck, summary: t('helpGuideTeamPortfolioSummary'), steps: [t('helpGuideTeamPortfolio1'), t('helpGuideTeamPortfolio2'), t('helpGuideTeamPortfolio3')] },
     { key: 'matchPortfolio', group: t('portfolioCenter', 'PORTFOLIO CENTER'), title: t('matchPortfolioWorkspace', 'Match Portfolio'), Icon: BookMarked, summary: t('helpGuideMatchPortfolioSummary'), steps: [t('helpGuideMatchPortfolio1'), t('helpGuideMatchPortfolio2'), t('helpGuideMatchPortfolio3')] },
     { key: 'matchup', group: t('analysisCenter', 'ANALYSIS CENTER'), title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('helpGuideMatchupSummary'), steps: [t('helpGuideMatchup1'), t('helpGuideMatchup2'), t('helpGuideMatchup3')] },
+    { key: 'similarPlayers', group: t('analysisCenter', 'ANALYSIS CENTER'), title: t('similarPlayersWorkspace', 'Similar Player Center'), Icon: UsersRound, summary: t('helpGuideSimilarSummary'), steps: [t('helpGuideSimilar1'), t('helpGuideSimilar2'), t('helpGuideSimilar3')] },
     { key: 'teamAnalysis', group: t('analysisCenter', 'ANALYSIS CENTER'), title: t('teamAnalysisWorkspace', 'Team Analysis Center'), Icon: BarChart3, summary: t('helpGuideTeamAnalysisSummary'), steps: [t('helpGuideTeamAnalysis1'), t('helpGuideTeamAnalysis2'), t('helpGuideTeamAnalysis3')] },
     { key: 'plan', group: t('settingsGroup', 'SETTINGS'), title: t('managePlan', 'Manage Plan'), Icon: CreditCard, summary: t('helpGuidePlanSummary'), steps: [t('helpGuidePlan1'), t('helpGuidePlan2')] },
     { key: 'help', group: t('settingsGroup', 'SETTINGS'), title: t('helpCenter', 'Help Center'), Icon: CircleHelp, summary: t('helpGuideHelpSummary'), steps: [t('helpGuideHelp1'), t('helpGuideHelp2'), t('helpGuideHelp3')] },

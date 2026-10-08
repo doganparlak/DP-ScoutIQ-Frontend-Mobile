@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { PortfolioWorkspaceScreen, MatchupWorkspaceScreen, EmptyWorkspaceScreen } from '@/screens/WorkspaceScreens';
 import DailyScoutScreen from '@/screens/DailyScoutScreen';
+import ScorePredictionScreen from '@/screens/ScorePredictionScreen';
 import WeeklySearchesScreen from '@/screens/WeeklySearchesScreen';
 import PlayerPoolScreen from '@/screens/PlayerPoolScreen';
 import ScoutWiseProScreen from '@/screens/ScoutWiseProScreen';
@@ -127,6 +128,7 @@ export default function MainTabs() {
             <Tab.Screen name="MatchPool" component={MatchPoolScreen} />
             <Tab.Screen name="SeasonData" component={SeasonDataScreen} />
             <Tab.Screen name="DailyScout" component={DailyScoutScreen} />
+            <Tab.Screen name="ScorePrediction" component={ScorePredictionScreen} />
             <Tab.Screen name="Weekly" component={WeeklySearchesScreen} />
             <Tab.Screen name="Chat" component={ScoutWiseProStackScreen} />
             <Tab.Screen name="Profile" component={ProfileStackScreen} />

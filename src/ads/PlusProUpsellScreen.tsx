@@ -1,4 +1,5 @@
 import React from 'react';
+import { acquireAdPresentation, ownsAdPresentation, releaseAdPresentation } from './presentation';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BadgeCheck, Check, Minus, X } from 'lucide-react-native';
@@ -11,6 +12,7 @@ import { ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
 
 type PlusProUpsellProps = {
   visible: boolean;
+  presentationOwner?: symbol;
   onClose: () => void;
   onViewPlans?: () => void;
 };
@@ -21,10 +23,30 @@ type ComparisonRow = {
   pro: React.ReactNode;
 };
 
-export function PlusProUpsellScreen({ visible, onClose, onViewPlans }: PlusProUpsellProps) {
+export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentationOwner }: PlusProUpsellProps) {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const insets = useSafeAreaInsets();
+
+  const [canPresent, setCanPresent] = React.useState(false);
+  const closeRef = React.useRef(onClose); closeRef.current = onClose;
+  const ownLease = React.useRef<symbol | null>(null);
+  const releaseTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  React.useLayoutEffect(() => {
+    if (!visible) { setCanPresent(false); return; }
+    clearTimeout(releaseTimer.current);
+    const borrowed = ownsAdPresentation(presentationOwner);
+    const lease = borrowed ? presentationOwner! : ownsAdPresentation(ownLease.current ?? undefined) ? ownLease.current! : acquireAdPresentation();
+    if (!lease) { closeRef.current(); return; }
+    ownLease.current = borrowed ? null : lease;
+    setCanPresent(true);
+    return () => {
+      if (!borrowed) releaseTimer.current = setTimeout(() => {
+        releaseAdPresentation(lease);
+        if (ownLease.current === lease) ownLease.current = null;
+      }, 450);
+    };
+  }, [visible, presentationOwner]);
 
   const available = (label?: string) => (
     <View style={styles.valueWrap}>
@@ -45,17 +67,27 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans }: PlusProUp
       pro: available(),
     },
     {
+      label: 'ScoutWise Pro',
+      plus: available(t('plusProLimitedUsage', 'Limited usage')),
+      pro: available(t('plusProUnlimitedUsage', 'Unlimited')),
+    },
+    {
+      label: t('plusProSimilarAnalysis', 'Similar player analysis'),
+      plus: available(t('plusProExtended', 'Extended')),
+      pro: available(t('plusProComprehensive', 'Comprehensive')),
+    },
+    {
+      label: t('plusProLeagueAnalysis', 'League performance analysis'),
+      plus: available(t('plusProExtended', 'Extended')),
+      pro: available(t('plusProComprehensive', 'Comprehensive')),
+    },
+    {
       label: t('plusProComparisonPlayers', 'Player comparison'),
       plus: available(t('plusProThreePlayers', '3 players')),
       pro: available(t('plusProThreeOrFourPlayers', '3 or 4 players')),
     },
     {
       label: t('planFeatures_CustomComparison', 'Customizable comparison'),
-      plus: unavailable,
-      pro: available(),
-    },
-    {
-      label: t('plusProStrategyDiscovery', 'Strategy-aligned player discovery'),
       plus: unavailable,
       pro: available(),
     },
@@ -72,7 +104,7 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans }: PlusProUp
 
   return (
     <Modal
-      visible={visible}
+      visible={visible && canPresent}
       animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={onClose}
@@ -160,18 +192,6 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans }: PlusProUp
                 </View>
               ))}
             </View>
-
-            <View style={styles.yearlyCallout}>
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountBadgeText}>{t('plusProYearlyDiscountBadge', '30% OFF')}</Text>
-              </View>
-              <View style={styles.yearlyCopy}>
-                <Text style={styles.yearlyTitle}>{t('proYearly', 'Yearly Pro')}</Text>
-                <Text style={styles.yearlyText}>
-                  {t('plusProYearlySaving', 'Get the best price with 30% off the yearly Pro plan.')}
-                </Text>
-              </View>
-            </View>
           </View>
 
           <Pressable
@@ -212,7 +232,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 18, paddingTop: 2, paddingBottom: 30 },
   hero: { alignItems: 'center', paddingBottom: 18 },
-  logo: { width: 100, height: 100 },
+  logo: { width: 64, height: 64 },
   wordmark: { marginTop: 8, fontSize: 27, fontWeight: '900', letterSpacing: 0.8 },
   wordmarkScout: { color: TEXT },
   wordmarkWise: { color: ACCENT },
@@ -280,29 +300,6 @@ const styles = StyleSheet.create({
   featureText: { color: '#D9E2DD', fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
   valueWrap: { maxWidth: '100%', alignItems: 'center', justifyContent: 'center', gap: 3 },
   valueText: { color: TEXT, fontSize: 9.5, lineHeight: 12, fontWeight: '800', textAlign: 'center' },
-  yearlyCallout: {
-    marginTop: 12,
-    minHeight: 62,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.45)',
-    backgroundColor: 'rgba(22,163,74,0.09)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  discountBadge: {
-    borderRadius: 999,
-    backgroundColor: ACCENT,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-  },
-  discountBadgeText: { color: '#06150B', fontSize: 11, fontWeight: '900' },
-  yearlyCopy: { flex: 1, minWidth: 0 },
-  yearlyTitle: { color: '#4ADE80', fontSize: 13, fontWeight: '900' },
-  yearlyText: { color: '#B7C3BC', fontSize: 10.5, lineHeight: 14, marginTop: 2, fontWeight: '600' },
   plansButton: {
     minHeight: 54,
     marginTop: 16,

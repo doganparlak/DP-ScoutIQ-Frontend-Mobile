@@ -1,3 +1,4 @@
+import { isAdFlowCancelled } from '@/ads/presentation';
 import { preserveComparisonIdentity } from "@/utils/comparisonGroups";
 import PlanManagementButton from './PlanManagementButton';
 import React from "react";
@@ -49,6 +50,8 @@ export default function SharedMatchupCenter({
     null,
   );
   const request = React.useRef(0);
+  const launchLock = React.useRef(false);
+  const fallbackWait = React.useRef<((proceed: boolean) => void) | null>(null);
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
@@ -69,6 +72,7 @@ export default function SharedMatchupCenter({
         });
       return () => {
         active = false;
+        fallbackWait.current?.(false); fallbackWait.current = null; setAdFallback(false);
         request.current++;
         setOpen(false);
         setLoading(false);
@@ -148,9 +152,9 @@ export default function SharedMatchupCenter({
       return;
     }
     const currentPlan = await resolvePlan();
-    if (!currentPlan) return;
+    if (!currentPlan || launchLock.current) return;
+    launchLock.current = true;
     const id = ++request.current;
-    setOpen(true);
     setLoading(true);
     setError(null);
     setData(null);
@@ -160,9 +164,13 @@ export default function SharedMatchupCenter({
         !tutorial.active &&
         shouldShowMatchupLaunchInterstitial(await incrementMatchupLaunchCount())
       ) {
-        if (!(await showInterstitialAndWaitSafely())) setAdFallback(true);
+        if (!(await showInterstitialAndWaitSafely({ action: 'matchup_launch', isActive: () => id === request.current && navigation.isFocused() }))) {
+          const proceed = await new Promise<boolean>(resolve => { fallbackWait.current = resolve; setAdFallback(true); });
+          if (!proceed) return;
+        }
       }
-      if (id !== request.current) return;
+      if (id !== request.current || !navigation.isFocused()) return;
+      setOpen(true);
       const next = await getSharedMatchupComparison(entries, false, sources);
       if (id === request.current) {
         setData(next);
@@ -170,8 +178,11 @@ export default function SharedMatchupCenter({
           tutorial.setPlayerPoolStep("comparison");
       }
     } catch (e: any) {
+      if (isAdFlowCancelled(e)) return;
+      setOpen(true);
       if (id === request.current) setError(String(e?.message || e));
     } finally {
+      launchLock.current = false;
       if (id === request.current) setLoading(false);
     }
   };
@@ -243,7 +254,7 @@ export default function SharedMatchupCenter({
       />
       <PlusProUpsellScreen
         visible={adFallback}
-        onClose={() => setAdFallback(false)}
+        onClose={() => { setAdFallback(false); const resume = fallbackWait.current; fallbackWait.current = null; setTimeout(() => resume?.(navigation.isFocused()), 450); }}
       />
       <Modal
         visible={upgrade !== null}
