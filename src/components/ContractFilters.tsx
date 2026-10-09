@@ -1,19 +1,29 @@
-import React from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { createThemedStyles,useThemeColors,useThemedStyles,type ThemeColors } from '@/theme';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { CalendarDays, ChevronDown, X } from 'lucide-react-native';
+import { CalendarDays,ChevronDown,X } from 'lucide-react-native';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ACCENT, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { Modal,Platform,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+
 
 export type ContractStatus = '' | 'loan' | 'permanent';
 const isoDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const parseDate = (value: string) => { const [y, m, d] = value.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const todayAtNoon = () => { const date = new Date(); date.setHours(12,0,0,0); return date; };
+const parseDate = (value: string) => {
+  const [y,m,d] = value.split('-').map(Number);
+  const date = new Date(y,m-1,d,12);
+  return date.getFullYear() === y && date.getMonth() === m-1 && date.getDate() === d ? date : todayAtNoon();
+};
 
-function AndroidContractDateSelector({ value, onChange, locale }: { value: Date; onChange: (date: Date) => void; locale: string }) {
+function AndroidContractDateSelector({ value, onChange, locale, minimumDate, maximumDate }: { value: Date; onChange: (date: Date) => void; locale: string; minimumDate?: Date; maximumDate?: Date }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const year = value.getFullYear();
   const month = value.getMonth();
   const day = value.getDate();
-  const years = React.useMemo(() => Array.from({ length: 101 }, (_, index) => 2000 + index), []);
+  const firstYear = minimumDate?.getFullYear() ?? 2000, lastYear = maximumDate?.getFullYear() ?? 2100;
+  const years = React.useMemo(() => Array.from({ length: Math.max(1,lastYear-firstYear+1) }, (_, index) => firstYear + index), [firstYear,lastYear]);
   const months = React.useMemo(
     () => Array.from({ length: 12 }, (_, index) => new Date(2020, index, 1).toLocaleDateString(locale, { month: 'short' })),
     [locale],
@@ -21,7 +31,8 @@ function AndroidContractDateSelector({ value, onChange, locale }: { value: Date;
   const dayCount = new Date(year, month + 1, 0).getDate();
   const setPart = (nextYear: number, nextMonth: number, nextDay: number) => {
     const safeDay = Math.min(nextDay, new Date(nextYear, nextMonth + 1, 0).getDate());
-    onChange(new Date(nextYear, nextMonth, safeDay, 12));
+    const next = new Date(nextYear, nextMonth, safeDay, 12);
+    onChange(minimumDate && next < minimumDate ? minimumDate : maximumDate && next > maximumDate ? maximumDate : next);
   };
   const columns = [
     {
@@ -77,6 +88,9 @@ function AndroidContractDateSelector({ value, onChange, locale }: { value: Date;
 export function ContractStatusFilter({ value, onChange, disabled, aligned = false }: {
   value: ContractStatus; onChange: (value: ContractStatus) => void; disabled?: boolean; aligned?: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, TEXT, ACCENT} = themed;
+
   const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const options: { value: ContractStatus; label: string }[] = [
@@ -101,19 +115,28 @@ export function ContractStatusFilter({ value, onChange, disabled, aligned = fals
   </View>;
 }
 
-export function ContractDateFilter({ label, value, onChange, disabled = false, testID, aligned = false }: {
-  label: string; value: string; onChange: (value: string) => void; disabled?: boolean; testID: string; aligned?: boolean;
+export function ContractDateFilter({ label, value, onChange, disabled = false, testID, aligned = false, hint, minimumDate, maximumDate, initialDate }: {
+  label: string; value: string; onChange: (value: string) => void; disabled?: boolean; testID: string; aligned?: boolean; hint?: string | null; minimumDate?: Date; maximumDate?: Date; initialDate?: Date;
 }) {
+  const {mode: appearanceMode} = useThemeColors();
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, TEXT, MUTED, ACCENT, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const [open, setOpen] = React.useState(false);
-  const [draft, setDraft] = React.useState(new Date());
+  const [draft, setDraft] = React.useState(todayAtNoon);
   const locale = i18n.language.startsWith('tr') ? 'tr-TR' : 'en-GB';
+  // Explicit bounds prevent an omitted native bound from being interpreted as epoch zero on iOS.
+  const pickerMinimumDate = minimumDate ?? new Date(1900,0,1,12);
+  const pickerMaximumDate = maximumDate ?? new Date(2100,11,31,12);
+  const dateHint = hint === undefined ? t('contractDateHint', 'Expires on or before this date.') : hint;
+  const clampDate = (date: Date) => minimumDate && date < minimumDate ? minimumDate : maximumDate && date > maximumDate ? maximumDate : date;
   const display = value ? parseDate(value).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) : t('contractSelectDate', 'Select date');
   React.useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
   return <View style={[styles.field, aligned && {gap:7}, disabled && { opacity: 0.4 }]}>
     <Text style={[styles.label, aligned && {lineHeight:18}]}>{label}</Text>
-    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={`${label}: ${display}`} accessibilityState={{ disabled }} disabled={disabled} style={[styles.input, aligned && {minHeight:46,paddingVertical:12}]} onPress={() => { setDraft(value ? parseDate(value) : new Date()); setOpen(true); }}>
-      <Text style={[styles.value, { color: value ? TEXT : MUTED }]}>{display}</Text><CalendarDays size={17} color="#20C997" />
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={`${label}: ${display}`} accessibilityState={{ disabled }} disabled={disabled} style={[styles.input, aligned && {minHeight:46,paddingVertical:12}]} onPress={() => { setDraft(clampDate(value ? parseDate(value) : initialDate ?? todayAtNoon())); setOpen(true); }}>
+      <Text style={[styles.value, { color: value ? TEXT : MUTED }]}>{display}</Text><CalendarDays size={17} color={themeColor("#20C997", 'text')} />
     </Pressable>
     {value && !disabled ? <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${t('contractClearDate', 'Clear date')}`} onPress={() => onChange('')}><Text style={styles.clear}>{t('contractClearDate', 'Clear date')}</Text></Pressable> : null}
     <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -121,10 +144,10 @@ export function ContractDateFilter({ label, value, onChange, disabled = false, t
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} accessibilityLabel={t('close', 'Close')} accessibilityRole="button" />
         <View style={styles.modal} accessibilityViewIsModal>
           <View style={styles.heading}><Text style={styles.title}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={t('close', 'Close')} onPress={() => setOpen(false)} style={styles.close}><X size={22} color={TEXT} /></Pressable></View>
-          <Text style={styles.label}>{t('contractDateHint', 'Expires on or before this date.')}</Text>
+          <>{dateHint && <Text style={styles.label}>{dateHint}</Text>}</>
           {open && Platform.OS === 'android'
-            ? <AndroidContractDateSelector value={draft} onChange={setDraft} locale={locale} />
-            : open && <DateTimePicker value={draft} mode="date" display="spinner" themeVariant="dark" locale={locale} onChange={(_, date) => { if (date) setDraft(date); }} style={{ alignSelf: 'center', width: 300, maxWidth: '100%' }} />}
+            ? <AndroidContractDateSelector value={draft} onChange={setDraft} locale={locale} minimumDate={minimumDate} maximumDate={maximumDate} />
+            : open && <DateTimePicker value={draft} mode="date" display="spinner" themeVariant={appearanceMode} locale={locale} minimumDate={pickerMinimumDate} maximumDate={pickerMaximumDate} onChange={(_, date) => { if (date) setDraft(clampDate(date)); }} style={{ alignSelf: 'center', width: 300, maxWidth: '100%' }} />}
           <Pressable accessibilityRole="button" onPress={() => { onChange(isoDate(draft)); setOpen(false); }} style={[styles.option, styles.selected]}><Text style={[styles.value, { textAlign: 'center', color: ACCENT }]}>{t('contractApplyDate', 'Apply date')}</Text></Pressable>
         </View>
       </View>
@@ -132,23 +155,29 @@ export function ContractDateFilter({ label, value, onChange, disabled = false, t
   </View>;
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   field: { gap: 6 }, label: { color: MUTED, fontSize: 12 },
   input: { minHeight: 43, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1, borderColor: LINE, backgroundColor: CARD, paddingHorizontal: 12, paddingVertical: 10 },
   value: { flexShrink: 1, flexGrow: 1, color: TEXT, fontSize: 14, fontWeight: '600' },
-  clear: { color: '#A4B2A9', fontSize: 11, paddingVertical: 4 },
-  backdrop: { flex: 1, justifyContent: 'center', padding: 18, backgroundColor: 'rgba(0,0,0,0.7)' },
+  clear: { color: themeColor('#A4B2A9', 'text'), fontSize: 11, paddingVertical: 4 },
+  backdrop: { flex: 1, justifyContent: 'center', padding: 18, backgroundColor: themeColor('rgba(0,0,0,0.7)', 'surface') },
   modal: { backgroundColor: PANEL, borderRadius: 24, padding: 18, borderColor: LINE, borderWidth: 1, maxWidth: 420, width: '100%', alignSelf: 'center', gap: 10 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 8 }, title: { color: TEXT, flex: 1, fontWeight: '800', fontSize: 17 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   option: { borderWidth: 1, borderColor: LINE, backgroundColor: CARD, borderRadius: 14, padding: 16 },
-  selected: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.1)' },
+  selected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.1)', 'surface') },
   dateColumns: { flexDirection: 'row', gap: 8 },
   dateColumn: { flex: 1, minWidth: 0, gap: 6 },
   dateColumnLabel: { color: MUTED, fontSize: 12, fontWeight: '700', textAlign: 'center' },
   dateOptions: { height: 190, borderWidth: 1, borderColor: LINE, borderRadius: 12, backgroundColor: CARD },
   dateOption: { height: 38, alignItems: 'center', justifyContent: 'center' },
-  dateOptionSelected: { backgroundColor: 'rgba(22,163,74,0.18)', borderColor: ACCENT, borderWidth: 1, borderRadius: 9 },
+  dateOptionSelected: { backgroundColor: themeColor('rgba(22,163,74,0.18)', 'surface'), borderColor: ACCENT, borderWidth: 1, borderRadius: 9 },
   dateOptionText: { color: MUTED, fontSize: 14, fontWeight: '600' },
   dateOptionTextSelected: { color: ACCENT, fontWeight: '800' },
+});
+  return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

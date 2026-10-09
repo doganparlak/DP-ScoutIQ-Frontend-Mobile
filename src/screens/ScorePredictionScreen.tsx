@@ -1,16 +1,17 @@
-import React from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityIndicator, AppState, Image, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
-import { BadgeInfo, CalendarDays, Check, ChevronRight, Clock3, Goal, Info, Send, ShieldCheck, Trophy, UserRound, X } from 'lucide-react-native';
-import PredictionHonorsBadge from '@/components/PredictionHonorsBadge';
 import MatchReportActions from '@/components/MatchReportActions';
+import PredictionHonorsBadge from '@/components/PredictionHonorsBadge';
 import { TutorialPageGuide } from '@/components/Tutorial';
-import { matchScore, matchStateLabel, type MatchFixture } from '@/services/matchPool';
-import { getAllTimePredictionRankings, type AllTimePredictionRank, getPredictionState, savePredictionEntry, savePredictionNickname, type PredictionFixture, type PredictionPicks, type PredictionState } from '@/services/scorePrediction';
-import { predictionDateTime, predictionWeekLabel } from '@/utils/predictionPresentation';
-import { ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { matchScore,matchStateLabel,type MatchFixture } from '@/services/matchPool';
+import { getAllTimePredictionRankings,getPredictionState,savePredictionEntry,savePredictionNickname,type AllTimePredictionRank,type PredictionFixture,type PredictionPicks,type PredictionState } from '@/services/scorePrediction';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { predictionDateTime,predictionWeekLabel } from '@/utils/predictionPresentation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect,useNavigation } from '@react-navigation/native';
+import { BadgeInfo,CalendarDays,Check,ChevronRight,Clock3,Goal,Info,Send,ShieldCheck,Trophy,UserRound,X } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator,AppState,Image,InputAccessoryView,Keyboard,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View,useWindowDimensions } from 'react-native';
+
 
 type Draft = Record<string, { home: string; away: string }>;
 const asDraft = (picks: PredictionPicks): Draft => Object.fromEntries(Object.entries(picks).map(([id, p]) => [id, { home: String(p.home), away: String(p.away) }]));
@@ -19,10 +20,12 @@ const number = (value: number) => Number(value).toLocaleString(undefined, { maxi
 const averageNumber = (value: number, tr: boolean) => Number(value).toLocaleString(tr ? 'tr-TR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const validScore = (value?: string) => typeof value === 'string' && /^\d{1,2}$/.test(value);
 const weekLabel = predictionWeekLabel;
-const tierColor = (tier: string) => tier === 'pro' ? ACCENT : tier === 'plus' ? '#38BDF8' : TEXT;
-const tierLabelColor = (tier: string) => tier === 'free' ? '#94A3B8' : tierColor(tier);
+
 
 function Frame({ title, Icon, action, children }: { title: string; Icon: typeof Goal; action?: React.ReactNode; children: React.ReactNode }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return <View style={s.frame}>
     <View style={FRAME_STRIPE} />
     <View style={[FRAME_HEADING, { marginBottom: 16 }]}><Icon size={21} color={ACCENT} /><Text style={[FRAME_TITLE, { flex: 1, minWidth: 0 }]}>{title}</Text>{action}</View>
@@ -30,6 +33,9 @@ function Frame({ title, Icon, action, children }: { title: string; Icon: typeof 
   </View>;
 }
 function Team({ team }: { team: MatchFixture['homeTeam'] }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT} = themed;
+
   return <View style={s.team}>
     {team.imageUrl ? <Image source={{ uri: team.imageUrl }} resizeMode='contain' style={s.teamLogo} /> : <ShieldCheck size={54} color={ACCENT} />}
     <Text style={s.teamName}>{team.name}</Text>
@@ -37,6 +43,9 @@ function Team({ team }: { team: MatchFixture['homeTeam'] }) {
 }
 
 export default function ScorePredictionScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT, MUTED, FRAME_STRIPE, FEATURE_COLORS, FRAME_HEADING, FRAME_TITLE, TEXT, tierLabelColor, tierColor, themeColor} = themed;
+
   const { i18n, t } = useTranslation(), tr = i18n.language.startsWith('tr'), nav = useNavigation<any>();
   const { height, width } = useWindowDimensions();
   const scroll = React.useRef<ScrollView>(null), alive = React.useRef(false), request = React.useRef(0);
@@ -293,16 +302,16 @@ export default function ScorePredictionScreen() {
         <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={s.rankContent}>
           {rankingTab === 'allTime' ? (
             allTimeLoading ? <ActivityIndicator color={ACCENT} style={{ padding: 24 }} /> : allTimeError ? <View style={s.emptyRank}><Text style={s.error}>{tr ? 'Sıralama yüklenemedi.' : 'Could not load rankings.'}</Text><Pressable accessibilityRole='button' style={s.primary} onPress={() => setAllTimeRetry(value => value + 1)}><Text style={s.actionText}>{tr ? 'Yeniden Dene' : 'Retry'}</Text></Pressable></View> : !allTimeLeaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Kesinleşmiş derece henüz yok.' : 'No finalized podium finishes yet.'}</Text></View> : allTimeLeaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank]}>
-              <View style={s.rankNumber}>{row.rank <= 3 && <Trophy size={18} color={row.rank === 1 ? '#CDB57A' : row.rank === 2 ? '#B5C0CD' : '#C09578'} />}<Text style={s.rank}>{row.rank}</Text></View>
+              <View style={s.rankNumber}>{row.rank <= 3 && <Trophy size={18} color={row.rank === 1 ? themeColor('#CDB57A', 'text') : row.rank === 2 ? themeColor('#B5C0CD', 'text') : themeColor('#C09578', 'text')} />}<Text style={s.rank}>{row.rank}</Text></View>
               <View style={{ flex: 1, minWidth: 0, gap: 8 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><View style={[s.row, { flexWrap: 'wrap', gap: 6 }]}>{[
-                { count: row.championships, label: tr ? 'Birincilik' : 'First Place', color: '#CDB57A' },
-                { count: row.secondPlaces, label: tr ? 'İkincilik' : 'Second Place', color: '#B5C0CD' },
-                { count: row.thirdPlaces, label: tr ? 'Üçüncülük' : 'Third Place', color: '#C09578' },
+                { count: row.championships, label: tr ? 'Birincilik' : 'First Place', color: themeColor('#CDB57A', 'text') },
+                { count: row.secondPlaces, label: tr ? 'İkincilik' : 'Second Place', color: themeColor('#B5C0CD', 'text') },
+                { count: row.thirdPlaces, label: tr ? 'Üçüncülük' : 'Third Place', color: themeColor('#C09578', 'text') },
               ].map(award => <View key={award.label} style={s.placementCount} accessibilityLabel={`${award.label}: ${award.count}`}><Trophy size={12} color={award.color} /><Text style={[s.caption, { color: award.color }]}>{award.count}</Text></View>)}</View></View>
               <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '45%', flexShrink: 1 }}><View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', gap: 6 }}><Text style={s.caption}>{row.weeksParticipated} {tr ? 'Hafta' : 'Weeks'}</Text><Text style={[s.rankPoints, { color: TEXT }]} numberOfLines={1}>{allTimeSort === 'average' ? averageNumber(row.averagePoints, tr) : number(row.totalPoints)}</Text></View><Text style={s.caption}>{allTimeSort === 'average' ? (tr ? 'puan/hafta' : 'pts/week') : (tr ? 'puan' : 'pts')}</Text></View>
             </View>)
           ) : !data?.leaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Henüz gönderilmiş tahmin yok.' : 'No predictions have been submitted yet.'}</Text></View> : data.leaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank]}>
-            <View style={s.rankNumber}>{row.rank <= 3 ? <Trophy size={18} color={row.rank === 1 ? '#FBBF24' : row.rank === 2 ? '#CBD5E1' : '#D6A779'} /> : null}<Text style={s.rank}>{row.rank}</Text></View>
+            <View style={s.rankNumber}>{row.rank <= 3 ? <Trophy size={18} color={row.rank === 1 ? themeColor('#FBBF24', 'text') : row.rank === 2 ? themeColor('#CBD5E1', 'text') : themeColor('#D6A779', 'text')} /> : null}<Text style={s.rank}>{row.rank}</Text></View>
             <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><Text style={[s.caption, { color: tierLabelColor(row.tier) }]}>{row.tier.toUpperCase()}</Text></View>
             <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '48%', flexShrink: 1 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', columnGap: 6, rowGap: 2 }}>
@@ -325,32 +334,42 @@ export default function ScorePredictionScreen() {
   </>;
 }
 
-const s = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const tierColor = (tier: string) => tier === 'pro' ? ACCENT : tier === 'plus' ? themeColor('#38BDF8') : TEXT;
+
+  const tierLabelColor = (tier: string) => tier === 'free' ? themeColor('#94A3B8') : tierColor(tier);
+
+  const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: BG }, pageContent: { padding: 16, paddingBottom: 40 }, content: { width: '100%', maxWidth: 720, alignSelf: 'center', gap: 18 },
   frame: { padding: 16, borderWidth: 1, borderColor: ACCENT, borderRadius: 22, backgroundColor: PANEL },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 }, caption: { color: MUTED, fontSize: 12, lineHeight: 18, flexShrink: 1 }, description: { color: TEXT, fontSize: 14, lineHeight: 22, marginBottom: 8 },
-  hero: { backgroundColor: PANEL, borderRadius: 24, borderWidth: 1, borderColor: ACCENT, padding: 18 }, heroIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: CARD, borderWidth: 1, borderColor: 'rgba(126,148,135,.18)' },
-  eyebrow: { color: '#95AA9C', fontSize: 9, fontWeight: '800', letterSpacing: 1.3, marginBottom: 5 }, heroTitle: { color: TEXT, fontSize: 21, fontWeight: '900', lineHeight: 28, flexShrink: 1 }, heroDescription: { color: '#B6C4BB', fontSize: 13, lineHeight: 21, marginTop: 14 },
-  iconButton: { width: 34, height: 34, borderRadius: 11, backgroundColor: 'rgba(255,255,255,.04)', alignItems: 'center', justifyContent: 'center' },
-  identityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 16 }, identityChip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderColor: 'rgba(126,148,135,.18)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 11, maxWidth: '100%' }, identityText: { color: TEXT, fontSize: 12, fontWeight: '700', flexShrink: 1 },
-  clockPanel: { padding: 14, borderRadius: 17, backgroundColor: BG, borderWidth: 1, borderColor: 'rgba(126,148,135,.14)', gap: 14 }, clockHeading: { color: '#A4B8AA', fontSize: 10, fontWeight: '800', letterSpacing: .7, flexShrink: 1 },
-  clockGrid: { flexDirection: 'row', gap: 6 }, clockCell: { flex: 1, minWidth: 0, borderRadius: 12, backgroundColor: CARD, paddingVertical: 12, alignItems: 'center', gap: 6 }, clockValue: { color: TEXT, fontWeight: '900', fontVariant: ['tabular-nums'] }, clockLabel: { color: '#8EA496', fontSize: 10, fontWeight: '600' }, deadline: { color: '#C7D4CC', fontSize: 12, fontWeight: '700', lineHeight: 18, flexShrink: 1 },
+  hero: { backgroundColor: PANEL, borderRadius: 24, borderWidth: 1, borderColor: ACCENT, padding: 18 }, heroIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: CARD, borderWidth: 1, borderColor: themeColor('rgba(126,148,135,.18)', 'border') },
+  eyebrow: { color: themeColor('#95AA9C', 'text'), fontSize: 9, fontWeight: '800', letterSpacing: 1.3, marginBottom: 5 }, heroTitle: { color: TEXT, fontSize: 21, fontWeight: '900', lineHeight: 28, flexShrink: 1 }, heroDescription: { color: themeColor('#B6C4BB', 'text'), fontSize: 13, lineHeight: 21, marginTop: 14 },
+  iconButton: { width: 34, height: 34, borderRadius: 11, backgroundColor: themeColor('rgba(255,255,255,.04)', 'surface'), alignItems: 'center', justifyContent: 'center' },
+  identityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 16 }, identityChip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderColor: themeColor('rgba(126,148,135,.18)', 'border'), paddingHorizontal: 10, paddingVertical: 8, borderRadius: 11, maxWidth: '100%' }, identityText: { color: TEXT, fontSize: 12, fontWeight: '700', flexShrink: 1 },
+  clockPanel: { padding: 14, borderRadius: 17, backgroundColor: BG, borderWidth: 1, borderColor: themeColor('rgba(126,148,135,.14)', 'border'), gap: 14 }, clockHeading: { color: themeColor('#A4B8AA', 'text'), fontSize: 10, fontWeight: '800', letterSpacing: .7, flexShrink: 1 },
+  clockGrid: { flexDirection: 'row', gap: 6 }, clockCell: { flex: 1, minWidth: 0, borderRadius: 12, backgroundColor: CARD, paddingVertical: 12, alignItems: 'center', gap: 6 }, clockValue: { color: TEXT, fontWeight: '900', fontVariant: ['tabular-nums'] }, clockLabel: { color: themeColor('#8EA496', 'text'), fontSize: 10, fontWeight: '600' }, deadline: { color: themeColor('#C7D4CC', 'text'), fontSize: 12, fontWeight: '700', lineHeight: 18, flexShrink: 1 },
   keyboardBar: { backgroundColor: PANEL, borderTopWidth: 1, borderTopColor: LINE, alignItems: 'flex-end', paddingHorizontal: 12 }, keyboardDone: { minHeight: 44, minWidth: 72, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   matchPointsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: CARD }, matchPoints: { color: ACCENT, fontSize: 24, fontWeight: '900' },
-  heroStats: { flexDirection: 'row', marginVertical: 18 }, heroStat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 }, statDivider: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: 'rgba(126,148,135,.18)' }, statValue: { color: TEXT, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] }, statDenominator: { color: MUTED, fontSize: 13, fontWeight: '600' },
-  progressTrack: { height: 4, borderRadius: 4, backgroundColor: '#303931', overflow: 'hidden', marginBottom: 18 }, progressFill: { height: '100%', backgroundColor: ACCENT }, rankingButton: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(22,163,74,.5)', backgroundColor: 'rgba(22,163,74,.07)' },
+  heroStats: { flexDirection: 'row', marginVertical: 18 }, heroStat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 }, statDivider: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: themeColor('rgba(126,148,135,.18)', 'border') }, statValue: { color: TEXT, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] }, statDenominator: { color: MUTED, fontSize: 13, fontWeight: '600' },
+  progressTrack: { height: 4, borderRadius: 4, backgroundColor: themeColor('#303931', 'surface'), overflow: 'hidden', marginBottom: 18 }, progressFill: { height: '100%', backgroundColor: ACCENT }, rankingButton: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: 13, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.5)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.07)', 'surface') },
   notice: { padding: 14, borderWidth: 1, borderColor: LINE, borderRadius: 14, backgroundColor: CARD, gap: 8 }, error: { color: DANGER, fontSize: 13, lineHeight: 20 },
   nicknameInput: { marginVertical: 14, minHeight: 48, borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 12, color: TEXT, backgroundColor: CARD }, weekChip: { borderRadius: 11, borderWidth: 1, borderColor: LINE, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: CARD },
   primary: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1, borderColor: ACCENT, padding: 12 }, actionText: { color: ACCENT, fontSize: 13, fontWeight: '800', textAlign: 'center', flexShrink: 1 }, disabled: { opacity: .4 },
-  matchCount: { color: '#A4B8AA', fontSize: 13, fontWeight: '800' }, matchIndex: { color: '#7E9487', fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] }, matchHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 }, league: { color: ACCENT, fontSize: 13, lineHeight: 20, fontWeight: '800' }, stateBadge: { paddingVertical: 6, paddingHorizontal: 9, backgroundColor: 'rgba(22,163,74,.1)', borderRadius: 9 }, stateText: { color: ACCENT, fontSize: 10, fontWeight: '800' },
+  matchCount: { color: themeColor('#A4B8AA', 'text'), fontSize: 13, fontWeight: '800' }, matchIndex: { color: themeColor('#7E9487', 'text'), fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] }, matchHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 }, league: { color: ACCENT, fontSize: 13, lineHeight: 20, fontWeight: '800' }, stateBadge: { paddingVertical: 6, paddingHorizontal: 9, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface'), borderRadius: 9 }, stateText: { color: ACCENT, fontSize: 10, fontWeight: '800' },
   teams: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 22 }, team: { flex: 1, minWidth: 0, alignItems: 'center', gap: 10 }, teamLogo: { width: 60, height: 60 }, teamName: { color: TEXT, fontSize: 14, lineHeight: 21, fontWeight: '800', textAlign: 'center', flexShrink: 1 }, actualScore: { width: 56, alignItems: 'center', gap: 5, flexShrink: 0 }, matchScore: { color: TEXT, fontSize: 23, fontWeight: '900', fontVariant: ['tabular-nums'] }, vs: { color: MUTED, fontSize: 11, fontWeight: '700' },
-  prediction: { marginTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(126,148,135,.18)', paddingTop: 18, gap: 12 }, predictionLabel: { color: '#C5D2C9', fontSize: 13, fontWeight: '800' },
-  scoreEditor: { flexDirection: 'row', alignItems: 'center', gap: 10 }, scoreSide: { flex: 1, minWidth: 0, gap: 8, alignItems: 'center' }, scoreInput: { width: '100%', maxWidth: 112, minHeight: 58, paddingVertical: 10, paddingHorizontal: 4, borderWidth: 1, borderColor: 'rgba(22,163,74,.55)', borderRadius: 13, color: TEXT, fontSize: 26, fontWeight: '800', textAlign: 'center', backgroundColor: BG }, editorDash: { width: 56, textAlign: 'center', color: MUTED, fontSize: 22 }, submitButton: { backgroundColor: 'rgba(22,163,74,.12)' }, 
-  emptyCard: { padding: 28, alignItems: 'center', gap: 14, borderWidth: 1, borderColor: LINE, borderRadius: 20, backgroundColor: PANEL }, emptyText: { color: MUTED, fontSize: 13, lineHeight: 20, textAlign: 'center' }, savedFooter: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 15, padding: 16, backgroundColor: PANEL }, footerTitle: { color: '#C7D4CC', fontSize: 12, fontWeight: '800' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,.78)', padding: 18, justifyContent: 'center' }, modal: { width: '100%', maxWidth: 560, maxHeight: '90%', alignSelf: 'center', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(22,163,74,.6)', backgroundColor: PANEL, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(126,148,135,.15)' }, modalIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: 'rgba(22,163,74,.12)', alignItems: 'center', justifyContent: 'center' }, modalTitle: { color: TEXT, fontSize: 18, fontWeight: '800', lineHeight: 25 }, modalFooter: { padding: 16, borderTopWidth: 1, borderTopColor: 'rgba(126,148,135,.15)', gap: 16 },
+  prediction: { marginTop: 20, borderTopWidth: 1, borderTopColor: themeColor('rgba(126,148,135,.18)', 'border'), paddingTop: 18, gap: 12 }, predictionLabel: { color: themeColor('#C5D2C9', 'text'), fontSize: 13, fontWeight: '800' },
+  scoreEditor: { flexDirection: 'row', alignItems: 'center', gap: 10 }, scoreSide: { flex: 1, minWidth: 0, gap: 8, alignItems: 'center' }, scoreInput: { width: '100%', maxWidth: 112, minHeight: 58, paddingVertical: 10, paddingHorizontal: 4, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.55)', 'border'), borderRadius: 13, color: TEXT, fontSize: 26, fontWeight: '800', textAlign: 'center', backgroundColor: BG }, editorDash: { width: 56, textAlign: 'center', color: MUTED, fontSize: 22 }, submitButton: { backgroundColor: themeColor('rgba(22,163,74,.12)', 'surface') },
+  emptyCard: { padding: 28, alignItems: 'center', gap: 14, borderWidth: 1, borderColor: LINE, borderRadius: 20, backgroundColor: PANEL }, emptyText: { color: MUTED, fontSize: 13, lineHeight: 20, textAlign: 'center' }, savedFooter: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 15, padding: 16, backgroundColor: PANEL }, footerTitle: { color: themeColor('#C7D4CC', 'text'), fontSize: 12, fontWeight: '800' },
+  backdrop: { flex: 1, backgroundColor: themeColor('rgba(0,0,0,.78)', 'surface'), padding: 18, justifyContent: 'center' }, modal: { width: '100%', maxWidth: 560, maxHeight: '90%', alignSelf: 'center', borderRadius: 24, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.6)', 'border'), backgroundColor: PANEL, overflow: 'hidden' }, modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18, borderBottomWidth: 1, borderBottomColor: themeColor('rgba(126,148,135,.15)', 'border') }, modalIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: themeColor('rgba(22,163,74,.12)', 'surface'), alignItems: 'center', justifyContent: 'center' }, modalTitle: { color: TEXT, fontSize: 18, fontWeight: '800', lineHeight: 25 }, modalFooter: { padding: 16, borderTopWidth: 1, borderTopColor: themeColor('rgba(126,148,135,.15)', 'border'), gap: 16 },
   rankingSwitch: { flexDirection: 'row', gap: 4, padding: 4, marginHorizontal: 18, marginTop: 16, borderRadius: 13, backgroundColor: BG, borderWidth: 1, borderColor: LINE },
   rankingSwitchButton: { flex: 1, minWidth: 0, minHeight: 42, justifyContent: 'center', alignItems: 'center', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
-  rankingSwitchSelected: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,.1)' },
-  placementCount: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, paddingHorizontal: 6, borderRadius: 7, backgroundColor: 'rgba(255,255,255,.03)' },
-  rankContent: { padding: 14, gap: 8 }, rankRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 12, backgroundColor: CARD }, ownRank: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,.1)' }, rankNumber: { minWidth: 28, alignItems: 'center', gap: 4 }, rank: { color: MUTED, fontSize: 12, fontWeight: '800' }, rankName: { color: TEXT, fontSize: 13, fontWeight: '700' }, rankPoints: { color: ACCENT, fontSize: 21, fontWeight: '900', fontVariant: ['tabular-nums'] }, emptyRank: { alignItems: 'center', paddingVertical: 30, gap: 16 }, scoreSummary: { flexDirection: 'row', gap: 8 }, summaryCell: { flex: 1, minWidth: 0, gap: 5, alignItems: 'center' }, summaryValue: { color: TEXT, fontSize: 18, fontWeight: '900' }, ruleNumber: { color: ACCENT, fontSize: 12, fontWeight: '800', paddingTop: 3 }, rule: { flex: 1, color: TEXT, fontSize: 13, lineHeight: 22 },
+  rankingSwitchSelected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') },
+  placementCount: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, paddingHorizontal: 6, borderRadius: 7, backgroundColor: themeColor('rgba(255,255,255,.03)', 'surface') },
+  rankContent: { padding: 14, gap: 8 }, rankRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 12, backgroundColor: CARD }, ownRank: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') }, rankNumber: { minWidth: 28, alignItems: 'center', gap: 4 }, rank: { color: MUTED, fontSize: 12, fontWeight: '800' }, rankName: { color: TEXT, fontSize: 13, fontWeight: '700' }, rankPoints: { color: ACCENT, fontSize: 21, fontWeight: '900', fontVariant: ['tabular-nums'] }, emptyRank: { alignItems: 'center', paddingVertical: 30, gap: 16 }, scoreSummary: { flexDirection: 'row', gap: 8 }, summaryCell: { flex: 1, minWidth: 0, gap: 5, alignItems: 'center' }, summaryValue: { color: TEXT, fontSize: 18, fontWeight: '900' }, ruleNumber: { color: ACCENT, fontSize: 12, fontWeight: '800', paddingTop: 3 }, rule: { flex: 1, color: TEXT, fontSize: 13, lineHeight: 22 },
+});
+  return {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, tierColor, tierLabelColor, s, themeColor};
 });

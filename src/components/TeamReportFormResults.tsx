@@ -1,11 +1,12 @@
-import React, {useState} from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
-import {Activity, CalendarCheck2, Home, Plane, ShieldCheck, ShieldX, Target} from 'lucide-react-native';
-import {ACCENT, CARD, DANGER, LINE, MUTED, TEXT} from '@/theme';
-import type {Team} from '@/services/teamPool';
-import type {PlayedMatch} from '@/services/teamAnalysis';
-import {matchDateOnly} from '@/services/matchPool';
-const AWAY='#38BDF8';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Activity,CalendarCheck2,Home,Plane,ShieldCheck,ShieldX,Target } from 'lucide-react-native';
+import { useState } from 'react';
+import { Image,StyleSheet,Text,View } from 'react-native';
+
+import { matchDateOnly } from '@/services/matchPool';
+import type { PlayedMatch } from '@/services/teamAnalysis';
+import type { Team } from '@/services/teamPool';
+
 function isHome(m:PlayedMatch,team:Team){return m.homeTeamId!=null?String(m.homeTeamId)===String(team.id):m.homeTeam===team.name;}
 function result(m:PlayedMatch,team:Team){
   const home=isHome(m,team), scored=home?m.homeScore:m.awayScore, conceded=home?m.awayScore:m.homeScore;
@@ -20,9 +21,12 @@ function summary(matches:PlayedMatch[],team:Team){
     return s;
   },{matches:0,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0});
 }
-const color=(r:string)=>r==='G'?ACCENT:r==='M'?DANGER:TEXT;
+
 const label=(r:string,tr:boolean)=>tr?r:({G:'W',B:'D',M:'L'}[r]??r);
 export default function TeamReportFormResults({team,matches,tr}:{team:Team;matches:PlayedMatch[];tr:boolean}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, AWAY, s, TEXT, DANGER, color} = themed;
+
   const [logoFailed,setLogoFailed]=useState(false);
   const chronological=[...matches].sort((a,b)=>a.startingAt.localeCompare(b.startingAt)),total=summary(matches,team);
   const breakdown=(home:boolean)=>{
@@ -52,11 +56,22 @@ export default function TeamReportFormResults({team,matches,tr}:{team:Team;match
     </View>
   </View>;
 }
-const s=StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const AWAY=themeColor('#38BDF8');
+
+  const color=(r:string)=>r==='G'?ACCENT:r==='M'?DANGER:TEXT;
+
+  const s=StyleSheet.create({
  page:{gap:12},frame:{borderWidth:1,borderColor:`${ACCENT}70`,backgroundColor:CARD,borderRadius:18,padding:14,gap:13},
  row:{flexDirection:'row',alignItems:'center',gap:8},logo:{width:56,height:64},kicker:{color:ACCENT,fontSize:10,fontWeight:'800',letterSpacing:1},name:{color:TEXT,fontSize:23,fontWeight:'900',marginTop:5},
  caption:{color:MUTED,fontSize:11,fontWeight:'600',flexShrink:1},sequence:{flex:1,alignItems:'center',gap:5},badge:{width:36,minHeight:36,borderWidth:1,borderRadius:18,alignItems:'center',justifyContent:'center'},badgeText:{fontSize:13,fontWeight:'900'},
  grid:{flexDirection:'row',flexWrap:'wrap',gap:10},stat:{flexGrow:1,flexBasis:'45%',minWidth:110,borderWidth:1,borderRadius:16,padding:13,gap:12,backgroundColor:CARD},number:{fontSize:25,fontWeight:'900'},
  title:{color:TEXT,fontSize:15,fontWeight:'800',flexShrink:1},mini:{flex:1,borderWidth:1,borderColor:LINE,borderRadius:12,paddingVertical:10,paddingHorizontal:3,alignItems:'center',gap:5},miniLabel:{color:MUTED,fontSize:9,fontWeight:'700',textAlign:'center'},goals:{color:MUTED,fontSize:12,fontWeight:'700',textAlign:'center'},
- match:{borderWidth:1,borderColor:LINE,borderRadius:14,padding:11,gap:9,backgroundColor:'#FFFFFF03'},result:{fontSize:14,fontWeight:'900'},opponent:{color:TEXT,fontSize:15,fontWeight:'800'},
+ match:{borderWidth:1,borderColor:LINE,borderRadius:14,padding:11,gap:9,backgroundColor:themeColor('#FFFFFF03', 'surface')},result:{fontSize:14,fontWeight:'900'},opponent:{color:TEXT,fontSize:15,fontWeight:'800'},
+});
+  return {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, AWAY, color, s, themeColor};
 });

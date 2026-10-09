@@ -1,29 +1,30 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ListOrdered,Target,Trophy,X } from "lucide-react-native";
 import React from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { ListOrdered, Target, Trophy, X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import {
+ActivityIndicator,
+Alert,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from "react-native";
 
 import DailyScoutPlayerCard from "@/components/DailyScoutPlayerCard";
 import {
-  getDailyScoutChallenge,
-  getDailyScoutLeaderboard,
-  setDailyScoutNickname,
-  skipDailyScoutChallenge,
-  submitDailyScoutAnswer,
-  type DailyScoutChallenge,
-  type DailyScoutLeaderboard,
+getDailyScoutChallenge,
+getDailyScoutLeaderboard,
+setDailyScoutNickname,
+skipDailyScoutChallenge,
+submitDailyScoutAnswer,
+type DailyScoutChallenge,
+type DailyScoutLeaderboard,
 } from "@/services/api";
-import { ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from "@/theme";
+
 
 type ChallengeModalProps = {
   embedded?: boolean;
@@ -42,6 +43,9 @@ export function DailyScoutChallengeFrame({
   onOpenLeaderboard: () => void;
   navigationLocked?: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, TEXT} = themed;
+
   const { t } = useTranslation();
 
   return (
@@ -120,6 +124,9 @@ export function DailyScoutChallengeModal({
   autoOpen = false,
   onClose,
 }: ChallengeModalProps) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, DANGER, MUTED, TEXT} = themed;
+
   const { t } = useTranslation();
   const localized = useLocalizedText();
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -512,6 +519,9 @@ export function DailyScoutLeaderboardModal({
   visible: boolean;
   onClose: () => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, MUTED} = themed;
+
   const { t } = useTranslation();
   const [leaderboard, setLeaderboard] =
     React.useState<DailyScoutLeaderboard | null>(null);
@@ -613,7 +623,11 @@ export function DailyScoutLeaderboardModal({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   embeddedScrollContent: { gap: 16, paddingBottom: 24 },
   questionFrame: {
     borderWidth: 1,
@@ -629,7 +643,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ACCENT,
     borderRadius: 16,
-    backgroundColor: "rgba(22,163,74,0.10)",
+    backgroundColor: themeColor("rgba(22,163,74,0.10)", 'surface'),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -640,7 +654,7 @@ const styles = StyleSheet.create({
 
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: themeColor("rgba(0,0,0,0.72)", 'surface'),
     justifyContent: "center",
     paddingHorizontal: 14,
     paddingTop: 48,
@@ -677,7 +691,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.12)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.12)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -707,7 +721,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: "rgba(22, 163, 74, 0.09)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.09)", 'surface'),
   },
   titleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   iconBubble: {
@@ -718,7 +732,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.13)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.13)", 'surface'),
   },
   titleTextWrap: { flex: 1, minWidth: 0 },
   title: { color: TEXT, fontSize: 18, fontWeight: "900" },
@@ -735,7 +749,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.10)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.10)", 'surface'),
     padding: 12,
     gap: 4,
   },
@@ -750,17 +764,17 @@ const styles = StyleSheet.create({
   },
   choiceCorrect: {
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.10)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.10)", 'surface'),
   },
   choiceWrong: {
     borderColor: DANGER,
-    backgroundColor: "rgba(229, 72, 77, 0.10)",
+    backgroundColor: themeColor("rgba(229, 72, 77, 0.10)", 'surface'),
   },
   choiceLoader: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.28)",
+    backgroundColor: themeColor("rgba(0,0,0,0.28)", 'surface'),
   },
   optionHeader: {
     minHeight: 40,
@@ -768,18 +782,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: "rgba(255,255,255,0.035)",
+    backgroundColor: themeColor("rgba(255,255,255,0.035)", 'surface'),
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
   optionHeaderCorrect: {
     borderBottomColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.16)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.16)", 'surface'),
   },
   optionHeaderWrong: {
     borderBottomColor: DANGER,
-    backgroundColor: "rgba(229, 72, 77, 0.14)",
+    backgroundColor: themeColor("rgba(229, 72, 77, 0.14)", 'surface'),
   },
   optionBadge: {
     width: 26,
@@ -789,7 +803,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: ACCENT,
   },
-  optionBadgeText: { color: TEXT, fontWeight: "900", fontSize: 13 },
+  optionBadgeText: { color: themeColor(TEXT, 'onAccent'), fontWeight: "900", fontSize: 13 },
   optionHeaderText: { color: TEXT, fontWeight: "900", fontSize: 13 },
   resultBox: {
     borderRadius: 16,
@@ -799,11 +813,11 @@ const styles = StyleSheet.create({
   },
   resultGood: {
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.12)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.12)", 'surface'),
   },
   resultBad: {
     borderColor: DANGER,
-    backgroundColor: "rgba(229, 72, 77, 0.11)",
+    backgroundColor: themeColor("rgba(229, 72, 77, 0.11)", 'surface'),
   },
   resultTitle: { color: TEXT, fontWeight: "900", fontSize: 15 },
   resultText: { color: MUTED, lineHeight: 19, fontWeight: "600" },
@@ -842,7 +856,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: ACCENT,
   },
-  primaryButtonText: { color: TEXT, fontWeight: "900" },
+  primaryButtonText: { color: themeColor(TEXT, 'onAccent'), fontWeight: "900" },
   disabledButton: { opacity: 0.45 },
   skipButton: {
     alignSelf: "center",
@@ -880,4 +894,6 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
     fontWeight: "700",
   },
+});
+  return {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

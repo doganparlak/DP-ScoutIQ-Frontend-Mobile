@@ -1,27 +1,31 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useNavigation } from '@react-navigation/native';
+import { ArrowLeft,RotateCcw,SlidersHorizontal,Target,UserRoundSearch,UsersRound } from 'lucide-react-native';
 import React from 'react';
-import {ProGuidedScrollView,TutorialPageGuide} from './Tutorial';
-import {Keyboard, Pressable, ScrollView, Text, View, useWindowDimensions} from 'react-native';
-import {ArrowLeft, Search, SlidersHorizontal, Target, UserRoundSearch, UsersRound, RotateCcw} from 'lucide-react-native';
-import {useNavigation} from '@react-navigation/native';
-import {useTranslation} from 'react-i18next';
-import {ACCENT, DANGER, FRAME_TITLE} from '@/theme';
-import {getPlayerPoolOptions, searchPlayerPool, proWorkspaceRequest, normalizeProPlayer, type PlayerPoolFilterOptions} from '@/services/api';
-import {resolveSimilarReference} from '@/services/similarPlayers';
-import {Status} from './LeaguePerformanceControls';
+import { useTranslation } from 'react-i18next';
+import { Keyboard,Pressable,ScrollView,Text,View,useWindowDimensions } from 'react-native';
+import { ProGuidedScrollView,TutorialPageGuide } from './Tutorial';
+
+import { getPlayerPoolOptions,normalizeProPlayer,proWorkspaceRequest,searchPlayerPool,type PlayerPoolFilterOptions } from '@/services/api';
+import { resolveSimilarReference } from '@/services/similarPlayers';
+import { PLAYER_CARD_PROFILE_GAP,getThemed_PLAYER_ACTION_TONES as __getThemed_PLAYER_ACTION_TONES } from '@/utils/playerCardActions';
+import { Status } from './LeaguePerformanceControls';
+import PlayerCard from './PlayerCard';
+import ProPlayerDiscovery from './ProPlayerDiscovery';
+import ProPlayerFit from './ProPlayerFit';
 import ProPlayerInspection from './ProPlayerInspection';
 import ProSimilarPlayerFlow from './ProSimilarPlayerFlow';
-import ProPlayerFit from './ProPlayerFit';
-import ProPlayerDiscovery from './ProPlayerDiscovery';
-import PlayerCard from './PlayerCard';
-import {PLAYER_ACTION_TONES, PLAYER_CARD_PROFILE_GAP} from '@/utils/playerCardActions';
 
-import {ProButton, ProTrialHint, ProFilterInput, proStyles as styles, workspaceRequestId, type ProPlayerEntry, type ProInspection} from './ProWorkspaceControls';
+import { ProButton,ProFilterInput,ProTrialHint,getThemed_proStyles as __getThemed_styles,workspaceRequestId,type ProInspection,type ProPlayerEntry } from './ProWorkspaceControls';
 
 const DIRECT_PLAYER_RESULT_LIMIT = 15;
 type ProView={kind:'inspect'|'fit'|'similar';entry:ProPlayerEntry};
 const viewKey=(value:ProView|null)=>value?JSON.stringify([value.kind,value.entry.id,value.entry.discoveryContext||null]):'direct';
 
 export default function ProDirectPlayerSearch({onGuidePageChange, trial=false, mode='direct', sessionId, strategy, onEditStrategy, onAccessRequired, onCreditsChanged, onBusyChange}: {onGuidePageChange?:(page:string)=>void;trial?:boolean;mode?:'direct'|'discovery'; sessionId: string; strategy: string; onEditStrategy: () => void; onAccessRequired: () => void; onCreditsChanged: () => void; onBusyChange: (busy: boolean) => void}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, FRAME_TITLE, DANGER, PLAYER_ACTION_TONES} = themed;
+
   const {i18n, t} = useTranslation(), tr = i18n.language.startsWith('tr'), navigation = useNavigation<any>(), {width, fontScale} = useWindowDimensions();
   const [filters, setFilters] = React.useState({name: '', nationality: '', team: ''});
   const [options, setOptions] = React.useState<PlayerPoolFilterOptions | null>(null), [optionsFailed, setOptionsFailed] = React.useState(false);
@@ -124,3 +128,12 @@ export default function ProDirectPlayerSearch({onGuidePageChange, trial=false, m
     </View>;})}
   </View>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, DANGER, FRAME_TITLE, themeColor} = colors;
+  const PLAYER_ACTION_TONES = __getThemed_PLAYER_ACTION_TONES(colors);
+  const styles = __getThemed_styles(colors);
+
+  return {ACCENT, DANGER, FRAME_TITLE, PLAYER_ACTION_TONES, styles, themeColor};
+});

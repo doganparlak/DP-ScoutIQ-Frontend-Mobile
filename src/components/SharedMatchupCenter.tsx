@@ -1,30 +1,31 @@
-import { isAdFlowCancelled } from '@/ads/presentation';
-import { preserveComparisonIdentity } from "@/utils/comparisonGroups";
-import PlanManagementButton from './PlanManagementButton';
-import React from "react";
-import { Alert, Modal, Pressable, Text, View, StyleSheet } from "react-native";
-import { BadgeCheck } from "lucide-react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useTranslation } from "react-i18next";
-import MatchupWorkspaceControls from "./MatchupWorkspaceControls";
-import { TutorialPageGuide, useTutorial } from "./Tutorial";
-import MatchupCenter from "./MatchupCenter";
-import ComparisonModal from "./ComparisonModal";
-import { useMatchup } from "@/context/MatchupContext";
 import {
-  getMe,
-  type Plan,
-  type MatchupComparisonResponse,
-} from "@/services/api";
-import { getSharedMatchupComparison } from "@/services/leaguePool";
-import {
-  incrementMatchupLaunchCount,
-  shouldShowMatchupLaunchInterstitial,
+incrementMatchupLaunchCount,
+shouldShowMatchupLaunchInterstitial,
 } from "@/ads/adGating";
 import { showInterstitialAndWaitSafely } from "@/ads/interstitial";
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
+import { isAdFlowCancelled } from '@/ads/presentation';
+import { useMatchup } from "@/context/MatchupContext";
+import {
+getMe,
+type MatchupComparisonResponse,
+type Plan,
+} from "@/services/api";
+import { getSharedMatchupComparison } from "@/services/leaguePool";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { preserveComparisonIdentity } from "@/utils/comparisonGroups";
+import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import { ArrowUpRight,BadgeCheck,BookMarked,Database,Gem,Trophy,UserRound,UsersRound } from "lucide-react-native";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { Alert,Modal,Pressable,StyleSheet,Text,View } from "react-native";
 import type { SearchResultRow } from "./CandidatePlayers";
-import { ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT } from "@/theme";
+import ComparisonModal from "./ComparisonModal";
+import MatchupCenter from "./MatchupCenter";
+import MatchupWorkspaceControls from "./MatchupWorkspaceControls";
+import PlanManagementButton from './PlanManagementButton';
+import { TutorialPageGuide,useTutorial } from "./Tutorial";
+
 
 export default function SharedMatchupCenter({
   workspace = false,
@@ -33,6 +34,9 @@ export default function SharedMatchupCenter({
   workspace?: boolean;
   tutorialOnShow?: (y: number) => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, FRAME_STRIPE, ACCENT, FRAME_TITLE, FEATURE_COLORS, MUTED} = themed;
+
   const tutorial = useTutorial();
   const [custom, setCustom] = React.useState(false);
   const [sources, setSources] = React.useState<Record<string, string[]>>({});
@@ -88,6 +92,12 @@ export default function SharedMatchupCenter({
   const entries = shared.rows
     .slice(0, shared.mode)
     .filter((row): row is SearchResultRow => !!row);
+  const needsPlayers = entries.length < 2;
+  const playerSources = [
+    { route: 'Strategy', label: tr ? 'Oyuncu\nHavuzu' : 'Player\nPool', Icon: UserRound },
+    { route: 'LeaguePool', label: tr ? 'Lig\nHavuzu' : 'League\nPool', Icon: Trophy },
+    { route: 'SeasonData', label: tr ? 'Sezon\nVerileri' : 'Season\nData', Icon: Database },
+  ] as const;
   const resolvePlan = async () => {
     if (plan) return plan;
     try {
@@ -200,7 +210,7 @@ export default function SharedMatchupCenter({
   };
   return (
     <>
-      {workspace && (
+      {workspace && !needsPlayers && (
         <MatchupWorkspaceControls
           rows={shared.rows}
           mode={shared.mode}
@@ -213,6 +223,59 @@ export default function SharedMatchupCenter({
       )}
       {workspace && <TutorialPageGuide page="matchup" frame={0} onShow={tutorialOnShow} />}
       {workspace && <TutorialPageGuide page="matchup" frame={1} onShow={tutorialOnShow} />}
+      {workspace && needsPlayers && (
+        <View style={styles.emptyPanel}>
+          <View style={FRAME_STRIPE} />
+          <View style={styles.emptyHeading}>
+            <UsersRound size={20} color={ACCENT} />
+            <Text style={[FRAME_TITLE, { flex: 1 }]}>
+              {entries.length === 0
+                ? (tr ? 'Karşılaştırmaya Başla' : 'Start Comparing')
+                : (tr ? 'Bir Oyuncu Daha Ekle' : 'Add Another Player')}
+            </Text>
+          </View>
+          <Text style={styles.body}>
+            {tr
+              ? 'Bir kaynaktan oyuncu seç ve kartındaki eşleşme butonuyla buraya ekle.'
+              : 'Choose a player from a source and add them here using the matchup button on their card.'}
+          </Text>
+          <View style={styles.sourceActions}>
+            {playerSources.map(({ route, label, Icon }) => (
+              <Pressable key={route} accessibilityRole="button" onPress={() => navigation.navigate(route)}
+                style={({ pressed }) => [styles.sourceAction, pressed && { opacity: 0.7 }]}>
+                <View style={styles.sourceActionTop}>
+                  <View style={styles.sourceIcon}><Icon size={20} color={ACCENT} /></View>
+                  <ArrowUpRight size={14} color={ACCENT} />
+                </View>
+                <Text style={styles.sourceActionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.body}>
+            {tr
+              ? 'ScoutWise Pro veya portföyündeki oyuncu kartlarından da ekleyebilirsin.'
+              : 'You can also add players from cards in ScoutWise Pro or your portfolio.'}
+          </Text>
+          <View style={styles.sourceActions}>
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Chat', { screen: 'ProHome' })}
+              style={({ pressed }) => [styles.sourceAction, styles.secondaryAction, pressed && { opacity: 0.7 }]}>
+              <View style={styles.sourceActionTop}>
+                <View style={[styles.sourceIcon, { backgroundColor: `${FEATURE_COLORS.pro}14` }]}><Gem size={20} color={FEATURE_COLORS.pro} /></View>
+                <ArrowUpRight size={14} color={MUTED} />
+              </View>
+              <Text style={styles.sourceActionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>ScoutWise <Text style={{ color: FEATURE_COLORS.pro }}>Pro</Text></Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Portfolio')}
+              style={({ pressed }) => [styles.sourceAction, styles.secondaryAction, pressed && { opacity: 0.7 }]}>
+              <View style={styles.sourceActionTop}>
+                <View style={styles.sourceIcon}><BookMarked size={20} color={ACCENT} /></View>
+                <ArrowUpRight size={14} color={MUTED} />
+              </View>
+              <Text style={styles.sourceActionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>{tr ? 'Oyuncu Portföyü' : 'Player Portfolio'}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       <MatchupCenter
         row1={shared.rows[0]}
         row2={shared.rows[1]}
@@ -220,6 +283,7 @@ export default function SharedMatchupCenter({
         row4={shared.rows[3]}
         matchupMode={shared.mode}
         hideModeSwitch={workspace}
+        hideLaunchButton={workspace && needsPlayers}
         onMatchupModeChange={changeMode}
         onLaunchMatchup={launch}
         launchDisabled={entries.length !== shared.mode}
@@ -313,12 +377,26 @@ export default function SharedMatchupCenter({
     </>
   );
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT, FRAME_STRIPE, FRAME_TITLE, FEATURE_COLORS, themeColor} = colors;
+
+  const styles = StyleSheet.create({
+  emptyPanel: { padding: 16, gap: 14, borderRadius: 20, borderWidth: 1, borderColor: ACCENT, backgroundColor: PANEL },
+  emptyHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sourceActions: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
+  sourceAction: { flex: 1, minWidth: 0, minHeight: 98, padding: 10, gap: 10, borderRadius: 14,
+    borderWidth: 1, borderColor: themeColor('rgba(22,163,74,0.48)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.08)', 'surface') },
+  sourceActionTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
+  sourceIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: themeColor('rgba(22,163,74,0.10)', 'surface'), alignItems: 'center', justifyContent: 'center' },
+  sourceActionText: { minHeight: 36, color: TEXT, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  secondaryAction: { borderColor: LINE, backgroundColor: CARD },
   backdrop: {
     flex: 1,
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: themeColor("rgba(0,0,0,0.72)", 'surface'),
   },
   prompt: {
     backgroundColor: PANEL,
@@ -333,8 +411,8 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     borderWidth: 1,
-    borderColor: "rgba(36,245,166,0.42)",
-    backgroundColor: "rgba(22,163,74,0.14)",
+    borderColor: themeColor("rgba(36,245,166,0.42)", 'border'),
+    backgroundColor: themeColor("rgba(22,163,74,0.14)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -342,7 +420,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, color: TEXT, fontSize: 19, lineHeight: 24, fontWeight: "800" },
   body: { color: MUTED, fontSize: 14, lineHeight: 21 },
   proHighlight: { color: ACCENT, fontWeight: "900" },
-  plusHighlight: { color: "#38BDF8", fontWeight: "900" },
+  plusHighlight: { color: themeColor("#38BDF8", 'text'), fontWeight: "900" },
   actions: { flexDirection: "row", gap: 10 },
   button: {
     flex: 1,
@@ -355,4 +433,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+});
+  return {ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT, FRAME_STRIPE, FRAME_TITLE, FEATURE_COLORS, styles, themeColor};
 });

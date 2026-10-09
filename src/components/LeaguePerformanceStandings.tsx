@@ -1,15 +1,15 @@
-import LeaguePerformanceUpgradeModal from './LeaguePerformanceUpgradeModal';
-import { Pressable } from 'react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useIsFocused } from '@react-navigation/native';
 import { LockKeyhole } from 'lucide-react-native';
 import React from 'react';
-import { AppState, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { AppState,Pressable,StyleSheet,Switch,Text,useWindowDimensions,View } from 'react-native';
 import AdaptiveLeagueStandingsTable from './AdaptiveLeagueStandingsTable';
-import { ACCENT, MUTED } from '@/theme';
+import LeaguePerformanceUpgradeModal from './LeaguePerformanceUpgradeModal';
+
+import { getLeagueInsights,orderLeagueMetrics,PLUS_LEAGUE_METRICS,sortLeagueRows,type LeagueBestPlayer,type LeagueInsights,type LeagueStanding } from '@/services/leaguePerformance';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
-import { getLeagueInsights, sortLeagueRows, orderLeagueMetrics, PLUS_LEAGUE_METRICS, type LeagueBestPlayer, type LeagueInsights, type LeagueStanding } from '@/services/leaguePerformance';
+import { getThemed_styles as __getThemed_shared,getThemed_standingRuleMeta as __getThemed_standingRuleMeta,Action,SelectField,Selector,Status,Winner } from './LeaguePerformanceControls';
 import LeaguePlayerCardModal from './LeaguePlayerCardModal';
-import { Action, SelectField, Selector, Status, Winner, standingRuleMeta, styles as shared } from './LeaguePerformanceControls';
 
 function periodLabel(start: string, end: string, tr: boolean) {
   const last = new Date(`${end}T12:00:00Z`); last.setUTCDate(last.getUTCDate() - 1);
@@ -17,6 +17,9 @@ function periodLabel(start: string, end: string, tr: boolean) {
   return `${new Date(`${start}T12:00:00Z`).toLocaleDateString(locale, {timeZone: 'UTC'})} – ${last.toLocaleDateString(locale, {timeZone: 'UTC'})}`;
 }
 export default function LeaguePerformanceStandings({leagueId, seasonId, rows, tr}: {leagueId: number; seasonId: number; rows: LeagueStanding[]; tr: boolean}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {standingRuleMeta, shared, styles, MUTED, ACCENT, themeColor} = themed;
+
   const [upgrade, setUpgrade] = React.useState<{required: 'plus' | 'pro'; feature: 'biweekly' | 'metric'; metricLabel?: string} | null>(null);
   const focused = useIsFocused();
   const {width} = useWindowDimensions();
@@ -89,7 +92,7 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows, tr
     {metric && <View style={[shared.row, {flexWrap: 'wrap'}]}>{metric.aggregation === 'total' && <Action label={perMatch ? (tr ? 'Maç başına' : 'Per match') : (tr ? 'Sezon toplamı' : 'Season total')} onPress={() => setPerMatch(value => !value)} />}<Action label={direction === 'asc' ? (tr ? '↑ Artan' : '↑ Ascending') : (tr ? '↓ Azalan' : '↓ Descending')} onPress={() => setDirection(value => value === 'asc' ? 'desc' : 'asc')} /></View>}
     <SelectField label={tr ? 'İki haftalık dönem' : 'Two-week period'} valueContent={!canBiweekly ? <><Text style={styles.plusText}>PLUS</Text> / <Text style={styles.proText}>PRO</Text><Text style={{color: MUTED}}>{tr ? ' · Kilidi aç' : ' · Unlock'}</Text></> : undefined} value={!canBiweekly ? (tr ? 'PLUS / PRO · Kilidi aç' : 'PLUS / PRO · Unlock') : period ? periodLabel(period, data?.periods.find(p => p.period_start === period)?.period_end || new Date(new Date(`${period}T12:00:00Z`).getTime() + 14 * 86400000).toISOString().slice(0, 10), tr) : (tr ? 'Güncel dönem' : 'Current period')} onPress={() => canBiweekly ? setSelector('period') : setUpgrade({required: 'plus', feature: 'biweekly'})} />
     {data?.season.computed_at && <Text style={shared.hint}>{tr ? 'Son güncelleme' : 'Updated'}: {new Date(data.season.computed_at).toLocaleString(tr ? 'tr-TR' : 'en-GB')} · {data.season.fixture_count} {tr ? 'lig maçı' : 'league matches'}</Text>}
-    {unavailable && <View style={{gap: 8}}><Text style={[shared.hint, {color: '#FCD34D'}]}>{tr ? 'İstatistikler güncellenemedi. Varsa son hesaplama gösteriliyor.' : 'Statistics could not be updated. The last calculation is shown where available.'}</Text><Action label={tr ? 'Yeniden kontrol et' : 'Check again'} onPress={() => setRetry(value => value + 1)} /></View>}
+    {unavailable && <View style={{gap: 8}}><Text style={[shared.hint, {color: themeColor('#FCD34D', 'text')}]}>{tr ? 'İstatistikler güncellenemedi. Varsa son hesaplama gösteriliyor.' : 'Statistics could not be updated. The last calculation is shown where available.'}</Text><Action label={tr ? 'Yeniden kontrol et' : 'Check again'} onPress={() => setRetry(value => value + 1)} /></View>}
     <View style={styles.winnersFrame}>
       <View style={{flexDirection: width >= 640 ? 'row' : 'column', gap: 14}}>
         <View style={{flex: width >= 640 ? 1 : undefined, minWidth: 0}}>{!canBiweekly ? <View style={styles.lockedWinner}>
@@ -97,7 +100,7 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows, tr
           <Text style={styles.lockedText}>{tr ? <>İki haftanın öne çıkan oyuncularını <Text style={styles.plusText}>PLUS</Text> veya <Text style={styles.proText}>PRO</Text> ile keşfet.</> : <>Discover the two-week top players with <Text style={styles.plusText}>PLUS</Text> or <Text style={styles.proText}>PRO</Text>.</>}</Text>
           <Pressable accessibilityRole="button" onPress={() => setUpgrade({required: 'plus', feature: 'biweekly'})} style={({pressed}) => [styles.unlockButton, pressed && {opacity: .82}]}><Text style={styles.unlockText}>{tr ? 'Kilidi aç' : 'Unlock'}</Text></Pressable>
         </View> : <Winner framed={false} title={tr ? 'Ligin İki Haftalık En İyisi' : 'League’s Two-Week Top Player'} subtitle={periodCurrent && data?.biweekly ? `${periodLabel(data.biweekly.period_start, data.biweekly.period_end, tr)} · ${data.biweekly.fixture_count} ${tr ? 'maç' : 'matches'}` : undefined} player={periodCurrent ? data?.biweekly?.league_best_player : null} pending={biweeklyPending} unavailable={unavailable} tr={tr} onPlayer={setWinner} />}</View>
-        <View style={{width: width >= 640 ? 1 : '100%', height: width >= 640 ? undefined : 1, backgroundColor: 'rgba(245,158,11,.2)'}} />
+        <View style={{width: width >= 640 ? 1 : '100%', height: width >= 640 ? undefined : 1, backgroundColor: themeColor('rgba(245,158,11,.2)', 'surface')}} />
         <View style={{flex: width >= 640 ? 1 : undefined, minWidth: 0}}><Winner framed={false} title={tr ? 'Ligin Sezonluk En İyisi' : 'League’s Season Top Player'} player={data?.season.league_best_player} pending={seasonPending} unavailable={unavailable} tr={tr} onPlayer={setWinner} /></View>
       </View>
     </View>
@@ -109,16 +112,24 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows, tr
     {selector && <Selector title={selector === 'metric' ? (tr ? 'Sıralama Ölçütü' : 'Ordering Metric') : (tr ? 'İki Haftalık Dönem' : 'Two-Week Period')} tr={tr} selected={selector === 'metric' ? metric?.key || '' : period} options={selector === 'metric' ? [{key: '', label: tr ? 'Puan · Resmî sıralama' : 'Points · Official standings'}, ...metrics.map(item => ({key: item.key, label: matchMetricLabel(item.label, tr ? 'tr' : 'en'), locked: item.locked, plan: PLUS_LEAGUE_METRICS.includes(item.key) ? 'plus' as const : 'pro' as const}))] : [{key: '', label: tr ? 'Güncel dönem' : 'Current period'}, ...(data?.periods || []).map(p => ({key: p.period_start, label: periodLabel(p.period_start, p.period_end, tr)}))]} onClose={() => setSelector(null)} onSelect={key => {if (selector === 'metric') {if (metrics.find(item => item.key === key)?.locked) {setSelector(null); setTimeout(() => setUpgrade({required: tier === 'free' && PLUS_LEAGUE_METRICS.includes(key) ? 'plus' : 'pro', feature: 'metric', metricLabel: matchMetricLabel(metrics.find(item => item.key === key)?.label || key, tr ? 'tr' : 'en')}), 350); return;} setMetricKey(key); setDirection(metrics.find(item => item.key === key)?.direction || 'desc');} else setPeriod(key); setSelector(null);}} />}
   </View>;
 }
-const styles = StyleSheet.create({
-  lockedWinner: {gap: 10, padding: 14, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(22,163,74,.33)', backgroundColor: 'rgba(22,163,74,.04)'},
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, MUTED, themeColor} = colors;
+  const standingRuleMeta = __getThemed_standingRuleMeta(colors);
+  const shared = __getThemed_shared(colors);
+  const styles = StyleSheet.create({
+  lockedWinner: {gap: 10, padding: 14, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: themeColor('rgba(22,163,74,.33)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.04)', 'surface')},
   lockedHeading: {flexDirection: 'row', alignItems: 'center', gap: 9},
-  lockedIcon: {width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(22,163,74,.4)', backgroundColor: 'rgba(22,163,74,.09)', alignItems: 'center', justifyContent: 'center'},
-  lockedTitle: {flex: 1, color: '#FCD34D', fontSize: 13, fontWeight: '800'},
+  lockedIcon: {width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.4)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.09)', 'surface'), alignItems: 'center', justifyContent: 'center'},
+  lockedTitle: {flex: 1, color: themeColor('#FCD34D', 'text'), fontSize: 13, fontWeight: '800'},
   lockedText: {color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600'},
-  plusText: {color: '#38BDF8', fontWeight: '900'},
+  plusText: {color: themeColor('#38BDF8', 'text'), fontWeight: '900'},
   proText: {color: ACCENT, fontWeight: '900'},
-  unlockButton: {minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,.14)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12},
+  unlockButton: {minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12},
   unlockText: {color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase'},
-  winnersFrame: {borderWidth: 1, borderColor: 'rgba(245,158,11,.3)', backgroundColor: 'rgba(245,158,11,.05)', borderRadius: 14, padding: 14},
+  winnersFrame: {borderWidth: 1, borderColor: themeColor('rgba(245,158,11,.3)', 'border'), backgroundColor: themeColor('rgba(245,158,11,.05)', 'surface'), borderRadius: 14, padding: 14},
   rule: {fontSize: 10, fontWeight: '700', borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6},
+});
+  return {ACCENT, MUTED, standingRuleMeta, shared, styles, themeColor};
 });

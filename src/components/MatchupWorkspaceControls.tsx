@@ -1,20 +1,20 @@
-import { FRAME_STRIPE, FRAME_TITLE, FRAME_HEADING } from '@/theme';
-import { Settings2 } from 'lucide-react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+
+import { getMatchupSources,type MatchupSource } from "@/services/api";
+import { Database,Settings2,SlidersHorizontal,X } from 'lucide-react-native';
 import React from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Database, SlidersHorizontal, X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { getMatchupSources, type MatchupSource } from "@/services/api";
+import {
+ActivityIndicator,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from "react-native";
 import type { SearchResultRow } from "./CandidatePlayers";
-import { ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from "@/theme";
+
 
 type Props = {
   rows: (SearchResultRow | null)[];
@@ -34,6 +34,9 @@ export default function MatchupWorkspaceControls({
   sources,
   onSources,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, FRAME_HEADING, ACCENT, FRAME_TITLE, MUTED, TEXT, DANGER} = themed;
+
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const [open, setOpen] = React.useState(false);
@@ -267,7 +270,12 @@ export default function MatchupWorkspaceControls({
     </>
   );
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_STRIPE, FRAME_TITLE, FRAME_HEADING, ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   panel: {
     padding: 16,
     borderRadius: 20,
@@ -305,7 +313,7 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     backgroundColor: CARD,
   },
-  active: { borderColor: ACCENT, backgroundColor: "rgba(22,163,74,0.12)" },
+  active: { borderColor: ACCENT, backgroundColor: themeColor("rgba(22,163,74,0.12)", 'surface') },
   text: { color: TEXT, fontWeight: "700", fontSize: 12, textAlign: "center" },
   activeText: { color: ACCENT, fontWeight: "800", fontSize: 12 },
   hint: { color: MUTED, fontSize: 12, lineHeight: 18 },
@@ -313,7 +321,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 20,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: themeColor("rgba(0,0,0,0.75)", 'surface'),
   },
   modal: {
     maxHeight: "85%",
@@ -330,4 +338,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: LINE,
   },
+});
+  return {FRAME_STRIPE, FRAME_TITLE, FRAME_HEADING, ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

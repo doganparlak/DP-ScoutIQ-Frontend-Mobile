@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
-import { ArrowRightLeft, CircleDot, Shield } from 'lucide-react-native';
-import type { PostMatchCardData, MatchReportEvent } from '@/services/matchPool';
-import { ACCENT, LINE, MUTED, TEXT } from '@/theme';
-const AWAY = '#38BDF8';
-function eventAppearance(event: MatchReportEvent, tr: boolean) {
-  const type = (event.type || '').toLowerCase();
-  if (Number(event.type_id) === 18 || type.includes('substitution')) return { label: tr ? 'Oyuncu Değişikliği' : 'Substitution', color: '#CBD5E1', kind: 'sub' };
-  if (type.includes('yellow')) return { label: tr ? 'Sarı Kart' : event.type!, color: '#FACC15', kind: 'card' };
-  if (type.includes('red')) return { label: tr ? 'Kırmızı Kart' : event.type!, color: '#F87171', kind: 'card' };
-  if (type.includes('goal')) return { label: tr ? 'Gol' : event.type!, color: '#F59E0B', kind: 'goal' };
-  if (type.includes('penalty')) return { label: tr ? 'Penaltı' : event.type!, color: '#F59E0B', kind: 'goal' };
-  return { label: type.includes('var') ? 'VAR' : event.type || (tr ? 'Maç Olayı' : 'Event'), color: '#CBD5E1', kind: 'other' };
-}
+import type { MatchReportEvent,PostMatchCardData } from '@/services/matchPool';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ArrowRightLeft,CircleDot,Shield } from 'lucide-react-native';
+import { useState } from 'react';
+import { Image,StyleSheet,Text,View } from 'react-native';
+
+
 function Team({ team }: { team?: PostMatchCardData['teams'][number] }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {AWAY, ACCENT, s} = themed;
+
   const [failed, setFailed] = useState(false);
   const accent = team?.location === 'away' ? AWAY : ACCENT;
   return <View style={s.team}>
@@ -26,6 +21,9 @@ function finite(value: number | string | null | undefined) {
   return value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 }
 export default function MatchReportTimeline({ data, tr }: { data: PostMatchCardData; tr: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT, AWAY, MUTED, eventAppearance} = themed;
+
   const home = data.teams.find(team => team.location === 'home') || data.teams[0];
   const away = data.teams.find(team => team.location === 'away') || data.teams[1];
   const goals = (id?: number) => data.scores.find(score => score.description === 'CURRENT' && Number(score.participant_id) === id)?.score?.goals ?? '—';
@@ -70,11 +68,30 @@ export default function MatchReportTimeline({ data, tr }: { data: PostMatchCardD
     </View>
   </View>;
 }
-const s = StyleSheet.create({
-  page: { gap: 14 }, hero: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderColor: `${ACCENT}70`, borderRadius: 20, padding: 14, backgroundColor: 'rgba(22,163,74,.05)' },
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const AWAY = themeColor('#38BDF8');
+
+  function eventAppearance(event: MatchReportEvent, tr: boolean) {
+  const type = (event.type || '').toLowerCase();
+  if (Number(event.type_id) === 18 || type.includes('substitution')) return { label: tr ? 'Oyuncu Değişikliği' : 'Substitution', color: themeColor('#CBD5E1', 'text'), kind: 'sub' };
+  if (type.includes('yellow')) return { label: tr ? 'Sarı Kart' : event.type!, color: themeColor('#FACC15', 'text'), kind: 'card' };
+  if (type.includes('red')) return { label: tr ? 'Kırmızı Kart' : event.type!, color: themeColor('#F87171', 'text'), kind: 'card' };
+  if (type.includes('goal')) return { label: tr ? 'Gol' : event.type!, color: themeColor('#F59E0B', 'text'), kind: 'goal' };
+  if (type.includes('penalty')) return { label: tr ? 'Penaltı' : event.type!, color: themeColor('#F59E0B', 'text'), kind: 'goal' };
+  return { label: type.includes('var') ? 'VAR' : event.type || (tr ? 'Maç Olayı' : 'Event'), color: themeColor('#CBD5E1', 'text'), kind: 'other' };
+}
+
+  const s = StyleSheet.create({
+  page: { gap: 14 }, hero: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderColor: `${ACCENT}70`, borderRadius: 20, padding: 14, backgroundColor: themeColor('rgba(22,163,74,.05)', 'surface') },
   team: { flex: 1, alignItems: 'center', gap: 8 }, logo: { width: 55, height: 60 }, teamName: { color: TEXT, fontSize: 12, fontWeight: '800', textAlign: 'center' }, formation: { fontSize: 11, fontWeight: '800', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 9 },
-  scoreColumn: { width: '28%', alignItems: 'center', gap: 9 }, caption: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1 }, scoreBox: { width: '100%', borderWidth: 1, borderColor: LINE, borderRadius: 13, paddingVertical: 11, paddingHorizontal: 4, backgroundColor: 'rgba(0,0,0,.3)' }, score: { color: TEXT, fontWeight: '900', fontSize: 25, textAlign: 'center' }, status: { color: TEXT, fontSize: 9, textAlign: 'center', fontWeight: '700' },
+  scoreColumn: { width: '28%', alignItems: 'center', gap: 9 }, caption: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1 }, scoreBox: { width: '100%', borderWidth: 1, borderColor: LINE, borderRadius: 13, paddingVertical: 11, paddingHorizontal: 4, backgroundColor: themeColor('rgba(0,0,0,.3)', 'surface') }, score: { color: TEXT, fontWeight: '900', fontSize: 25, textAlign: 'center' }, status: { color: TEXT, fontSize: 9, textAlign: 'center', fontWeight: '700' },
   possession: { borderWidth: 1, borderColor: LINE, borderRadius: 15, padding: 12, gap: 10 }, possessionHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 }, percent: { fontSize: 16, fontWeight: '800' }, possessionTitle: { flex: 1, textAlign: 'center', color: MUTED, fontSize: 10, fontWeight: '800' }, bar: { height: 9, flexDirection: 'row', borderRadius: 8, overflow: 'hidden' },
-  timeline: { borderWidth: 1, borderColor: LINE, borderRadius: 18, padding: 10, gap: 0 }, eventRow: { flexDirection: 'row', gap: 9 }, minuteColumn: { width: 45, alignItems: 'center' }, spine: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: LINE }, minuteBadge: { marginTop: 12, borderWidth: 1, borderRadius: 12, backgroundColor: '#14201A', paddingVertical: 9, paddingHorizontal: 3, width: '100%' }, minute: { textAlign: 'center', fontSize: 11, fontWeight: '800' },
-  event: { flex: 1, borderWidth: 1, borderRadius: 14, padding: 11, marginVertical: 5, gap: 7 }, eventHeading: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, icon: { width: 27, height: 27, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 8 }, eventLabel: { flex: 1, fontSize: 11, fontWeight: '800' }, cardIcon: { width: 10, height: 15, borderRadius: 2 }, result: { color: TEXT, fontSize: 11, fontWeight: '800', padding: 5, backgroundColor: 'rgba(0,0,0,.2)', borderRadius: 7 }, player: { color: TEXT, fontSize: 13, fontWeight: '800', lineHeight: 19 }, related: { color: MUTED, fontSize: 11, lineHeight: 17 }, relatedLabel: { fontWeight: '700', color: TEXT }, teamLabel: { fontSize: 10, fontWeight: '600' }, empty: { color: MUTED, paddingVertical: 35, textAlign: 'center', fontSize: 13 },
+  timeline: { borderWidth: 1, borderColor: LINE, borderRadius: 18, padding: 10, gap: 0 }, eventRow: { flexDirection: 'row', gap: 9 }, minuteColumn: { width: 45, alignItems: 'center' }, spine: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: LINE }, minuteBadge: { marginTop: 12, borderWidth: 1, borderRadius: 12, backgroundColor: themeColor('#14201A', 'surface'), paddingVertical: 9, paddingHorizontal: 3, width: '100%' }, minute: { textAlign: 'center', fontSize: 11, fontWeight: '800' },
+  event: { flex: 1, borderWidth: 1, borderRadius: 14, padding: 11, marginVertical: 5, gap: 7 }, eventHeading: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, icon: { width: 27, height: 27, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 8 }, eventLabel: { flex: 1, fontSize: 11, fontWeight: '800' }, cardIcon: { width: 10, height: 15, borderRadius: 2 }, result: { color: TEXT, fontSize: 11, fontWeight: '800', padding: 5, backgroundColor: themeColor('rgba(0,0,0,.2)', 'surface'), borderRadius: 7 }, player: { color: TEXT, fontSize: 13, fontWeight: '800', lineHeight: 19 }, related: { color: MUTED, fontSize: 11, lineHeight: 17 }, relatedLabel: { fontWeight: '700', color: TEXT }, teamLabel: { fontSize: 10, fontWeight: '600' }, empty: { color: MUTED, paddingVertical: 35, textAlign: 'center', fontSize: 13 },
+});
+  return {ACCENT, LINE, MUTED, TEXT, AWAY, eventAppearance, s, themeColor};
 });

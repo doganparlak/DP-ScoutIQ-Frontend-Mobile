@@ -1,37 +1,38 @@
-import SimilarPlayersScreen from '@/screens/SimilarPlayersScreen';
+import { TutorialProvider } from '@/components/Tutorial';
 import { TeamAnalysisProvider } from '@/context/TeamAnalysisContext';
+import ChatScreen from '@/screens/ChatScreen';
+import DailyScoutScreen from '@/screens/DailyScoutScreen';
+import HelpCenter from '@/screens/HelpCenterScreen';
+import ManagePlanScreen from '@/screens/ManagePlanScreen';
+import MyProfileScreen from '@/screens/MyProfileScreen';
+import PlayerPoolScreen from '@/screens/PlayerPoolScreen';
+import ScorePredictionScreen from '@/screens/ScorePredictionScreen';
+import ScoutWiseProScreen from '@/screens/ScoutWiseProScreen';
+import SimilarPlayersScreen from '@/screens/SimilarPlayersScreen';
+import StrategyScreen from '@/screens/StrategyScreen';
+import WeeklySearchesScreen from '@/screens/WeeklySearchesScreen';
+import { MatchupWorkspaceScreen,PortfolioWorkspaceScreen } from '@/screens/WorkspaceScreens';
+import { getMe,type Plan } from '@/services/api';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import type { MainTabsParamList,RootStackParamList,ScoutWiseProStackParamList } from '@/types';
+import { canUseChat } from '@/utils/chatAccess';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
-import { PortfolioWorkspaceScreen, MatchupWorkspaceScreen, EmptyWorkspaceScreen } from '@/screens/WorkspaceScreens';
-import DailyScoutScreen from '@/screens/DailyScoutScreen';
-import ScorePredictionScreen from '@/screens/ScorePredictionScreen';
-import WeeklySearchesScreen from '@/screens/WeeklySearchesScreen';
-import PlayerPoolScreen from '@/screens/PlayerPoolScreen';
-import ScoutWiseProScreen from '@/screens/ScoutWiseProScreen';
-import StrategyScreen from '@/screens/StrategyScreen';
-import ChatScreen from '@/screens/ChatScreen';
-import MyProfileScreen from '@/screens/MyProfileScreen';
-import ManagePlanScreen from '@/screens/ManagePlanScreen';
-import HelpCenter from '@/screens/HelpCenterScreen';
-import type { MainTabsParamList, RootStackParamList, ScoutWiseProStackParamList } from '@/types';
-import { TutorialProvider } from '@/components/Tutorial';
-import { canUseChat } from '@/utils/chatAccess';
-import { getMe, type Plan } from '@/services/api';
-import MainSidebar from './MainSidebar';
 import { MainNavigationContext } from './MainNavigationContext';
-import { BG } from '@/theme';
+import MainSidebar from './MainSidebar';
+
+import { MatchupProvider } from '@/context/MatchupContext';
+import LeaguePerformanceScreen from '@/screens/LeaguePerformanceScreen';
+import LeaguePoolScreen from '@/screens/LeaguePoolScreen';
+import MatchPoolScreen from '@/screens/MatchPoolScreen';
+import MatchPortfolioScreen from '@/screens/MatchPortfolioScreen';
 import SeasonDataScreen from '@/screens/SeasonDataScreen';
 import TeamAnalysisScreen from '@/screens/TeamAnalysisScreen';
-import MatchPortfolioScreen from '@/screens/MatchPortfolioScreen';
-import MatchPoolScreen from '@/screens/MatchPoolScreen';
-import TeamPortfolioScreen from '@/screens/TeamPortfolioScreen';
 import TeamPoolScreen from '@/screens/TeamPoolScreen';
-import LeaguePoolScreen from '@/screens/LeaguePoolScreen';
-import LeaguePerformanceScreen from '@/screens/LeaguePerformanceScreen';
-import { MatchupProvider } from '@/context/MatchupContext';
+import TeamPortfolioScreen from '@/screens/TeamPortfolioScreen';
 
 // Keep the existing route identities and nested stacks so tutorials, deep navigation,
 // and each section's state continue to work while the navigation UI becomes a drawer.
@@ -60,6 +61,9 @@ function ScoutWiseProStackScreen() {
 }
 
 export default function MainTabs() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG} = themed;
+
   const [plan, setPlan] = React.useState<Plan | null>(null);
 
   const loadPlan = React.useCallback(async () => {
@@ -142,3 +146,11 @@ export default function MainTabs() {
     </TutorialProvider>
   );
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, themeColor} = colors;
+
+
+  return {BG, themeColor};
+});

@@ -1,9 +1,10 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ChevronDown,X } from 'lucide-react-native';
 import React from 'react';
-import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronDown, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ACCENT, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { Keyboard,Modal,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const ROLE_ROWS = [
   ['GK', 'LB', 'RB'],
@@ -16,6 +17,9 @@ export default function PortfolioRoleFilter({ value, onChange }: {
   value: string[];
   onChange: (roles: string[]) => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, MUTED, TEXT} = themed;
+
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith('tr');
   const [open, setOpen] = React.useState(false);
@@ -54,17 +58,23 @@ export default function PortfolioRoleFilter({ value, onChange }: {
   </View>;
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   field: { gap: 6 }, label: { color: MUTED, fontSize: 12 },
   input: { minHeight: 43, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1, borderColor: LINE, backgroundColor: CARD, paddingHorizontal: 12, paddingVertical: 10 },
   value: { flexShrink: 1, color: TEXT, fontSize: 14, fontWeight: '600' },
-  backdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 18, backgroundColor: 'rgba(0,0,0,0.7)' },
+  backdrop: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 18, backgroundColor: themeColor('rgba(0,0,0,0.7)', 'surface') },
   modal: { width: '100%', maxWidth: 420, maxHeight: '90%', padding: 18, gap: 16, borderWidth: 1, borderColor: ACCENT, borderRadius: 24, backgroundColor: PANEL },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 8 }, title: { flex: 1, color: TEXT, fontWeight: '800', fontSize: 18 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   grid: { gap: 10 }, row: { flexDirection: 'row', gap: 10 },
   role: { flex: 1, minWidth: 0, minHeight: 52, padding: 10, justifyContent: 'center', alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: LINE, backgroundColor: CARD },
   roleText: { color: MUTED, fontWeight: '800', fontSize: 15 },
-  selected: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.12)' },
+  selected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.12)', 'surface') },
   action: { flex: 1, minHeight: 44, padding: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: LINE },
+});
+  return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

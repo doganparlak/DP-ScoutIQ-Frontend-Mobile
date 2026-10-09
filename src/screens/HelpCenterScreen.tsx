@@ -1,24 +1,33 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ChevronDown, CircleHelp,
-  ClipboardList, CreditCard, Database, GitCompareArrows, LayoutDashboard,
-  Gem, Search, Shield, ShieldCheck, Table2, Target, Trash2, Goal, Trophy, UserRound, UsersRound,
-} from 'lucide-react-native';
-import {
-  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Linking, Platform
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
-
 import {
-  BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK,
-} from '@/theme';
+BarChart3,BookMarked,BookOpenCheck,CalendarSearch,ChevronDown,CircleHelp,
+ClipboardList,CreditCard,Database,
+Gem,
+GitCompareArrows,
+Goal,
+LayoutDashboard,
+Search,Shield,ShieldCheck,Table2,Target,Trash2,
+Trophy,UserRound,UsersRound,
+} from 'lucide-react-native';
+import React,{ useEffect,useMemo,useRef,useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+Alert,Linking,Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+
+import { deleteAccount as apiDeleteAccount,sendReachOut } from '@/services/api';
 import type { RootStackParamList } from '@/types';
-import { deleteAccount as apiDeleteAccount } from '@/services/api';
-import { sendReachOut } from '@/services/api';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 type TabKey = 'how' | 'reach' | 'account';
@@ -38,6 +47,9 @@ const LEGAL_URLS = {
 
 
 export default function HelpCenter() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, MUTED, DANGER_DARK, DANGER, themeColor} = themed;
+
   const nav = useNavigation<RootNav>();
   const { t, i18n } = useTranslation();
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
@@ -234,12 +246,12 @@ export default function HelpCenter() {
                     onPress={() => setExpandedGuide(open ? '' : guide.key)}
                     style={({ pressed }) => [styles.guideHeader, pressed && { opacity: .72 }]}
                   >
-                    <View style={[styles.guideIcon, open && styles.guideIconOpen]}><guide.Icon size={21} color={open ? '#4ADE80' : '#A8B4AC'} /></View>
+                    <View style={[styles.guideIcon, open && styles.guideIconOpen]}><guide.Icon size={21} color={open ? themeColor('#4ADE80', 'text') : themeColor('#A8B4AC', 'text')} /></View>
                     <View style={styles.guideHeadingCopy}>
-                      <Text style={[styles.guideTitle, open && { color: '#4ADE80' }]}>{guide.title}</Text>
+                      <Text style={[styles.guideTitle, open && { color: themeColor('#4ADE80', 'text') }]}>{guide.title}</Text>
                       {!open && <Text style={styles.guidePreview} numberOfLines={1}>{guide.summary}</Text>}
                     </View>
-                    <ChevronDown size={19} color={open ? '#4ADE80' : MUTED} style={open ? { transform: [{ rotate: '180deg' }] } : undefined} />
+                    <ChevronDown size={19} color={open ? themeColor('#4ADE80', 'text') : MUTED} style={open ? { transform: [{ rotate: '180deg' }] } : undefined} />
                   </Pressable>
                   {open && <View style={styles.guideBody}>
                     <Text style={styles.guideSummary}>{guide.summary}</Text>
@@ -317,7 +329,7 @@ export default function HelpCenter() {
                 accessibilityLabel={t('deleteAccount', 'Delete account')}
               >
                 <View style={styles.deleteContent}>
-                  <Trash2 size={20} color="#fff" style={{ marginRight: 8 }} />
+                  <Trash2 size={20} color={themeColor("#fff", 'onAccent')} style={{ marginRight: 8 }} />
                   <Text style={styles.deleteText}>{t('deleteAccount', 'Delete account')}</Text>
                 </View>
               </Pressable>
@@ -358,7 +370,11 @@ export default function HelpCenter() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -369,7 +385,7 @@ const styles = StyleSheet.create({
   segmentWrap: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 12, marginBottom: 14 },
   segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
   segmentBtnIdle: { backgroundColor: CARD, borderColor: LINE },
-  segmentBtnActive: { backgroundColor: 'rgba(22, 163, 74, 0.12)', borderColor: ACCENT },
+  segmentBtnActive: { backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'), borderColor: ACCENT },
   segmentText: { fontWeight: '800', color: TEXT },
   segmentTextActive: { color: ACCENT },
 
@@ -379,25 +395,25 @@ const styles = StyleSheet.create({
   },
 
   guideShell: { marginHorizontal: 16, marginTop: 12, gap: 10 },
-  guideHero: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16, borderWidth: 1, borderColor: 'rgba(22,163,74,.72)', borderRadius: 20, backgroundColor: PANEL },
-  guideHeroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(22,163,74,.5)', backgroundColor: 'rgba(22,163,74,.13)' },
+  guideHero: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.72)', 'border'), borderRadius: 20, backgroundColor: PANEL },
+  guideHeroIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.5)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.13)', 'surface') },
   guideHeroTitle: { color: TEXT, fontSize: 19, fontWeight: '900' },
   guideHeroText: { color: MUTED, fontSize: 12, lineHeight: 18, fontWeight: '600' },
-  guideGroup: { color: '#93A59A', fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1.55, marginTop: 12, marginLeft: 3 },
+  guideGroup: { color: themeColor('#93A59A', 'text'), fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 1.55, marginTop: 12, marginLeft: 3 },
   guideCard: { borderWidth: 1, borderColor: LINE, borderRadius: 17, backgroundColor: PANEL, overflow: 'hidden' },
-  guideCardOpen: { borderColor: 'rgba(22,163,74,.68)', backgroundColor: 'rgba(19,31,23,.98)' },
+  guideCardOpen: { borderColor: themeColor('rgba(22,163,74,.68)', 'border'), backgroundColor: colors.mode === 'light' ? PANEL : 'rgba(19,31,23,.98)' },
   guideHeader: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12 },
-  guideIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE, backgroundColor: 'rgba(255,255,255,.025)' },
-  guideIconOpen: { borderColor: 'rgba(22,163,74,.45)', backgroundColor: 'rgba(22,163,74,.12)' },
+  guideIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE, backgroundColor: themeColor('rgba(255,255,255,.025)', 'surface') },
+  guideIconOpen: { borderColor: themeColor('rgba(22,163,74,.45)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.12)', 'surface') },
   guideHeadingCopy: { flex: 1, minWidth: 0, gap: 5 },
   guideTitle: { color: TEXT, fontSize: 15, fontWeight: '900' },
   guidePreview: { color: MUTED, fontSize: 11, lineHeight: 16 },
   guideBody: { gap: 14, borderTopWidth: 1, borderTopColor: LINE, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 15 },
-  guideSummary: { color: '#DDE5E0', fontSize: 13, lineHeight: 21, fontWeight: '600' },
+  guideSummary: { color: themeColor('#DDE5E0', 'text'), fontSize: 13, lineHeight: 21, fontWeight: '600' },
   guideSteps: { gap: 10 },
-  guideStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 11, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(22,163,74,.25)', backgroundColor: 'rgba(22,163,74,.055)' },
-  stepNumber: { width: 25, height: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(22,163,74,.17)', borderWidth: 1, borderColor: 'rgba(22,163,74,.48)' },
-  stepNumberText: { color: '#4ADE80', fontSize: 11, fontWeight: '900' },
+  guideStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 11, borderRadius: 13, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.25)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.055)', 'surface') },
+  stepNumber: { width: 25, height: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: themeColor('rgba(22,163,74,.17)', 'surface'), borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.48)', 'border') },
+  stepNumberText: { color: themeColor('#4ADE80', 'text'), fontSize: 11, fontWeight: '900' },
   stepText: { flex: 1, color: TEXT, fontSize: 12, lineHeight: 19, fontWeight: '600' },
 
   sectionTitle: { color: TEXT, fontSize: 16, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
@@ -419,13 +435,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   sendText: { color: ACCENT, fontWeight: '900' },
   sentNote: { color: MUTED, marginTop: 8, textAlign: 'center' },
 
   deleteBtn: { marginTop: 6, borderRadius: 10, alignItems: 'center', paddingVertical: 12 },
-  deleteText: { color: '#fff', fontWeight: '800' },
+  deleteText: { color: themeColor('#fff', 'onAccent'), fontWeight: '800' },
   deleteContent: { flexDirection: 'row', alignItems: 'center' },
 
   bullet: { color: ACCENT, fontWeight: '800' },
@@ -450,4 +466,6 @@ const styles = StyleSheet.create({
   },
   chev: { color: MUTED, fontSize: 18, fontWeight: '800', marginLeft: 10 },
   rowLine: { height: 1, backgroundColor: LINE },
+});
+  return {BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK, styles, themeColor};
 });

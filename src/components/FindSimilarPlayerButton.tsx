@@ -1,13 +1,18 @@
+import { resolveSimilarReference } from '@/services/similarPlayers';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import type { PlayerData } from '@/types';
+import { useNavigation } from '@react-navigation/native';
+import { UsersRound } from 'lucide-react-native';
 import React from 'react';
-import {Alert, Text, TouchableOpacity, type StyleProp, type ViewStyle} from 'react-native';
-import {UsersRound} from 'lucide-react-native';
-import {useNavigation} from '@react-navigation/native';
-import {useTranslation} from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import { Alert,Text,TouchableOpacity,type StyleProp,type ViewStyle } from 'react-native';
 import ActionSpinner from './ActionSpinner';
-import {resolveSimilarReference} from '@/services/similarPlayers';
-import type {PlayerData} from '@/types';
-import {ACCENT} from '@/theme';
-export default function FindSimilarPlayerButton({player,rowId,disabled=false,onFindSimilar,beforeNavigate,style,accent=ACCENT}:{player:PlayerData;rowId?:string;disabled?:boolean;onFindSimilar?:()=>void|Promise<void>;beforeNavigate?:()=>void|Promise<void>;style?:StyleProp<ViewStyle>;accent?:string}){
+
+export default function FindSimilarPlayerButton({player,rowId,disabled=false,onFindSimilar,beforeNavigate,style,accent}:{player:PlayerData;rowId?:string;disabled?:boolean;onFindSimilar?:()=>void|Promise<void>;beforeNavigate?:()=>void|Promise<void>;style?:StyleProp<ViewStyle>;accent?:string}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT} = themed;
+  accent ??= ACCENT;
+
   const navigation=useNavigation<any>(),{t,i18n}=useTranslation(),tr=i18n.language.startsWith('tr');
   const [busy,setBusy]=React.useState(false),lock=React.useRef(false),mounted=React.useRef(true);
   React.useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -19,3 +24,11 @@ export default function FindSimilarPlayerButton({player,rowId,disabled=false,onF
   }
   return <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('findSimilarPlayer','Similar')} accessibilityState={{disabled:disabled||busy,busy}} disabled={disabled||busy} onPress={()=>void open()} style={[style,(disabled||busy)&&{opacity:.45}]}>{busy?<ActionSpinner size={17} color={accent}/>:<UsersRound size={17} color={accent}/>}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={{color:accent,fontWeight:'800',fontSize:11,flexShrink:1}}>{t('findSimilarPlayer','Similar')}</Text></TouchableOpacity>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, themeColor} = colors;
+
+
+  return {ACCENT, themeColor};
+});

@@ -1,72 +1,55 @@
-import {useWorkspaceActionAd} from '@/ads/useWorkspaceActionAd';
-import {getFavoriteTeams, saveFavoriteTeam} from '@/services/teamPortfolio';
-import TeamProfileCard from "@/components/TeamProfileCard";
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import {
+CANDIDATE_TABLE_VISIBLE_ROWS,
+ROW_HEIGHT,
+} from "@/components/CandidatePlayers";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
+import TeamProfileCard from "@/components/TeamProfileCard";
 import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
 import { TutorialPageGuide } from "@/components/Tutorial";
-import { poolTableStyles } from "@/components/poolTableStyles";
+import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
+import { getFavoriteTeams,saveFavoriteTeam } from '@/services/teamPortfolio';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useFocusEffect,useNavigation } from "@react-navigation/native";
 import {
-  ROW_HEIGHT,
-  CANDIDATE_TABLE_VISIBLE_ROWS,
-} from "@/components/CandidatePlayers";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { useTranslation } from "react-i18next";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import {
-  BarChart3,
-  Building2,
-  Globe2,
-  ListChecks,
-  ListFilter,
-  MapPin,
-  RotateCcw,
-  Search,
-  ShieldCheck,
-  Trophy,
-  UserCog,
-  UsersRound,
-  X,
+ChevronDown,
+ListChecks,
+ListFilter,
+RotateCcw,
+Search,
+ShieldCheck,
+X
 } from "lucide-react-native";
+import React,{ useEffect,useRef,useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  ACCENT,
-  BG,
-  CARD,
-  DANGER,
-  LINE,
-  MUTED,
-  PANEL,
-  TEXT,
-  FRAME_STRIPE,
-  FRAME_TITLE,
-  FRAME_HEADING,
-} from "@/theme";
+ActivityIndicator,
+Alert,
+Keyboard,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View
+} from "react-native";
+
 import {
-  getTeamOptions,
-  searchTeams,
-  Team,
-  TeamFilters,
-  TeamOptions,
-} from "@/services/teamPool";
-import { getMe, type Plan } from "@/services/api";
-import {
-  incrementTeamCardPlanNudgeCount,
-  shouldShowTeamCardPlanNudge,
+incrementTeamCardPlanNudgeCount,
+shouldShowTeamCardPlanNudge,
 } from "@/ads/adGating";
-import { shortCountry, shortPlayer } from "@/utils/seasonTableLabels";
+import { getMe,type Plan } from "@/services/api";
+import {
+getTeamOptions,
+searchTeams,
+Team,
+TeamFilters,
+TeamOptions,
+} from "@/services/teamPool";
 import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
+import { shortCountry,shortPlayer } from "@/utils/seasonTableLabels";
 const EMPTY: TeamFilters = { team: "", country: "", league: "" };
 const fold = (s: string) =>
   s
@@ -86,6 +69,9 @@ function Frame({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return (
     <View style={s.frame}>
       <View style={FRAME_STRIPE} />
@@ -99,6 +85,9 @@ function Frame({
   );
 }
 export default function TeamPoolScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, s, DANGER, MUTED, TEXT, ACCENT, poolTableStyles, FRAME_TITLE} = themed;
+
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const nav = useNavigation<any>();
@@ -301,8 +290,8 @@ export default function TeamPoolScreen() {
             </View>
             <View style={s.twoCol}>
               {(["country", "league"] as const).map((key) => (
-                <View key={key} style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={s.label}>
+                <View key={key} style={{ flex: 1, minWidth: 0, gap: 7 }}>
+                  <Text style={[s.label,{marginBottom:0}]}>
                     {key === "country"
                       ? tr
                         ? "Ülke"
@@ -312,25 +301,30 @@ export default function TeamPoolScreen() {
                         : "League"}
                   </Text>
                   <Pressable
-                    style={s.input}
+                    style={[s.input, s.selectInput]}
+                    accessibilityRole="button"
                     onPress={() => {
+                      Keyboard.dismiss();
                       setQuery("");
                       setSelector(key);
                       setFocused(false);
                     }}
                   >
-                    <Text numberOfLines={1} style={s.text}>
-                      {filters[key] || (tr ? "Seçiniz" : "Select")}
+                    <Text numberOfLines={1} style={{flex:1,color:filters[key]?TEXT:MUTED}}>
+                      {filters[key] || (tr ? (key === 'country' ? 'Ülke ara' : 'Lig ara') : (key === 'country' ? 'Search country' : 'Search league'))}
                     </Text>
+                    <ChevronDown size={16} color={MUTED}/>
                   </Pressable>
                   <ScrollView
                     horizontal
-                    contentContainerStyle={{ gap: 6, paddingTop: 6 }}
+                    showsHorizontalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ gap: 6, minHeight: 34 }}
                   >
                     {filters[key] ? (
-                      <Pressable style={s.chip} onPress={() => update(key, "")}>
-                        <Text style={s.green}>{filters[key]}</Text>
-                        <X size={12} color={ACCENT} />
+                      <Pressable style={[s.chip,s.filterSelected]} accessibilityRole="button" accessibilityLabel={tr ? (key === 'country' ? 'Ülke seçimini temizle' : 'Lig seçimini temizle') : (key === 'country' ? 'Clear Country' : 'Clear League')} onPress={() => update(key, "")}>
+                        <Text style={s.chipText}>{filters[key]}</Text>
+                        <X size={13} color={ACCENT} />
                       </Pressable>
                     ) : (
                       (key === "country"
@@ -346,7 +340,7 @@ export default function TeamPoolScreen() {
                           style={s.chip}
                           onPress={() => update(key, v)}
                         >
-                          <Text style={s.green}>{v}</Text>
+                          <Text numberOfLines={1} style={s.chipText}>{v}</Text>
                         </Pressable>
                       ))
                     )}
@@ -504,22 +498,24 @@ export default function TeamPoolScreen() {
                 placeholderTextColor={MUTED}
                 style={[s.input, { marginVertical: 12 }]}
               />
-              <ScrollView keyboardShouldPersistTaps="handled">
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}>
                 {(selector === "country" ? options.countries : options.leagues)
                   .filter((v) => fold(v).includes(fold(query)))
                   .map((v) => (
                     <Pressable
                       key={v}
+                      accessibilityRole="radio"
+                      accessibilityState={{selected:!!selector && filters[selector]===v}}
                       style={[
                         s.option,
-                        selector && filters[selector] === v ? s.active : null,
+                        selector && filters[selector] === v ? s.filterSelected : null,
                       ]}
                       onPress={() => {
                         if (selector) update(selector, v);
                         setSelector(null);
                       }}
                     >
-                      <Text style={s.text}>{v}</Text>
+                      <Text style={[s.text,{fontWeight:"700"}]}>{v}</Text>
                     </Pressable>
                   ))}
                 {!(
@@ -551,7 +547,12 @@ export default function TeamPoolScreen() {
     </View>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, FRAME_STRIPE, FRAME_TITLE, FRAME_HEADING, themeColor} = colors;
+  const poolTableStyles = __getThemed_poolTableStyles(colors);
+  const s = StyleSheet.create({
   page: { padding: 16, gap: 16, paddingBottom: 40 },
   frame: {
     padding: 16,
@@ -573,15 +574,19 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   text: { color: TEXT, fontSize: 13 },
-  twoCol: { flexDirection: "row", gap: 12, marginVertical: 14 },
+  twoCol: { flexDirection: "row", gap: 10, marginVertical: 14 },
+  selectInput: {flexDirection:"row",alignItems:"center",gap:6,padding:10},
+  filterSelected: {borderColor:ACCENT,backgroundColor:themeColor("rgba(22,163,74,0.12)", 'surface')},
+  chipText: {color:ACCENT,fontSize:11,fontWeight:"800",flexShrink:1},
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     borderWidth: 1,
-    borderColor: ACCENT,
-    borderRadius: 12,
-    padding: 6,
+    borderColor: LINE,
+    borderRadius: 10,
+    padding: 7,
+    maxWidth: 200,
   },
   green: { color: ACCENT, fontWeight: "800", fontSize: 13 },
   button: {
@@ -589,13 +594,13 @@ const s = StyleSheet.create({
     borderColor: ACCENT,
     borderRadius: 14,
     padding: 12,
-    backgroundColor: "rgba(22,163,74,.08)",
+    backgroundColor: themeColor("rgba(22,163,74,.08)", 'surface'),
     flexDirection: "row",
     gap: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  option: { padding: 12, borderBottomWidth: 1, borderColor: LINE },
+  option: {padding:14,minHeight:44,borderRadius:12,borderWidth:1,borderColor:LINE,backgroundColor:CARD},
   table: poolTableStyles.table,
   row: poolTableStyles.row,
   cell: poolTableStyles.cell,
@@ -646,12 +651,12 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,.025)",
+    backgroundColor: themeColor("rgba(255,255,255,.025)", 'surface'),
   },
   value: { fontSize: 14, color: TEXT, fontWeight: "800", marginTop: 8 },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,.8)",
+    backgroundColor: themeColor("rgba(0,0,0,.8)", 'surface'),
     justifyContent: "center",
     padding: 20,
   },
@@ -662,4 +667,6 @@ const s = StyleSheet.create({
     borderColor: ACCENT,
     borderRadius: 20,
   },
+});
+  return {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, FRAME_STRIPE, FRAME_TITLE, FRAME_HEADING, poolTableStyles, s, themeColor};
 });

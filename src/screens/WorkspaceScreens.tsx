@@ -1,20 +1,24 @@
-import { FRAME_TITLE, FRAME_STRIPE } from '@/theme';
-import React from 'react';
-import { ScrollView, View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { BarChart3, BookMarked, CalendarSearch, Database, Shield, Trophy, GitCompareArrows, ListFilter, RotateCcw } from 'lucide-react-native';
-import { useTranslation } from 'react-i18next';
-import { ContractDateFilter, ContractStatusFilter, type ContractStatus } from '@/components/ContractFilters';
-import { getMe, type Plan } from '@/services/api';
-import { useFocusEffect, useRoute } from '@react-navigation/native';
-import SharedMatchupCenter from '@/components/SharedMatchupCenter';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+
+import { ContractDateFilter,ContractStatusFilter,type ContractStatus } from '@/components/ContractFilters';
 import FavoritePlayers from '@/components/FavoritePlayers';
 import PortfolioRoleFilter from '@/components/PortfolioRoleFilter';
-import { ACCENT, BG, PANEL, CARD, TEXT, MUTED, LINE } from '@/theme';
+import SharedMatchupCenter from '@/components/SharedMatchupCenter';
+import { getMe,type Plan } from '@/services/api';
+import { useFocusEffect,useRoute } from '@react-navigation/native';
+import { BarChart3,BookMarked,CalendarSearch,Database,ListFilter,RotateCcw,Shield,Trophy } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable,ScrollView,StyleSheet,Text,TextInput,View } from 'react-native';
+
 import { TutorialPageGuide } from '@/components/Tutorial';
 
 const MemoizedFavoritePlayers = React.memo(FavoritePlayers);
 
 export function PortfolioWorkspaceScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, FRAME_TITLE, MUTED, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith('tr');
   const [plan, setPlan] = React.useState<Plan>('Free');
@@ -37,7 +41,7 @@ export function PortfolioWorkspaceScreen() {
       <View style={styles.heading}>
         <ListFilter size={20} color={ACCENT} />
         <Text style={[styles.title, FRAME_TITLE]}>{t('portfolioWorkspaceFilters', 'Player Portfolio Filters')}</Text>
-        <Pressable testID="portfolio-clear-filters" hitSlop={12} accessibilityRole="button" accessibilityLabel={tr ? 'Filtreleri Temizle' : 'Clear Filters'} onPress={() => { setValues({}); setStatus(''); setRoles([]); }} style={({ pressed }) => [styles.clearButton, pressed && { backgroundColor: 'rgba(248,113,113,0.12)' }]}><RotateCcw size={20} color="#F87171" /></Pressable>
+        <Pressable testID="portfolio-clear-filters" hitSlop={12} accessibilityRole="button" accessibilityLabel={tr ? 'Filtreleri Temizle' : 'Clear Filters'} onPress={() => { setValues({}); setStatus(''); setRoles([]); }} style={({ pressed }) => [styles.clearButton, pressed && { backgroundColor: themeColor('rgba(248,113,113,0.12)', 'surface') }]}><RotateCcw size={20} color={themeColor("#F87171", 'text')} /></Pressable>
       </View>
       <View style={styles.grid}>
         {fields.map(([key, label]) => <View style={styles.field} key={key}><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} value={values[key] ?? ''} onChangeText={value => update(key, value)} placeholder={label} placeholderTextColor={MUTED} style={styles.input} /></View>)}
@@ -57,6 +61,9 @@ export function PortfolioWorkspaceScreen() {
 }
 
 export function MatchupWorkspaceScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const pageScroll = React.useRef<ScrollView>(null);
   return <ScrollView ref={pageScroll} style={styles.screen} contentContainerStyle={styles.content}><SharedMatchupCenter workspace tutorialOnShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} /></ScrollView>;
 }
@@ -71,6 +78,9 @@ const emptyWorkspaces = {
 } as const;
 
 export function EmptyWorkspaceScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   const route = useRoute();
   const { t, i18n } = useTranslation();
   const { label, Icon } = emptyWorkspaces[route.name as keyof typeof emptyWorkspaces];
@@ -85,14 +95,20 @@ export function EmptyWorkspaceScreen() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, ACCENT, BG, PANEL, CARD, TEXT, MUTED, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BG }, content: { padding: 16, gap: 18, paddingBottom: 32 },
   panel: { padding: 16, gap: 15, backgroundColor: PANEL, borderWidth: 1, borderColor: LINE, borderRadius: 20 },
   topStripe: { ...FRAME_STRIPE, marginBottom: -5 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 9 }, title: { flex: 1, color: ACCENT, fontWeight: '800', fontSize: 18 },
   clearButton: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, field: { flexGrow: 1, flexBasis: '45%', gap: 7 },
   label: { color: MUTED, fontWeight: '700', fontSize: 12 }, input: { minHeight: 44, borderRadius: 10, padding: 10, backgroundColor: CARD, borderWidth: 1, borderColor: LINE, color: TEXT }, range: { flexDirection: 'row', gap: 6 },
-  roles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, role: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE, borderRadius: 10 }, selected: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.12)' },
-  count: { color: ACCENT, fontWeight: '800', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(22,163,74,0.12)' }, tableHeader: { flexDirection: 'row', backgroundColor: CARD, borderBottomWidth: 1, borderColor: LINE }, column: { width: 115, padding: 12, color: MUTED, fontSize: 12, fontWeight: '700' }, emptyRow: { height: 1 },
+  roles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, role: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE, borderRadius: 10 }, selected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.12)', 'surface') },
+  count: { color: ACCENT, fontWeight: '800', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: themeColor('rgba(22,163,74,0.12)', 'surface') }, tableHeader: { flexDirection: 'row', backgroundColor: CARD, borderBottomWidth: 1, borderColor: LINE }, column: { width: 115, padding: 12, color: MUTED, fontSize: 12, fontWeight: '700' }, emptyRow: { height: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 28 }, emptyTitle: { color: TEXT, fontSize: 16, fontWeight: '700' }, emptyText: { color: MUTED, textAlign: 'center', fontSize: 13 },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, ACCENT, BG, PANEL, CARD, TEXT, MUTED, LINE, styles, themeColor};
 });

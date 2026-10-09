@@ -1,27 +1,33 @@
-import React from 'react';
-import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions} from 'react-native';
-import {useFocusEffect, useIsFocused, useRoute, useNavigation} from '@react-navigation/native';
-import {useTranslation} from 'react-i18next';
-import {ListFilter, CalendarX2, RotateCcw, Search, UserRound, UsersRound, ChevronDown, Target, UserRoundSearch} from 'lucide-react-native';
-import {getMe, getPlayerPoolOptions, type PlayerPoolFilterOptions} from '@/services/api';
-import {emptySimilarFilters, findSimilarPlayers, getSimilarEligibility, nextSimilarCount, similarFiltersValid, similarResultLimit, similarMoreAction, type SimilarFilters, type SimilarMatch, type SimilarReference} from '@/services/similarPlayers';
-import {useWorkspaceActionAd} from '@/ads/useWorkspaceActionAd';
-import {Action, Badge, SelectField, Selector, Status} from '@/components/LeaguePerformanceControls';
-import {ContractDateFilter, ContractStatusFilter} from '@/components/ContractFilters';
-import {ProGuidedScrollView,TutorialPageGuide} from '@/components/Tutorial';
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import { ContractDateFilter,ContractStatusFilter } from '@/components/ContractFilters';
+import { Action,Badge,SelectField,Selector,Status } from '@/components/LeaguePerformanceControls';
+import LeaguePlayerCardModal from '@/components/LeaguePlayerCardModal';
 import SimilarPlayersUpgradeModal from '@/components/SimilarPlayersUpgradeModal';
+import { ProGuidedScrollView,TutorialPageGuide } from '@/components/Tutorial';
+import { getMe,getPlayerPoolOptions,type PlayerPoolFilterOptions } from '@/services/api';
+import { emptySimilarFilters,findSimilarPlayers,getSimilarEligibility,nextSimilarCount,similarFiltersValid,similarMoreAction,similarResultLimit,type SimilarFilters,type SimilarMatch,type SimilarReference } from '@/services/similarPlayers';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { getThemed_PLAYER_ACTION_TONES as __getThemed_PLAYER_ACTION_TONES,PLAYER_CARD_PROFILE_GAP } from '@/utils/playerCardActions';
+import { useFocusEffect,useIsFocused,useNavigation } from '@react-navigation/native';
+import { CalendarX2,ChevronDown,ListFilter,RotateCcw,Search,UserRoundSearch,UsersRound } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,useWindowDimensions,View } from 'react-native';
 import PlayerCard from './PlayerCard';
 import ProSaveReportActions from './ProSaveReportActions';
-import {ProButton,ProTrialHint} from './ProWorkspaceControls';
-import {PLAYER_ACTION_TONES, PLAYER_CARD_PROFILE_GAP} from '@/utils/playerCardActions';
-import LeaguePlayerCardModal from '@/components/LeaguePlayerCardModal';
-import {portfolioViewportHeight} from '@/utils/portfolioLayout';
-import {ACCENT, BG, CARD, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT} from '@/theme';
+import { ProButton,ProTrialHint } from './ProWorkspaceControls';
+
 
 function Frame({title, Icon, action, children}:{title:string;Icon:typeof Search;action?:React.ReactNode;children:React.ReactNode}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return <View style={s.frame}><View style={FRAME_STRIPE}/><View style={[FRAME_HEADING,{marginBottom:16}]}><Icon size={20} color={ACCENT}/><Text style={[FRAME_TITLE,{flex:1}]}>{title}</Text>{action}</View>{children}</View>;
 }
 export default function ProSimilarPlayerFlow({guideActive=true,trial=false,reference,cache,onInspect,onCheckFit,onSimilar,onDirectSearch,onBusyChange}:{guideActive?:boolean;trial?:boolean;reference:SimilarReference;cache:Map<string,any>;onInspect:(entry:SimilarReference)=>void;onCheckFit:(entry:SimilarReference)=>void;onSimilar:(entry:SimilarReference)=>void;onDirectSearch:()=>void;onBusyChange:(busy:boolean)=>void}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, s, ACCENT, DANGER, MUTED, PLAYER_ACTION_TONES} = themed;
+
   const saved=cache.get(reference.id);
   const {t,i18n}=useTranslation(),tr=i18n.language.startsWith('tr'),focused=useIsFocused();
   const {width,height,fontScale}=useWindowDimensions(),pairColumns=(width-66)/Math.max(1,fontScale)>=240;
@@ -82,4 +88,11 @@ export default function ProSimilarPlayerFlow({guideActive=true,trial=false,refer
     {ads.fallback}
   </ProGuidedScrollView>;
 }
-const s=StyleSheet.create({page:{padding:16,gap:16,paddingBottom:40},frame:{borderWidth:1,borderColor:ACCENT,borderRadius:20,padding:16,backgroundColor:PANEL},input:{minHeight:46,borderWidth:1,borderColor:LINE,borderRadius:12,padding:12,color:TEXT,backgroundColor:CARD},caption:{color:MUTED,fontSize:12,lineHeight:18,flexShrink:1},name:{color:TEXT,fontSize:14,fontWeight:'800',flexShrink:1},link:{color:ACCENT,fontSize:12,fontWeight:'800'},row:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'rgba(36,245,166,.16)',backgroundColor:'rgba(22,163,74,.055)',borderRadius:14,padding:10,minHeight:60},selected:{borderColor:ACCENT,backgroundColor:'rgba(22,163,74,.14)'},pressed:{backgroundColor:'rgba(22,163,74,.12)',transform:[{scale:.992}]},filterPair:{flexDirection:'row',alignItems:'flex-start',gap:12},filterCell:{flex:1,minWidth:0,width:'100%',gap:7},range:{flexDirection:'row',gap:12},rank:{color:ACCENT,fontSize:13,fontWeight:'800'},score:{color:ACCENT,fontSize:20,fontWeight:'900'}});
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+  const PLAYER_ACTION_TONES = __getThemed_PLAYER_ACTION_TONES(colors);
+  const s=StyleSheet.create({page:{padding:16,gap:16,paddingBottom:40},frame:{borderWidth:1,borderColor:ACCENT,borderRadius:20,padding:16,backgroundColor:PANEL},input:{minHeight:46,borderWidth:1,borderColor:LINE,borderRadius:12,padding:12,color:TEXT,backgroundColor:CARD},caption:{color:MUTED,fontSize:12,lineHeight:18,flexShrink:1},name:{color:TEXT,fontSize:14,fontWeight:'800',flexShrink:1},link:{color:ACCENT,fontSize:12,fontWeight:'800'},row:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:themeColor('rgba(36,245,166,.16)', 'border'),backgroundColor:themeColor('rgba(22,163,74,.055)', 'surface'),borderRadius:14,padding:10,minHeight:60},selected:{borderColor:ACCENT,backgroundColor:themeColor('rgba(22,163,74,.14)', 'surface')},pressed:{backgroundColor:themeColor('rgba(22,163,74,.12)', 'surface'),transform:[{scale:.992}]},filterPair:{flexDirection:'row',alignItems:'flex-start',gap:12},filterCell:{flex:1,minWidth:0,width:'100%',gap:7},range:{flexDirection:'row',gap:12},rank:{color:ACCENT,fontSize:13,fontWeight:'800'},score:{color:ACCENT,fontSize:20,fontWeight:'900'}});
+  return {ACCENT, BG, CARD, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, PLAYER_ACTION_TONES, s, themeColor};
+});

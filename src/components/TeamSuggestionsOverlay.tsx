@@ -1,14 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import React,{ useEffect,useRef,useState } from "react";
 import {
-  Keyboard,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+Keyboard,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+useWindowDimensions,
+View,
 } from "react-native";
-import { LINE, TEXT } from "@/theme";
+
 
 const ROW_HEIGHT = 48;
 /** Screen-level overlay keeps all five visible rows tappable outside filter frames. */
@@ -23,6 +24,9 @@ export default function TeamSuggestionsOverlay({
   options: string[];
   onSelect: (name: string) => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const host = useRef<View>(null);
   const window = useWindowDimensions();
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
@@ -119,15 +123,20 @@ export default function TeamSuggestionsOverlay({
     </View>
   );
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {LINE, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   dropdown: {
     position: "absolute",
-    backgroundColor: "#161A17",
+    backgroundColor: themeColor("#161A17", 'surface'),
     borderWidth: 1,
     borderColor: LINE,
     borderRadius: 12,
     elevation: 12,
-    shadowColor: "#000",
+    shadowColor: themeColor("#000", 'fixed'),
     shadowOpacity: 0.3,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -140,4 +149,6 @@ const styles = StyleSheet.create({
     borderColor: LINE,
   },
   text: { fontSize: 13, color: TEXT },
+});
+  return {LINE, TEXT, styles, themeColor};
 });

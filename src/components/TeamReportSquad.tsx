@@ -1,9 +1,10 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Activity,LayoutGrid,RefreshCw,Users } from 'lucide-react-native';
+import { useMemo,useState } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
 import TeamReportHeader from './TeamReportHeader';
-import React, {useMemo, useState} from 'react';
-import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
-import {Activity, LayoutGrid, RefreshCw, ShieldCheck, Shirt, Users} from 'lucide-react-native';
-import {ACCENT, CARD, DANGER, LINE, MUTED, TEXT} from '@/theme';
-import type {Team} from '@/services/teamPool';
+
+import type { Team } from '@/services/teamPool';
 import ReportPlayerPortrait from './ReportPlayerPortrait';
 type Metric={name:string;value:number|string|null};
 type Report={teams:{id:number;formation?:string}[];lineups:{team_id:number;player_id:number;player_name:string;player_image_url?:string|null;position_name?:string;starter?:boolean;categories?:Record<string,Metric[]>;extra_metrics?:Metric[]}[]};
@@ -38,6 +39,9 @@ export function aggregateSquad(reports:Report[],teamId:string,tr:boolean){
  return {ranked,formations:[...formations.entries()].sort((a,b)=>b[1]-a[1]),positions:[...positions.entries()].sort((a,b)=>b[1]-a[1]),rating:rated.length?rated.reduce((sum,p)=>sum+p.rating!,0)/rated.length:null,rotation:starters+subs?Math.round(subs/(starters+subs)*100):0};
 }
 export default function TeamReportSquad({team,reports,matches,tr,playersPage=false,perspectives={}}:{team:Team;reports:Report[];matches:number;tr:boolean;playersPage?:boolean;perspectives?:Record<string,Perspective>}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {DANGER, ACCENT, s, MUTED, themeColor} = themed;
+
  const [mode,setMode]=useState<'featured'|'development'>('featured'),[logoFailed,setLogoFailed]=useState(false);
  const squad=useMemo(()=>aggregateSquad(reports,team.id,tr),[reports,team.id,tr]);
  const accent=playersPage&&mode==='development'?DANGER:ACCENT;
@@ -52,14 +56,21 @@ export default function TeamReportSquad({team,reports,matches,tr,playersPage=fal
    {!selected.length&&<View style={s.frame}><Text style={s.caption}>{tr?'Bu grupta değerlendirmeye uygun oyuncu bulunamadı.':'No eligible players in this group.'}</Text></View>}
   </>:<>
    <View style={s.grid}>{[
-    {Icon:Users,label:tr?'Sahaya Çıkan Oyuncu':'Players Appeared',value:squad.ranked.length,color:'#38BDF8'},
-    {Icon:Activity,label:tr?'90+ Dk. Oyuncu Puanı':'90+ Min Player Score',value:squad.rating?.toFixed(2)||'—',color:'#F59E0B'},
-    {Icon:RefreshCw,label:tr?'Rotasyon Seviyesi':'Rotation Level',value:`${squad.rotation}%`,color:'#F472B6'},
+    {Icon:Users,label:tr?'Sahaya Çıkan Oyuncu':'Players Appeared',value:squad.ranked.length,color:themeColor('#38BDF8', 'text')},
+    {Icon:Activity,label:tr?'90+ Dk. Oyuncu Puanı':'90+ Min Player Score',value:squad.rating?.toFixed(2)||'—',color:themeColor('#F59E0B', 'text')},
+    {Icon:RefreshCw,label:tr?'Rotasyon Seviyesi':'Rotation Level',value:`${squad.rotation}%`,color:themeColor('#F472B6', 'text')},
     {Icon:LayoutGrid,label:tr?'En Çok Kullanılan Diziliş':'Most-used Formation',value:squad.formations[0]?.[0]||'—',color:ACCENT},
    ].map(({Icon,label,value,color})=><View key={label} style={[s.stat,{borderColor:`${color}70`}]}><View style={s.row}><Icon size={20} color={color}/><Text style={[s.ratingValue,{color,flex:1,textAlign:'right'}]}>{value}</Text></View><Text style={s.caption}>{label}</Text></View>)}</View>
    {distribution(tr?'Diziliş Tercihleri':'Formation Choices',squad.formations,squad.formations.reduce((sum,r)=>sum+r[1],0),ACCENT,tr?'maç':'matches')}
-   {distribution(tr?'Pozisyon Dağılımı':'Position Distribution',squad.positions,squad.ranked.length,'#38BDF8',tr?'oyuncu':'players')}
+   {distribution(tr?'Pozisyon Dağılımı':'Position Distribution',squad.positions,squad.ranked.length,themeColor('#38BDF8'),tr?'oyuncu':'players')}
   </>}
  </View>;
 }
-const s=StyleSheet.create({frame:{borderWidth:1,borderColor:`${ACCENT}60`,borderRadius:18,backgroundColor:CARD,padding:14,gap:15},row:{flexDirection:'row',alignItems:'center',gap:10},name:{color:TEXT,fontSize:19,fontWeight:'900'},title:{color:TEXT,fontSize:17,fontWeight:'800'},text:{color:TEXT,fontSize:14,fontWeight:'700'},caption:{color:MUTED,fontSize:11,fontWeight:'600',flexShrink:1},grid:{flexDirection:'row',flexWrap:'wrap',gap:10},stat:{flexBasis:'45%',flexGrow:1,borderWidth:1,borderRadius:16,padding:12,gap:12,backgroundColor:CARD},track:{height:6,borderRadius:3,backgroundColor:'#FFFFFF09'},switch:{flexDirection:'row',gap:5,borderWidth:1,borderColor:LINE,borderRadius:18,padding:5},option:{flex:1,borderWidth:1,borderColor:'transparent',borderRadius:13,padding:11,justifyContent:'center'},optionText:{fontSize:12,fontWeight:'800',textAlign:'center'},rating:{padding:10,borderWidth:1,borderRadius:14,alignItems:'center',gap:4},ratingValue:{fontSize:24,fontWeight:'900'},explanation:{color:TEXT,fontSize:14,lineHeight:23}});
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const s=StyleSheet.create({frame:{borderWidth:1,borderColor:`${ACCENT}60`,borderRadius:18,backgroundColor:CARD,padding:14,gap:15},row:{flexDirection:'row',alignItems:'center',gap:10},name:{color:TEXT,fontSize:19,fontWeight:'900'},title:{color:TEXT,fontSize:17,fontWeight:'800'},text:{color:TEXT,fontSize:14,fontWeight:'700'},caption:{color:MUTED,fontSize:11,fontWeight:'600',flexShrink:1},grid:{flexDirection:'row',flexWrap:'wrap',gap:10},stat:{flexBasis:'45%',flexGrow:1,borderWidth:1,borderRadius:16,padding:12,gap:12,backgroundColor:CARD},track:{height:6,borderRadius:3,backgroundColor:themeColor('#FFFFFF09', 'surface')},switch:{flexDirection:'row',gap:5,borderWidth:1,borderColor:LINE,borderRadius:18,padding:5},option:{flex:1,borderWidth:1,borderColor:'transparent',borderRadius:13,padding:11,justifyContent:'center'},optionText:{fontSize:12,fontWeight:'800',textAlign:'center'},rating:{padding:10,borderWidth:1,borderRadius:14,alignItems:'center',gap:4},ratingValue:{fontSize:24,fontWeight:'900'},explanation:{color:TEXT,fontSize:14,lineHeight:23}});
+  return {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, s, themeColor};
+});

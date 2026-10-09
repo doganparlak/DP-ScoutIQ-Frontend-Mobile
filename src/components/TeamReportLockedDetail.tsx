@@ -1,10 +1,14 @@
-import React from 'react';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
-import {LockKeyhole} from 'lucide-react-native';
-import {ACCENT,MUTED} from '@/theme';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { LockKeyhole } from 'lucide-react-native';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+
 
 type LockedDetailKind='attack'|'defense'|'strengths'|'weaknesses'|'standout'|'momentum'|'teamRisks'|'thirdTeamAnalysis'|'secondStandout';
-export default function TeamReportLockedDetail({tr,accent=ACCENT,onOpenPlans,kind}:{tr:boolean;accent?:string;onOpenPlans:()=>void;kind:LockedDetailKind}){
+export default function TeamReportLockedDetail({tr,accent,onOpenPlans,kind}:{tr:boolean;accent?:string;onOpenPlans:()=>void;kind:LockedDetailKind}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, s} = themed;
+  accent ??= ACCENT;
+
  const titles:Record<LockedDetailKind,{tr:string;en:string}>={
   attack:{tr:'Detaylı Takım Planı',en:'Detailed Team Plan'},defense:{tr:'Detaylı Takım Planı',en:'Detailed Team Plan'},strengths:{tr:'Detaylı Değerlendirme',en:'Detailed Assessment'},weaknesses:{tr:'Detaylı Değerlendirme',en:'Detailed Assessment'},
   standout:{tr:'Oyuncu Açıklamaları',en:'Player Explanations'},momentum:{tr:'Maç Okuması',en:'Match Outlook'},teamRisks:{tr:'Zayıf Yönler & Riskler',en:'Weaknesses & Risks'},
@@ -23,11 +27,17 @@ export default function TeamReportLockedDetail({tr,accent=ACCENT,onOpenPlans,kin
   secondStandout:{tr:"İkinci öne çıkan oyuncuyu görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the second standout player.'},
  };
  const message=messages[kind][tr?'tr':'en'];
- return <View style={[s.card,{borderColor:`${accent}55`,backgroundColor:`${accent}0A`}]}> 
+ return <View style={[s.card,{borderColor:`${accent}55`,backgroundColor:`${accent}0A`}]}>
   <View style={s.heading}><View style={[s.icon,{borderColor:`${accent}66`,backgroundColor:`${accent}18`}]}><LockKeyhole size={16} color={accent} strokeWidth={2.3}/></View><Text style={[s.title,{color:accent}]}>{title}</Text></View>
   <Text style={s.message}>{message}</Text>
   <Pressable accessibilityRole="button" onPress={onOpenPlans} style={({pressed})=>[s.button,{borderColor:accent,backgroundColor:`${accent}18`},pressed&&{opacity:.8}]}><Text style={[s.buttonText,{color:accent}]}>{tr?'Plan Yönetimi':'Manage Plan'}</Text></Pressable>
  </View>;
 }
 
-const s=StyleSheet.create({card:{gap:9,padding:12,borderRadius:14,borderWidth:1,borderStyle:'dashed'},heading:{flexDirection:'row',alignItems:'center',gap:8},icon:{width:30,height:30,borderRadius:15,borderWidth:1,alignItems:'center',justifyContent:'center'},title:{flex:1,fontSize:13,fontWeight:'900'},message:{color:MUTED,fontSize:12,lineHeight:18,fontWeight:'600'},button:{minHeight:39,borderRadius:11,borderWidth:1,alignItems:'center',justifyContent:'center',paddingHorizontal:12},buttonText:{fontSize:11,fontWeight:'900',textTransform:'uppercase'}});
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, MUTED, themeColor} = colors;
+
+  const s=StyleSheet.create({card:{gap:9,padding:12,borderRadius:14,borderWidth:1,borderStyle:'dashed'},heading:{flexDirection:'row',alignItems:'center',gap:8},icon:{width:30,height:30,borderRadius:15,borderWidth:1,alignItems:'center',justifyContent:'center'},title:{flex:1,fontSize:13,fontWeight:'900'},message:{color:MUTED,fontSize:12,lineHeight:18,fontWeight:'600'},button:{minHeight:39,borderRadius:11,borderWidth:1,alignItems:'center',justifyContent:'center',paddingHorizontal:12},buttonText:{fontSize:11,fontWeight:'900',textTransform:'uppercase'}});
+  return {ACCENT, MUTED, s, themeColor};
+});

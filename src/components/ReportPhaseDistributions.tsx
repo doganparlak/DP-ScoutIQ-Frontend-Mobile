@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { LockKeyhole } from 'lucide-react-native';
-import { ACCENT, CARD, MUTED, TEXT } from '../theme';
+import { useEffect,useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+
 import { reportPhaseLabels } from '../utils/reportPhaseLabels';
 
 type Phase = {
@@ -20,9 +21,12 @@ const phaseNames: Record<string, string> = {
 };
 
 export default function ReportPhaseDistributions({ phases, possession, free = false, primaryRole, onOpenPlans }: { phases: Phase[]; possession: boolean; free?: boolean; primaryRole?: string; onOpenPlans?: () => void }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles, MUTED, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const turkish = i18n.language.startsWith('tr');
-  const accent = possession ? ACCENT : '#F59E0B';
+  const accent = possession ? ACCENT : themeColor('#F59E0B');
   const order = possession ? ['Build-up', 'Progression', 'Final Third'] : ['Low Block', 'Mid Block', 'High Block'];
   const [selectedRole, setSelectedRole] = useState('');
   const visible = order.flatMap(name => phases.filter(phase => phase.phase === name));
@@ -81,7 +85,11 @@ export default function ReportPhaseDistributions({ phases, possession, free = fa
   </View>;
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, MUTED, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   page: { gap: 14 },
   roleSwitch: { flexDirection: 'row', borderWidth: 1, borderRadius: 24, padding: 4, gap: 4 },
   roleOption: { flex: 1, alignItems: 'center', borderRadius: 20, paddingVertical: 10 },
@@ -106,6 +114,8 @@ const styles = StyleSheet.create({
   lockedTitle: { fontSize: 15, fontWeight: '900' },
   lockedRoleName: { color: TEXT, fontSize: 13, fontWeight: '800' },
   lockedText: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
-  lockedButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.14)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  lockedButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   lockedButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+});
+  return {ACCENT, CARD, MUTED, TEXT, styles, themeColor};
 });

@@ -1,17 +1,18 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ChevronDown,RefreshCcw,Shirt,Users,X } from 'lucide-react-native';
 import React from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { ChevronDown, RefreshCcw, Shirt, Users, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import {
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 
-import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
+
 import { TutorialHint } from './Tutorial';
 
 export type LineUpPlayer = {
@@ -150,6 +151,9 @@ export default function LineUp({
   onTutorialNext?: () => void;
   onTutorialSkip?: () => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, DANGER_DARK, DANGER, MUTED, TEXT, ON_ACCENT} = themed;
+
   const { t } = useTranslation();
   const [teamName, setTeamName] = React.useState('');
   const [formation, setFormation] = React.useState(DEFAULT_FORMATION);
@@ -413,7 +417,7 @@ export default function LineUp({
                             compactRow && styles.slotIconCompact,
                           ]}
                         >
-                          <Shirt size={compactRow ? 15 : 18} color={player ? TEXT : ACCENT} strokeWidth={2.3} />
+                          <Shirt size={compactRow ? 15 : 18} color={player ? ON_ACCENT : ACCENT} strokeWidth={2.3} />
                         </View>
                         <Text
                           numberOfLines={1}
@@ -509,10 +513,16 @@ export default function LineUp({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, PITCH_COLORS, themeColor} = colors;
+  const light = colors.mode === 'light';
+  const ON_ACCENT = themeColor(TEXT, 'onAccent');
+
+  const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.62)',
+    backgroundColor: themeColor('rgba(0,0,0,0.62)', 'surface'),
     justifyContent: 'center',
     alignItems: 'center',
     padding: 14,
@@ -535,7 +545,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.10)', 'surface'),
   },
   headerTitleRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBubble: {
@@ -544,7 +554,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.13)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -586,7 +596,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.11)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.11)', 'surface'),
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -629,13 +639,13 @@ const styles = StyleSheet.create({
   formationChipActive: { borderColor: ACCENT, backgroundColor: ACCENT },
   formationChipInactive: { borderColor: LINE, backgroundColor: PANEL },
   formationChipText: { color: MUTED, fontWeight: '900', fontSize: 12 },
-  formationChipTextActive: { color: TEXT, fontWeight: '900', fontSize: 12 },
+  formationChipTextActive: { color: themeColor(TEXT, 'onAccent'), fontWeight: '900', fontSize: 12 },
   pitch: {
     minHeight: 620,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: 'rgba(226, 255, 230, 0.72)',
-    backgroundColor: '#0E271A',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.72)', 'border'),
+    backgroundColor: light ? PITCH_COLORS.edge : themeColor('#0E271A', 'surface'),
     paddingTop: 56,
     paddingBottom: 28,
     paddingHorizontal: 8,
@@ -652,7 +662,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1.4,
-    backgroundColor: 'rgba(226, 255, 230, 0.58)',
+    backgroundColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.58)', 'surface'),
   },
   centerCircle: {
     position: 'absolute',
@@ -664,7 +674,7 @@ const styles = StyleSheet.create({
     marginLeft: -56,
     borderRadius: 56,
     borderWidth: 1.5,
-    borderColor: 'rgba(226, 255, 230, 0.55)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.55)', 'border'),
   },
   centerSpot: {
     position: 'absolute',
@@ -675,7 +685,7 @@ const styles = StyleSheet.create({
     marginLeft: -3,
     marginTop: -3,
     borderRadius: 3,
-    backgroundColor: 'rgba(226, 255, 230, 0.75)',
+    backgroundColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.75)', 'surface'),
   },
   penaltyAreaTop: {
     position: 'absolute',
@@ -685,7 +695,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderWidth: 1.5,
     borderTopWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.56)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.56)', 'border'),
   },
   goalAreaTop: {
     position: 'absolute',
@@ -695,7 +705,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderWidth: 1.5,
     borderTopWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.56)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.56)', 'border'),
   },
   penaltySpotTop: {
     position: 'absolute',
@@ -705,7 +715,7 @@ const styles = StyleSheet.create({
     height: 5,
     marginLeft: -2.5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(226, 255, 230, 0.70)',
+    backgroundColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.70)', 'surface'),
   },
   penaltyArcTop: {
     position: 'absolute',
@@ -718,7 +728,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 38,
     borderWidth: 1.5,
     borderTopWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.45)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.45)', 'border'),
   },
   goalTop: {
     position: 'absolute',
@@ -728,7 +738,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderWidth: 1.5,
     borderBottomWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.64)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.64)', 'border'),
   },
   penaltyAreaBottom: {
     position: 'absolute',
@@ -738,7 +748,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderWidth: 1.5,
     borderBottomWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.56)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.56)', 'border'),
   },
   goalAreaBottom: {
     position: 'absolute',
@@ -748,7 +758,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderWidth: 1.5,
     borderBottomWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.56)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.56)', 'border'),
   },
   penaltySpotBottom: {
     position: 'absolute',
@@ -758,7 +768,7 @@ const styles = StyleSheet.create({
     height: 5,
     marginLeft: -2.5,
     borderRadius: 2.5,
-    backgroundColor: 'rgba(226, 255, 230, 0.70)',
+    backgroundColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.70)', 'surface'),
   },
   penaltyArcBottom: {
     position: 'absolute',
@@ -771,7 +781,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 38,
     borderWidth: 1.5,
     borderBottomWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.45)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.45)', 'border'),
   },
   goalBottom: {
     position: 'absolute',
@@ -781,13 +791,13 @@ const styles = StyleSheet.create({
     height: 7,
     borderWidth: 1.5,
     borderTopWidth: 0,
-    borderColor: 'rgba(226, 255, 230, 0.64)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.64)', 'border'),
   },
   cornerArc: {
     position: 'absolute',
     width: 16,
     height: 16,
-    borderColor: 'rgba(226, 255, 230, 0.76)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.76)', 'border'),
   },
   cornerTopLeft: {
     top: 0,
@@ -833,16 +843,16 @@ const styles = StyleSheet.create({
     minHeight: 28,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(226, 255, 230, 0.18)',
-    backgroundColor: 'rgba(4, 14, 9, 0.58)',
+    borderColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.18)', 'border'),
+    backgroundColor: light ? PANEL : themeColor('rgba(4, 14, 9, 0.58)', 'surface'),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingHorizontal: 10,
   },
-  pitchTeamName: { flex: 1, minWidth: 0, color: '#B7F7C8', fontWeight: '900', fontSize: 11.5 },
-  pitchFormation: { flex: 1, color: '#B7F7C8', fontWeight: '900', fontSize: 11.5, textAlign: 'center' },
+  pitchTeamName: { flex: 1, minWidth: 0, color: themeColor('#B7F7C8', 'text'), fontWeight: '900', fontSize: 11.5 },
+  pitchFormation: { flex: 1, color: themeColor('#B7F7C8', 'text'), fontWeight: '900', fontSize: 11.5, textAlign: 'center' },
   pitchPowerWrap: {
     flex: 1,
     flexDirection: 'row',
@@ -851,12 +861,12 @@ const styles = StyleSheet.create({
     gap: 4,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderLeftColor: 'rgba(226, 255, 230, 0.16)',
-    borderRightColor: 'rgba(226, 255, 230, 0.16)',
+    borderLeftColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.16)', 'border'),
+    borderRightColor: light ? PITCH_COLORS.line : themeColor('rgba(226, 255, 230, 0.16)', 'border'),
     paddingLeft: 8,
     paddingRight: 8,
   },
-  pitchPowerLabel: { color: '#B7F7C8', fontSize: 11.5, fontWeight: '900' },
+  pitchPowerLabel: { color: themeColor('#B7F7C8', 'text'), fontSize: 11.5, fontWeight: '900' },
   pitchPowerValue: { color: ACCENT, fontSize: 11.5, fontWeight: '900' },
   pitchRow: {
     flex: 1,
@@ -875,8 +885,8 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.34)',
-    backgroundColor: 'rgba(5, 14, 9, 0.82)',
+    borderColor: themeColor('rgba(74, 222, 128, 0.34)', 'border'),
+    backgroundColor: light ? PANEL : themeColor('rgba(5, 14, 9, 0.82)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 4,
@@ -894,7 +904,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.13)', 'surface'),
   },
   slotIconFilled: {
     width: 26,
@@ -911,13 +921,13 @@ const styles = StyleSheet.create({
   },
   slotName: { color: TEXT, fontSize: 12, fontWeight: '900', marginTop: 4, width: '100%', textAlign: 'center' },
   slotNameCompact: { fontSize: 10.5, marginTop: 3 },
-  slotForm: { color: '#B7F7C8', fontSize: 10, fontWeight: '900', marginTop: 1 },
+  slotForm: { color: themeColor('#B7F7C8', 'text'), fontSize: 10, fontWeight: '900', marginTop: 1 },
   slotFormCompact: { fontSize: 9 },
   slotLabel: { color: ACCENT, fontSize: 9, fontWeight: '900', marginTop: 1 },
   slotLabelCompact: { fontSize: 8 },
   pickerBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.58)',
+    backgroundColor: themeColor('rgba(0,0,0,0.58)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
@@ -957,14 +967,14 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 10,
   },
-  playerOptionSelected: { borderColor: ACCENT, backgroundColor: 'rgba(22, 163, 74, 0.14)' },
+  playerOptionSelected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22, 163, 74, 0.14)', 'surface') },
   playerOptionIcon: {
     width: 30,
     height: 30,
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   playerOptionMain: { flex: 1, minWidth: 0 },
   playerOptionName: { color: TEXT, fontWeight: '900' },
@@ -973,8 +983,8 @@ const styles = StyleSheet.create({
     minWidth: 54,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.35)',
-    backgroundColor: 'rgba(22, 163, 74, 0.10)',
+    borderColor: themeColor('rgba(22, 163, 74, 0.35)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.10)', 'surface'),
     paddingHorizontal: 8,
     paddingVertical: 5,
     alignItems: 'center',
@@ -983,4 +993,6 @@ const styles = StyleSheet.create({
   playerFormValue: { color: ACCENT, fontSize: 13, fontWeight: '900', marginTop: 1 },
   emptyText: { color: MUTED, textAlign: 'center', paddingVertical: 18, fontWeight: '800' },
   pressed: { opacity: 0.86 },
+});
+  return {ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, ON_ACCENT, styles, themeColor};
 });

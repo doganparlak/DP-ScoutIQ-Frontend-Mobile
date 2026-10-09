@@ -1,19 +1,23 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BG, TEXT, ACCENT, LINE, PANEL } from '@/theme';
-import { RootStackParamList } from '@/types';
+import { useMemo,useState } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+
 import { useLanguage } from '@/context/LanguageProvider';
+import { RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
 
 import { Fontisto } from '@expo/vector-icons';
 
-import scoutwiseLogo from '../../assets/scoutwise_logo.png';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function WelcomeScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   const navigation = useNavigation<Nav>();
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
@@ -28,7 +32,7 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.wrap}>
       {/* Logo */}
-      <Image source={scoutwiseLogo} style={styles.logo} resizeMode="contain" />
+      <ScoutWiseBrandMark style={styles.logo}/>
 
       {/* App name: "scout" white, "wise" green */}
       <Text style={styles.appName}>
@@ -109,7 +113,11 @@ export default function WelcomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, TEXT, ACCENT, LINE, PANEL, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     backgroundColor: BG,
@@ -128,7 +136,7 @@ const styles = StyleSheet.create({
     marginBottom: 60,
   },
   appNameScout: {
-    color: '#FFFFFF',
+    color: themeColor('#FFFFFF', 'text'),
   },
   appNameWise: {
     color: ACCENT,
@@ -193,7 +201,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 17 },
   secondaryBtn: {
@@ -209,4 +217,6 @@ const styles = StyleSheet.create({
   buttonsSpacer: {
   height: 55, // increases vertical gap so Login/Signup sit a bit lower
 },
+});
+  return {BG, TEXT, ACCENT, LINE, PANEL, styles, themeColor};
 });

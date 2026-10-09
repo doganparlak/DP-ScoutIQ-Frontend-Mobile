@@ -1,26 +1,22 @@
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import ThemeToggle from '@/components/ThemeToggle';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { CircleHelp,CreditCard,LogOut } from "lucide-react-native";
 import React from "react";
-import Svg, {
-  Defs,
-  ClipPath,
-  Circle,
-  Rect,
-  Polygon,
-  Image as SvgImage,
-} from "react-native-svg";
-import { LogOut, CreditCard, CircleHelp } from "lucide-react-native";
 import {
-  ActivityIndicator,
-  Alert,
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
+ActivityIndicator,
+Alert,
+Pressable,
+StyleSheet,
+Text,
+View,
 } from "react-native";
-import { PANEL, LINE, TEXT, MUTED, ACCENT, CARD } from "../theme";
-import { getMe, updateMe, type Profile, type UILang } from "../services/api";
-import { useTranslation } from "react-i18next";
-import type { Plan } from "@/services/api";
+
+
 import { useLanguage } from "@/context/LanguageProvider";
+import type { Plan } from "@/services/api";
+import { useTranslation } from "react-i18next";
+import { getMe,updateMe,type Profile,type UILang } from "../services/api";
 
 
 type Props = {
@@ -38,6 +34,9 @@ export default function Account({
   onOpenHelp,
   navigationLocked = false,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, ACCENT} = themed;
+
   const [email, setEmail] = React.useState<string>("—");
   const [savingLanguage, setSavingLanguage] = React.useState(false);
   const [languageOpen, setLanguageOpen] = React.useState(false);
@@ -77,29 +76,7 @@ export default function Account({
     <View style={styles.card} accessibilityLabel={t("accountTitle", "Account")}>
       <View style={styles.welcomeRow}>
         <View style={styles.welcomeIcon}>
-          <Svg
-            width={48}
-            height={48}
-            viewBox="0 0 1024 1024"
-            accessible={false}
-          >
-            <Defs>
-              <ClipPath id="welcome-logo-shape">
-                <Circle cx="512" cy="491" r="397" />
-              </ClipPath>
-            </Defs>
-            <Rect x="496" y="0" width="32" height="1024" fill="#FFFFFF" />
-            <Polygon
-              points="0,918 218,700 306,788 70,1024 0,1024"
-              fill="#FFFFFF"
-            />
-            <SvgImage
-              href={require("../../assets/scoutwise_logo.png")}
-              width="1024"
-              height="1024"
-              clipPath="url(#welcome-logo-shape)"
-            />
-          </Svg>
+          <ScoutWiseBrandMark style={{ width: 48, height: 48 }} />
         </View>
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={styles.eyebrow}>ScoutWise</Text>
@@ -201,6 +178,7 @@ export default function Account({
           </View>
         </View>
       </View>
+      <ThemeToggle />
       <View style={styles.actions}>
         <Pressable
           onPress={onOpenPlans}
@@ -235,7 +213,11 @@ export default function Account({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {PANEL, LINE, TEXT, MUTED, ACCENT, CARD, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   card: {
     backgroundColor: PANEL,
     borderRadius: 20,
@@ -304,7 +286,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   languageOptionActive: {
-    backgroundColor: "rgba(22, 163, 74, 0.12)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.12)", 'surface'),
   },
   languageOptionText: { color: MUTED, fontWeight: "800", fontSize: 14 },
   languageOptionTextActive: { color: ACCENT },
@@ -326,14 +308,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 22,
   },
-  intro: { color: "#AAB7AC", fontSize: 13, lineHeight: 20, marginTop: 7 },
+  intro: { color: themeColor("#AAB7AC", 'text'), fontSize: 13, lineHeight: 20, marginTop: 7 },
   planBadge: {
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
     borderRadius: 20,
-    backgroundColor: "#163823",
+    backgroundColor: themeColor("#163823", 'surface'),
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -356,7 +338,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: "#16A34A66",
+    borderColor: themeColor("#16A34A66", 'border'),
     borderRadius: 14,
     backgroundColor: CARD,
     paddingHorizontal: 12,
@@ -364,4 +346,6 @@ const styles = StyleSheet.create({
   },
   actionText: { color: TEXT, fontSize: 13, fontWeight: "700", flexShrink: 1 },
   logoutIcon: { padding: 8, borderRadius: 12, backgroundColor: CARD },
+});
+  return {PANEL, LINE, TEXT, MUTED, ACCENT, CARD, styles, themeColor};
 });

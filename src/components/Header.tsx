@@ -1,10 +1,10 @@
-import * as React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import { ACCENT, BG, TEXT, LINE } from '@/theme';
-import { useTranslation } from 'react-i18next';
-import { useMainNavigation } from '@/navigation/MainNavigationContext';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { StyleSheet,Text,View } from 'react-native';
 
-const scoutwiseLogo = require('../../assets/scoutwise_logo.png');
+import { useMainNavigation } from '@/navigation/MainNavigationContext';
+import { useTranslation } from 'react-i18next';
+
 
 type HeaderProps = {
   subtitle?: string;
@@ -16,11 +16,18 @@ type HeaderProps = {
 
 export default function Header({
   subtitle,
-  backgroundColor = BG,
-  textColor = TEXT,
-  accentColor = ACCENT,
-  lineColor = LINE,
+  backgroundColor,
+  textColor,
+  accentColor,
+  lineColor,
 }: HeaderProps) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, TEXT, ACCENT, LINE, styles} = themed;
+  backgroundColor ??= BG;
+  textColor ??= TEXT;
+  accentColor ??= ACCENT;
+  lineColor ??= LINE;
+
   const { t } = useTranslation();
   const hasNavigationHeader = useMainNavigation();
 
@@ -44,20 +51,13 @@ export default function Header({
       {/* Logo row */}
       <View style={styles.logoRow}>
 
-        <Image
-          source={scoutwiseLogo}
-          style={styles.logoIcon}
-          resizeMode="contain"
-          accessible
-          accessibilityRole="image"
-          accessibilityLabel={t('appName', 'ScoutWise')}
-        />
+        <ScoutWiseBrandMark style={styles.logoIcon} accessible accessibilityRole="image" accessibilityLabel={t('appName', 'ScoutWise')}/>
 
         <Text style={styles.title}>
           <Text style={[styles.main, { color: textColor }]}>SCOUT</Text>
           <Text style={[styles.accent, { color: accentColor }]}>WISE</Text>
         </Text>
-        
+
       </View>
 
       {/* Divider line */}
@@ -73,7 +73,11 @@ export default function Header({
 
 const ICON_SIZE = 30;
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, TEXT, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   compactWrap: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 },
   compactSubtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
   wrap: {
@@ -115,4 +119,6 @@ const styles = StyleSheet.create({
   },
   main: { color: TEXT, opacity: 0.9 },
   accent: { color: ACCENT },
+});
+  return {ACCENT, BG, TEXT, LINE, styles, themeColor};
 });

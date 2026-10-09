@@ -1,20 +1,31 @@
-import React from 'react';
-import {Pressable,Text,View} from 'react-native';
-import {useTranslation} from 'react-i18next';
-import {Activity,CheckCircle2,Crosshair,Goal,Hand,Shield,ShieldAlert,Target,Trophy} from 'lucide-react-native';
-import {ACCENT,FRAME_TITLE,MUTED,TEXT} from '@/theme';
-import {type RawLeague} from '@/services/leaguePool';
-import {Badge} from './LeaguePerformanceControls';
-import {proStyles,type ProPlayerEntry} from './ProWorkspaceControls';
-import {FitStatsTable} from './ProTeamFitAssessment';
-import {localizeFitNarrative} from '@/utils/proFitMetrics';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Activity,CheckCircle2,Crosshair,Goal,Hand,Shield,ShieldAlert,Target,Trophy } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import { Pressable,Text,View } from 'react-native';
+
+import { type RawLeague } from '@/services/leaguePool';
+import { localizeFitNarrative } from '@/utils/proFitMetrics';
+import { Badge } from './LeaguePerformanceControls';
+import { FitStatsTable } from './ProTeamFitAssessment';
+import { getThemed_proStyles as __getThemed_proStyles,type ProPlayerEntry } from './ProWorkspaceControls';
 export type ProLeagueFitResult={overall?:string;recommendation?:string;categories?:{key:string;text:string;metrics:{metric:string;values:number[]}[]}[];league?:RawLeague;roles?:string[]};
 const categories:Record<string,{tr:string;en:string;Icon:typeof Target}>={contribution_impact:{tr:'Katkı ve Etki',en:'Contribution & Impact',Icon:Activity},goalkeeping:{tr:'Kalecilik',en:'Goalkeeping',Icon:Hand},shooting:{tr:'Şut',en:'Shooting',Icon:Goal},passing:{tr:'Pas',en:'Passing',Icon:Crosshair},defending:{tr:'Savunma',en:'Defending',Icon:Shield},errors_discipline:{tr:'Hatalar ve Disiplin',en:'Errors & Discipline',Icon:ShieldAlert}};
 export default function ProLeagueFitAssessment({onChangeTarget,player,result,targetName}:{onChangeTarget?:()=>void;player:ProPlayerEntry['player'];result:ProLeagueFitResult;targetName:string}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, proStyles, FRAME_TITLE, TEXT, MUTED, themeColor} = themed;
+
  const {i18n}=useTranslation(),tr=i18n.language.startsWith('tr');const league=result.league?.content||{},name=String(league.league_name||targetName),average=tr?'Rol Bazlı Lig Ortalaması':'Positional League Average';
  const identity=(label:string,url:string|undefined,person:boolean,color:string)=><View style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:8}}><Badge url={url} player={person} size={42}/><Text style={{flex:1,minWidth:0,color,fontSize:13,fontWeight:'700'}}>{label}</Text></View>;
- const identities=()=> <View style={{flexDirection:'row',gap:12}}>{identity(player.name,player.meta?.imageUrl,true,ACCENT)}{identity(name,league.image_url||league.league_image_path,false,'#60a5fa')}</View>;
+ const identities=()=> <View style={{flexDirection:'row',gap:12}}>{identity(player.name,player.meta?.imageUrl,true,ACCENT)}{identity(name,league.image_url||league.league_image_path,false,themeColor('#60a5fa'))}</View>;
  const heading=(title:string,Icon:typeof Target)=><View style={proStyles.heading}><Icon size={22} color={ACCENT}/><Text style={[FRAME_TITLE,{flex:1,minWidth:0}]}>{title}</Text></View>;
  const perspective=(text:string,Icon:typeof Target)=><View style={{gap:8,minWidth:0}}><View style={{flexDirection:'row',alignItems:'center',gap:7}}><Icon size={14} color={ACCENT}/><Text style={{color:ACCENT,fontSize:13,fontWeight:'700'}}>ScoutWise {tr?'Perspektifi':'Perspective'}</Text></View><Text style={{color:TEXT,fontSize:14,lineHeight:22,width:'100%',flexShrink:1}}>{localizeFitNarrative(text,tr)}</Text></View>;
- return <View style={{gap:16,minWidth:0}}><View style={proStyles.frame}><View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'}}>{heading(tr?'Hedef Lig':'Target League',Trophy)}{onChangeTarget&&<Pressable accessibilityRole='link' onPress={onChangeTarget} style={{paddingVertical:8}}><Text style={{color:ACCENT,fontSize:12,textDecorationLine:'underline'}}>{tr?'Hedefi Değiştir':'Change Target'}</Text></Pressable>}</View>{identity(name,league.image_url||league.league_image_path,false,TEXT)}<Text style={proStyles.hint}>{String(league.league_country_name||'')}</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{[[tr?'Oyuncu':'Players',league.player_count],[tr?'Takım':'Teams',league.team_count],[tr?'Ortalama Yaş':'Average Age',league.age]].map(([label,value])=><View key={String(label)} style={{flex:1,minWidth:75,padding:10,borderRadius:12,borderWidth:1,borderColor:'rgba(22,163,74,.22)',gap:4}}><Text style={{color:MUTED,fontSize:10}}>{String(label)}</Text><Text style={{color:TEXT,fontSize:16,fontWeight:'700'}}>{value==null?'—':String(value)}</Text></View>)}</View>{!!result.roles?.length&&<Text style={proStyles.hint}>{tr?'Karşılaştırılan Roller':'Compared Roles'}: {result.roles.join(' · ')}</Text>}</View>{!!result.overall&&<View style={proStyles.frame}>{heading(tr?'Genel Değerlendirme':'Overall Assessment',CheckCircle2)}{identities()}{perspective(result.overall,CheckCircle2)}</View>}{result.categories?.map(category=>{const config=categories[category.key];if(!config)return null;const evidence=category.metrics.flatMap(metric=>{const unit=/%|percentage/i.test(metric.metric)?'percent':/rating|performance|captain/i.test(metric.metric)?'value':'per90';return [{metric:metric.metric,value:metric.values[0],subject:player.name,unit},{metric:metric.metric,value:metric.values[1],subject:average,unit}];});return <View key={category.key} style={proStyles.frame}>{heading(tr?config.tr:config.en,config.Icon)}{perspective(category.text,config.Icon)}<FitStatsTable evidence={evidence} subjects={[player.name,average]} tr={tr}/></View>;})}{!!result.recommendation&&<View style={proStyles.frame}>{heading(tr?'Kullanım Önerisi':'Usage Recommendation',Target)}{identities()}{perspective(result.recommendation,Target)}</View>}</View>;
+ return <View style={{gap:16,minWidth:0}}><View style={proStyles.frame}><View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'}}>{heading(tr?'Hedef Lig':'Target League',Trophy)}{onChangeTarget&&<Pressable accessibilityRole='link' onPress={onChangeTarget} style={{paddingVertical:8}}><Text style={{color:ACCENT,fontSize:12,textDecorationLine:'underline'}}>{tr?'Hedefi Değiştir':'Change Target'}</Text></Pressable>}</View>{identity(name,league.image_url||league.league_image_path,false,TEXT)}<Text style={proStyles.hint}>{String(league.league_country_name||'')}</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{[[tr?'Oyuncu':'Players',league.player_count],[tr?'Takım':'Teams',league.team_count],[tr?'Ortalama Yaş':'Average Age',league.age]].map(([label,value])=><View key={String(label)} style={{flex:1,minWidth:75,padding:10,borderRadius:12,borderWidth:1,borderColor:themeColor('rgba(22,163,74,.22)', 'border'),gap:4}}><Text style={{color:MUTED,fontSize:10}}>{String(label)}</Text><Text style={{color:TEXT,fontSize:16,fontWeight:'700'}}>{value==null?'—':String(value)}</Text></View>)}</View>{!!result.roles?.length&&<Text style={proStyles.hint}>{tr?'Karşılaştırılan Roller':'Compared Roles'}: {result.roles.join(' · ')}</Text>}</View>{!!result.overall&&<View style={proStyles.frame}>{heading(tr?'Genel Değerlendirme':'Overall Assessment',CheckCircle2)}{identities()}{perspective(result.overall,CheckCircle2)}</View>}{result.categories?.map(category=>{const config=categories[category.key];if(!config)return null;const evidence=category.metrics.flatMap(metric=>{const unit=/%|percentage/i.test(metric.metric)?'percent':/rating|performance|captain/i.test(metric.metric)?'value':'per90';return [{metric:metric.metric,value:metric.values[0],subject:player.name,unit},{metric:metric.metric,value:metric.values[1],subject:average,unit}];});return <View key={category.key} style={proStyles.frame}>{heading(tr?config.tr:config.en,config.Icon)}{perspective(category.text,config.Icon)}<FitStatsTable evidence={evidence} subjects={[player.name,average]} tr={tr}/></View>;})}{!!result.recommendation&&<View style={proStyles.frame}>{heading(tr?'Kullanım Önerisi':'Usage Recommendation',Target)}{identities()}{perspective(result.recommendation,Target)}</View>}</View>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, FRAME_TITLE, MUTED, TEXT, themeColor} = colors;
+  const proStyles = __getThemed_proStyles(colors);
+
+  return {ACCENT, FRAME_TITLE, MUTED, TEXT, proStyles, themeColor};
+});

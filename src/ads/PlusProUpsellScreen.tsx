@@ -1,14 +1,16 @@
-import React from 'react';
-import { acquireAdPresentation, ownsAdPresentation, releaseAdPresentation } from './presentation';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BadgeCheck, Check, Minus, X } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import type { NavigationProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { BadgeCheck,Check,Minus,X } from 'lucide-react-native';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Modal,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { acquireAdPresentation,ownsAdPresentation,releaseAdPresentation } from './presentation';
 
 import type { MainTabsParamList } from '@/types';
-import { ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+
 
 type PlusProUpsellProps = {
   visible: boolean;
@@ -24,6 +26,9 @@ type ComparisonRow = {
 };
 
 export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentationOwner }: PlusProUpsellProps) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, TEXT, ACCENT, themeColor} = themed;
+
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const insets = useSafeAreaInsets();
@@ -50,11 +55,11 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentatio
 
   const available = (label?: string) => (
     <View style={styles.valueWrap}>
-      <Check size={16} color="#4ADE80" strokeWidth={3} />
+      <Check size={16} color={themeColor("#4ADE80", 'text')} strokeWidth={3} />
       {label ? <Text style={styles.valueText}>{label}</Text> : null}
     </View>
   );
-  const unavailable = <Minus size={17} color="#667069" strokeWidth={2.5} />;
+  const unavailable = <Minus size={17} color={themeColor("#667069", 'text')} strokeWidth={2.5} />;
   const comparisonRows: ComparisonRow[] = [
     {
       label: t('planFeatures_NoAdsMonthly', 'Ad-free'),
@@ -141,12 +146,7 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentatio
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.hero}>
-            <Image
-              source={require('../../assets/scoutwise_logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-              accessibilityIgnoresInvertColors
-            />
+            <ScoutWiseBrandMark style={styles.logo} accessibilityIgnoresInvertColors/>
             <Text style={styles.wordmark}>
               <Text style={styles.wordmarkScout}>SCOUT</Text>
               <Text style={styles.wordmarkWise}>WISE</Text>
@@ -208,7 +208,11 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentatio
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   topBar: {
     height: 50,
@@ -247,7 +251,7 @@ const styles = StyleSheet.create({
   comparisonCard: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.58)',
+    borderColor: themeColor('rgba(22,163,74,0.58)', 'border'),
     backgroundColor: PANEL,
     padding: 14,
     shadowColor: ACCENT,
@@ -263,9 +267,9 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(22,163,74,0.13)',
+    backgroundColor: themeColor('rgba(22,163,74,0.13)', 'surface'),
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.4)',
+    borderColor: themeColor('rgba(22,163,74,0.4)', 'border'),
   },
   headingCopy: { flex: 1 },
   comparisonTitle: { color: TEXT, fontSize: 17, fontWeight: '900' },
@@ -279,7 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: CARD,
   },
   tableRow: { minHeight: 54, flexDirection: 'row', alignItems: 'stretch' },
-  tableHeader: { minHeight: 48, backgroundColor: '#111714' },
+  tableHeader: { minHeight: 48, backgroundColor: themeColor('#111714', 'surface') },
   tableRowBorder: { borderTopWidth: 1, borderTopColor: LINE },
   featureCell: { flex: 1.35, minWidth: 0, justifyContent: 'center', paddingHorizontal: 10 },
   planCell: {
@@ -291,13 +295,13 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: LINE,
   },
-  plusHeaderCell: { backgroundColor: 'rgba(56,189,248,0.08)' },
-  proHeaderCell: { backgroundColor: 'rgba(22,163,74,0.12)' },
-  plusValueCell: { backgroundColor: 'rgba(56,189,248,0.025)' },
-  proValueCell: { backgroundColor: 'rgba(22,163,74,0.04)' },
-  plusHeaderText: { color: '#38BDF8', fontSize: 13, fontWeight: '900', letterSpacing: 0.7 },
-  proHeaderText: { color: '#4ADE80', fontSize: 13, fontWeight: '900', letterSpacing: 0.7 },
-  featureText: { color: '#D9E2DD', fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+  plusHeaderCell: { backgroundColor: themeColor('rgba(56,189,248,0.08)', 'surface') },
+  proHeaderCell: { backgroundColor: themeColor('rgba(22,163,74,0.12)', 'surface') },
+  plusValueCell: { backgroundColor: themeColor('rgba(56,189,248,0.025)', 'surface') },
+  proValueCell: { backgroundColor: themeColor('rgba(22,163,74,0.04)', 'surface') },
+  plusHeaderText: { color: themeColor('#38BDF8', 'text'), fontSize: 13, fontWeight: '900', letterSpacing: 0.7 },
+  proHeaderText: { color: themeColor('#4ADE80', 'text'), fontSize: 13, fontWeight: '900', letterSpacing: 0.7 },
+  featureText: { color: themeColor('#D9E2DD', 'text'), fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
   valueWrap: { maxWidth: '100%', alignItems: 'center', justifyContent: 'center', gap: 3 },
   valueText: { color: TEXT, fontSize: 9.5, lineHeight: 12, fontWeight: '800', textAlign: 'center' },
   plansButton: {
@@ -308,7 +312,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: ACCENT,
     borderWidth: 1,
-    borderColor: '#35C66C',
+    borderColor: themeColor('#35C66C', 'border'),
     shadowColor: ACCENT,
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -316,5 +320,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   plansButtonPressed: { opacity: 0.88, transform: [{ scale: 0.99 }] },
-  plansButtonText: { color: '#06150B', fontSize: 16, fontWeight: '900' },
+  plansButtonText: { color: themeColor('#06150B', 'text'), fontSize: 16, fontWeight: '900' },
+});
+  return {ACCENT, BG, CARD, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

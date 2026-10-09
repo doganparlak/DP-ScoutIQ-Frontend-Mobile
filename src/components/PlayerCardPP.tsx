@@ -1,20 +1,21 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { UserRound } from 'lucide-react-native';
-import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
+
 import React from 'react';
-import {
-  Alert,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
 import { useTranslation } from 'react-i18next';
+import {
+Alert,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+useWindowDimensions,
+View,
+} from 'react-native';
 
 import PlayerCard from '@/components/PlayerCard';
-import { TutorialHint, TutorialStrong, type PlayerPoolTutorialStep } from '@/components/Tutorial';
-import { TEXT, MUTED, LINE, ACCENT, CARD, PANEL } from '@/theme';
+import { TutorialHint,TutorialStrong,type PlayerPoolTutorialStep } from '@/components/Tutorial';
+
 import type { PlayerData } from '@/types';
 
 type PlayerPoolComponentTheme = {
@@ -75,6 +76,9 @@ export default function PlayerCardPP({
   worldCupMode = false,
   footerContent,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, FRAME_HEADING, themeColor} = themed;
+
   const { t } = useTranslation();
   const { width: windowWidth, fontScale } = useWindowDimensions();
   const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
@@ -125,7 +129,7 @@ export default function PlayerCardPP({
             reportDisabled={reportDisabled || tutorialActive}
             hideNationalityLeague={worldCupMode}
             visualTheme={theme ? {
-              cardBackground: 'rgba(167, 132, 244, 0.16)',
+              cardBackground: themeColor('rgba(167, 132, 244, 0.16)'),
               accent: theme.accent,
             } : undefined}
             onAddFavorite={async (player) => {
@@ -265,7 +269,11 @@ export default function PlayerCardPP({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, TEXT, MUTED, LINE, ACCENT, CARD, PANEL, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
@@ -317,7 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
@@ -348,4 +356,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, TEXT, MUTED, LINE, ACCENT, CARD, PANEL, styles, themeColor};
 });

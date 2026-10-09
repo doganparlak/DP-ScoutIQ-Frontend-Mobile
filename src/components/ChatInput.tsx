@@ -1,9 +1,10 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/components/ChatInput.tsx
-import React, { useRef } from 'react';
-import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
-import { ACCENT, BG, PANEL, MUTED, LINE } from '@/theme';
-import { useTranslation } from 'react-i18next';
+import { useRef } from 'react';
+import { Pressable,StyleSheet,Text,TextInput,View } from 'react-native';
+
 import { TutorialHint } from '@/components/Tutorial';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   value: string;
@@ -26,6 +27,9 @@ export default function ChatInput({
   tutorialVisible = false,
   onTutorialSkipAll,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED} = themed;
+
   const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const canSend = value.trim().length > 0 && !disabled;
@@ -84,7 +88,11 @@ export default function ChatInput({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, PANEL, MUTED, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   // ⬇️ Add marginBottom to lift the bar up a bit, and slightly reduce padding
   outer: {
     backgroundColor: BG,
@@ -106,7 +114,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: 'white',
+    color: themeColor('white', 'text'),
     backgroundColor: PANEL,
     borderRadius: 12,
     paddingHorizontal: 12,
@@ -118,7 +126,7 @@ const styles = StyleSheet.create({
   btn: {
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
@@ -126,4 +134,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnText: { color: ACCENT, fontWeight: '900' },
+});
+  return {ACCENT, BG, PANEL, MUTED, LINE, styles, themeColor};
 });

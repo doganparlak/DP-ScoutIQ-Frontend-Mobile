@@ -1,9 +1,10 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { Pressable,ScrollView,StyleSheet,Text,useWindowDimensions,View } from 'react-native';
+
+import type { LeagueBestPlayer,LeagueMetric,LeagueStanding,TeamSeasonMetrics } from '@/services/leaguePerformance';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
-import type { LeagueBestPlayer, LeagueMetric, LeagueStanding, TeamSeasonMetrics } from '@/services/leaguePerformance';
-import { Badge, standingRuleMeta, styles as shared } from './LeaguePerformanceControls';
+import { getThemed_styles as __getThemed_shared,getThemed_standingRuleMeta as __getThemed_standingRuleMeta,Badge } from './LeaguePerformanceControls';
 
 type Props = {
   rows: LeagueStanding[]; teams: Record<string, TeamSeasonMetrics>; metric?: LeagueMetric;
@@ -13,6 +14,9 @@ type Props = {
   onPlayer: (player: LeagueBestPlayer) => void;
 };
 export default function AdaptiveLeagueStandingsTable(props: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {shared, styles, PANEL, LINE, standingRuleMeta, TEXT, themeColor} = themed;
+
   const {width: windowWidth, fontScale} = useWindowDimensions();
   const [measuredWidth, setMeasuredWidth] = React.useState(0);
   const width = Math.max(1, (measuredWidth || Math.max(220, windowWidth - 58)) - 2);
@@ -61,7 +65,7 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
         <View>
           <View style={[styles.row, styles.header, {height: headerHeight}]}>
             {visibleColumns.map(column => <Text key={column.key} style={[styles.heading, cell, column.key === 'points' && styles.points]}>{column.label}</Text>)}
-            {props.metric && <Text numberOfLines={3} style={[styles.heading, {width: metricWidth, color: '#7DD3FC'}]}>{matchMetricLabel(props.metric.label, props.tr ? 'tr' : 'en').toLocaleUpperCase(props.tr ? 'tr-TR' : 'en-GB')}</Text>}
+            {props.metric && <Text numberOfLines={3} style={[styles.heading, {width: metricWidth, color: themeColor('#7DD3FC', 'text')}]}>{matchMetricLabel(props.metric.label, props.tr ? 'tr' : 'en').toLocaleUpperCase(props.tr ? 'tr-TR' : 'en-GB')}</Text>}
             {props.showBiweekly && <Text style={[styles.heading, {width: playerWidth}]}>{props.tr ? 'İKİ HAFTANIN OYUNCUSU' : 'TWO-WEEK TOP PLAYER'}</Text>}
             {props.showSeason && <Text style={[styles.heading, {width: playerWidth}]}>{props.tr ? 'SEZONUN OYUNCUSU' : 'PLAYER OF THE SEASON'}</Text>}
           </View>
@@ -70,7 +74,7 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
             const item = props.metric && team?.metrics[props.metric.key];
             return <View key={`${row.position}:${row.teamId}`} style={[styles.row, {height: rowHeight}]}>
               {visibleColumns.map(column => <Text key={column.key} style={[styles.value, cell, column.key === 'points' && styles.points]}>{row[column.key] ?? '—'}</Text>)}
-              {props.metric && <View style={[styles.extra, {width: metricWidth}]}><Text style={{color: '#7DD3FC', fontWeight: '800'}}>{number(item?.[props.perMatch ? 'perMatch' : 'value'])}{item && props.metric.unit}</Text>{item && <Text style={shared.hint}>{item.matchesCovered}/{team.matches} {props.tr ? 'maç' : 'matches'}</Text>}</View>}
+              {props.metric && <View style={[styles.extra, {width: metricWidth}]}><Text style={{color: themeColor('#7DD3FC', 'text'), fontWeight: '800'}}>{number(item?.[props.perMatch ? 'perMatch' : 'value'])}{item && props.metric.unit}</Text>{item && <Text style={shared.hint}>{item.matchesCovered}/{team.matches} {props.tr ? 'maç' : 'matches'}</Text>}</View>}
               {props.showBiweekly && <View style={[styles.extra, {width: playerWidth}]}><TeamPlayer player={props.biweeklyPlayers[String(row.teamId)]} pending={props.biweeklyPending} unavailable={props.unavailable} tr={props.tr} onPlayer={props.onPlayer} /></View>}
               {props.showSeason && <View style={[styles.extra, {width: playerWidth}]}><TeamPlayer player={props.seasonPlayers[String(row.teamId)]} pending={props.seasonPending} unavailable={props.unavailable} tr={props.tr} onPlayer={props.onPlayer} /></View>}
             </View>;
@@ -82,20 +86,31 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
   </View>;
 }
 function TeamPlayer({player, pending, unavailable, tr, onPlayer}: {player?: LeagueBestPlayer; pending: boolean; unavailable: boolean; tr: boolean; onPlayer: (player: LeagueBestPlayer) => void}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {shared, TEXT, themeColor} = themed;
+
   if (!player) return <Text style={[shared.hint, {fontSize: 10, textAlign: 'center'}]}>{pending ? (tr ? 'Hesaplanıyor…' : 'Calculating…') : unavailable ? (tr ? 'Yüklenemedi' : 'Unavailable') : (tr ? 'Puanlı oyuncu yok' : 'No rated player')}</Text>;
   return <View style={{alignItems: 'center', gap: 4, width: '100%'}}>
     <Badge url={player.imageUrl} size={28} player />
     <Text numberOfLines={2} style={{color: TEXT, fontSize: 10, lineHeight: 14, fontWeight: '700', textAlign: 'center'}}>{player.name}</Text>
-    <Text style={{color: '#4ADE80', fontSize: 11, fontWeight: '800'}}>{player.averageRating.toFixed(2)}</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel={`${player.name}, ${tr ? 'Oyuncu Kartı' : 'Player Card'}`} onPress={() => onPlayer(player)} style={{minHeight: 32, justifyContent: 'center', paddingHorizontal: 3}}><Text style={{color: '#4ADE80', fontSize: 10, fontWeight: '700', textAlign: 'center'}}>{tr ? 'Oyuncu Kartı' : 'Player Card'}</Text></Pressable>
+    <Text style={{color: themeColor('#4ADE80', 'text'), fontSize: 11, fontWeight: '800'}}>{player.averageRating.toFixed(2)}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${player.name}, ${tr ? 'Oyuncu Kartı' : 'Player Card'}`} onPress={() => onPlayer(player)} style={{minHeight: 32, justifyContent: 'center', paddingHorizontal: 3}}><Text style={{color: themeColor('#4ADE80', 'text'), fontSize: 10, fontWeight: '700', textAlign: 'center'}}>{tr ? 'Oyuncu Kartı' : 'Player Card'}</Text></Pressable>
   </View>;
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+  const standingRuleMeta = __getThemed_standingRuleMeta(colors);
+  const shared = __getThemed_shared(colors);
+  const styles = StyleSheet.create({
   table: {flexDirection: 'row', borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden'},
   row: {flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: LINE},
   header: {backgroundColor: CARD},
   heading: {color: MUTED, fontSize: 10, fontWeight: '800', textAlign: 'center', paddingHorizontal: 3},
   value: {color: TEXT, fontSize: 12, fontWeight: '800', textAlign: 'center', paddingHorizontal: 2},
-  points: {color: '#7DD3FC'}, extra: {alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, gap: 5},
+  points: {color: themeColor('#7DD3FC', 'text')}, extra: {alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, gap: 5},
   ruleStripe: {position: 'absolute', top: 0, bottom: 0, left: 0, width: 3},
+});
+  return {CARD, LINE, MUTED, PANEL, TEXT, standingRuleMeta, shared, styles, themeColor};
 });

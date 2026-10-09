@@ -1,5 +1,6 @@
+import { createThemedStyles,type ThemeColors } from '@/theme';
 import { StyleSheet } from "react-native";
-import { ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from "@/theme";
+
 import { rolePickerCode } from "@/services/api";
 import type { PlayerData } from "@/types";
 export type ComparisonTheme = {
@@ -12,8 +13,8 @@ export type ComparisonTheme = {
   winnerSoft?: string;
   muted: string;
 };
-export const COMPARISON_COLORS = [ACCENT, "#38BDF8", "#F59E0B", "#C084FC"];
-const CATEGORY_GREEN_BACKGROUND = "rgba(22, 163, 74, 0.08)";
+
+
 export function formatValue(value?: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
   if (Math.abs(value) >= 100) return String(Math.round(value));
@@ -60,11 +61,6 @@ export function isValidScore(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-export function scoreColor(value: number) {
-  if (value < 50) return DANGER;
-  if (value < 70) return "#F59E0B";
-  return ACCENT;
-}
 
 export function compactPlayerName(name: string) {
   const trimmed = name.trim();
@@ -128,10 +124,24 @@ export function uppercaseLabel(value: string, lang?: string) {
   return value.toLocaleUpperCase(lang?.startsWith("tr") ? "tr-TR" : undefined);
 }
 
-export const comparisonStyles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const COMPARISON_COLORS = [ACCENT, themeColor("#38BDF8"), themeColor("#F59E0B"), themeColor("#C084FC")];
+
+  const CATEGORY_GREEN_BACKGROUND = themeColor("rgba(22, 163, 74, 0.08)");
+
+  function scoreColor(value: number) {
+  if (value < 50) return DANGER;
+  if (value < 70) return themeColor("#F59E0B");
+  return ACCENT;
+}
+
+  const comparisonStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.64)",
+    backgroundColor: themeColor("rgba(0,0,0,0.64)", 'surface'),
     justifyContent: "center",
     padding: 14,
   },
@@ -201,7 +211,7 @@ export const comparisonStyles = StyleSheet.create({
     flexShrink: 0,
     borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: "#122019",
+    backgroundColor: themeColor("#122019", 'surface'),
     padding: 2,
     alignItems: "center",
     justifyContent: "center",
@@ -232,8 +242,8 @@ export const comparisonStyles = StyleSheet.create({
     maxWidth: 118,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.16)",
-    backgroundColor: "rgba(255,255,255,0.018)",
+    borderColor: themeColor("rgba(148, 163, 184, 0.16)", 'border'),
+    backgroundColor: themeColor("rgba(255,255,255,0.018)", 'surface'),
     paddingHorizontal: 7,
     paddingVertical: 4,
     gap: 1,
@@ -244,7 +254,7 @@ export const comparisonStyles = StyleSheet.create({
     fontWeight: "800",
   },
   physicalChipValue: {
-    color: "rgba(255,255,255,0.82)",
+    color: themeColor("rgba(255,255,255,0.82)", 'text'),
     fontSize: 10.5,
     fontWeight: "800",
   },
@@ -258,7 +268,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(255,255,255,0.025)",
+    backgroundColor: themeColor("rgba(255,255,255,0.025)", 'surface'),
     paddingHorizontal: 7,
     paddingVertical: 6,
     gap: 2,
@@ -283,7 +293,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(255,255,255,0.018)",
+    backgroundColor: themeColor("rgba(255,255,255,0.018)", 'surface'),
     paddingHorizontal: 7,
     paddingVertical: 6,
     gap: 5,
@@ -302,8 +312,8 @@ export const comparisonStyles = StyleSheet.create({
   headerRolePill: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(36, 245, 166, 0.22)",
-    backgroundColor: "rgba(22, 163, 74, 0.13)",
+    borderColor: themeColor("rgba(36, 245, 166, 0.22)", 'border'),
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.13)", 'surface'),
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
@@ -333,7 +343,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(255,255,255,0.025)",
+    backgroundColor: themeColor("rgba(255,255,255,0.025)", 'surface'),
     paddingHorizontal: 7,
     paddingVertical: 6,
     gap: 2,
@@ -386,7 +396,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.42)",
+    backgroundColor: colors.mode === "light" ? PANEL : themeColor("rgba(17, 19, 21, 0.42)", 'surface'),
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -455,7 +465,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.10)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.10)", 'surface'),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -519,7 +529,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(26, 29, 26, 0.72)",
+    backgroundColor: colors.mode === "light" ? PANEL : themeColor("rgba(26, 29, 26, 0.72)", 'surface'),
     padding: 10,
     gap: 9,
   },
@@ -537,13 +547,13 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(31, 34, 32, 0.78)",
+    backgroundColor: colors.mode === "light" ? CARD : themeColor("rgba(31, 34, 32, 0.78)", 'surface'),
     padding: 8,
     gap: 7,
   },
   dualRiskCellWinner: {
     borderColor: ACCENT,
-    backgroundColor: "rgba(22, 163, 74, 0.10)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.10)", 'surface'),
   },
   dualRiskTopLine: {
     flexDirection: "row",
@@ -568,7 +578,7 @@ export const comparisonStyles = StyleSheet.create({
   dualRiskTrack: {
     height: 7,
     borderRadius: 999,
-    backgroundColor: "#272a2a",
+    backgroundColor: colors.mode === "light" ? LINE : themeColor("#272a2a", 'surface'),
     overflow: "hidden",
   },
   dualRiskFill: {
@@ -597,7 +607,7 @@ export const comparisonStyles = StyleSheet.create({
     gap: 8,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.32)",
+    backgroundColor: colors.mode === "light" ? CARD : themeColor("rgba(17, 19, 21, 0.32)", 'surface'),
   },
   twoValueHeaderCell: {
     flex: 1,
@@ -605,7 +615,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.34)",
+    backgroundColor: colors.mode === "light" ? PANEL : themeColor("rgba(17, 19, 21, 0.34)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
@@ -623,7 +633,7 @@ export const comparisonStyles = StyleSheet.create({
     gap: 8,
     borderBottomWidth: 1,
     borderBottomColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.32)",
+    backgroundColor: colors.mode === "light" ? CARD : themeColor("rgba(17, 19, 21, 0.32)", 'surface'),
   },
   threeValueHeaderCell: {
     flex: 1,
@@ -631,7 +641,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.34)",
+    backgroundColor: colors.mode === "light" ? PANEL : themeColor("rgba(17, 19, 21, 0.34)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
@@ -658,7 +668,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.42)",
+    backgroundColor: colors.mode === "light" ? PANEL : themeColor("rgba(17, 19, 21, 0.42)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
@@ -685,7 +695,7 @@ export const comparisonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: "rgba(17, 19, 21, 0.42)",
+    backgroundColor: colors.mode === "light" ? PANEL : themeColor("rgba(17, 19, 21, 0.42)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
@@ -699,7 +709,7 @@ export const comparisonStyles = StyleSheet.create({
     paddingVertical: 8,
   },
   valueCellWinner: {
-    backgroundColor: "rgba(22, 163, 74, 0.12)",
+    backgroundColor: themeColor("rgba(22, 163, 74, 0.12)", 'surface'),
   },
   valueText: {
     color: TEXT,
@@ -765,7 +775,7 @@ export const comparisonStyles = StyleSheet.create({
   },
   previewBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.68)",
+    backgroundColor: themeColor("rgba(0,0,0,0.68)", 'surface'),
     justifyContent: "center",
     padding: 18,
   },
@@ -788,3 +798,8 @@ export const comparisonStyles = StyleSheet.create({
     opacity: 0.9,
   },
 });
+  return {ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT, COMPARISON_COLORS, CATEGORY_GREEN_BACKGROUND, scoreColor, comparisonStyles, themeColor};
+});
+export const getThemed_COMPARISON_COLORS = (colors: ThemeColors) => getModuleTheme(colors).COMPARISON_COLORS;
+export const getThemed_scoreColor = (colors: ThemeColors) => getModuleTheme(colors).scoreColor;
+export const getThemed_comparisonStyles = (colors: ThemeColors) => getModuleTheme(colors).comparisonStyles;

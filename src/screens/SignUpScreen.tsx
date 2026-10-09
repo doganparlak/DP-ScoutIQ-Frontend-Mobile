@@ -1,34 +1,34 @@
-import React, { useMemo, useState, useMemo as useRNMemo } from 'react';
-import { Eye, EyeOff } from 'lucide-react-native';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Switch,
-  Modal,
-  FlatList,
-  Image,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Linking,
-  Alert,
-} from 'react-native';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE } from '@/theme';
-import { RootStackParamList } from '@/types';
-import { signUp, requestSignupCode } from '@/services/api';
+import { Eye,EyeOff } from 'lucide-react-native';
+import { useMemo,useMemo as useRNMemo,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+FlatList,
+Keyboard,
+KeyboardAvoidingView,
+Linking,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Switch,
+Text,
+TextInput,
+TouchableWithoutFeedback,
+View
+} from 'react-native';
+
 import DataUsage from '@/components/DataUsage';
-import { useTranslation } from 'react-i18next';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COUNTRIES } from '@/constants/countries';
-import scoutwiseLogo from '../../assets/scoutwise_logo.png';
+import { requestSignupCode,signUp } from '@/services/api';
+import { RootStackParamList } from '@/types';
+import { useTranslation } from 'react-i18next';
+import { SafeAreaView,useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
@@ -62,6 +62,9 @@ function toIsoDob(dmy: string): string {
 }
 
 export default function SignUpScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, TEXT, ACCENT_DARK} = themed;
+
   const navigation = useNavigation<Nav>();
   const { t, i18n } = useTranslation();
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
@@ -180,7 +183,7 @@ export default function SignUpScreen() {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.wrap}>
-                <Image source={scoutwiseLogo} style={styles.logo} resizeMode="contain" />
+                <ScoutWiseBrandMark style={styles.logo}/>
 
                 <Text style={styles.appName}>
                   <Text style={styles.appNameScout}>SCOUT</Text>
@@ -457,6 +460,9 @@ export default function SignUpScreen() {
 }
 
 function PwRule({ ok, text }: { ok: boolean; text: string }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, MUTED} = themed;
+
   return (
     <View style={styles.pwRuleRow}>
       <View style={[styles.pwRuleDot, { backgroundColor: ok ? ACCENT : MUTED }]} />
@@ -465,7 +471,11 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: BG,
@@ -493,7 +503,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   appName: { fontSize: 28, fontWeight: '800', marginBottom: 14, letterSpacing: 0.5 },
-  appNameScout: { color: '#FFFFFF' },
+  appNameScout: { color: themeColor('#FFFFFF', 'text') },
   appNameWise: { color: ACCENT },
 
   card: {
@@ -550,7 +560,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 
-  error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
+  error: { color: themeColor('#F87171', 'text'), marginTop: 12, fontWeight: '600' },
 
   primaryBtn: {
     marginTop: 16,
@@ -559,7 +569,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 16 },
 
@@ -576,7 +586,7 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: themeColor('rgba(0,0,0,0.4)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
@@ -640,4 +650,6 @@ const styles = StyleSheet.create({
     color: ACCENT_DARK,
     fontWeight: '800',
   },
+});
+  return {BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, styles, themeColor};
 });

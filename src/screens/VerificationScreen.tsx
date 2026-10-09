@@ -1,33 +1,36 @@
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/screens/VerificationScreen.tsx
-import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  ActivityIndicator,
-  Image, 
-  Keyboard,
-  TouchableWithoutFeedback
-} from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+import { useNavigation,useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useMemo,useState } from 'react';
+import {
+ActivityIndicator,
+Keyboard,
+KeyboardAvoidingView,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+TouchableWithoutFeedback,
+View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE } from '@/theme';
+
+import { login,verifyResetCode,verifySignupCode } from '@/services/api';
 import { RootStackParamList } from '@/types';
-import { verifyResetCode, verifySignupCode, login } from '@/services/api';
 import { useTranslation } from 'react-i18next';
 
-import scoutwiseLogo from '../../assets/scoutwise_logo.png'; 
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Verification'>;
 type Route = RouteProp<RootStackParamList, 'Verification'>;
 
 export default function VerificationScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, BG, MUTED} = themed;
+
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Route>(); // { email, context: 'signup' | 'reset' }
@@ -126,11 +129,7 @@ export default function VerificationScreen() {
             onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
           >
             {/* Logo above app name */}
-            <Image
-              source={scoutwiseLogo}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <ScoutWiseBrandMark style={styles.logo}/>
 
             {/* App name: SCOUT white, WISE green */}
             <Text style={styles.appName}>
@@ -182,7 +181,11 @@ export default function VerificationScreen() {
 
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   topBar: { position: 'absolute', zIndex: 10 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   backIcon: { color: TEXT, fontSize: 24, fontWeight: '800', marginRight: 2 },
@@ -202,7 +205,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   appNameScout: {
-    color: '#FFFFFF',
+    color: themeColor('#FFFFFF', 'text'),
   },
   appNameWise: {
     color: ACCENT,
@@ -236,7 +239,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
+  error: { color: themeColor('#F87171', 'text'), marginTop: 12, fontWeight: '600' },
 
   primaryBtn: {
     marginTop: 16,
@@ -245,7 +248,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 16 },
+});
+  return {BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE, styles, themeColor};
 });

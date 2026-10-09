@@ -1,22 +1,23 @@
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
-import React, { useState } from "react";
-import PreMatchReportModal from './PreMatchReportModal';
-import PostMatchReportModal from "./PostMatchReportModal";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { FileText } from "lucide-react-native";
-import { ACCENT, MUTED } from "@/theme";
+import { useState } from "react";
 import {
-  FavoriteMatch,
-  MatchFixture,
-  matchReportAction,
-  matchSaveType,
+ActivityIndicator,
+Alert,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from "react-native";
+import PostMatchReportModal from "./PostMatchReportModal";
+import PreMatchReportModal from './PreMatchReportModal';
+
+import {
+FavoriteMatch,
+MatchFixture,
+matchReportAction,
+matchSaveType,
 } from "@/services/matchPool";
 export default function MatchReportActions({
   fixture,
@@ -35,6 +36,9 @@ export default function MatchReportActions({
   strictPhase?: boolean;
   topSpacing?: number;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT, MUTED} = themed;
+
   const ads = useWorkspaceActionAd();
   const [preMatchOpen, setPreMatchOpen] = useState(false);
   const [postMatchOpen, setPostMatchOpen] = useState(false);
@@ -99,7 +103,12 @@ export default function MatchReportActions({
     </View>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, MUTED, themeColor} = colors;
+
+  const s = StyleSheet.create({
   row: { flexDirection: "row", gap: 12, alignItems: "center" },
   button: {
     flex: 1,
@@ -116,4 +125,6 @@ const s = StyleSheet.create({
     paddingVertical: 11,
   },
   label: { flexShrink: 1, textAlign: "center", fontSize: 10.5, fontWeight: "800" },
+});
+  return {ACCENT, MUTED, s, themeColor};
 });

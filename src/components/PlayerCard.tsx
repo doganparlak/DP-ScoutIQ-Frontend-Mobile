@@ -1,18 +1,19 @@
-import {playerActionLayout, PLAYER_ACTION_TONES, PLAYER_CARD_PROFILE_GAP} from '@/utils/playerCardActions';
-import FindSimilarPlayerButton from './FindSimilarPlayerButton';
-import ActionSpinner from './ActionSpinner';
 import { useOptionalMatchup } from '@/context/MatchupContext';
-import { FRAME_TITLE, FRAME_HEADING } from '@/theme';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { getThemed_PLAYER_ACTION_TONES as __getThemed_PLAYER_ACTION_TONES,PLAYER_CARD_PROFILE_GAP,playerActionLayout } from '@/utils/playerCardActions';
+import ActionSpinner from './ActionSpinner';
+import FindSimilarPlayerButton from './FindSimilarPlayerButton';
+
 // src/components/PlayerCard.tsx
-import * as React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
-import { UserRound, ArrowLeftRight, CalendarDays, Check, FileClock, FileText, Target, MapPin, Plus, Shield, ShieldCheck, Trophy } from 'lucide-react-native';
 import { formatPlayerContractDate } from '@/utils/playerContract';
-import { CARD, TEXT, MUTED, ACCENT, LINE, DANGER } from '@/theme';
-import type { PlayerData } from '@/types';
+import { ArrowLeftRight,CalendarDays,Check,FileText,MapPin,Plus,Shield,ShieldCheck,Target,Trophy,UserRound } from 'lucide-react-native';
+import * as React from 'react';
+import { Image,StyleSheet,Text,TouchableOpacity,useWindowDimensions,View } from 'react-native';
+
 import { rolePickerCode } from '@/services/api';
-import { useTranslation } from 'react-i18next';
+import type { PlayerData } from '@/types';
 import { sportmonksTeamImage } from '@/utils/sportmonksImages';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   player: PlayerData;
@@ -45,11 +46,6 @@ function isValidPotential(x: unknown): x is number {
   return typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 100;
 }
 
-function getScoreColor(score: number): string {
-  if (score < 50) return DANGER;
-  if (score < 70) return '#F59E0B';
-  return ACCENT;
-}
 
 function roleShortLabel(value?: string) {
   return rolePickerCode(value);
@@ -91,6 +87,9 @@ function ScoreBar({
   accessibilityLabel: string;
   colorOverride?: string;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {getScoreColor, MUTED, themeColor} = themed;
+
   const score = Math.max(0, Math.min(100, Math.round(value)));
   const scoreColor = colorOverride ?? getScoreColor(score);
 
@@ -105,7 +104,7 @@ function ScoreBar({
         style={{
           height: 8,
           borderRadius: 999,
-          backgroundColor: '#272a2a',
+          backgroundColor: themeColor('#272a2a', 'surface'),
           overflow: 'hidden',
         }}
         accessibilityLabel={accessibilityLabel}
@@ -145,6 +144,9 @@ export default function PlayerCard({
   hideNationalityLeague = false,
   visualTheme,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles, FRAME_HEADING, FRAME_TITLE, PLAYER_ACTION_TONES, MUTED, CARD, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const {width,fontScale}=useWindowDimensions();
   const [actionWidth,setActionWidth]=React.useState(Math.max(160,width-64));
@@ -226,7 +228,7 @@ export default function PlayerCard({
   const contractEnd = formatPlayerContractDate(meta?.contractEndDate, locale);
   const hasStatus = typeof meta?.isOnLoan === 'boolean';
   const hasContract = hasStatus || meta?.contractTeamName || loanEnd || contractEnd;
-  const contractColor = meta?.isOnLoan ? '#FBBF24' : cardAccent;
+  const contractColor = meta?.isOnLoan ? themeColor('#FBBF24') : cardAccent;
   const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toLocaleUpperCase(locale);
   const physicalDetails = [
     typeof meta?.age === 'number' && Number.isFinite(meta.age) ? { label: t('age', 'Age'), value: String(meta.age) } : null,
@@ -236,17 +238,17 @@ export default function PlayerCard({
 
   const headerActions = ((heading || (player && !hideActions)) && <View style={styles.headerActions}>{heading && <View style={[FRAME_HEADING, { flexShrink: 1 }]}><UserRound size={20} color={cardAccent} /><Text style={[styles.heading, FRAME_TITLE]}>{heading}</Text></View>}
       {player && !hideActions && <View onLayout={event=>{const measured=event.nativeEvent.layout.width;if(measured>0&&Math.abs(measured-actionWidth)>1)setActionWidth(measured);}} style={styles.actions}>
-        {onAddFavorite && <TouchableOpacity accessibilityRole="button" accessibilityLabel={isAdded ? t('addedToFavorites', 'Added to favorites') : t('addToFavorites', 'Add to favorites')} accessibilityState={{ disabled, busy: isAdding && !isAdded }} disabled={disabled} onPress={handleAdd} style={[styles.action, actionCell, { borderColor: cardAccent,backgroundColor:'rgba(22,163,74,.10)' }, addFavoriteDisabled && styles.disabled]}>
+        {onAddFavorite && <TouchableOpacity accessibilityRole="button" accessibilityLabel={isAdded ? t('addedToFavorites', 'Added to favorites') : t('addToFavorites', 'Add to favorites')} accessibilityState={{ disabled, busy: isAdding && !isAdded }} disabled={disabled} onPress={handleAdd} style={[styles.action, actionCell, { borderColor: cardAccent,backgroundColor:themeColor('rgba(22,163,74,.10)', 'surface') }, addFavoriteDisabled && styles.disabled]}>
           {isAdded ? <Check size={17} color={cardAccent} /> : isAdding ? <ActionSpinner size={17} color={cardAccent} /> : <Plus size={17} color={cardAccent} />}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText, { color: cardAccent }]}>{isAdded ? t('playerCardSaved', 'Saved') : t('playerCardPortfolio', 'Portfolio')}</Text>
         </TouchableOpacity>}
-        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, proActions && {borderColor: PLAYER_ACTION_TONES.similar, backgroundColor:'rgba(45,212,191,.08)'}, reportButtonDisabled && styles.disabled]}>
+        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, proActions && {borderColor: PLAYER_ACTION_TONES.similar, backgroundColor:themeColor('rgba(45,212,191,.08)', 'surface')}, reportButtonDisabled && styles.disabled]}>
           {reportLoading ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.report} /> : <FileText size={17} color={proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report} />}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report}]}>{t('playerCardReport', 'Report')}</Text>
         </TouchableOpacity>}
-        {!proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:'rgba(45,212,191,.08)'}]} accent={PLAYER_ACTION_TONES.similar}/>}
+        {!proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:themeColor('rgba(45,212,191,.08)', 'surface')}]} accent={PLAYER_ACTION_TONES.similar}/>}
         {proActions && onCheckFit && <TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr') ? 'Uyum' : 'Fit'} disabled={similarDisabled || reportBusy || isAdding} onPress={onCheckFit} style={[styles.action, actionCell, styles.reportAction, {borderColor: PLAYER_ACTION_TONES.report}, (similarDisabled || reportBusy || isAdding) && styles.disabled]}><Target size={17} color={PLAYER_ACTION_TONES.report}/><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color: PLAYER_ACTION_TONES.report}]}>{i18n.language.startsWith('tr') ? 'Uyum' : 'Fit'}</Text></TouchableOpacity>}
-        {proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:'rgba(180,163,211,.08)'}]} accent={PLAYER_ACTION_TONES.matchup}/>}
+        {proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:themeColor('rgba(180,163,211,.08)', 'surface')}]} accent={PLAYER_ACTION_TONES.matchup}/>}
         {!proActions && onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { void runAction('match'); }} style={[styles.action, actionCell, styles.matchupAction, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.matchup}/> : <ArrowLeftRight size={17} color={matchupFull ? MUTED : PLAYER_ACTION_TONES.matchup} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.matchup}, matchupFull && {color:MUTED}]}>{matchupFull ? (i18n.language.startsWith('tr') ? 'Eşleşme Dolu' : 'Matchup Full') : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
       </View>}
     </View>);
@@ -284,8 +286,8 @@ export default function PlayerCard({
       </View>
 
       <View style={styles.bioRows}>
-        {!hideNationalityLeague && meta?.nationality && <View style={styles.bioItem}><MapPin size={14} color="#91A99B" /><Text style={styles.bioText}>{meta.nationality}</Text></View>}
-        {!hideNationalityLeague && meta?.league && <View style={styles.bioItem}><Trophy size={14} color="#91A99B" /><Text style={styles.bioText}>{meta.league}</Text></View>}
+        {!hideNationalityLeague && meta?.nationality && <View style={styles.bioItem}><MapPin size={14} color={themeColor("#91A99B", 'text')} /><Text style={styles.bioText}>{meta.nationality}</Text></View>}
+        {!hideNationalityLeague && meta?.league && <View style={styles.bioItem}><Trophy size={14} color={themeColor("#91A99B", 'text')} /><Text style={styles.bioText}>{meta.league}</Text></View>}
       </View>
       {physicalDetails.length > 0 && <View style={styles.physicalRow}>
         {physicalDetails.map(detail => <View key={detail.label} style={styles.physicalTile}>
@@ -293,10 +295,10 @@ export default function PlayerCard({
         </View>)}
       </View>}
 
-      {hasContract ? <View testID="player-contract-panel" style={[styles.contractPanel, { borderColor: meta?.isOnLoan ? 'rgba(251,191,36,0.3)' : 'rgba(145,169,155,0.24)' }]}>
+      {hasContract ? <View testID="player-contract-panel" style={[styles.contractPanel, { borderColor: meta?.isOnLoan ? themeColor('rgba(251,191,36,0.3)', 'border') : themeColor('rgba(145,169,155,0.24)', 'border') }]}>
         <View style={styles.contractHeading}>
-          <View style={styles.contractHeadingTitle}><FileText size={15} color="#A9BCAF" /><Text style={styles.sectionLabel}>{t('playerCardContract', 'CONTRACT')}</Text></View>
-          {hasStatus && <View testID="player-contract-status" style={[styles.statusBadge, { borderColor: contractColor, backgroundColor: meta?.isOnLoan ? 'rgba(251,191,36,0.08)' : 'rgba(22,163,74,0.08)' }]}>
+          <View style={styles.contractHeadingTitle}><FileText size={15} color={themeColor("#A9BCAF", 'text')} /><Text style={styles.sectionLabel}>{t('playerCardContract', 'CONTRACT')}</Text></View>
+          {hasStatus && <View testID="player-contract-status" style={[styles.statusBadge, { borderColor: contractColor, backgroundColor: meta?.isOnLoan ? themeColor('rgba(251,191,36,0.08)', 'surface') : themeColor('rgba(22,163,74,0.08)', 'surface') }]}>
             {meta?.isOnLoan ? <ArrowLeftRight size={13} color={contractColor} /> : <ShieldCheck size={13} color={contractColor} />}
             <Text style={[styles.statusText, { color: contractColor }]}>{meta?.isOnLoan ? t('contractLoan', 'On loan') : t('contractPermanent', 'Permanent')}</Text>
           </View>}
@@ -308,7 +310,7 @@ export default function PlayerCard({
           <View style={styles.clubCopy}><Text style={styles.detailLabel}>{t('playerCardContractClub', 'Contract club')}</Text><Text style={styles.clubName}>{meta.contractTeamName}</Text></View>
         </View>}
         {(loanEnd || contractEnd) && <View style={styles.datesRow}>
-          {loanEnd && <View testID="player-loan-end" style={styles.dateTile}><View style={styles.dateLabelRow}><CalendarDays size={13} color="#FBBF24" /><Text style={styles.dateLabel}>{t('contractLoanEnd', 'Loan end date')}</Text></View><Text style={styles.dateValue}>{loanEnd}</Text></View>}
+          {loanEnd && <View testID="player-loan-end" style={styles.dateTile}><View style={styles.dateLabelRow}><CalendarDays size={13} color={themeColor("#FBBF24", 'text')} /><Text style={styles.dateLabel}>{t('contractLoanEnd', 'Loan end date')}</Text></View><Text style={styles.dateValue}>{loanEnd}</Text></View>}
           {contractEnd && <View testID="player-contract-end" style={styles.dateTile}><View style={styles.dateLabelRow}><CalendarDays size={13} color={cardAccent} /><Text style={styles.dateLabel}>{t('contractPermanentEnd', 'Contract end date')}</Text></View><Text style={styles.dateValue}>{contractEnd}</Text></View>}
         </View>}
       </View> : null}
@@ -333,29 +335,41 @@ export default function PlayerCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: { borderRadius: 22, borderWidth: 1, borderColor: 'rgba(145,169,155,0.18)', padding: 18, gap: 15, overflow: 'hidden' },
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_HEADING, CARD, TEXT, MUTED, ACCENT, LINE, DANGER, themeColor} = colors;
+  const PLAYER_ACTION_TONES = __getThemed_PLAYER_ACTION_TONES(colors);
+  function getScoreColor(score: number): string {
+  if (score < 50) return DANGER;
+  if (score < 70) return themeColor('#F59E0B');
+  return ACCENT;
+}
+
+  const styles = StyleSheet.create({
+  card: { borderRadius: 22, borderWidth: 1, borderColor: themeColor('rgba(145,169,155,0.18)', 'border'), padding: 18, gap: 15, overflow: 'hidden' },
   topAccent: { position: 'absolute', left: 18, right: 18, top: 0, height: 3, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
   identityTop: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingTop: 3 },
-  avatar: { width: 68, height: 76, borderRadius: 17, borderWidth: 1, backgroundColor: '#122019', padding: 3, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatar: { width: 68, height: 76, borderRadius: 17, borderWidth: 1, backgroundColor: themeColor('#122019', 'surface'), padding: 3, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   portrait: { width: '100%', height: '100%', borderRadius: 13 },
   initials: { fontWeight: '900', fontSize: 21, letterSpacing: -0.5 },
-  identityCopy: { flex: 1, minWidth: 0, alignItems: 'stretch', gap: 5 }, eyebrow: { color: '#91A99B', fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
+  identityCopy: { flex: 1, minWidth: 0, alignItems: 'stretch', gap: 5 }, eyebrow: { color: themeColor('#91A99B', 'text'), fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
   name: { textAlign: 'left', color: TEXT, fontSize: 23, lineHeight: 29, fontWeight: '900', letterSpacing: -0.4 },
-  teamRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, teamName: { color: '#E0E9E3', fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  teamRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, teamName: { color: themeColor('#E0E9E3', 'text'), fontSize: 14, fontWeight: '700', flexShrink: 1 },
   teamLogo: { width: 22, height: 22, flexShrink: 0 },
-  bioRows: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, bioItem: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 }, bioText: { color: '#A9BCAF', fontSize: 12, flexShrink: 1 },
-  physicalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, physicalTile: { flex: 1, minWidth: 66, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 11, gap: 5, backgroundColor: 'rgba(255,255,255,0.035)' },
-  detailLabel: { color: '#91A99B', fontSize: 11, fontWeight: '600' }, physicalValue: { color: TEXT, fontSize: 16, fontWeight: '800' },
-  contractPanel: { borderRadius: 17, borderWidth: 1, backgroundColor: 'rgba(0,0,0,0.12)', padding: 12, gap: 13 },
+  bioRows: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, bioItem: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 }, bioText: { color: themeColor('#A9BCAF', 'text'), fontSize: 12, flexShrink: 1 },
+  physicalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, physicalTile: { flex: 1, minWidth: 66, borderRadius: 13, paddingHorizontal: 10, paddingVertical: 11, gap: 5, backgroundColor: themeColor('rgba(255,255,255,0.035)', 'surface') },
+  detailLabel: { color: themeColor('#91A99B', 'text'), fontSize: 11, fontWeight: '600' }, physicalValue: { color: TEXT, fontSize: 16, fontWeight: '800' },
+  contractPanel: { borderRadius: 17, borderWidth: 1, backgroundColor: themeColor('rgba(0,0,0,0.12)', 'surface'), padding: 12, gap: 13 },
   contractHeading: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 9 }, contractHeadingTitle: { flexDirection: 'row', gap: 6, alignItems: 'center', flexGrow: 1 },
-  sectionLabel: { color: '#A9BCAF', fontWeight: '800', fontSize: 10, letterSpacing: 0.7 },
+  sectionLabel: { color: themeColor('#A9BCAF', 'text'), fontWeight: '800', fontSize: 10, letterSpacing: 0.7 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 5, flexShrink: 1 }, statusText: { fontSize: 10, fontWeight: '800', flexShrink: 1 },
-  contractClub: { flexDirection: 'row', alignItems: 'center', gap: 10 }, clubIcon: { width: 36, height: 38, backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, clubCopy: { flex: 1, gap: 4 }, clubName: { color: TEXT, fontSize: 14, fontWeight: '800' },
+  contractClub: { flexDirection: 'row', alignItems: 'center', gap: 10 }, clubIcon: { width: 36, height: 38, backgroundColor: themeColor('rgba(255,255,255,0.025)', 'surface'), borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, clubCopy: { flex: 1, gap: 4 }, clubName: { color: TEXT, fontSize: 14, fontWeight: '800' },
   contractTeamLogo: { width: 25, height: 25 },
-  datesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, dateTile: { flexGrow: 1, flexBasis: 110, gap: 7, borderRadius: 11, padding: 10, backgroundColor: 'rgba(255,255,255,0.03)' }, dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 }, dateLabel: { color: '#A9BCAF', fontSize: 10, flexShrink: 1 }, dateValue: { color: '#F0F5F2', fontSize: 13, fontWeight: '800' },
-  section: { gap: 9 }, rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, roleChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.02)' }, roleCode: { fontSize: 12, fontWeight: '900' }, rolePercentage: { fontSize: 11, color: '#B6C5BC', fontWeight: '700' },
-  scores: { paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(145,169,155,0.16)', gap: 12 },
+  datesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, dateTile: { flexGrow: 1, flexBasis: 110, gap: 7, borderRadius: 11, padding: 10, backgroundColor: themeColor('rgba(255,255,255,0.03)', 'surface') }, dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5 }, dateLabel: { color: themeColor('#A9BCAF', 'text'), fontSize: 10, flexShrink: 1 }, dateValue: { color: themeColor('#F0F5F2', 'text'), fontSize: 13, fontWeight: '800' },
+  section: { gap: 9 }, rolesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, roleChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderRadius: 10, backgroundColor: themeColor('rgba(255,255,255,0.02)', 'surface') }, roleCode: { fontSize: 12, fontWeight: '900' }, rolePercentage: { fontSize: 11, color: themeColor('#B6C5BC', 'text'), fontWeight: '700' },
+  scores: { paddingTop: 12, borderTopWidth: 1, borderTopColor: themeColor('rgba(145,169,155,0.16)', 'border'), gap: 12 },
   heading: { color: ACCENT, fontSize: 17, fontWeight: '800', flexShrink: 1, maxWidth: '100%' }, headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: PLAYER_CARD_PROFILE_GAP },
-  actions: { width:'100%',flexBasis:'100%',flexDirection: 'row', flexWrap: 'nowrap', gap: 6 }, action: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 3, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.06)' }, reportAction: { borderColor: PLAYER_ACTION_TONES.report, backgroundColor: 'rgba(142,183,207,.08)' }, matchupAction:{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:'rgba(180,163,211,.08)'}, actionText: { color: '#DCE8E0', fontWeight: '800', fontSize: 11, flexShrink: 1 }, disabled: { opacity: 0.45 }, savedNotice: { flexDirection: 'row', alignItems: 'center', gap: 6 }, savedText: { color: '#B6C5BC', fontSize: 11, flexShrink: 1 },
+  actions: { width:'100%',flexBasis:'100%',flexDirection: 'row', flexWrap: 'nowrap', gap: 6 }, action: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 3, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.06)', 'surface') }, reportAction: { borderColor: PLAYER_ACTION_TONES.report, backgroundColor: themeColor('rgba(142,183,207,.08)', 'surface') }, matchupAction:{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:themeColor('rgba(180,163,211,.08)', 'surface')}, actionText: { color: themeColor('#DCE8E0', 'text'), fontWeight: '800', fontSize: 11, flexShrink: 1 }, disabled: { opacity: 0.45 }, savedNotice: { flexDirection: 'row', alignItems: 'center', gap: 6 }, savedText: { color: themeColor('#B6C5BC', 'text'), fontSize: 11, flexShrink: 1 },
+});
+  return {FRAME_TITLE, FRAME_HEADING, CARD, TEXT, MUTED, ACCENT, LINE, DANGER, PLAYER_ACTION_TONES, getScoreColor, styles, themeColor};
 });

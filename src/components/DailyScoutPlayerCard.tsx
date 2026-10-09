@@ -1,21 +1,25 @@
+import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
+import { incrementReportActionCount,shouldShowReportActionInterstitial } from '@/ads/adGating';
+import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { isAdFlowCancelled } from '@/ads/presentation';
-import React from 'react';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
-import { Alert, Pressable, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useTranslation } from 'react-i18next';
 import { useMatchup } from '@/context/MatchupContext';
+import { addFavoritePlayer,getMe,getPlayerPoolScoutingReportProgress,getPlayerPoolScoutingReportSection,revealPlayerPoolForm,revealPlayerPoolPotential,type Plan,type PlayerIdentityPayload,type ScoutingReportResponse } from '@/services/api';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import type { MainTabsParamList,PlayerData } from '@/types';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Alert,Pressable,Text,View } from 'react-native';
 import PlayerCard from './PlayerCard';
 import ScoutingReport from './ScoutingReport';
-import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
-import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
-import { incrementReportActionCount, shouldShowReportActionInterstitial } from '@/ads/adGating';
-import { addFavoritePlayer, getMe, revealPlayerPoolPotential, revealPlayerPoolForm, getPlayerPoolScoutingReportProgress, getPlayerPoolScoutingReportSection, type Plan, type PlayerIdentityPayload, type ScoutingReportResponse } from '@/services/api';
-import type { MainTabsParamList, PlayerData } from '@/types';
-import { ACCENT } from '@/theme';
+
 
 export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: string; player: PlayerData; onNavigate?: () => void }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT} = themed;
+
   const { t } = useTranslation();
   const matchup = useMatchup();
   const ads = useWorkspaceActionAd();
@@ -104,8 +108,16 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
     <View style={{ flexDirection: 'row', gap: 10 }}>
       {(['potential', 'form'] as const).map(kind => scores[kind] === undefined && <Pressable key={kind} accessibilityRole="button" disabled={busy} onPress={() => { void reveal(kind); }} style={{ flex: 1, borderWidth: 1, borderColor: ACCENT, borderRadius: 12, minHeight: 44, padding: 10, justifyContent: 'center', opacity: busy ? 0.5 : 1 }}><Text style={{ color: ACCENT, textAlign: 'center', fontWeight: '800' }}>{t(kind === 'potential' ? 'revealPotential' : 'revealForm', kind === 'potential' ? 'Potansiyeli Hesapla' : 'Formu Hesapla')}</Text></Pressable>)}
     </View>
-    {report && <ScoutingReport onBeforeFindSimilar={onNavigate} visible={reportOpen} onClose={() => setReportOpen(false)} player={shownPlayer} report={report} plan={plan} reloadReport={reportPayload?()=>getPlayerPoolScoutingReportProgress(reportPayload):undefined} loadReportSection={reportPayload?(section)=>getPlayerPoolScoutingReportSection(reportPayload,section):undefined} onReportUpdate={setReport}/>} 
+    {report && <ScoutingReport onBeforeFindSimilar={onNavigate} visible={reportOpen} onClose={() => setReportOpen(false)} player={shownPlayer} report={report} plan={plan} reloadReport={reportPayload?()=>getPlayerPoolScoutingReportProgress(reportPayload):undefined} loadReportSection={reportPayload?(section)=>getPlayerPoolScoutingReportSection(reportPayload,section):undefined} onReportUpdate={setReport}/>}
     {ads.fallback}
     <PlusProUpsellScreen visible={upsell} onClose={() => setUpsell(false)} />
   </View>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, themeColor} = colors;
+
+
+  return {ACCENT, themeColor};
+});

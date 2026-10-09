@@ -1,36 +1,37 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // screens/ManagePlanScreen.tsx
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Pressable,
-  Alert,
-  Platform,
-  ScrollView,
+Alert,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TouchableOpacity,
+View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
 
-import { BG, TEXT, PANEL, CARD, MUTED, LINE, ACCENT } from '@/theme';
+
 import type { Plan } from '@/services/api';
-import { getMe, activateIAPSubscription, type ActivateIAPSubscriptionIn } from '@/services/api';
+import { activateIAPSubscription,getMe,type ActivateIAPSubscriptionIn } from '@/services/api';
 
 import {
-  initConnection,
-  endConnection,
-  requestPurchase,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  finishTransaction,
-  ErrorCode,
-  fetchProducts,
-  type EventSubscription,
-  type Purchase,
-  type PurchaseAndroid,
-  type PurchaseIOS,
+endConnection,
+ErrorCode,
+fetchProducts,
+finishTransaction,
+initConnection,
+purchaseErrorListener,
+purchaseUpdatedListener,
+requestPurchase,
+type EventSubscription,
+type Purchase,
+type PurchaseAndroid,
+type PurchaseIOS,
 } from 'react-native-iap';
 
 // ✅ Monthly SKUs
@@ -83,6 +84,9 @@ const multiplyDisplayPrice = (displayPrice: string | undefined, multiplier: numb
 //const log = (...args: any[]) => console.log('[IAP]', ...args);
 
 function PlanFeatureLabel({ label, color }: { label: string; color: string }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const emphasis = label.match(/^(?:3’lü ve 4’lü|3- and 4-way|2’li|3’lü|2-way|3-way|Temel|Genişletilmiş|Kapsamlı|Sınırlı|Sınırsız|Detaylı|Özel|Reklamlı|Reklamsız|Basic|Extended|Comprehensive|Limited|Unlimited|Detailed|Custom|Ad-free|With ads)(?=\s|$)/u)?.[0];
   return <Text style={styles.planFeatureText}>
     {emphasis ? <><Text style={{ color, fontWeight: '900' }}>{emphasis}</Text>{label.slice(emphasis.length)}</> : label}
@@ -90,6 +94,9 @@ function PlanFeatureLabel({ label, color }: { label: string; color: string }) {
 }
 
 export default function ManagePlan() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, themeColor} = themed;
+
   const nav = useNavigation();
   const { t } = useTranslation();
   const goToProfileHome = React.useCallback(() => {
@@ -215,7 +222,7 @@ export default function ManagePlan() {
           const platform: 'ios' | 'android' = Platform.OS === 'ios' ? 'ios' : 'android';
 
           let externalId = '';
-          
+
           if (platform === 'android') {
             const pAndroid = purchase as PurchaseAndroid;
             externalId = pAndroid.purchaseToken ?? pAndroid.transactionId ?? '';
@@ -264,7 +271,7 @@ export default function ManagePlan() {
             );
           }
         } catch (err: any) {
-          
+
         } finally {
           setSaving(false);
         }
@@ -370,7 +377,7 @@ export default function ManagePlan() {
         showDownGradeAlert();
         return;
       }
-    // Free -> Free no-op 
+    // Free -> Free no-op
     Alert.alert(
         t('alreadyFreeTitle', 'Already on Free'),
         t('alreadyFreeBody', 'Your plan is already Free.'),
@@ -447,7 +454,7 @@ export default function ManagePlan() {
             {PLANS.map(p => {
               const active = selected === p.name;
               const proCard = isPro(p.name);
-              const featureColor = proCard ? '#4ADE80' : p.name === 'No Ads Monthly' ? '#38BDF8' : '#CBD5E1';
+              const featureColor = proCard ? themeColor('#4ADE80') : p.name === 'No Ads Monthly' ? themeColor('#38BDF8') : themeColor('#CBD5E1');
               const duration = p.name === 'Free'
                 ? t('durationUnlimited', 'Unlimited')
                 : p.name === 'No Ads Monthly' || p.name === 'Pro Monthly'
@@ -620,7 +627,10 @@ export default function ManagePlan() {
 }
 
 
-const styles = StyleSheet.create({
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, TEXT, PANEL, CARD, MUTED, LINE, ACCENT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
 
   // ✅ scrolling
@@ -661,7 +671,7 @@ const styles = StyleSheet.create({
   },
   planCardActive: {
     borderColor: ACCENT,
-    backgroundColor: '#15241A',
+    backgroundColor: themeColor('#15241A', 'surface'),
     shadowColor: ACCENT,
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -676,7 +686,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: '#55605A',
+    borderColor: themeColor('#55605A', 'border'),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -684,12 +694,12 @@ const styles = StyleSheet.create({
   planSelectorDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT },
   planNameGroup: { flex: 1, minWidth: 0, gap: 2 },
   planName: { color: TEXT, fontSize: 15, fontWeight: '800' },
-  planNameActive: { color: '#4ADE80' },
+  planNameActive: { color: themeColor('#4ADE80', 'text') },
   planSubtitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
   planDuration: { color: MUTED, fontSize: 11, fontWeight: '600' },
-  planSubtitleDivider: { color: '#667069', fontSize: 10, fontWeight: '800' },
-  planBestPrice: { color: '#A7B5AC', fontSize: 11, fontWeight: '800' },
-  planBestPriceActive: { color: '#4ADE80' },
+  planSubtitleDivider: { color: themeColor('#667069', 'text'), fontSize: 10, fontWeight: '800' },
+  planBestPrice: { color: themeColor('#A7B5AC', 'text'), fontSize: 11, fontWeight: '800' },
+  planBestPriceActive: { color: themeColor('#4ADE80', 'text') },
   planPriceGroup: { flexGrow: 1, alignItems: 'flex-end', gap: 5 },
   planPriceRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7 },
   planOriginalPrice: {
@@ -699,20 +709,20 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   planPrice: { color: TEXT, fontSize: 14, fontWeight: '900' },
-  planPriceActive: { color: '#4ADE80' },
+  planPriceActive: { color: themeColor('#4ADE80', 'text') },
   discountBadge: {
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 4,
     backgroundColor: ACCENT,
   },
-  discountBadgeText: { color: '#07150C', fontSize: 11, fontWeight: '900' },
+  discountBadgeText: { color: themeColor('#07150C', 'onAccent'), fontSize: 11, fontWeight: '900' },
   billingSection: { gap: 8 },
   billingSwitch: { flexDirection: 'row', gap: 6, borderRadius: 14, padding: 5, borderWidth: 1, borderColor: LINE, backgroundColor: BG },
   billingOption: { flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
-  billingOptionActive: { borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,.15)' },
+  billingOptionActive: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.15)', 'surface') },
   billingOptionText: { color: MUTED, fontSize: 13, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
-  billingOptionTextActive: { color: '#4ADE80', fontWeight: '900' },
+  billingOptionTextActive: { color: themeColor('#4ADE80', 'text'), fontWeight: '900' },
   billingHint: { color: MUTED, fontSize: 11, lineHeight: 17 },
   planFeatureList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   planFeaturePill: {
@@ -723,14 +733,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: '#111614',
+    backgroundColor: themeColor('#111614', 'surface'),
     paddingHorizontal: 9,
     paddingVertical: 7,
   },
-  planFeaturePillActive: { borderColor: 'rgba(22,163,74,0.48)', backgroundColor: 'rgba(22,163,74,0.10)' },
-  planFeatureDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#718078' },
-  planFeatureDotActive: { backgroundColor: '#4ADE80' },
-  planFeatureText: { flexShrink: 1, color: '#CAD4CE', fontSize: 11, lineHeight: 15, fontWeight: '600' },
+  planFeaturePillActive: { borderColor: themeColor('rgba(22,163,74,0.48)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.10)', 'surface') },
+  planFeatureDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: themeColor('#718078', 'surface') },
+  planFeatureDotActive: { backgroundColor: themeColor('#4ADE80', 'surface') },
+  planFeatureText: { flexShrink: 1, color: themeColor('#CAD4CE', 'text'), fontSize: 11, lineHeight: 15, fontWeight: '600' },
 
   // subscription row
   subscriptionRow: {
@@ -754,7 +764,7 @@ const styles = StyleSheet.create({
   currentPillRow: { alignItems: 'center' },
   currentPillBox: { minWidth: '33%', maxWidth: '70%' },
   currentPill: {
-    backgroundColor: '#18221B',
+    backgroundColor: themeColor('#18221B', 'surface'),
     borderWidth: 1,
     borderColor: ACCENT,
     borderRadius: 12,
@@ -777,7 +787,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  optionActive: { borderColor: ACCENT, backgroundColor: '#18221B' },
+  optionActive: { borderColor: ACCENT, backgroundColor: themeColor('#18221B', 'surface') },
   optionText: { color: TEXT, fontWeight: '600', textAlign: 'center' },
   optionTextActive: { color: ACCENT },
 
@@ -789,7 +799,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 16 },
 
@@ -831,7 +841,7 @@ const styles = StyleSheet.create({
     borderTopColor: LINE,
     backgroundColor: CARD,
   },
-  proUpsellHeaderRow: { backgroundColor: '#151716', borderTopWidth: 0 },
+  proUpsellHeaderRow: { backgroundColor: themeColor('#151716', 'surface'), borderTopWidth: 0 },
 
   // text
   proUpsellCell: { textAlign: 'left', color: TEXT, fontSize: 13, lineHeight: 18, fontWeight: '600' },
@@ -841,8 +851,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.45)',
-    backgroundColor: 'rgba(22,163,74,0.10)',
+    borderColor: themeColor('rgba(22,163,74,0.45)', 'border'),
+    backgroundColor: themeColor('rgba(22,163,74,0.10)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -861,4 +871,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+});
+  return {BG, TEXT, PANEL, CARD, MUTED, LINE, ACCENT, styles, themeColor};
 });

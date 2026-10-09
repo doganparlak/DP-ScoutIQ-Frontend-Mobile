@@ -1,9 +1,10 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/components/ErrorsDisciplineTiles.tsx
-import * as React from 'react';
-import { View, Text, Pressable } from 'react-native';
 import { ShieldAlert } from 'lucide-react-native';
+import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ACCENT, TEXT, CARD, MUTED, DANGER } from '@/theme';
+import { Pressable,Text,View } from 'react-native';
+
 import type { SpiderPoint } from './SpiderChart';
 
 type Props = {
@@ -47,7 +48,7 @@ export default function ErrorsDisciplineTiles({
   title = 'Errors & Discipline',
   hideTitle = false,
   expandable = true,
-  accent = ACCENT,
+  accent,
   framed = false,
   points,
   Icon,
@@ -55,6 +56,10 @@ export default function ErrorsDisciplineTiles({
   collapsedCount = 3,
   defaultCollapsed = true,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, DANGER, CARD, TEXT, MUTED, themeColor} = themed;
+  accent ??= ACCENT;
+
   const { t } = useTranslation();
   const AutoIcon = Icon ?? ShieldAlert;
 
@@ -97,7 +102,7 @@ export default function ErrorsDisciplineTiles({
 
   const colorFor = (sev: 'good' | 'warn' | 'bad') => {
     if (sev === 'good') return ACCENT;
-    if (sev === 'warn') return '#F59E0B'; // amber-500
+    if (sev === 'warn') return themeColor('#F59E0B'); // amber-500
     return DANGER;
   };
 
@@ -125,7 +130,7 @@ export default function ErrorsDisciplineTiles({
           gap: 8,
         }}
       >
-        <AutoIcon size={18} color="white" />
+        <AutoIcon size={18} color={themeColor("white", 'text')} />
         <Text style={{ color: TEXT, fontWeight: '700', fontSize: 16 }}>{title}</Text>
       </View>}
 
@@ -167,7 +172,7 @@ export default function ErrorsDisciplineTiles({
                 marginTop: 8,
                 height: 7,
                 borderRadius: 999,
-                backgroundColor: '#272a2a',
+                backgroundColor: themeColor('#272a2a', 'surface'),
                 overflow: 'hidden',
               }}
             >
@@ -218,3 +223,11 @@ export default function ErrorsDisciplineTiles({
     </View>
   );
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, TEXT, CARD, MUTED, DANGER, themeColor} = colors;
+
+
+  return {ACCENT, TEXT, CARD, MUTED, DANGER, themeColor};
+});

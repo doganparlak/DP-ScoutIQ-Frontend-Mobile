@@ -1,24 +1,25 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import {
+BarChart3,
+BookmarkPlus,
+Compass,
+Database,
+GitCompareArrows,
+ShieldCheck,
+SlidersHorizontal,
+SquareChevronUp,
+UserRoundSearch,
+} from 'lucide-react-native';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
-  ScrollView,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
 } from 'react-native';
-import {
-  SlidersHorizontal,
-  UserRoundSearch,
-  Database,
-  Compass,
-  SquareChevronUp,
-  BarChart3,
-  BookmarkPlus,
-  GitCompareArrows,
-  ShieldCheck,
-} from 'lucide-react-native';
-import { ACCENT, PANEL, MUTED, TEXT, LINE, ACCENT_DARK } from '@/theme';
+
 import { useTranslation } from 'react-i18next';
 import DataUsage from './DataUsage';
 
@@ -29,6 +30,9 @@ function Row({
   Icon: React.ComponentType<{ size?: number; color?: string }>;
   text: string;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   return (
     <View style={styles.row}>
       <Icon size={16} color={ACCENT} />
@@ -38,6 +42,9 @@ function Row({
 }
 
 export default function WelcomeCard() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   const { t } = useTranslation();
   const [dataUsageOpen, setDataUsageOpen] = React.useState(false);
 
@@ -151,7 +158,11 @@ export default function WelcomeCard() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, PANEL, MUTED, TEXT, LINE, ACCENT_DARK, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   coveragePill: {
     alignSelf: 'center',
     marginTop: 12,
@@ -223,7 +234,7 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: themeColor('rgba(0,0,0,0.4)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
@@ -268,4 +279,6 @@ const styles = StyleSheet.create({
   dataUsageScrollContent: {
     paddingBottom: 8,
   },
+});
+  return {ACCENT, PANEL, MUTED, TEXT, LINE, ACCENT_DARK, styles, themeColor};
 });

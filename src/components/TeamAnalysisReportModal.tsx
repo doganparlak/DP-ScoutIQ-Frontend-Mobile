@@ -1,30 +1,30 @@
-import {TeamReportTeamData,TeamReportPlayerData} from './TeamReportData';
-import TeamReportAssessment, {type TeamAssessment} from './TeamReportAssessment';
-import {matchPoolRequest, type Plan} from '@/services/api';
-import TeamReportTacticalProfile from './TeamReportTacticalProfile';
+import { matchPoolRequest,type Plan } from '@/services/api';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ChevronLeft,ChevronRight,X } from "lucide-react-native";
+import { useEffect,useRef,useState } from "react";
+import {
+FlatList,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import TeamReportAssessment,{ type TeamAssessment } from './TeamReportAssessment';
+import { TeamReportPlayerData,TeamReportTeamData } from './TeamReportData';
+import TeamReportFormResults from './TeamReportFormResults';
 import TeamReportMomentum from './TeamReportMomentum';
 import TeamReportScoreFlow from './TeamReportScoreFlow';
 import TeamReportSquad from './TeamReportSquad';
-import TeamReportFormResults from './TeamReportFormResults';
-import React, { useEffect, useRef, useState } from "react";
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft, ChevronRight, X } from "lucide-react-native";
-import { ACCENT, BG, CARD, DANGER, TEXT, MUTED } from "@/theme";
-import TeamReportCard from "./TeamReportCard";
-import ActionSpinner from "./ActionSpinner";
-import {reportModalStyles as modal} from "./PostMatchReportModal";
-import { Team } from "@/services/teamPool";
+import TeamReportTacticalProfile from './TeamReportTacticalProfile';
+
 import { PlayedMatch } from "@/services/teamAnalysis";
-import { matchDateOnly } from "@/services/matchPool";
+import { Team } from "@/services/teamPool";
+import ActionSpinner from "./ActionSpinner";
+import { getThemed_reportModalStyles as __getThemed_modal } from "./PostMatchReportModal";
+import TeamReportCard from "./TeamReportCard";
 export default function TeamAnalysisReportModal({
   team,
   matches,
@@ -46,6 +46,9 @@ export default function TeamAnalysisReportModal({
   onOpenPlans: () => void;
   onClose: () => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {modal, ACCENT, DANGER, TEXT} = themed;
+
   const [page, setPage] = useState(0);
   const [assessment,setAssessment]=useState<TeamAssessment|null>(null),[assessmentError,setAssessmentError]=useState(false),[assessmentRequested,setAssessmentRequested]=useState(false),[assessmentRetry,setAssessmentRetry]=useState(0);
   useEffect(()=>{if(page===8||page===9)setAssessmentRequested(true);},[page]);
@@ -88,7 +91,11 @@ export default function TeamAnalysisReportModal({
   </Modal>;
 }
 
-const s = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, TEXT, MUTED, themeColor} = colors;
+  const modal = __getThemed_modal(colors);
+  const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BG, padding: 16 },
   row: {
     flexDirection: "row",
@@ -107,4 +114,6 @@ const s = StyleSheet.create({
   title: { color: ACCENT, fontSize: 15, fontWeight: "800" },
   text: { color: TEXT, fontSize: 13, lineHeight: 21 },
   tab: { borderWidth: 1, borderColor: ACCENT, borderRadius: 20, padding: 10 },
+});
+  return {ACCENT, BG, CARD, DANGER, TEXT, MUTED, modal, s, themeColor};
 });

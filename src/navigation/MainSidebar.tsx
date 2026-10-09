@@ -1,19 +1,26 @@
-import React from 'react';
-import {
-  AccessibilityInfo, ActivityIndicator, Animated, Easing, findNodeHandle, Image,
-  Keyboard, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text,
-  useWindowDimensions, View,
-} from 'react-native';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Table2, LayoutDashboard, CreditCard, CircleHelp, UsersRound, Target, BarChart3, BookMarked, BookOpenCheck, CalendarSearch, ClipboardList, Database, ShieldCheck, Shield, Trophy, Search, GitCompareArrows, ChevronRight, Menu, Gem, Goal, UserRound, X } from 'lucide-react-native';
-import { useTranslation } from 'react-i18next';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
 import { useTutorial } from '@/components/Tutorial';
-import { ACCENT, BG, TEXT, FEATURE_COLORS } from '@/theme';
+import { createThemedStyles,useThemedStyles,useThemeColors,type ThemeColors } from '@/theme';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { BarChart3,BookMarked,BookOpenCheck,CalendarSearch,ChevronRight,CircleHelp,ClipboardList,CreditCard,Database,Gem,GitCompareArrows,Goal,LayoutDashboard,Menu,Search,Shield,ShieldCheck,Table2,Target,Trophy,UserRound,UsersRound,X } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+AccessibilityInfo,ActivityIndicator,Animated,Easing,findNodeHandle,Image,
+Keyboard,Modal,PanResponder,Pressable,ScrollView,StyleSheet,Text,
+useWindowDimensions,View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 const logo = require('../../assets/scoutwise_logo.png');
 
 function SidebarBrandMark() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+  const {mode} = useThemeColors();
+  if (mode === 'light') return <ScoutWiseBrandMark style={styles.brandMark} />;
+
   return (
     <View style={styles.brandMark} accessible={false}>
       <View style={styles.brandPole} />
@@ -50,6 +57,9 @@ const items = [
 type Props = BottomTabBarProps & { resolveChatAccess: () => Promise<boolean> };
 
 export default function MainSidebar({ state, navigation, resolveChatAccess }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, TEXT, FEATURE_COLORS, ACCENT, themeColor} = themed;
+
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -200,10 +210,10 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
               pressed && styles.pressed,
             ]}
           >
-            <BookOpenCheck size={20} color={tutorial.active && tutorial.activePage === tutorialPage ? '#4ADE80' : '#A4B2A9'} />
+            <BookOpenCheck size={20} color={tutorial.active && tutorial.activePage === tutorialPage ? themeColor('#4ADE80', 'text') : themeColor('#A4B2A9', 'text')} />
           </Pressable>
         )}
-        <Image source={logo} style={styles.headerLogo} resizeMode="contain" accessible={false} />
+        <ScoutWiseBrandMark style={styles.headerLogo} accessible={false}/>
       </View>
 
       <Modal
@@ -262,8 +272,8 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
                 const active = item.route === currentRoute;
                 const prediction = item.route === 'ScorePrediction';
                 const pro = item.route === 'Chat';
-                const color = prediction ? FEATURE_COLORS.scorePrediction : pro ? FEATURE_COLORS.pro : active ? '#4ADE80' : '#E5EBE7';
-                const featureActive = active && pro ? { borderColor: color, backgroundColor: 'rgba(251,191,36,0.12)' } : undefined;
+                const color = prediction ? FEATURE_COLORS.scorePrediction : pro ? FEATURE_COLORS.pro : active ? themeColor('#4ADE80') : themeColor('#E5EBE7');
+                const featureActive = active && pro ? { borderColor: color, backgroundColor: themeColor('rgba(251,191,36,0.12)', 'surface') } : undefined;
                 return (
                   <React.Fragment key={item.route}>
                   {!!item.group && <Text style={[styles.sectionLabel, { marginTop: 12 }]}>{t(item.group, item.groupFallback)}</Text>}
@@ -280,7 +290,7 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
                     <Text style={[styles.navLabel, { color }]}>{t(item.label, item.fallback)}</Text>
                     {pending && item.route === 'Chat'
                       ? <ActivityIndicator size="small" color={ACCENT} />
-                      : <ChevronRight size={16} color={active ? color : '#75847B'} />}
+                      : <ChevronRight size={16} color={active ? color : themeColor('#75847B', 'text')} />}
                   </Pressable>
                   </React.Fragment>
                 );
@@ -288,7 +298,7 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
             </ScrollView>
             <View style={styles.footer}>
               <View style={styles.footerDot} />
-              <Text style={styles.footerText}>{t('navigationTagline', 'Spot the next star.')}</Text>
+              <Text style={styles.footerText}>{t('navigationTagline', 'Your Analysis Platform')}</Text>
             </View>
           </Animated.View>
         </View>
@@ -297,41 +307,47 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
   );
 }
 
-const styles = StyleSheet.create({
-  headerSafe: { backgroundColor: BG, borderBottomWidth: 1, borderBottomColor: 'rgba(22,163,74,0.2)' },
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, TEXT, FEATURE_COLORS, themeColor} = colors;
+
+  const styles = StyleSheet.create({
+  headerSafe: { backgroundColor: BG, borderBottomWidth: 1, borderBottomColor: themeColor('rgba(22,163,74,0.2)', 'border') },
   header: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 8 },
-  iconButton: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(22,163,74,0.3)', backgroundColor: '#18251C', alignItems: 'center', justifyContent: 'center' },
+  iconButton: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,0.3)', 'border'), backgroundColor: themeColor('#18251C', 'surface'), alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, gap: 3 },
-  tutorialButton: { width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(126,148,135,.25)', backgroundColor: 'rgba(255,255,255,.035)', alignItems: 'center', justifyContent: 'center' },
-  tutorialButtonActive: { borderColor: 'rgba(22,163,74,.62)', backgroundColor: 'rgba(22,163,74,.14)' },
+  tutorialButton: { width: 38, height: 38, borderRadius: 12, borderWidth: 1, borderColor: themeColor('rgba(126,148,135,.25)', 'border'), backgroundColor: themeColor('rgba(255,255,255,.035)', 'surface'), alignItems: 'center', justifyContent: 'center' },
+  tutorialButtonActive: { borderColor: themeColor('rgba(22,163,74,.62)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.14)', 'surface') },
   wordmark: { color: TEXT, fontSize: 19, fontWeight: '900', letterSpacing: 0.4 },
   green: { color: ACCENT },
-  currentSection: { color: '#A4B2A9', fontSize: 12, fontWeight: '600' },
+  currentSection: { color: themeColor('#A4B2A9', 'text'), fontSize: 12, fontWeight: '600' },
   headerLogo: { width: 52, height: 52 },
   overlay: { flex: 1 },
-  scrim: { backgroundColor: 'rgba(0,0,0,0.65)' },
-  drawer: { flex: 1, backgroundColor: '#101A14', paddingRight: 16, borderRightWidth: 1, borderColor: 'rgba(22,163,74,0.3)', borderTopRightRadius: 28, borderBottomRightRadius: 28, shadowColor: '#000', shadowOpacity: 0.35, shadowOffset: { width: 8, height: 0 }, shadowRadius: 24, elevation: 24 },
-  drawerHeading: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 10, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(22,163,74,0.24)', backgroundColor: 'rgba(255,255,255,0.025)' },
+  scrim: { backgroundColor: themeColor('rgba(0,0,0,0.65)', 'surface') },
+  drawer: { flex: 1, backgroundColor: themeColor('#101A14', 'surface'), paddingRight: 16, borderRightWidth: 1, borderColor: themeColor('rgba(22,163,74,0.3)', 'border'), borderTopRightRadius: 28, borderBottomRightRadius: 28, shadowColor: themeColor('#000', 'fixed'), shadowOpacity: 0.35, shadowOffset: { width: 8, height: 0 }, shadowRadius: 24, elevation: 24 },
+  drawerHeading: { flexDirection: 'row', alignItems: 'center', gap: 7, padding: 10, borderRadius: 24, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,0.24)', 'border'), backgroundColor: themeColor('rgba(255,255,255,0.025)', 'surface') },
   brandMark: { width: 44, height: 48 },
-  brandPole: { position: 'absolute', top: 0, bottom: 0, left: 21, width: 2, borderRadius: 1, backgroundColor: '#FFFFFF' },
-  brandHandle: { position: 'absolute', left: 1, bottom: 4, width: 16, height: 6, borderRadius: 1.5, backgroundColor: '#FFFFFF', transform: [{ rotate: '-45deg' }] },
+  brandPole: { position: 'absolute', top: 0, bottom: 0, left: 21, width: 2, borderRadius: 1, backgroundColor: themeColor('#FFFFFF', 'surface') },
+  brandHandle: { position: 'absolute', left: 1, bottom: 4, width: 16, height: 6, borderRadius: 1.5, backgroundColor: themeColor('#FFFFFF', 'surface'), transform: [{ rotate: '-45deg' }] },
   brandLensMask: { position: 'absolute', left: 5, top: 6, width: 34, height: 34, borderRadius: 17, overflow: 'hidden' },
   brandLensImage: { position: 'absolute', left: -5, top: -4, width: 44, height: 44 },
   drawerBrand: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
   drawerWordmark: { fontSize: 18, flexShrink: 1 },
-  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)' },
+  closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: themeColor('rgba(255,255,255,0.04)', 'surface') },
   links: { paddingTop: 28, gap: 12, paddingBottom: 24 },
-  sectionLabel: { color: '#94A79B', fontSize: 10, fontWeight: '800', letterSpacing: 1.7, marginLeft: 4, marginBottom: 4 },
-  navItem: { minHeight: 68, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, borderWidth: 1, borderColor: 'rgba(87,111,98,0.25)', backgroundColor: 'rgba(255,255,255,0.024)', overflow: 'hidden' },
-  proIcon: { borderColor: 'rgba(251,191,36,0.28)', backgroundColor: 'rgba(251,191,36,0.09)' },
-  activeItem: { borderColor: 'rgba(22,163,74,0.62)', backgroundColor: 'rgba(22,163,74,0.14)' },
+  sectionLabel: { color: themeColor('#94A79B', 'text'), fontSize: 10, fontWeight: '800', letterSpacing: 1.7, marginLeft: 4, marginBottom: 4 },
+  navItem: { minHeight: 68, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, borderWidth: 1, borderColor: themeColor('rgba(87,111,98,0.25)', 'border'), backgroundColor: themeColor('rgba(255,255,255,0.024)', 'surface'), overflow: 'hidden' },
+  proIcon: { borderColor: themeColor('rgba(251,191,36,0.28)', 'border'), backgroundColor: themeColor('rgba(251,191,36,0.09)', 'surface') },
+  activeItem: { borderColor: themeColor('rgba(22,163,74,0.62)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface') },
   activeMarker: { position: 'absolute', left: 0, top: 21, width: 3, height: 26, backgroundColor: ACCENT, borderTopRightRadius: 3, borderBottomRightRadius: 3 },
-  navIcon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)' },
-  activeIcon: { borderColor: 'rgba(22,163,74,0.36)', backgroundColor: 'rgba(22,163,74,0.12)' },
+  navIcon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 11, borderWidth: 1, borderColor: themeColor('rgba(255,255,255,0.06)', 'border'), backgroundColor: themeColor('rgba(255,255,255,0.025)', 'surface') },
+  activeIcon: { borderColor: themeColor('rgba(22,163,74,0.36)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.12)', 'surface') },
   navLabel: { flex: 1, fontSize: 15, fontWeight: '800' },
-  footer: { borderRadius: 18, padding: 16, borderWidth: 1, borderColor: 'rgba(22,163,74,0.24)', backgroundColor: 'rgba(22,163,74,0.07)', flexDirection: 'row', gap: 10, alignItems: 'center' },
+  footer: { borderRadius: 18, padding: 16, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,0.24)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.07)', 'surface'), flexDirection: 'row', gap: 10, alignItems: 'center' },
   footerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
-  footerText: { color: '#A4B2A9', fontSize: 12, fontWeight: '600', flex: 1 },
+  footerText: { color: themeColor('#A4B2A9', 'text'), fontSize: 12, fontWeight: '600', flex: 1 },
   pressed: { opacity: 0.65 },
   disabled: { opacity: 0.4 },
+});
+  return {ACCENT, BG, TEXT, FEATURE_COLORS, styles, themeColor};
 });

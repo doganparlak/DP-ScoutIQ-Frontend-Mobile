@@ -1,35 +1,32 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { GitCompareArrows,Trophy,X } from "lucide-react-native";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
+ActivityIndicator,
+Modal,
+Pressable,
+ScrollView,
+Text,
+View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTranslation } from "react-i18next";
-import { GitCompareArrows, Trophy, X } from "lucide-react-native";
-import { ACCENT, DANGER, MUTED } from "@/theme";
+
 import type { PlayerData } from "@/types";
 import {
-  CATEGORIES,
-  leaderSummaries,
-  metricGroup,
-  scoreGroup,
-  comparisonScoreVisibility,
-  type MetricUnit,
+CATEGORIES,
+comparisonScoreVisibility,
+leaderSummaries,
+metricGroup,
+scoreGroup,
+type MetricUnit,
 } from "@/utils/comparisonGroups";
-import UnitSwitch from "./ComparisonUnitSwitch";
-import MetricSection from "./ComparisonMetricSection";
 import ComparisonIdentityCard from "./ComparisonIdentityCard";
+import MetricSection from "./ComparisonMetricSection";
+import UnitSwitch from "./ComparisonUnitSwitch";
 import CustomMatchupComparison from "./CustomMatchupComparison";
 import { TutorialHint } from "./Tutorial";
-import {
-  comparisonStyles as styles,
-  comparisonParticipantLabels,
-  COMPARISON_COLORS,
-} from "./comparisonAppearance";
+import { getThemed_COMPARISON_COLORS as __getThemed_COMPARISON_COLORS,getThemed_comparisonStyles as __getThemed_styles,comparisonParticipantLabels } from "./comparisonAppearance";
 type ComparisonPlayer = {
   id: string;
   player: PlayerData;
@@ -61,6 +58,9 @@ type Props = {
 };
 
 export default function RichComparisonModal(props: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {COMPARISON_COLORS, MUTED, styles, ACCENT, DANGER, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const insets = useSafeAreaInsets();
@@ -263,7 +263,7 @@ export default function RichComparisonModal(props: Props) {
                           borderWidth: 1,
                           borderColor: ACCENT,
                           borderRadius: 12,
-                          backgroundColor: "rgba(22,163,74,.12)",
+                          backgroundColor: themeColor("rgba(22,163,74,.12)", 'surface'),
                           padding: 12,
                           marginVertical: 12,
                         },
@@ -345,3 +345,12 @@ export default function RichComparisonModal(props: Props) {
     </>
   );
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, DANGER, MUTED, themeColor} = colors;
+  const styles = __getThemed_styles(colors);
+  const COMPARISON_COLORS = __getThemed_COMPARISON_COLORS(colors);
+
+  return {ACCENT, DANGER, MUTED, styles, COMPARISON_COLORS, themeColor};
+});

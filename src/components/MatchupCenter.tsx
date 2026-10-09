@@ -1,19 +1,20 @@
-import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
-import React from 'react';
-import { shortSeason, shortPlayer, shortTeam } from '@/utils/seasonTableLabels';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { Radar, X, GitCompareArrows } from 'lucide-react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 
-import { TutorialHint, type PlayerPoolTutorialStep } from '@/components/Tutorial';
+import { shortPlayer,shortSeason,shortTeam } from '@/utils/seasonTableLabels';
+import { GitCompareArrows,Radar,X } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+ActivityIndicator,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+
+import { TutorialHint,type PlayerPoolTutorialStep } from '@/components/Tutorial';
 import { rolePickerCode } from '@/services/api';
-import { ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT } from '@/theme';
+
 import type { SearchResultRow } from '@/components/CandidatePlayers';
 
 type PlayerPoolComponentTheme = {
@@ -45,6 +46,7 @@ type Props = {
   row4?: MatchupSlot;
   matchupMode?: 2 | 3 | 4;
   hideModeSwitch?: boolean;
+  hideLaunchButton?: boolean;
   onMatchupModeChange?: (mode: 2 | 3 | 4) => void;
   onLaunchMatchup: () => void;
   launchDisabled?: boolean;
@@ -101,11 +103,6 @@ function isValidScore(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
-function scoreColor(value: number) {
-  if (value < 50) return DANGER;
-  if (value < 70) return '#F59E0B';
-  return ACCENT;
-}
 
 function formatScore(value: number) {
   const rounded = Math.round(value);
@@ -119,6 +116,7 @@ export default function MatchupCenter({
   row4 = null,
   matchupMode = 2,
   hideModeSwitch = false,
+  hideLaunchButton = false,
   onMatchupModeChange,
   onLaunchMatchup,
   launchDisabled = false,
@@ -133,6 +131,9 @@ export default function MatchupCenter({
   theme,
   worldCupMode = false,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, DANGER_DARK, DANGER, scoreColor, ACCENT, FRAME_HEADING, MUTED, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const launchEnabled = !tutorialActive || tutorialStep === 'launchMatchup';
   const player1Label = row1
@@ -157,7 +158,7 @@ export default function MatchupCenter({
           styles.row,
           styles.slotCard,
           styles.emptySlot,
-          theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' },
+          theme && { borderColor: theme.line, backgroundColor: themeColor('rgba(22, 163, 74, 0.06)', 'surface') },
         ]}>
           <Text style={[styles.td, styles.slotLabel, { flex: COL.index }]}>{label}</Text>
           <View style={styles.vsep} />
@@ -171,7 +172,7 @@ export default function MatchupCenter({
     }
 
     const roles = rolePreviewLabels(row);
-    const entityAccent = row.player.entityType === 'league' ? '#38BDF8' : row.player.entityType === 'season' ? '#C084FC' : undefined;
+    const entityAccent = row.player.entityType === 'league' ? themeColor('#38BDF8') : row.player.entityType === 'season' ? themeColor('#C084FC') : undefined;
     const entityStyle = entityAccent ? { borderColor: entityAccent, backgroundColor: `${entityAccent}1A` } : undefined;
     const fullPotentialLabel = i18n.language?.startsWith('tr') ? 'POTANSİYEL' : t('potential', 'Potential');
     const scores = [
@@ -184,7 +185,7 @@ export default function MatchupCenter({
     ].filter(Boolean) as Array<{ label: string; value: number }>;
 
     return (
-      <View style={[styles.slotWrap, styles.slotCard, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' }, entityStyle]}>
+      <View style={[styles.slotWrap, styles.slotCard, theme && { borderColor: theme.line, backgroundColor: themeColor('rgba(22, 163, 74, 0.06)', 'surface') }, entityStyle]}>
         <View style={styles.row}>
         <Text style={[styles.td, styles.slotLabel, theme && { color: theme.accent }, entityAccent && { color: entityAccent }, { flex: COL.index }]}>{label}</Text>
         <View style={styles.vsep} />
@@ -250,9 +251,9 @@ export default function MatchupCenter({
           )}
         </Pressable>
         </View>
-        {row.player.entityType === 'season' && <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: 'rgba(192,132,252,.3)' }}><Text style={{ color: '#C084FC', fontSize: 11, fontWeight: '700' }}>{i18n.language.startsWith('tr') ? 'Sezon Verileri' : 'Season Data'} · {shortSeason(row.player.meta?.seasonName || '')} · {row.player.meta?.league}</Text></View>}
-        {row.player.entityType === 'league' && <View style={{ padding: 8, borderTopWidth: 1, borderColor: '#38BDF84D', gap: 4 }}>
-          <Text style={{ color: '#38BDF8', fontSize: 11 }}>{i18n.language.startsWith('tr') ? 'Lig ortalaması' : 'League average'} · {row.player.meta?.playerCount ?? 0} {i18n.language.startsWith('tr') ? 'oyuncu' : 'players'}</Text>
+        {row.player.entityType === 'season' && <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: themeColor('rgba(192,132,252,.3)', 'border') }}><Text style={{ color: themeColor('#C084FC', 'text'), fontSize: 11, fontWeight: '700' }}>{i18n.language.startsWith('tr') ? 'Sezon Verileri' : 'Season Data'} · {shortSeason(row.player.meta?.seasonName || '')} · {row.player.meta?.league}</Text></View>}
+        {row.player.entityType === 'league' && <View style={{ padding: 8, borderTopWidth: 1, borderColor: themeColor('#38BDF84D', 'border'), gap: 4 }}>
+          <Text style={{ color: themeColor('#38BDF8', 'text'), fontSize: 11 }}>{i18n.language.startsWith('tr') ? 'Lig ortalaması' : 'League average'} · {row.player.meta?.playerCount ?? 0} {i18n.language.startsWith('tr') ? 'oyuncu' : 'players'}</Text>
         </View>}
         {scores.length ? (
           <View style={[styles.slotScoreStrip, theme && { borderTopColor: theme.line }]}>
@@ -280,7 +281,7 @@ export default function MatchupCenter({
         ) : null}
       </View>
     );
-  }, [t, theme, tutorialActive, worldCupMode]);
+  }, [t, theme, tutorialActive, worldCupMode, themed]);
 
   return (
     <>
@@ -320,7 +321,7 @@ export default function MatchupCenter({
         <View style={styles.table}>
           <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
           <View style={styles.tableHeaderWrap}>
-            <View style={[styles.row, styles.slotHeaderRow, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
+            <View style={[styles.row, styles.slotHeaderRow, theme && { borderColor: theme.line, backgroundColor: themeColor('rgba(22, 163, 74, 0.09)', 'surface') }]}>
               <View style={[styles.cell, { flex: COL.index }]}>
                 <Text style={[styles.thText, styles.indexCell]}>#</Text>
               </View>
@@ -396,7 +397,7 @@ export default function MatchupCenter({
         </View>
 
         <TutorialHint
-          visible={tutorialStep === 'launchMatchup'}
+          visible={!hideLaunchButton && tutorialStep === 'launchMatchup'}
           title={t('tutorialLaunchMatchupTitle', 'Launch the matchup')}
           body={t(
             'tutorialLaunchMatchupBody',
@@ -407,7 +408,7 @@ export default function MatchupCenter({
           arrow="down"
         />
 
-        <Pressable
+        {!hideLaunchButton && <Pressable
           onPress={onLaunchMatchup}
           disabled={!launchEnabled || launchDisabled || launchLoading}
           style={({ pressed }) => [
@@ -426,13 +427,23 @@ export default function MatchupCenter({
           <Text style={[styles.launchButtonText, theme && { color: theme.accent }, launchDisabled && styles.launchButtonTextMuted]}>
             {launchMatchupLabelUpper}
           </Text>
-        </Pressable>
+        </Pressable>}
       </View>
     </>
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  function scoreColor(value: number) {
+  if (value < 50) return DANGER;
+  if (value < 70) return themeColor('#F59E0B');
+  return ACCENT;
+}
+
+  const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
@@ -467,7 +478,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   modeButtonActive: {
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   modeButtonText: {
     color: MUTED,
@@ -491,16 +502,16 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.22)',
-    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.09)', 'surface'),
     paddingHorizontal: 4,
     overflow: 'hidden',
   },
   slotCard: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.16)',
-    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.16)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.055)', 'surface'),
     paddingHorizontal: 4,
     overflow: 'hidden',
   },
@@ -523,7 +534,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: themeColor('rgba(255,255,255,0.025)', 'surface'),
     paddingHorizontal: 8,
     paddingVertical: 7,
     gap: 6,
@@ -549,7 +560,7 @@ const styles = StyleSheet.create({
   slotScoreTrack: {
     height: 5,
     borderRadius: 999,
-    backgroundColor: '#272a2a',
+    backgroundColor: themeColor('#272a2a', 'surface'),
     overflow: 'hidden',
   },
   slotScoreFill: {
@@ -581,8 +592,8 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.22)',
-    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.13)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 7,
@@ -618,7 +629,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   emptySlot: {
-    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.055)', 'surface'),
   },
   emptyText: {
     color: MUTED,
@@ -635,7 +646,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(255,255,255,0.018)',
+    backgroundColor: themeColor('rgba(255,255,255,0.018)', 'surface'),
   },
   vsLine: {
     flex: 1,
@@ -667,7 +678,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -692,4 +703,6 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.9,
   },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, scoreColor, styles, themeColor};
 });

@@ -1,6 +1,6 @@
-import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
-import { ACCENT, LINE, MUTED, PANEL } from "@/theme";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Pressable,StyleSheet,Text,View } from "react-native";
+
 import type { MetricUnit } from "@/utils/comparisonGroups";
 export default function UnitSwitch({
   value,
@@ -13,6 +13,9 @@ export default function UnitSwitch({
   allowTotal: boolean;
   tr: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   return (
     <View style={styles.switch}>
       {(
@@ -45,7 +48,11 @@ export default function UnitSwitch({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, LINE, MUTED, PANEL, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   switch: {
     flexDirection: "row",
     backgroundColor: PANEL,
@@ -62,6 +69,8 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
   },
-  active: { backgroundColor: "rgba(22,163,74,.16)" },
+  active: { backgroundColor: themeColor("rgba(22,163,74,.16)", 'surface') },
   optionText: { fontSize: 10.5, fontWeight: "900", color: MUTED },
+});
+  return {ACCENT, LINE, MUTED, PANEL, styles, themeColor};
 });

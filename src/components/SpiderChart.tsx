@@ -1,24 +1,25 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/components/SpiderChart.tsx
-import * as React from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import ErrorsDisciplineTiles from '@/components/ErrorsDisciplineTiles';
 import SpiderBarsFallback from '@/components/SpiderBarsFallback';
 import {
-  ShieldCheck,
-  BrickWall,
-  LogIn,
-  DraftingCompass,
-  Star,
-  ShieldAlert,
+BrickWall,
+DraftingCompass,
+LogIn,
+ShieldAlert,
+ShieldCheck,
+Star,
 } from 'lucide-react-native';
+import * as React from 'react';
+import { StyleSheet,Text,useWindowDimensions,View } from 'react-native';
 import {
-  VictoryChart,
-  VictoryPolarAxis,
-  VictoryGroup,
-  VictoryArea,
-  VictoryLabel,
+VictoryArea,
+VictoryChart,
+VictoryGroup,
+VictoryLabel,
+VictoryPolarAxis,
 } from 'victory-native';
-import { ACCENT, TEXT, CARD, MUTED } from '@/theme';
+
 import { useTranslation } from 'react-i18next';
 
 export type SpiderPoint = {
@@ -113,6 +114,9 @@ const AVATAR = 34;
 
 export default function SpiderChart({ title, points, Icon, chartSize, hideTitle = false,
  }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, TEXT, ACCENT, themeColor} = themed;
+
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
   const [measuredWidth, setMeasuredWidth] = React.useState(0);
@@ -130,12 +134,12 @@ export default function SpiderChart({ title, points, Icon, chartSize, hideTitle 
     );
   }
 
-  const isInPossession = 
+  const isInPossession =
     tTitle.includes('in possession') || tTitle.includes('in-possession');
 
   // Auto-pick icon if not provided
   let AutoIcon = Icon;
-  
+
   if (!AutoIcon) {
     if (tTitle.includes('goalkeeper') || tTitle.includes('gk')) AutoIcon = ShieldCheck;
     else if (tTitle.includes('shoot') || tTitle.includes('finish')) AutoIcon = LogIn;
@@ -215,7 +219,7 @@ export default function SpiderChart({ title, points, Icon, chartSize, hideTitle 
       {/* header bubble with icon + title */}
       {!hideTitle && <View style={styles.headerRow}>
         <View style={styles.titleFrame}>
-          {AutoIcon ? <AutoIcon size={18} color="white" /> : null}
+          {AutoIcon ? <AutoIcon size={18} color={themeColor("white", 'onAccent')} /> : null}
           <Text style={styles.title}>{title}</Text>
         </View>
       </View>}
@@ -331,7 +335,10 @@ export default function SpiderChart({ title, points, Icon, chartSize, hideTitle 
 }
 
 
-const styles = StyleSheet.create({
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, TEXT, CARD, MUTED, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   card: { width: '100%', backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8 },
   chartWrap: { width: '100%', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -342,7 +349,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { color: TEXT, fontWeight: '700', fontSize: 16 },
+  title: { color: themeColor(TEXT, 'onAccent'), fontWeight: '700', fontSize: 16 },
   titleBubble: {
     backgroundColor: ACCENT,
     borderRadius: 999,
@@ -358,4 +365,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     gap: 8,
   },
+});
+  return {ACCENT, TEXT, CARD, MUTED, styles, themeColor};
 });

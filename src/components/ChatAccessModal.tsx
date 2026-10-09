@@ -1,12 +1,15 @@
-import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { BadgeCheck } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { ACCENT, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { Modal,Pressable,StyleSheet,Text,View } from 'react-native';
+
 
 export default function ChatAccessModal({ visible, tutorial, onClose, onAction }: {
   visible: boolean; tutorial: boolean; onClose: () => void; onAction: () => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT} = themed;
+
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith('tr');
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -24,14 +27,21 @@ export default function ChatAccessModal({ visible, tutorial, onClose, onAction }
     </View></View>
   </Modal>;
 }
-const s = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.72)' },
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const s = StyleSheet.create({
+  backdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: themeColor('rgba(0,0,0,0.72)', 'surface') },
   prompt: { backgroundColor: PANEL, borderRadius: 22, borderWidth: 1, borderColor: ACCENT, padding: 22, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  icon: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(36,245,166,0.42)', backgroundColor: 'rgba(22,163,74,0.14)', alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: themeColor('rgba(36,245,166,0.42)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, color: TEXT, fontSize: 19, lineHeight: 24, fontWeight: '800' },
   body: { color: MUTED, fontSize: 14, lineHeight: 21 },
   actions: { flexDirection: 'row', gap: 10 },
   button: { flex: 1, minHeight: 44, backgroundColor: CARD, borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 10, alignItems: 'center', justifyContent: 'center' },
   action: { color: ACCENT, fontWeight: '800' },
+});
+  return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, s, themeColor};
 });

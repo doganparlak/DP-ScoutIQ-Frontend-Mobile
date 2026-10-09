@@ -1,9 +1,8 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { BadgeCheck,Check,Minus,X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { BadgeCheck, Check, Minus, X } from 'lucide-react-native';
+import { Pressable,StyleSheet,Text,View,type StyleProp,type ViewStyle } from 'react-native';
 
-import { ACCENT, WORLD_CUP_COLORS } from '@/theme';
 
 type Props = {
   onOpenPlans: () => void;
@@ -18,10 +17,13 @@ export default function PlanDiscoveryNudge({
   worldCupMode = false,
   containerStyle,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {WORLD_CUP_COLORS, ACCENT, styles, themeColor} = themed;
+
   const { t } = useTranslation();
   const accent = worldCupMode ? WORLD_CUP_COLORS.lavender : ACCENT;
-  const available = () => <Check size={14} color="#4ADE80" strokeWidth={3} />;
-  const unavailable = () => <Minus size={14} color="#68736C" strokeWidth={2.5} />;
+  const available = () => <Check size={14} color={themeColor("#4ADE80", 'text')} strokeWidth={3} />;
+  const unavailable = () => <Minus size={14} color={themeColor("#68736C", 'text')} strokeWidth={2.5} />;
   const rows = [
     { label: t('planFeatures_NoAdsMonthly', 'Ad-free'), plus: available(), pro: available() },
     { label: t('planFeatures_DetailedReports', 'Detailed reports'), plus: available(), pro: available() },
@@ -38,7 +40,7 @@ export default function PlanDiscoveryNudge({
     <View
       style={[
         styles.container,
-        worldCupMode && { borderColor: accent, backgroundColor: 'rgba(167, 132, 244, 0.10)' },
+        worldCupMode && { borderColor: accent, backgroundColor: themeColor('rgba(167, 132, 244, 0.10)', 'surface') },
         containerStyle,
       ]}
     >
@@ -48,7 +50,7 @@ export default function PlanDiscoveryNudge({
             styles.icon,
             {
               borderColor: accent,
-              backgroundColor: worldCupMode ? 'rgba(167, 132, 244, 0.16)' : 'rgba(22, 163, 74, 0.12)',
+              backgroundColor: worldCupMode ? themeColor('rgba(167, 132, 244, 0.16)', 'surface') : themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
             },
           ]}
         >
@@ -60,7 +62,7 @@ export default function PlanDiscoveryNudge({
           </Text>
         </View>
         <Pressable onPress={onClose} hitSlop={10} style={({ pressed }) => [styles.close, pressed && styles.pressed]}>
-          <X size={16} color="#8F8F99" strokeWidth={2.4} />
+          <X size={16} color={themeColor("#8F8F99", 'text')} strokeWidth={2.4} />
         </Pressable>
       </View>
 
@@ -95,13 +97,17 @@ export default function PlanDiscoveryNudge({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, WORLD_CUP_COLORS, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   container: {
     marginTop: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.32)',
-    backgroundColor: 'rgba(22, 163, 74, 0.08)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.32)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.08)', 'surface'),
     padding: 12,
     gap: 10,
   },
@@ -121,7 +127,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 11,
     borderWidth: 1,
-    backgroundColor: 'rgba(8, 18, 13, 0.72)',
+    backgroundColor: themeColor('rgba(8, 18, 13, 0.72)', 'surface'),
     paddingHorizontal: 11,
     paddingVertical: 6,
   },
@@ -140,18 +146,18 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: themeColor('rgba(255,255,255,0.035)', 'surface'),
   },
   table: {
     overflow: 'hidden',
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: '#26362E',
-    backgroundColor: '#131916',
+    borderColor: themeColor('#26362E', 'border'),
+    backgroundColor: themeColor('#131916', 'surface'),
   },
   tableRow: { minHeight: 38, flexDirection: 'row', alignItems: 'stretch' },
-  tableHeader: { minHeight: 34, backgroundColor: '#101512' },
-  tableBorder: { borderTopWidth: 1, borderTopColor: '#26362E' },
+  tableHeader: { minHeight: 34, backgroundColor: themeColor('#101512', 'surface') },
+  tableBorder: { borderTopWidth: 1, borderTopColor: themeColor('#26362E', 'border') },
   featureCell: {
     flex: 1.4,
     minWidth: 0,
@@ -167,16 +173,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 4,
     borderLeftWidth: 1,
-    borderLeftColor: '#26362E',
+    borderLeftColor: themeColor('#26362E', 'border'),
   },
-  plusCell: { backgroundColor: 'rgba(56, 189, 248, 0.08)' },
-  proCell: { backgroundColor: 'rgba(22, 163, 74, 0.11)' },
-  plusValue: { backgroundColor: 'rgba(56, 189, 248, 0.025)' },
-  proValue: { backgroundColor: 'rgba(22, 163, 74, 0.035)' },
-  plusText: { color: '#38BDF8', fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
-  proText: { color: '#4ADE80', fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
-  featureText: { color: '#D4DED8', fontSize: 10, lineHeight: 13, fontWeight: '700' },
-  valueText: { color: '#F2F5F3', fontSize: 9, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
+  plusCell: { backgroundColor: themeColor('rgba(56, 189, 248, 0.08)', 'surface') },
+  proCell: { backgroundColor: themeColor('rgba(22, 163, 74, 0.11)', 'surface') },
+  plusValue: { backgroundColor: themeColor('rgba(56, 189, 248, 0.025)', 'surface') },
+  proValue: { backgroundColor: themeColor('rgba(22, 163, 74, 0.035)', 'surface') },
+  plusText: { color: themeColor('#38BDF8', 'text'), fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  proText: { color: themeColor('#4ADE80', 'text'), fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  featureText: { color: themeColor('#D4DED8', 'text'), fontSize: 10, lineHeight: 13, fontWeight: '700' },
+  valueText: { color: themeColor('#F2F5F3', 'text'), fontSize: 9, lineHeight: 11, fontWeight: '800', textAlign: 'center' },
   button: {
     minHeight: 40,
     borderRadius: 13,
@@ -185,6 +191,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  buttonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  buttonText: { color: themeColor('#FFFFFF', 'text'), fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
   pressed: { opacity: 0.82 },
+});
+  return {ACCENT, WORLD_CUP_COLORS, styles, themeColor};
 });

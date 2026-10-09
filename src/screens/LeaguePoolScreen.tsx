@@ -1,52 +1,53 @@
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
-import { poolTableStyles } from "@/components/poolTableStyles";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
+import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
 import { TutorialPageGuide } from "@/components/Tutorial";
-import { shortCountry } from "@/utils/seasonTableLabels";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
-import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from "@/theme";
-import React from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Keyboard,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import {
-  ChevronDown,
-  GitCompareArrows,
-  List,
-  ListFilter,
-  RotateCcw,
-  Search,
-  Trophy,
-  X,
-} from "lucide-react-native";
-import { useTranslation } from "react-i18next";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import {
-  getLeagueOptions,
-  searchLeagues,
-  type LeagueFilters,
-  type LeagueOptions,
-} from "@/services/leaguePool";
-import { useMatchup } from "@/context/MatchupContext";
+import { shortCountry } from "@/utils/seasonTableLabels";
+
 import type { SearchResultRow } from "@/components/CandidatePlayers";
 import SharedMatchupCenter from "@/components/SharedMatchupCenter";
-import { ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from "@/theme";
-import { getMe, type Plan } from "@/services/api";
+import { useMatchup } from "@/context/MatchupContext";
 import {
-  incrementLeagueCardPlanNudgeCount,
-  shouldShowLeagueCardPlanNudge,
+getLeagueOptions,
+searchLeagues,
+type LeagueFilters,
+type LeagueOptions,
+} from "@/services/leaguePool";
+import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import {
+ChevronDown,
+GitCompareArrows,
+List,
+ListFilter,
+RotateCcw,
+Search,
+Trophy,
+X,
+} from "lucide-react-native";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import {
+ActivityIndicator,
+Alert,
+Image,
+Keyboard,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View,
+} from "react-native";
+
+import {
+incrementLeagueCardPlanNudgeCount,
+shouldShowLeagueCardPlanNudge,
 } from "@/ads/adGating";
+import { getMe,type Plan } from "@/services/api";
 
 const EMPTY: LeagueFilters = { countries: [], leagues: [], positions: [] };
 const POSITION_ORDER = [
@@ -72,6 +73,9 @@ const fold = (value: string) =>
     .trim();
 
 export default function LeaguePoolScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, TEXT, MUTED, ACCENT, FRAME_STRIPE, DANGER, poolTableStyles} = themed;
+
   const ads = useWorkspaceActionAd();
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
@@ -645,6 +649,9 @@ export function LeagueCard({
   onAdd: () => void;
   footer?: React.ReactNode;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, FRAME_STRIPE, ACCENT} = themed;
+
   const [imageFailed, setImageFailed] = React.useState(false);
   const meta = row?.player.meta;
   React.useEffect(() => setImageFailed(false), [meta?.imageUrl]);
@@ -752,7 +759,12 @@ export function LeagueCard({
     </View>
   );
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+  const poolTableStyles = __getThemed_poolTableStyles(colors);
+  const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BG },
   content: { padding: 16, paddingBottom: 32, gap: 16 },
   panel: {
@@ -804,7 +816,7 @@ const styles = StyleSheet.create({
     backgroundColor: CARD,
   },
   roleText: { color: MUTED, fontWeight: "800", fontSize: 12 },
-  selected: { borderColor: ACCENT, backgroundColor: "rgba(22,163,74,0.12)" },
+  selected: { borderColor: ACCENT, backgroundColor: themeColor("rgba(22,163,74,0.12)", 'surface') },
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -826,7 +838,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: "rgba(22,163,74,0.12)",
+    backgroundColor: themeColor("rgba(22,163,74,0.12)", 'surface'),
   },
   primaryText: { color: ACCENT, fontWeight: "800", fontSize: 14 },
   error: { color: DANGER, fontSize: 12 },
@@ -890,7 +902,7 @@ const styles = StyleSheet.create({
   tileValue: { color: TEXT, fontWeight: "800", fontSize: 12 },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: themeColor("rgba(0,0,0,0.75)", 'surface'),
     justifyContent: "center",
     padding: 18,
   },
@@ -914,4 +926,6 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     backgroundColor: CARD,
   },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, poolTableStyles, styles, themeColor};
 });

@@ -1,70 +1,58 @@
+import { ContractDateFilter } from '@/components/ContractFilters';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import TeamAnalysisReportModal from "@/components/TeamAnalysisReportModal";
+import TeamProfileCard from "@/components/TeamProfileCard";
+import { TutorialPageGuide } from "@/components/Tutorial";
+import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
 import { useTeamAnalysisSession } from '@/context/TeamAnalysisContext';
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { getMe,matchPoolRequest,type Plan } from "@/services/api";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+EMPTY_PLAYED_FILTERS,
+getTeamMatches,
+MAX_ANALYSIS_MATCHES,
+playedDateBounds,
+PlayedFilters,
+PlayedMatch,
+playedMatchPasses,
+toggleAnalysisMatch,
+} from "@/services/teamAnalysis";
+import { Team } from "@/services/teamPool";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useFocusEffect,useNavigation,useRoute } from "@react-navigation/native";
+import {
+BarChart3,
+BookMarked,
+CalendarCheck2,
+Check,
+FileText,
+ListFilter,
+RotateCcw,
+ShieldCheck,
+Trash2,
+X,
+} from "lucide-react-native";
+import React,{ useCallback,useEffect,useRef,useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  BarChart3,
-  CalendarCheck2,
-  CalendarDays,
-  Check,
-  FileText,
-  ListFilter,
-  RotateCcw,
-  ShieldCheck,
-  Trash2,
-  X,
-} from "lucide-react-native";
-import TeamAnalysisReportModal from "@/components/TeamAnalysisReportModal";
-import { TutorialPageGuide } from "@/components/Tutorial";
-import { getMe, matchPoolRequest, type Plan } from "@/services/api";
-import TeamProfileCard from "@/components/TeamProfileCard";
-import { Team } from "@/services/teamPool";
-import {
-  EMPTY_PLAYED_FILTERS,
-  MAX_ANALYSIS_MATCHES,
-  PlayedFilters,
-  PlayedMatch,
-  getTeamMatches,
-  playedDateBounds,
-  playedMatchPasses,
-  toggleAnalysisMatch,
-} from "@/services/teamAnalysis";
-import {
-  ACCENT,
-  BG,
-  CARD,
-  DANGER,
-  LINE,
-  MUTED,
-  PANEL,
-  TEXT,
-  FRAME_HEADING,
-  FRAME_STRIPE,
-  FRAME_TITLE,
-} from "@/theme";
-import { poolTableStyles as table } from "@/components/poolTableStyles";
-import { shortCountry, shortTeam } from "@/utils/seasonTableLabels";
+ActivityIndicator,
+Alert,
+FlatList,
+Modal,
+Pressable,
+SafeAreaView,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View,
+} from "react-native";
+
+import { getThemed_poolTableStyles as __getThemed_table } from "@/components/poolTableStyles";
+import { matchDateOnly } from "@/services/matchPool";
 import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
 import { normalizeSearchText } from "@/utils/searchSuggestions";
-import { formatPlayerContractDate } from "@/utils/playerContract";
-import { matchDateOnly } from "@/services/matchPool";
+import { shortCountry,shortTeam } from "@/utils/seasonTableLabels";
 
 const PLAYED_MATCH_FLEXES = [1.3, 0.7, 0.65, 0.9, 0.6] as const;
 
@@ -79,6 +67,9 @@ function Frame({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return (
     <View style={s.frame}>
       <View style={FRAME_STRIPE} />
@@ -92,6 +83,9 @@ function Frame({
   );
 }
 export default function TeamAnalysisScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {TEXT, ACCENT, DANGER, s, BG, MUTED, table, FRAME_HEADING, FRAME_TITLE, themeColor} = themed;
+
   const ads = useWorkspaceActionAd();
   const { i18n } = useTranslation(),
     tr = i18n.language.startsWith("tr"),
@@ -130,9 +124,7 @@ export default function TeamAnalysisScreen() {
   const [selector, setSelector] = useState<"opponents" | "leagues" | null>(
       null,
     ),
-    [query, setQuery] = useState(""),
-    [dateField, setDateField] = useState<"startDate" | "endDate" | null>(null),
-    [draft, setDraft] = useState(new Date());
+    [query, setQuery] = useState("");
   useEffect(() => {
     let active = true;
     setMatches([]);
@@ -206,9 +198,7 @@ export default function TeamAnalysisScreen() {
       startDate: bounds.minimum,
       endDate: bounds.maximum,
     });
-  const date = (v: string) => new Date(`${v}T12:00:00`),
-    iso = (v: Date) =>
-      `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+  const date = (v: string) => new Date(`${v}T12:00:00`);
   const scoreColor = (m: PlayedMatch) =>
     m.homeScore == null || m.awayScore == null || m.homeScore === m.awayScore
       ? TEXT
@@ -227,13 +217,13 @@ export default function TeamAnalysisScreen() {
       style={[s.text, compact ? s.matchName : s.analysisMatchName]}
     >
       <Text
-        style={{ color: m.homeTeamId === Number(team?.id) ? "#C084FC" : TEXT }}
+        style={{ color: m.homeTeamId === Number(team?.id) ? themeColor("#C084FC", 'text') : TEXT }}
       >
         {compact ? shortTeam(m.homeTeam) : m.homeTeam}
       </Text>{" "}
       –{" "}
       <Text
-        style={{ color: m.awayTeamId === Number(team?.id) ? "#C084FC" : TEXT }}
+        style={{ color: m.awayTeamId === Number(team?.id) ? themeColor("#C084FC", 'text') : TEXT }}
       >
         {compact ? shortTeam(m.awayTeam) : m.awayTeam}
       </Text>
@@ -246,17 +236,21 @@ export default function TeamAnalysisScreen() {
       contentContainerStyle={s.page}
     >
       {ads.fallback}
-      <Frame title={tr ? "Takım Kartı" : "Team Card"} Icon={ShieldCheck}>
+      <Frame title={team ? (tr ? "Takım Kartı" : "Team Card") : (tr ? "Takım Analiz Merkezi" : "Team Analysis Center")} Icon={ShieldCheck}>
         {team ? (
           <TeamProfileCard team={team} tr={tr} />
         ) : (
-          <Pressable style={s.button} onPress={() => nav.navigate("TeamPool")}>
-            <Text style={s.green}>
+          <View style={{gap: 16}}>
+            <Text style={{color: MUTED, fontSize: 14, lineHeight: 21}}>
               {tr
-                ? "Takım Havuzu’ndan bir takım seçin"
-                : "Select a team from Team Pool"}
+                ? 'Takım Havuzu veya Takım Portföyü’nden bir takım seç ve kartındaki “Takımı Analiz Et” butonuyla buraya ekle. Ardından maçlarını seçerek takımın performansını incele.'
+                : 'Choose a team from Team Pool or Team Portfolio and use Analyze Team on its card to add it here. Then select matches to explore the team’s performance.'}
             </Text>
-          </Pressable>
+            <WorkspaceSourceActions compact sources={[
+              {label: tr ? 'Takım Havuzu' : 'Team Pool', Icon: ShieldCheck, onPress: () => nav.navigate('TeamPool')},
+              {label: tr ? 'Takım Portföyü' : 'Team Portfolio', Icon: BookMarked, onPress: () => nav.navigate('TeamPortfolio')},
+            ]}/>
+          </View>
         )}
       </Frame>
       <TutorialPageGuide page="teamAnalysis" frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
@@ -329,35 +323,14 @@ export default function TeamAnalysisScreen() {
             <View style={s.fields}>
               {(["startDate", "endDate"] as const).map((key) => (
                 <View style={s.field} key={key}>
-                  <Text style={s.label}>
-                    {key === "startDate"
-                      ? tr
-                        ? "Başlangıç Tarihi"
-                        : "Start Date"
-                      : tr
-                        ? "Bitiş Tarihi"
-                        : "End Date"}
-                  </Text>
-                  <Pressable
-                    style={[
-                      s.input,
-                      { flexDirection: "row", alignItems: "center", gap: 6 },
-                    ]}
-                    onPress={() => {
-                      setDraft(
-                        date(filters[key] || bounds.maximum || iso(new Date())),
-                      );
-                      setDateField(key);
-                    }}
-                  >
-                    <Text style={[s.text, { flex: 1 }]}>
-                      {formatPlayerContractDate(
-                        filters[key],
-                        tr ? "tr-TR" : "en-GB",
-                      ) || (tr ? "Tarih seç" : "Select date")}
-                    </Text>
-                    <CalendarDays size={17} color={ACCENT} />
-                  </Pressable>
+                  <ContractDateFilter
+                    label={key === 'startDate' ? (tr ? 'Başlangıç Tarihi' : 'Start Date') : (tr ? 'Bitiş Tarihi' : 'End Date')}
+                    testID={`team-analysis-${key}`} value={filters[key]} hint={null}
+                    onChange={value => setFilters(current => ({...current,[key]:value}))}
+                    minimumDate={bounds.minimum ? date(bounds.minimum) : undefined}
+                    maximumDate={bounds.maximum ? date(bounds.maximum) : undefined}
+                    initialDate={bounds.maximum ? date(bounds.maximum) : undefined}
+                  />
                 </View>
               ))}
             </View>
@@ -649,59 +622,7 @@ export default function TeamAnalysisScreen() {
           </SafeAreaView>
         </Modal>
       )}
-      {dateField && (
-        <Modal
-          transparent
-          visible
-          animationType="fade"
-          onRequestClose={() => setDateField(null)}
-        >
-          <SafeAreaView style={s.backdrop}>
-            <View style={s.modal}>
-              <Text style={FRAME_TITLE}>
-                {dateField === "startDate"
-                  ? tr
-                    ? "Başlangıç Tarihi"
-                    : "Start Date"
-                  : tr
-                    ? "Bitiş Tarihi"
-                    : "End Date"}
-              </Text>
-              <DateTimePicker
-                value={draft}
-                mode="date"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                themeVariant="dark"
-                minimumDate={bounds.minimum ? date(bounds.minimum) : undefined}
-                maximumDate={bounds.maximum ? date(bounds.maximum) : undefined}
-                onChange={(event, value) => {
-                  if (value) setDraft(value);
-                  if (Platform.OS === "android") {
-                    if (event.type === "set" && value)
-                      setFilters((f) => ({ ...f, [dateField]: iso(value) }));
-                    setDateField(null);
-                  }
-                }}
-              />
-              <View style={s.fields}>
-                <Pressable onPress={() => setDateField(null)} style={s.button}>
-                  <Text style={s.label}>{tr ? "İptal" : "Cancel"}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    setFilters((f) => ({ ...f, [dateField]: iso(draft) }));
-                    setDateField(null);
-                  }}
-                  style={s.button}
-                >
-                  <Text style={s.green}>{tr ? "Seç" : "Select"}</Text>
-                </Pressable>
-              </View>
-            </View>
 
-          </SafeAreaView>
-        </Modal>
-      )}
 
       {reportOpen && team && (
         <TeamAnalysisReportModal
@@ -722,7 +643,12 @@ export default function TeamAnalysisScreen() {
     </ScrollView>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, themeColor} = colors;
+  const table = __getThemed_table(colors);
+  const s = StyleSheet.create({
   page: { padding: 16, gap: 16, paddingBottom: 40 },
   frame: {
     backgroundColor: PANEL,
@@ -773,7 +699,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: ACCENT,
     borderRadius: 14,
-    backgroundColor: "rgba(22,163,74,.08)",
+    backgroundColor: themeColor("rgba(22,163,74,.08)", 'surface'),
     padding: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -793,7 +719,7 @@ const s = StyleSheet.create({
     padding: 9,
     alignItems: "center",
   },
-  active: { backgroundColor: "rgba(22,163,74,.14)" },
+  active: { backgroundColor: themeColor("rgba(22,163,74,.14)", 'surface') },
   check: {
     width: 18,
     height: 18,
@@ -821,14 +747,14 @@ const s = StyleSheet.create({
     height: 30,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,.4)",
-    backgroundColor: "rgba(239,68,68,.08)",
+    borderColor: themeColor("rgba(239,68,68,.4)", 'border'),
+    backgroundColor: themeColor("rgba(239,68,68,.08)", 'surface'),
     alignItems: "center",
     justifyContent: "center",
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,.8)",
+    backgroundColor: themeColor("rgba(0,0,0,.8)", 'surface'),
     padding: 20,
     justifyContent: "center",
   },
@@ -846,4 +772,6 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: LINE,
   },
+});
+  return {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, table, s, themeColor};
 });

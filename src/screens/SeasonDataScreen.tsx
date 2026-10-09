@@ -1,81 +1,70 @@
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
-import { poolTableStyles } from "@/components/poolTableStyles";
-import { TutorialPageGuide } from "@/components/Tutorial";
-import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
-import {
-  shortSeason,
-  shortCountry,
-  shortPlayer,
-  shortTeam,
-  shortCompetition,
-  primarySeasonRole,
-} from "@/utils/seasonTableLabels";
-import React from "react";
-import {
-  View,
-  Alert,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  Modal,
-  StyleSheet,
-  ActivityIndicator,
-  useWindowDimensions,
-} from "react-native";
-import {
-  ListFilter,
-  List,
-  History,
-  ChartNoAxesCombined,
-  Search,
-  RotateCcw,
-  ChevronDown,
-  X,
-  Check,
-  GitCompareArrows,
-} from "lucide-react-native";
-import { useTranslation } from "react-i18next";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useMatchup } from "@/context/MatchupContext";
-import SharedMatchupCenter from "@/components/SharedMatchupCenter";
 import ComparisonUnitSwitch from "@/components/ComparisonUnitSwitch";
+import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
+import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
+import SharedMatchupCenter from "@/components/SharedMatchupCenter";
+import { TutorialPageGuide } from "@/components/Tutorial";
+import { useMatchup } from "@/context/MatchupContext";
 import {
-  searchSeasonPlayers,
-  getSeasonPlayerOptions,
-  getSeasonPlayerRows,
-  aggregateSeasonPlayerRow,
-  type SeasonPlayerCandidate,
-  type SeasonPlayerRows,
-  type SeasonDataRow,
-  type SeasonAggregate,
+aggregateSeasonPlayerRow,
+getSeasonPlayerOptions,
+getSeasonPlayerRows,
+searchSeasonPlayers,
+type SeasonAggregate,
+type SeasonDataRow,
+type SeasonPlayerCandidate,
+type SeasonPlayerRows,
 } from "@/services/seasonData";
-import {
-  seasonMetricGroups,
-  convertSeasonMetric,
-  seasonMatchupRow,
-  filterSeasonRows,
-} from "@/utils/seasonData";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import type { MetricUnit } from "@/utils/comparisonGroups";
 import {
-  ACCENT,
-  BG,
-  PANEL,
-  CARD,
-  TEXT,
-  MUTED,
-  LINE,
-  DANGER,
-  FRAME_TITLE,
-  FRAME_HEADING,
-  FRAME_STRIPE,
-} from "@/theme";
-import { getMe, type Plan } from "@/services/api";
+convertSeasonMetric,
+filterSeasonRows,
+seasonMatchupRow,
+seasonMetricGroups,
+} from "@/utils/seasonData";
 import {
-  incrementSeasonHistoryPlanNudgeCount,
-  shouldShowSeasonHistoryPlanNudge,
+primarySeasonRole,
+shortCompetition,
+shortCountry,
+shortPlayer,
+shortSeason,
+shortTeam,
+} from "@/utils/seasonTableLabels";
+import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import {
+ChartNoAxesCombined,
+Check,
+ChevronDown,
+GitCompareArrows,
+History,
+List,
+ListFilter,
+RotateCcw,
+Search,
+X,
+} from "lucide-react-native";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import {
+ActivityIndicator,
+Alert,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import {
+incrementSeasonHistoryPlanNudgeCount,
+shouldShowSeasonHistoryPlanNudge,
 } from "@/ads/adGating";
+import { getMe,type Plan } from "@/services/api";
 
 function Frame({
   title,
@@ -88,6 +77,9 @@ function Frame({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return (
     <View style={styles.panel}>
       <View style={FRAME_STRIPE} />
@@ -111,6 +103,9 @@ function Status({
   error?: boolean;
   retry?: () => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, DANGER} = themed;
+
   const { i18n } = useTranslation();
   return (
     <View style={styles.status}>
@@ -137,6 +132,9 @@ function Choice({
   options: string[];
   onChange: (value: string) => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, FRAME_HEADING, FRAME_TITLE, DANGER, ACCENT} = themed;
+
   const [open, setOpen] = React.useState(false),
     [query, setQuery] = React.useState("");
   const insets = useSafeAreaInsets();
@@ -233,6 +231,9 @@ function Table({
   children: React.ReactNode;
   height: number;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   return (
     <View style={styles.table}>
       <View>
@@ -268,6 +269,9 @@ const unique = (
   );
 
 export default function SeasonDataScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, DANGER, MUTED, ACCENT, themeColor} = themed;
+
   const ads = useWorkspaceActionAd();
   const { t, i18n } = useTranslation(),
     tr = i18n.language.startsWith("tr");
@@ -820,7 +824,7 @@ export default function SeasonDataScreen() {
                         style={[
                           styles.text,
                           { fontWeight: "800" },
-                          group.lower && { color: "#FCA5A5" },
+                          group.lower && { color: themeColor("#FCA5A5", 'text') },
                         ]}
                       >
                         {metric.includes("(%)")
@@ -858,7 +862,12 @@ export default function SeasonDataScreen() {
     </ScrollView>
   );
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, PANEL, CARD, TEXT, MUTED, LINE, DANGER, FRAME_TITLE, FRAME_HEADING, FRAME_STRIPE, themeColor} = colors;
+  const poolTableStyles = __getThemed_poolTableStyles(colors);
+  const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BG },
   content: { padding: 16, gap: 18, paddingBottom: 32 },
   panel: {
@@ -899,7 +908,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: "rgba(22,163,74,.1)",
+    backgroundColor: themeColor("rgba(22,163,74,.1)", 'surface'),
     padding: 10,
     flexDirection: "row",
     alignItems: "center",
@@ -948,7 +957,7 @@ const styles = StyleSheet.create({
   },
   category: {
     padding: 12,
-    backgroundColor: "rgba(22,163,74,.1)",
+    backgroundColor: themeColor("rgba(22,163,74,.1)", 'surface'),
     color: ACCENT,
     fontSize: 14,
     fontWeight: "800",
@@ -962,7 +971,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,.75)",
+    backgroundColor: themeColor("rgba(0,0,0,.75)", 'surface'),
     justifyContent: "center",
     padding: 20,
   },
@@ -983,4 +992,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: LINE,
   },
+});
+  return {ACCENT, BG, PANEL, CARD, TEXT, MUTED, LINE, DANGER, FRAME_TITLE, FRAME_HEADING, FRAME_STRIPE, poolTableStyles, styles, themeColor};
 });

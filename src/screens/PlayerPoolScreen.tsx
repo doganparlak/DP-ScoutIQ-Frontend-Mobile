@@ -1,45 +1,44 @@
 import { isAdFlowCancelled } from '@/ads/presentation';
 import PlanManagementButton from '@/components/PlanManagementButton';
-import React from 'react';
 import { useMatchup } from '@/context/MatchupContext';
-import { getSharedMatchupComparison } from '@/services/leaguePool';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  type StyleProp,
-  StyleSheet,
-  Text,
-  View,
-  type ViewStyle,
-} from 'react-native';
-import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useFocusEffect,useIsFocused,useNavigation,useRoute } from '@react-navigation/native';
+import { BadgeCheck,Check,Minus,X } from 'lucide-react-native';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { BadgeCheck, Check, Eye, Minus, X } from 'lucide-react-native';
+import {
+Alert,
+KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+type StyleProp,
+type ViewStyle
+} from 'react-native';
 
 import {
-  incrementPotentialRevealCount,
-  incrementMatchupMissingScoreAddCount,
-  incrementPlayerPoolMissingScoreActionCount,
-  incrementReportActionCount,
-  incrementPlayerCardPlanNudgeCount,
-  shouldShowMatchupMissingScoreInterstitial,
-  shouldShowPlayerPoolMissingScoreActionInterstitial,
-  shouldShowReportActionInterstitial,
-  shouldShowPotentialInterstitial,
-  shouldShowPlayerCardPlanNudge,
+incrementMatchupMissingScoreAddCount,
+incrementPlayerCardPlanNudgeCount,
+incrementPlayerPoolMissingScoreActionCount,
+incrementPotentialRevealCount,
+incrementReportActionCount,
+shouldShowMatchupMissingScoreInterstitial,
+shouldShowPlayerCardPlanNudge,
+shouldShowPlayerPoolMissingScoreActionInterstitial,
+shouldShowPotentialInterstitial,
+shouldShowReportActionInterstitial,
 } from '@/ads/adGating';
 import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
-import CandidatePlayers, {
-  CANDIDATE_TABLE_VISIBLE_ROWS,
-  ROW_HEIGHT,
-  type CandidateSortKey,
-  type SearchResultRow,
+import CandidatePlayers,{
+CANDIDATE_TABLE_VISIBLE_ROWS,
+ROW_HEIGHT,
+type CandidateSortKey,
+type SearchResultRow,
 } from '@/components/CandidatePlayers';
 import ComparisonModal from '@/components/ComparisonModal';
 import { DailyScoutChallengeModal } from '@/components/DailyScoutChallenge';
@@ -47,30 +46,28 @@ import MatchupCenter from '@/components/MatchupCenter';
 import PlayerCardPP from '@/components/PlayerCardPP';
 import ScoutingReport from '@/components/ScoutingReport';
 import SearchFilters from '@/components/SearchFilters';
-import { TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
-import { PLAYER_POOL_COUNTRIES, PLAYER_POOL_POSITION_OPTIONS, PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
+import { TutorialPageGuide,useTutorial } from '@/components/Tutorial';
+import { PLAYER_POOL_COUNTRIES,PLAYER_POOL_POSITION_OPTIONS,PLAYER_POOL_TEAM_NAMES } from '@/constants/playerPool';
 import {
-  ROLE_LONG_TO_SHORT,
-  ROLE_PICKER_ORDER,
-  ROLE_SHORT_TO_LONG,
-  rolePickerCode,
-  addFavoritePlayer,
-  getMatchupComparison,
-  getMe,
-  getPlayerPoolOptions,
-  getPlayerPoolScoutingReportProgress,
-  getPlayerPoolScoutingReportSection,
-  recordPlayerPoolSearchHit,
-  revealPlayerPoolForm,
-  revealPlayerPoolPotential,
-  searchPlayerPool,
-  type PlayerPoolSearchInput,
-  type MatchupComparisonResponse,
-  type Plan,
-  type ScoutingReportResponse,
-  type PlayerIdentityPayload,
+addFavoritePlayer,
+getMe,
+getPlayerPoolOptions,
+getPlayerPoolScoutingReportProgress,
+getPlayerPoolScoutingReportSection,
+recordPlayerPoolSearchHit,
+revealPlayerPoolForm,
+revealPlayerPoolPotential,
+ROLE_LONG_TO_SHORT,
+ROLE_PICKER_ORDER,
+rolePickerCode,
+searchPlayerPool,
+type MatchupComparisonResponse,
+type Plan,
+type PlayerIdentityPayload,
+type PlayerPoolSearchInput,
+type ScoutingReportResponse
 } from '@/services/api';
-import { ACCENT, BG, PANEL, WORLD_CUP_COLORS } from '@/theme';
+
 import type { PlayerData } from '@/types';
 
 type SortDir = 'asc' | 'desc';
@@ -149,10 +146,13 @@ function PlayerCardPlanNudge({
   worldCupMode: boolean;
   containerStyle?: StyleProp<ViewStyle>;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {WORLD_CUP_COLORS, ACCENT, styles, themeColor} = themed;
+
   const { t } = useTranslation();
   const accent = worldCupMode ? WORLD_CUP_COLORS.lavender : ACCENT;
-  const available = <Check size={14} color="#4ADE80" strokeWidth={3} />;
-  const unavailable = <Minus size={14} color="#68736C" strokeWidth={2.5} />;
+  const available = <Check size={14} color={themeColor("#4ADE80", 'text')} strokeWidth={3} />;
+  const unavailable = <Minus size={14} color={themeColor("#68736C", 'text')} strokeWidth={2.5} />;
   const comparisonRows = [
     { label: t('planFeatures_NoAdsMonthly', 'Ad-free'), plus: available, pro: available },
     { label: t('planFeatures_DetailedReports', 'Detailed reports'), plus: available, pro: available },
@@ -166,9 +166,9 @@ function PlayerCardPlanNudge({
   ];
 
   return (
-    <View style={[styles.playerCardPlanNudge, worldCupMode && { borderColor: accent, backgroundColor: 'rgba(167, 132, 244, 0.10)' }, containerStyle]}>
+    <View style={[styles.playerCardPlanNudge, worldCupMode && { borderColor: accent, backgroundColor: themeColor('rgba(167, 132, 244, 0.10)', 'surface') }, containerStyle]}>
       <View style={styles.playerCardPlanNudgeTopRow}>
-        <View style={[styles.playerCardPlanNudgeIcon, { borderColor: accent, backgroundColor: worldCupMode ? 'rgba(167, 132, 244, 0.16)' : 'rgba(22, 163, 74, 0.12)' }]}>
+        <View style={[styles.playerCardPlanNudgeIcon, { borderColor: accent, backgroundColor: worldCupMode ? themeColor('rgba(167, 132, 244, 0.16)', 'surface') : themeColor('rgba(22, 163, 74, 0.12)', 'surface') }]}>
           <BadgeCheck size={19} color={accent} strokeWidth={2.3} />
         </View>
         <View
@@ -181,7 +181,7 @@ function PlayerCardPlanNudge({
           <Text style={[styles.playerCardPlanNudgeTitle, { color: accent, textShadowColor: `${accent}55` }]}>{title}</Text>
         </View>
         <Pressable onPress={onClose} hitSlop={10} style={({ pressed }) => [styles.playerCardPlanNudgeClose, pressed && styles.pressed]}>
-          <X size={16} color="#8F8F99" strokeWidth={2.4} />
+          <X size={16} color={themeColor("#8F8F99", 'text')} strokeWidth={2.4} />
         </Pressable>
       </View>
       <View style={styles.playerCardPlanNudgeTable}>
@@ -219,6 +219,9 @@ function PlayerCardPlanNudge({
 }
 
 export default function PlayerPoolScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, WORLD_CUP_COLORS, ACCENT, styles, themeColor} = themed;
+
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const tutorial = useTutorial();
@@ -1258,14 +1261,14 @@ export default function PlayerPoolScreen() {
           }
         : {
             bg: BG,
-            panel: 'rgba(22, 163, 74, 0.12)',
-            text: '#FFFFFF',
+            panel: themeColor('rgba(22, 163, 74, 0.12)'),
+            text: themeColor('#FFFFFF'),
             accent: ACCENT,
-            accentDark: '#15803D',
+            accentDark: themeColor('#15803D'),
             line: ACCENT,
-            glow: 'rgba(22, 163, 74, 0.12)',
+            glow: themeColor('rgba(22, 163, 74, 0.12)'),
           },
-    [worldCupMode],
+    [worldCupMode, themed],
   );
   return (
     <KeyboardAvoidingView
@@ -1335,7 +1338,7 @@ export default function PlayerPoolScreen() {
             card: WORLD_CUP_COLORS.card,
             line: WORLD_CUP_COLORS.blue,
             accent: WORLD_CUP_COLORS.blue,
-            accentSoft: 'rgba(49, 87, 246, 0.13)',
+            accentSoft: themeColor('rgba(49, 87, 246, 0.13)'),
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
@@ -1390,8 +1393,8 @@ export default function PlayerPoolScreen() {
             card: WORLD_CUP_COLORS.card,
             line: WORLD_CUP_COLORS.mint,
             accent: WORLD_CUP_COLORS.mint,
-            accentSoft: 'rgba(98, 246, 210, 0.13)',
-            activeRow: 'rgba(182, 240, 0, 0.10)',
+            accentSoft: themeColor('rgba(98, 246, 210, 0.13)'),
+            activeRow: themeColor('rgba(182, 240, 0, 0.10)'),
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
@@ -1429,7 +1432,7 @@ export default function PlayerPoolScreen() {
             card: WORLD_CUP_COLORS.card,
             line: WORLD_CUP_COLORS.lavender,
             accent: WORLD_CUP_COLORS.lavender,
-            accentSoft: 'rgba(167, 132, 244, 0.12)',
+            accentSoft: themeColor('rgba(167, 132, 244, 0.12)'),
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
           footerContent={
@@ -1495,7 +1498,7 @@ export default function PlayerPoolScreen() {
             line: WORLD_CUP_COLORS.red,
             accent: WORLD_CUP_COLORS.red,
             accent2: WORLD_CUP_COLORS.red,
-            accentSoft: 'rgba(227, 0, 11, 0.13)',
+            accentSoft: themeColor('rgba(227, 0, 11, 0.13)'),
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
@@ -1544,9 +1547,9 @@ export default function PlayerPoolScreen() {
             card: WORLD_CUP_COLORS.card,
             line: WORLD_CUP_COLORS.red,
             accent: WORLD_CUP_COLORS.red,
-            accentSoft: 'rgba(227, 0, 11, 0.13)',
+            accentSoft: themeColor('rgba(227, 0, 11, 0.13)'),
             winnerAccent: WORLD_CUP_COLORS.mint,
-            winnerSoft: 'rgba(98, 246, 210, 0.13)',
+            winnerSoft: themeColor('rgba(98, 246, 210, 0.13)'),
             muted: WORLD_CUP_COLORS.muted,
           } : undefined}
         />
@@ -1630,7 +1633,11 @@ export default function PlayerPoolScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, PANEL, WORLD_CUP_COLORS, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: BG,
@@ -1652,8 +1659,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.32)',
-    backgroundColor: 'rgba(22, 163, 74, 0.08)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.32)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.08)', 'surface'),
     padding: 12,
     gap: 10,
   },
@@ -1682,7 +1689,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 11,
     borderWidth: 1,
-    backgroundColor: 'rgba(8, 18, 13, 0.72)',
+    backgroundColor: themeColor('rgba(8, 18, 13, 0.72)', 'surface'),
     paddingHorizontal: 11,
     paddingVertical: 6,
   },
@@ -1699,8 +1706,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: '#26362E',
-    backgroundColor: '#131916',
+    borderColor: themeColor('#26362E', 'border'),
+    backgroundColor: themeColor('#131916', 'surface'),
   },
   playerCardPlanNudgeTableRow: {
     minHeight: 38,
@@ -1709,11 +1716,11 @@ const styles = StyleSheet.create({
   },
   playerCardPlanNudgeTableHeader: {
     minHeight: 34,
-    backgroundColor: '#101512',
+    backgroundColor: themeColor('#101512', 'surface'),
   },
   playerCardPlanNudgeTableBorder: {
     borderTopWidth: 1,
-    borderTopColor: '#26362E',
+    borderTopColor: themeColor('#26362E', 'border'),
   },
   playerCardPlanNudgeFeatureCell: {
     flex: 1.4,
@@ -1730,40 +1737,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 4,
     borderLeftWidth: 1,
-    borderLeftColor: '#26362E',
+    borderLeftColor: themeColor('#26362E', 'border'),
   },
   playerCardPlanNudgePlusCell: {
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    backgroundColor: themeColor('rgba(56, 189, 248, 0.08)', 'surface'),
   },
   playerCardPlanNudgeProCell: {
-    backgroundColor: 'rgba(22, 163, 74, 0.11)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.11)', 'surface'),
   },
   playerCardPlanNudgePlusValue: {
-    backgroundColor: 'rgba(56, 189, 248, 0.025)',
+    backgroundColor: themeColor('rgba(56, 189, 248, 0.025)', 'surface'),
   },
   playerCardPlanNudgeProValue: {
-    backgroundColor: 'rgba(22, 163, 74, 0.035)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.035)', 'surface'),
   },
   playerCardPlanNudgePlusText: {
-    color: '#38BDF8',
+    color: themeColor('#38BDF8', 'text'),
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.6,
   },
   playerCardPlanNudgeProText: {
-    color: '#4ADE80',
+    color: themeColor('#4ADE80', 'text'),
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.6,
   },
   playerCardPlanNudgeFeatureText: {
-    color: '#D4DED8',
+    color: themeColor('#D4DED8', 'text'),
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '700',
   },
   playerCardPlanNudgeValueText: {
-    color: '#F2F5F3',
+    color: themeColor('#F2F5F3', 'text'),
     fontSize: 9,
     lineHeight: 11,
     fontWeight: '800',
@@ -1775,7 +1782,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: themeColor('rgba(255,255,255,0.035)', 'surface'),
   },
   playerCardPlanNudgeButton: {
     minHeight: 40,
@@ -1786,14 +1793,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   playerCardPlanNudgeButtonText: {
-    color: '#FFFFFF',
+    color: themeColor('#FFFFFF', 'text'),
     fontSize: 12,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
   proPromptBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: themeColor('rgba(0,0,0,0.72)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
@@ -1803,7 +1810,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.34)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.34)', 'border'),
     backgroundColor: PANEL,
     padding: 18,
     gap: 12,
@@ -1819,25 +1826,25 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.42)',
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.42)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
   },
   proPromptTitle: {
     flex: 1,
-    color: '#F4F6F5',
+    color: themeColor('#F4F6F5', 'text'),
     fontSize: 19,
     lineHeight: 24,
     fontWeight: '800',
   },
   proPromptBody: {
-    color: '#9A9AA3',
+    color: themeColor('#9A9AA3', 'text'),
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
   },
-  proPromptPlus: { color: '#38BDF8', fontWeight: '900' },
+  proPromptPlus: { color: themeColor('#38BDF8', 'text'), fontWeight: '900' },
   proPromptPro: { color: ACCENT, fontWeight: '900' },
   proPromptActions: {
     flexDirection: 'row',
@@ -1850,14 +1857,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    borderColor: themeColor('rgba(255,255,255,0.12)', 'border'),
+    backgroundColor: themeColor('rgba(255,255,255,0.035)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   proPromptSecondaryText: {
-    color: '#B6B6BE',
+    color: themeColor('#B6B6BE', 'text'),
     fontSize: 12,
     fontWeight: '900',
   },
@@ -1873,11 +1880,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   proPromptPrimaryText: {
-    color: '#FFFFFF',
+    color: themeColor('#FFFFFF', 'text'),
     fontSize: 12,
     fontWeight: '900',
   },
   pressed: {
     opacity: 0.92,
   },
+});
+  return {ACCENT, BG, PANEL, WORLD_CUP_COLORS, styles, themeColor};
 });

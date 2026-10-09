@@ -1,3 +1,15 @@
-import React from 'react';
-import Svg,{Path} from 'react-native-svg';
-export default function GoalkeeperGlovesIcon({size=21,color='#16a34a'}:{size?:number;color?:string}){return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><Path d="M6.9 13.2 5.1 11.4a1.55 1.55 0 0 1 2.2-2.2l1.1 1.1.6-5a1.35 1.35 0 0 1 2.7.2l-.3 4.4"/><Path d="M11.4 9.9 11.8 4.8a1.35 1.35 0 0 1 2.7.2l-.3 5"/><Path d="M14.2 10 14.6 5.5a1.35 1.35 0 0 1 2.7.2l-.4 4.6"/><Path d="M16.9 10.4 17.2 7a1.3 1.3 0 0 1 2.6.3l-.7 7.5a4.8 4.8 0 0 1-5.3 4.4l-3.6-.4a3.5 3.5 0 0 1-3.1-3.9l.2-1.6"/><Path d="M8 15.4 16.9 16.4"/><Path d="M8.8 18 13.7 18.6"/><Path d="M13.9 18.7 17.1 16.5"/><Path d="M9.1 12.5 11 12.8"/><Path d="M11.9 12.8 13.8 13.1"/><Path d="M14.7 13.1 16.6 13.4"/><Path d="M17.2 13.4 18.7 13.6"/><Path d="M10 20.5 13.7 21"/></Svg>;}
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import Svg,{ Path } from 'react-native-svg';
+export default function GoalkeeperGlovesIcon({size=21,color}:{size?:number;color?:string}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {themeColor} = themed;
+  color ??= themeColor('#16a34a');
+return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><Path d="M6.9 13.2 5.1 11.4a1.55 1.55 0 0 1 2.2-2.2l1.1 1.1.6-5a1.35 1.35 0 0 1 2.7.2l-.3 4.4"/><Path d="M11.4 9.9 11.8 4.8a1.35 1.35 0 0 1 2.7.2l-.3 5"/><Path d="M14.2 10 14.6 5.5a1.35 1.35 0 0 1 2.7.2l-.4 4.6"/><Path d="M16.9 10.4 17.2 7a1.3 1.3 0 0 1 2.6.3l-.7 7.5a4.8 4.8 0 0 1-5.3 4.4l-3.6-.4a3.5 3.5 0 0 1-3.1-3.9l.2-1.6"/><Path d="M8 15.4 16.9 16.4"/><Path d="M8.8 18 13.7 18.6"/><Path d="M13.9 18.7 17.1 16.5"/><Path d="M9.1 12.5 11 12.8"/><Path d="M11.9 12.8 13.8 13.1"/><Path d="M14.7 13.1 16.6 13.4"/><Path d="M17.2 13.4 18.7 13.6"/><Path d="M10 20.5 13.7 21"/></Svg>;}
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {themeColor} = colors;
+
+
+  return {themeColor};
+});

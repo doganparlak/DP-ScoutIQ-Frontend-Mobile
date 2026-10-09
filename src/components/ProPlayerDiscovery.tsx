@@ -1,23 +1,25 @@
+import { PLAYER_ROLE_GRID_ORDER } from '@/services/api';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Activity,CalendarX2,ClipboardPenLine,Compass,Crosshair,Goal,Hand,ListFilter,RotateCcw,Shield,SlidersHorizontal,UserRoundSearch,UsersRound } from 'lucide-react-native';
 import React from 'react';
-import {TutorialPageGuide} from './Tutorial';
-import {Keyboard,Pressable,Switch,Text,TextInput,View,useWindowDimensions} from 'react-native';
-import {useTranslation} from 'react-i18next';
-import {Activity,CalendarX2,ClipboardPenLine,Compass,Crosshair,Goal,Hand,ListFilter,RotateCcw,Shield,SlidersHorizontal,UserRoundSearch,UsersRound} from 'lucide-react-native';
-import {ACCENT,CARD,DANGER,FRAME_TITLE,LINE,MUTED,TEXT} from '@/theme';
-import {getPlayerPoolOptions,normalizeProPlayer,proWorkspaceRequest,type PlayerPoolFilterOptions} from '@/services/api';
-import {ContractDateFilter,ContractStatusFilter} from './ContractFilters';
-import {SelectField,Selector,Status} from './LeaguePerformanceControls';
-import {ProButton,ProTrialHint,proStyles,workspaceRequestId,type ProPlayerEntry} from './ProWorkspaceControls';
-import PlayerCard from './PlayerCard';
+import { useTranslation } from 'react-i18next';
+import { Keyboard,Pressable,Switch,Text,TextInput,View,useWindowDimensions } from 'react-native';
+import { TutorialPageGuide } from './Tutorial';
+
+import { getPlayerPoolOptions,normalizeProPlayer,proWorkspaceRequest,type PlayerPoolFilterOptions } from '@/services/api';
+import { PLAYER_CARD_PROFILE_GAP,getThemed_PLAYER_ACTION_TONES as __getThemed_PLAYER_ACTION_TONES } from '@/utils/playerCardActions';
+import { ContractDateFilter,ContractStatusFilter } from './ContractFilters';
+import { SelectField,Selector,Status } from './LeaguePerformanceControls';
 import LeaguePlayerCardModal from './LeaguePlayerCardModal';
+import PlayerCard from './PlayerCard';
 import ProSaveReportActions from './ProSaveReportActions';
-import {PLAYER_ACTION_TONES,PLAYER_CARD_PROFILE_GAP} from '@/utils/playerCardActions';
+import { ProButton,ProTrialHint,getThemed_proStyles as __getThemed_proStyles,workspaceRequestId,type ProPlayerEntry } from './ProWorkspaceControls';
 type Category={key:string;tr:string;en:string;groups:{key:string;metrics:string[]}[]};
 type Filters={nationality:string[];league:string[];minAge:string;maxAge:string;contractStatus:''|'loan'|'permanent';loanEndDate:string;contractEndDate:string};
 const emptyFilters=():Filters=>({nationality:[],league:[],minAge:'',maxAge:'',contractStatus:'',loanEndDate:'',contractEndDate:''});
 const ICONS:Record<string,typeof Activity>={impact:Activity,shooting:Goal,passing:Crosshair,defending:Shield,security:Shield,goalkeeping:Hand};
-const COLORS:Record<string,string>={impact:'#34d399',shooting:'#60a5fa',passing:'#c084fc',defending:'#fbbf24',security:'#fb7185',goalkeeping:'#2dd4bf'};
-const ROLES=['LW','CF','RW','LM','CAM','RM','LB','CM','RB','CB','CDM','GK'];
+
+const ROLES = PLAYER_ROLE_GRID_ORDER;
 export function discoveryPriorityShares(keys:string[],levels:Record<string,number>){
  const strengths=[0,1,3,5],total=keys.reduce((sum,key)=>sum+strengths[levels[key]??1],0);
  if(!total)return Object.fromEntries(keys.map(key=>[key,0]));
@@ -27,6 +29,9 @@ export function discoveryPriorityShares(keys:string[],levels:Record<string,numbe
  return shares;
 }
 export default function ProPlayerDiscovery({trial=false,sessionId,strategy,onEditStrategy,onInspect,onSimilar,onAccessRequired,onCreditsChanged,onBusyChange,onResultsShown}:{trial?:boolean;sessionId:string;strategy:string;onEditStrategy:()=>void;onInspect:(entry:ProPlayerEntry)=>void;onSimilar:(entry:ProPlayerEntry)=>void;onAccessRequired:()=>void;onCreditsChanged:()=>void;onBusyChange:(value:boolean)=>void;onResultsShown:(offset:number)=>void}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {proStyles, ACCENT, FRAME_TITLE, LINE, TEXT, DANGER, MUTED, COLORS, CARD, PLAYER_ACTION_TONES} = themed;
+
  const {i18n}=useTranslation(),tr=i18n.language.startsWith('tr'),{width,fontScale}=useWindowDimensions(),paired=width/Math.max(fontScale,1)>=360;
  const [filters,setFilters]=React.useState(emptyFilters),[roles,setRoles]=React.useState<string[]>([]),[levels,setLevels]=React.useState<Record<string,number>>({});
  const [useWeights,setUseWeights]=React.useState(false),[useStrategy,setUseStrategy]=React.useState(false),[categories,setCategories]=React.useState<Category[]>([]),[options,setOptions]=React.useState<PlayerPoolFilterOptions|null>(null),[setupError,setSetupError]=React.useState(false),[setupRetry,setSetupRetry]=React.useState(0);
@@ -96,3 +101,12 @@ export default function ProPlayerDiscovery({trial=false,sessionId,strategy,onEdi
   {selector&&<Selector columns={selector==='roles'?3:1} maxSelections={selector==='roles'?4:undefined} tr={tr} title={selector==='roles'?(tr?'Rol Seç · En Fazla 4':'Choose Roles · Up to 4'):(tr?'Seçenekleri Seç':'Select Options')} selected='' selectedKeys={selector==='roles'?roles:filters[selector]} options={[{key:'',label:tr?'Tümü / Seçimi temizle':'All / Clear selection'},...(selector==='roles'?ROLES:selector==='nationality'?options?.nationalities||[]:options?.leagues||[]).map(key=>({key,label:key}))]} onSelect={toggle} onClose={()=>setSelector(null)}/>}
  </View>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, FRAME_TITLE, LINE, MUTED, TEXT, themeColor} = colors;
+  const proStyles = __getThemed_proStyles(colors);
+  const PLAYER_ACTION_TONES = __getThemed_PLAYER_ACTION_TONES(colors);
+  const COLORS:Record<string,string>={impact:themeColor('#34d399'),shooting:themeColor('#60a5fa'),passing:themeColor('#c084fc'),defending:themeColor('#fbbf24'),security:themeColor('#fb7185'),goalkeeping:themeColor('#2dd4bf')};
+  return {ACCENT, CARD, DANGER, FRAME_TITLE, LINE, MUTED, TEXT, proStyles, PLAYER_ACTION_TONES, COLORS, themeColor};
+});

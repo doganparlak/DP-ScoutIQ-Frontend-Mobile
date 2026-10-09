@@ -1,9 +1,13 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import React from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { TEXT, MUTED } from '@/theme';
+import { ScrollView,StyleSheet,Text } from 'react-native';
+
 
 function Bullet({ children }: { children: React.ReactNode }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   return (
     <Text style={styles.bulletRow}>
       <Text style={styles.bullet}>{'\u2022  '}</Text>
@@ -13,6 +17,9 @@ function Bullet({ children }: { children: React.ReactNode }) {
 }
 
 export default function DataUsage() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const { t } = useTranslation();
 
   return (
@@ -56,7 +63,11 @@ export default function DataUsage() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {TEXT, MUTED, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   summaryBox: {
     color: TEXT,
     fontSize: 14,
@@ -65,7 +76,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: themeColor('rgba(255,255,255,0.04)', 'surface'),
   },
   scroll: {
     width: '100%',
@@ -94,4 +105,6 @@ const styles = StyleSheet.create({
   bullet: {
     color: TEXT,
   },
+});
+  return {TEXT, MUTED, styles, themeColor};
 });

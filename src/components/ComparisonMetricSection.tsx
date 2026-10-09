@@ -1,38 +1,33 @@
-import React from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
-import {
-  VictoryArea,
-  VictoryChart,
-  VictoryGroup,
-  VictoryLabel,
-  VictoryPolarAxis,
-} from "victory-native";
-import {
-  BrickWall,
-  DraftingCompass,
-  List,
-  LineChart,
-  LogIn,
-  Medal,
-  ShieldAlert,
-  ShieldCheck,
-  Star,
-} from "lucide-react-native";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import type { PlayerData } from "@/types";
-import { ACCENT, CARD, DANGER, LINE, MUTED, PANEL } from "@/theme";
+import {
+BrickWall,
+DraftingCompass,
+LineChart,
+List,
+LogIn,
+Medal,
+ShieldAlert,
+ShieldCheck,
+Star,
+} from "lucide-react-native";
+import React from "react";
+import { Pressable,Text,View,useWindowDimensions } from "react-native";
+import {
+VictoryArea,
+VictoryChart,
+VictoryGroup,
+VictoryLabel,
+VictoryPolarAxis,
+} from "victory-native";
+
 import type {
-  ComparisonGroup,
-  ComparisonRow,
-  MetricUnit,
+ComparisonGroup,
+ComparisonRow,
+MetricUnit,
 } from "@/utils/comparisonGroups";
 import UnitSwitch from "./ComparisonUnitSwitch";
-import {
-  comparisonStyles as styles,
-  COMPARISON_COLORS,
-  comparisonParticipantLabels,
-  formatValue,
-  type ComparisonTheme,
-} from "./comparisonAppearance";
+import { getThemed_COMPARISON_COLORS as __getThemed_COMPARISON_COLORS,getThemed_comparisonStyles as __getThemed_styles,comparisonParticipantLabels,formatValue,type ComparisonTheme } from "./comparisonAppearance";
 const ICONS: Record<string, typeof Star> = {
   scoutwise_scores: Medal,
   contribution_impact: Star,
@@ -68,6 +63,9 @@ export default function MetricSection({
   controls?: React.ReactNode;
   allowPlotType?: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles, COMPARISON_COLORS, PANEL, LINE, MUTED, DANGER, themeColor} = themed;
+
   const [plot, setPlot] = React.useState(defaultPlot);
   const [plotType, setPlotType] = React.useState<"radar" | "bars">("radar");
   const { width } = useWindowDimensions();
@@ -166,7 +164,7 @@ export default function MetricSection({
         <View style={{ padding: 8 }}>
           <View style={{ flexDirection: 'row', backgroundColor: PANEL, borderRadius: 999, borderWidth: 1, borderColor: LINE, padding: 4, gap: 3 }}>
             {(['radar', 'bars'] as const).map(type => (
-              <Pressable key={type} testID={`custom-plot-type-${type}`} accessibilityRole="radio" accessibilityState={{ checked: plotType === type }} onPress={() => setPlotType(type)} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 999, backgroundColor: plotType === type ? 'rgba(22,163,74,.16)' : 'transparent' }}>
+              <Pressable key={type} testID={`custom-plot-type-${type}`} accessibilityRole="radio" accessibilityState={{ checked: plotType === type }} onPress={() => setPlotType(type)} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 999, backgroundColor: plotType === type ? themeColor('rgba(22,163,74,.16)', 'surface') : 'transparent' }}>
                 <Text style={{ fontSize: 10.5, fontWeight: '900', color: plotType === type ? ACCENT : MUTED }}>{type === 'radar' ? 'Radar' : tr ? 'Yatay Bar' : 'Horizontal Bars'}</Text>
               </Pressable>
             ))}
@@ -274,7 +272,7 @@ export default function MetricSection({
                         best(row, i) && {
                           borderColor: winner,
                           backgroundColor:
-                            theme?.winnerSoft ?? "rgba(22,163,74,.10)",
+                            theme?.winnerSoft ?? themeColor("rgba(22,163,74,.10)", 'surface'),
                         },
                       ]}
                     >
@@ -311,7 +309,7 @@ export default function MetricSection({
                                 risk < 0.33
                                   ? ACCENT
                                   : risk < 0.66
-                                    ? "#F59E0B"
+                                    ? themeColor("#F59E0B", 'surface')
                                     : DANGER,
                             },
                           ]}
@@ -459,3 +457,12 @@ export default function MetricSection({
     </View>
   );
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, PANEL, themeColor} = colors;
+  const styles = __getThemed_styles(colors);
+  const COMPARISON_COLORS = __getThemed_COMPARISON_COLORS(colors);
+
+  return {ACCENT, CARD, DANGER, LINE, MUTED, PANEL, styles, COMPARISON_COLORS, themeColor};
+});

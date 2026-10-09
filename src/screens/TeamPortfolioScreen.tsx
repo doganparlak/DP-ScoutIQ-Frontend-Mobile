@@ -1,24 +1,31 @@
-import React from 'react';
-import {ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View} from 'react-native';
-import {useFocusEffect, useIsFocused, useNavigation} from '@react-navigation/native';
-import {useTranslation} from 'react-i18next';
-import {ListFilter, RotateCcw, ShieldCheck, Trash2, X} from 'lucide-react-native';
-import {useWorkspaceActionAd} from '@/ads/useWorkspaceActionAd';
-import {deleteFavoriteTeam, getFavoriteTeams, filterFavoriteTeams, favoriteTeamOptions, EMPTY_TEAM_PORTFOLIO_FILTERS, type FavoriteTeam} from '@/services/teamPortfolio';
-import type {TeamFilters} from '@/services/teamPool';
-import TeamProfileCard from '@/components/TeamProfileCard';
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import { Action,SelectField,Selector,Status } from '@/components/LeaguePerformanceControls';
 import SavedTeamReportModal from '@/components/SavedTeamReportModal';
-import {Action, SelectField, Selector, Status} from '@/components/LeaguePerformanceControls';
-import {TutorialPageGuide} from '@/components/Tutorial';
-import {portfolioViewportHeight} from '@/utils/portfolioLayout';
-import {shortCountry, shortPlayer} from '@/utils/seasonTableLabels';
-import {comparisonSourceShortLabel} from '@/utils/comparisonSourceLabel';
-import {ACCENT, BG, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT} from '@/theme';
+import TeamProfileCard from '@/components/TeamProfileCard';
+import { TutorialPageGuide } from '@/components/Tutorial';
+import type { TeamFilters } from '@/services/teamPool';
+import { deleteFavoriteTeam,EMPTY_TEAM_PORTFOLIO_FILTERS,favoriteTeamOptions,filterFavoriteTeams,getFavoriteTeams,type FavoriteTeam } from '@/services/teamPortfolio';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { comparisonSourceShortLabel } from '@/utils/comparisonSourceLabel';
+import { portfolioViewportHeight } from '@/utils/portfolioLayout';
+import { shortCountry,shortPlayer } from '@/utils/seasonTableLabels';
+import { useFocusEffect,useIsFocused,useNavigation } from '@react-navigation/native';
+import { ListFilter,RotateCcw,ShieldCheck,Trash2,X } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator,Alert,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,useWindowDimensions,View } from 'react-native';
+
 
 function Frame({title, Icon, action, children}: {title: string; Icon: typeof ShieldCheck; action?: React.ReactNode; children: React.ReactNode}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return <View style={styles.frame}><View style={FRAME_STRIPE}/><View style={[FRAME_HEADING,{marginBottom:16}]}><Icon size={20} color={ACCENT}/><Text style={[FRAME_TITLE,{flex:1}]}>{title}</Text>{action}</View>{children}</View>;
 }
 export default function TeamPortfolioScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, styles, DANGER, MUTED, ACCENT, table, LINE, FRAME_HEADING, FRAME_TITLE} = themed;
+
   const {i18n}=useTranslation(), tr=i18n.language.startsWith('tr');
   const nav=useNavigation<any>(), focused=useIsFocused(), ads=useWorkspaceActionAd();
   const {width,height,fontScale}=useWindowDimensions();
@@ -91,14 +98,21 @@ export default function TeamPortfolioScreen() {
     {focused&&reportId&&<SavedTeamReportModal reportId={reportId} tr={tr} onClose={closeReport} onOpenPlans={()=>{setReportId('');setCardOpen(false);setTimeout(()=>nav.navigate('Profile',{screen:'ManagePlan'}),350);}}/>}
   </ScrollView>;
 }
-const styles=StyleSheet.create({page:{padding:16,gap:16,paddingBottom:40},frame:{padding:16,borderWidth:1,borderColor:ACCENT,borderRadius:20,backgroundColor:PANEL},hint:{color:MUTED,fontSize:12,fontWeight:'700'},input:{borderWidth:1,borderColor:LINE,borderRadius:12,padding:12,minHeight:46,color:TEXT,backgroundColor:'#1F2220'},teamName:{color:TEXT,fontSize:11.5,textAlign:'center'},backdrop:{flex:1,backgroundColor:'rgba(0,0,0,.8)',padding:20,justifyContent:'center'},modal:{width:'100%',maxWidth:560,maxHeight:'90%',alignSelf:'center',padding:16,borderRadius:20,borderWidth:1,borderColor:ACCENT,backgroundColor:PANEL}});
 
-const table=StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles=StyleSheet.create({page:{padding:16,gap:16,paddingBottom:40},frame:{padding:16,borderWidth:1,borderColor:ACCENT,borderRadius:20,backgroundColor:PANEL},hint:{color:MUTED,fontSize:12,fontWeight:'700'},input:{borderWidth:1,borderColor:LINE,borderRadius:12,padding:12,minHeight:46,color:TEXT,backgroundColor:themeColor('#1F2220', 'surface')},teamName:{color:TEXT,fontSize:11.5,textAlign:'center'},backdrop:{flex:1,backgroundColor:themeColor('rgba(0,0,0,.8)', 'surface'),padding:20,justifyContent:'center'},modal:{width:'100%',maxWidth:560,maxHeight:'90%',alignSelf:'center',padding:16,borderRadius:20,borderWidth:1,borderColor:ACCENT,backgroundColor:PANEL}});
+
+  const table=StyleSheet.create({
   table:{marginTop:10,borderTopWidth:1,borderBottomWidth:1,borderColor:LINE},
-  row:{flexDirection:'row',alignItems:'center',minHeight:52,borderWidth:1,borderColor:'rgba(36,245,166,.16)',backgroundColor:'rgba(22,163,74,.055)',borderRadius:14,paddingHorizontal:4,overflow:'hidden'},
-  header:{borderColor:'rgba(36,245,166,.22)',backgroundColor:'rgba(22,163,74,.09)'},
-  selected:{borderColor:ACCENT,backgroundColor:'rgba(22,163,74,.14)'},
-  pressed:{transform:[{scale:.992}],backgroundColor:'rgba(22,163,74,.12)'},
+  row:{flexDirection:'row',alignItems:'center',minHeight:52,borderWidth:1,borderColor:themeColor('rgba(36,245,166,.16)', 'border'),backgroundColor:themeColor('rgba(22,163,74,.055)', 'surface'),borderRadius:14,paddingHorizontal:4,overflow:'hidden'},
+  header:{borderColor:themeColor('rgba(36,245,166,.22)', 'border'),backgroundColor:themeColor('rgba(22,163,74,.09)', 'surface')},
+  selected:{borderColor:ACCENT,backgroundColor:themeColor('rgba(22,163,74,.14)', 'surface')},
+  pressed:{transform:[{scale:.992}],backgroundColor:themeColor('rgba(22,163,74,.12)', 'surface')},
   cell:{minWidth:0,paddingVertical:10,paddingHorizontal:2,textAlign:'center',color:TEXT,fontSize:11.5},
   headerText:{color:TEXT,fontSize:11,lineHeight:14,fontWeight:'800'},
+});
+  return {ACCENT, BG, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, styles, table, themeColor};
 });

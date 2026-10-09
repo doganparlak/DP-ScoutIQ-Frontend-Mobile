@@ -1,55 +1,56 @@
 import { isAdFlowCancelled } from '@/ads/presentation';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { useMatchup } from '@/context/MatchupContext';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { portfolioViewportHeight } from '@/utils/portfolioLayout';
-import { FRAME_TITLE, FRAME_STRIPE } from '@/theme';
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  ActivityIndicator,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  TextInput,
-  Alert,
-  Modal,
-  Platform,
-  useWindowDimensions,
-} from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Shirt, X, UserX, Users, UserRound } from 'lucide-react-native';
-import { useTranslation } from 'react-i18next';
 
-import { TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK } from '../theme';
-import type { PlayerData } from '../types';
-import ScoutingReport from './ScoutingReport';
+import { useFocusEffect,useNavigation } from '@react-navigation/native';
+import { Network,Shirt,UserRound,UserX,X } from 'lucide-react-native';
+import React,{ useEffect,useMemo,useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  deleteFavoritePlayer,
-  getFavoritePlayers,
-  getScoutingReport,
-  getFavoriteScoutingReportSection,
-  ROLE_PICKER_ORDER,
-  rolePickerCode,
-  type Plan,
-  type FavoritePlayer,
-  type ScoutingReportResponse,
-} from '../services/api';
-import { portfolioTeamShortName } from '@/utils/portfolioTeamShortName';
-import { countryToCode2 } from '../constants/countries';
-import PlayerCard from '../components/PlayerCard';
-import { normalizePlayerContract, type PlayerContract } from '@/utils/playerContract';
-import { matchesPortfolioFilters, type PortfolioFilters } from '@/utils/portfolioFilters';
-import { showInterstitialAndWaitSafely } from '../ads/interstitial';
+ActivityIndicator,
+Alert,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View,
+} from 'react-native';
+
+
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
+import { normalizePlayerContract,type PlayerContract } from '@/utils/playerContract';
+import { matchesPortfolioFilters,type PortfolioFilters } from '@/utils/portfolioFilters';
+import { portfolioTeamShortName } from '@/utils/portfolioTeamShortName';
 import {
-  incrementPortfolioLineupLaunchCount,
-  incrementReportActionCount,
-  shouldShowPortfolioLineupInterstitial,
-  shouldShowReportActionInterstitial,
+incrementPortfolioLineupLaunchCount,
+incrementReportActionCount,
+shouldShowPortfolioLineupInterstitial,
+shouldShowReportActionInterstitial,
 } from '../ads/adGating';
-import { TutorialHint, type ProfileTutorialStep } from './Tutorial';
+import { showInterstitialAndWaitSafely } from '../ads/interstitial';
+import PlayerCard from '../components/PlayerCard';
+import { countryToCode2 } from '../constants/countries';
+import {
+deleteFavoritePlayer,
+getFavoritePlayers,
+getFavoriteScoutingReportSection,
+getScoutingReport,
+ROLE_PICKER_ORDER,
+rolePickerCode,
+type FavoritePlayer,
+type Plan,
+type ScoutingReportResponse,
+} from '../services/api';
+import type { PlayerData } from '../types';
 import LineUp from './LineUp';
+import ScoutingReport from './ScoutingReport';
+import { TutorialHint,type ProfileTutorialStep } from './Tutorial';
 
 type PlayerRow = PlayerContract & {
   sportmonksId?: number;
@@ -177,6 +178,9 @@ export default function FavoritePlayers({
   onProfileTutorialNext,
   onProfileTutorialSkip,
 }: FavoritePlayersProps) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, DANGER, FRAME_STRIPE, ACCENT, FRAME_TITLE, TEXT, DANGER_DARK} = themed;
+
   const { t } = useTranslation();
   const { height: windowHeight } = useWindowDimensions();
   const tableViewportHeight = workspaceFilters ? portfolioViewportHeight(windowHeight) : ROW_HEIGHT * 5 + 2;
@@ -1036,14 +1040,16 @@ export default function FavoritePlayers({
           disabled={tutorialLocked && !canPressTutorialLineup}
           style={({ pressed }) => [
             styles.lineupButton,
-            workspaceFilters && styles.workspaceLineupButton,
             tutorialLocked && !canPressTutorialLineup && styles.lineupButtonDisabled,
             canPressTutorialLineup && styles.lineupButtonTutorial,
             pressed && (!tutorialLocked || canPressTutorialLineup) && styles.lineupButtonPressed,
           ]}
+          accessibilityRole="button"
           accessibilityLabel={t('openLineup', 'Open lineup')}
         >
-          <Users size={15} color={ACCENT} strokeWidth={2.5} />
+          <View style={styles.lineupButtonIcon}>
+            <Network size={16} color={ACCENT} strokeWidth={2.2} />
+          </View>
           <Text style={styles.lineupButtonText}>{t('openLineup', 'Lineup')}</Text>
         </Pressable>
       </View>
@@ -1329,7 +1335,7 @@ export default function FavoritePlayers({
                 reportState={previewRow && (processingReports.has(previewRow.id) || queuedReportPlayer?.id === previewRow.id) ? 'loading' : 'idle'}
                 onGenerateReport={async () => { if (previewRow) await handleReportPress(previewRow); }}
                 matchupDisabled={matchupAds.busy || matchupFull || (!!previewRow && sharedMatchup.rows.some(row => row?.id === previewRow.playerId))}
-               
+
                 onMatchup={tutorialLocked ? undefined : async () => {
                   if (!previewRow || matchupAds.busy || matchupFull || sharedMatchup.rows.some(row => row?.id === previewRow.playerId)) return;
                   if (!previewRow.playerId || !Number.isSafeInteger(previewRow.sportmonksId) || (previewRow.sportmonksId ?? 0) <= 0) { Alert.alert(t('matchupWorkspace'), t('portfolioPlayerUnavailable', 'This saved player could not be matched to the current player pool.')); return; }
@@ -1418,7 +1424,11 @@ export default function FavoritePlayers({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   tableHeaderWrap: {
     paddingRight: 5,
   },
@@ -1448,21 +1458,31 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: ACCENT, fontSize: 16, fontWeight: '700', flex: 1, minWidth: 0 },
   lineupButton: {
-    minHeight: 36,
-    borderRadius: 999,
+    minHeight: 38,
+    flexShrink: 0,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 12,
+    gap: 6,
+    paddingLeft: 6,
+    paddingRight: 12,
+    paddingVertical: 5,
   },
-  workspaceLineupButton: { minHeight: 20, height: 20, paddingHorizontal: 8 },
+  lineupButtonIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.13)', 'surface'),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   lineupButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900' },
   lineupButtonDisabled: { opacity: 0.45 },
-  lineupButtonPressed: { opacity: 0.82 },
-  lineupButtonTutorial: { backgroundColor: 'rgba(22, 163, 74, 0.22)' },
+  lineupButtonPressed: { opacity: 0.82, transform: [{ scale: 0.97 }] },
+  lineupButtonTutorial: { backgroundColor: themeColor('rgba(22, 163, 74, 0.22)', 'surface') },
 
   profileTutorialHint: { marginBottom: 12 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
@@ -1483,7 +1503,7 @@ const styles = StyleSheet.create({
   chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1 },
   chipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   chipInactive: { backgroundColor: 'transparent', borderColor: LINE },
-  chipTextActive: { color: TEXT, fontWeight: '700' },
+  chipTextActive: { color: themeColor(TEXT, 'onAccent'), fontWeight: '700' },
   chipTextInactive: { color: MUTED, fontWeight: '600' },
 
   table: { marginTop: 10 },
@@ -1495,8 +1515,8 @@ const styles = StyleSheet.create({
     minHeight: ROW_HEIGHT + 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.16)',
-    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.16)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.055)', 'surface'),
     paddingHorizontal: 4,
     overflow: 'hidden',
   },
@@ -1504,18 +1524,18 @@ const styles = StyleSheet.create({
     minHeight: ROW_HEIGHT + 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.22)',
-    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.09)', 'surface'),
     paddingHorizontal: 4,
     overflow: 'hidden',
   },
   activeHeaderCell: {
-    backgroundColor: 'rgba(36, 245, 166, 0.14)',
+    backgroundColor: themeColor('rgba(36, 245, 166, 0.14)', 'surface'),
   },
   clickableRowPressed: {
     transform: [{ scale: 0.992 }],
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderColor: 'rgba(36, 245, 166, 0.42)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
+    borderColor: themeColor('rgba(36, 245, 166, 0.42)', 'border'),
   },
   clickableRowGap: { height: 8 },
   rowLocked: { opacity: 0.62 },
@@ -1540,8 +1560,8 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.22)',
-    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.13)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 7,
@@ -1560,12 +1580,12 @@ const styles = StyleSheet.create({
 
   deleteCell: { width: 32, alignItems: 'center', justifyContent: 'center' },
   deleteButton: { width: 32, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  deleteButtonPressed: { backgroundColor: 'rgba(248,113,113,0.2)' },
+  deleteButtonPressed: { backgroundColor: themeColor('rgba(248,113,113,0.2)', 'surface') },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: themeColor('rgba(0,0,0,0.55)', 'surface'),
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
@@ -1583,4 +1603,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   closeInsideCard: { padding: 6 },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, TEXT, ACCENT, PANEL, CARD, MUTED, LINE, DANGER, DANGER_DARK, styles, themeColor};
 });

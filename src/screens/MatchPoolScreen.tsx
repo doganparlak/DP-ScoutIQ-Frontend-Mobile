@@ -1,87 +1,73 @@
+import { ContractDateFilter } from '@/components/ContractFilters';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import MatchPortfolioTable from "@/components/MatchPortfolioTable";
 import MatchReportActions from "@/components/MatchReportActions";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
-import { TutorialPageGuide } from "@/components/Tutorial";
-import { deleteSavedMatch, getMe, type Plan } from "@/services/api";
-import { FavoriteMatch, filterSavedMatches } from "@/services/matchPool";
-import { formatPlayerContractDate } from "@/utils/playerContract";
 import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
+import { TutorialPageGuide } from "@/components/Tutorial";
+import { deleteSavedMatch,getMe,type Plan } from "@/services/api";
+import { FavoriteMatch,filterSavedMatches } from "@/services/matchPool";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import {
-  normalizeSearchText as fold,
-  optionMatchesSearch,
+normalizeSearchText as fold,
+optionMatchesSearch,
 } from "@/utils/searchSuggestions";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect,useNavigation } from "@react-navigation/native";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useTranslation } from "react-i18next";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import {
-  BadgeInfo,
-  BookMarked,
-  CalendarDays,
-  CalendarX2,
-  ChevronDown,
-  ListChecks,
-  ListFilter,
-  RotateCcw,
-  Search,
-  ShieldCheck,
-  X,
+BadgeInfo,
+BookMarked,
+CalendarX2,
+ChevronDown,
+ListChecks,
+ListFilter,
+RotateCcw,
+Search,
+ShieldCheck,
+X,
 } from "lucide-react-native";
+import React,{ useEffect,useRef,useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  ACCENT,
-  BG,
-  CARD,
-  DANGER,
-  LINE,
-  MUTED,
-  PANEL,
-  TEXT,
-  FRAME_STRIPE,
-  FRAME_HEADING,
-  FRAME_TITLE,
-} from "@/theme";
-import { poolTableStyles as table } from "@/components/poolTableStyles";
+ActivityIndicator,
+Alert,
+FlatList,
+Image,
+Keyboard,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View,
+} from "react-native";
+
 import {
-  EMPTY_MATCH_FILTERS,
-  MatchFilters,
-  MatchFixture,
-  MatchOptions,
-  MatchSide,
-  matchOptions,
-  searchMatches,
-  savedMatches,
-  saveMatch,
-  matchSaveType,
-  matchScore,
-  matchStateLabel,
-  dateValidation,
-  effectiveMatchFilters,
-  fixtureDate,
-} from "@/services/matchPool";
-import { shortCountry, shortTeam } from "@/utils/seasonTableLabels";
-import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
-import {
-  incrementMatchCardPlanNudgeCount,
-  shouldShowMatchCardPlanNudge,
+incrementMatchCardPlanNudgeCount,
+shouldShowMatchCardPlanNudge,
 } from "@/ads/adGating";
-const iso = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+import { getThemed_poolTableStyles as __getThemed_table } from "@/components/poolTableStyles";
+import {
+dateValidation,
+effectiveMatchFilters,
+EMPTY_MATCH_FILTERS,
+fixtureDate,
+MatchFilters,
+MatchFixture,
+MatchOptions,
+matchOptions,
+matchSaveType,
+matchScore,
+MatchSide,
+matchStateLabel,
+savedMatches,
+saveMatch,
+searchMatches,
+} from "@/services/matchPool";
+import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
+import { shortCountry,shortTeam } from "@/utils/seasonTableLabels";
+
 function Frame({
   title,
   Icon,
@@ -95,6 +81,9 @@ function Frame({
   action?: React.ReactNode;
   headingGap?: number;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return (
     <View style={s.frame}>
       <View style={FRAME_STRIPE} />
@@ -108,6 +97,9 @@ function Frame({
   );
 }
 function Side({ team }: { team: MatchSide }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT} = themed;
+
   return (
     <View style={s.side}>
       {team.imageUrl ? (
@@ -130,6 +122,9 @@ export default function MatchPoolScreen({
 }: {
   portfolio?: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {DANGER, s, ACCENT, BG, MUTED, table, FRAME_TITLE, TEXT} = themed;
+
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const ads = useWorkspaceActionAd();
@@ -151,8 +146,6 @@ export default function MatchPoolScreen({
     [saveError, setSaveError] = useState("");
   const [selector, setSelector] = useState<"country" | "league" | null>(null),
     [query, setQuery] = useState(""),
-    [dateField, setDateField] = useState<"startDate" | "endDate" | null>(null),
-    [dateDraft, setDateDraft] = useState(new Date()),
     [retry, setRetry] = useState(0);
   const [teamFocus, setTeamFocus] = useState<"homeTeam" | "awayTeam" | null>(
     null,
@@ -556,7 +549,10 @@ export default function MatchPoolScreen({
                   <Text style={s.label}>{labels[key]}</Text>
                   <Pressable
                     style={s.inputRow}
+                    accessibilityRole="button"
+                    accessibilityLabel={labels[key]}
                     onPress={() => {
+                      Keyboard.dismiss();
                       setTeamFocus(null);
                       setQuery("");
                       setSelector(key);
@@ -564,27 +560,24 @@ export default function MatchPoolScreen({
                   >
                     <Text
                       numberOfLines={1}
-                      style={[s.text, { flex: 1, padding: 12 }]}
+                      style={[s.text, { flex: 1, padding: 10, color: filters[key] ? TEXT : MUTED }]}
                     >
-                      {filters[key] || (tr ? "Seçiniz" : "Select")}
+                      {filters[key] || (tr ? `${labels[key]} ara` : `Search ${labels[key].toLowerCase()}`)}
                     </Text>
                     <ChevronDown
-                      size={18}
-                      color={ACCENT}
+                      size={16}
+                      color={MUTED}
                       style={{ marginRight: 10 }}
                     />
                   </Pressable>
-                  {!!filters[key] && (
-                    <Pressable style={s.chip} onPress={() => update(key, "")}>
-                      <Text
-                        numberOfLines={1}
-                        style={[s.green, { flexShrink: 1 }]}
-                      >
-                        {filters[key]}
-                      </Text>
-                      <X size={12} color={ACCENT} />
-                    </Pressable>
-                  )}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:6,minHeight:34,paddingTop:7}}>
+                    {filters[key] ? <Pressable style={[s.chip,s.filterSelected]} accessibilityRole="button" accessibilityLabel={tr ? `${labels[key]} seçimini temizle` : `Clear ${labels[key]}`} onPress={() => update(key, '')}>
+                      <Text numberOfLines={1} style={s.chipText}>{filters[key]}</Text>
+                      <X size={13} color={ACCENT}/>
+                    </Pressable> : (key === 'country' ? (filters.league ? options.countries : []) : (filters.country ? options.leagues : [])).map(value => <Pressable key={value} style={s.chip} onPress={() => update(key,value)}>
+                      <Text numberOfLines={1} style={s.chipText}>{value}</Text>
+                    </Pressable>)}
+                  </ScrollView>
                 </View>
               ))}
             </View>
@@ -615,31 +608,7 @@ export default function MatchPoolScreen({
             <View style={s.fields}>
               {(["startDate", "endDate"] as const).map((key) => (
                 <View key={key} style={s.field}>
-                  <Text style={s.label}>{labels[key]}</Text>
-                  <Pressable
-                    style={s.inputRow}
-                    onPress={() => {
-                      setTeamFocus(null);
-                      setDateDraft(
-                        filters[key]
-                          ? new Date(`${filters[key]}T12:00:00`)
-                          : new Date(),
-                      );
-                      setDateField(key);
-                    }}
-                  >
-                    <CalendarDays
-                      size={18}
-                      color={ACCENT}
-                      style={{ marginLeft: 10 }}
-                    />
-                    <Text style={[s.text, { padding: 12, flex: 1 }]}>
-                      {formatPlayerContractDate(
-                        filters[key],
-                        tr ? "tr-TR" : "en-GB",
-                      ) || (tr ? "Tarih seç" : "Select date")}
-                    </Text>
-                  </Pressable>
+                  <ContractDateFilter label={labels[key]} testID={`match-${key}`} value={filters[key]} onChange={value => {setTeamFocus(null);update(key,value);}} hint={null} maximumDate={new Date(new Date().getFullYear()+1,11,31,12)}/>
                 </View>
               ))}
             </View>
@@ -810,6 +779,7 @@ export default function MatchPoolScreen({
                   initialNumToRender={12}
                   maxToRenderPerBatch={12}
                   windowSize={5}
+                  contentContainerStyle={{gap:8}}
                   ListHeaderComponent={
                     <Pressable
                       style={s.option}
@@ -828,16 +798,18 @@ export default function MatchPoolScreen({
                   }
                   renderItem={({ item }) => (
                     <Pressable
+                      accessibilityRole="radio"
+                      accessibilityState={{selected:filters[selector] === item}}
                       style={[
                         s.option,
-                        filters[selector] === item && table.selected,
+                        filters[selector] === item && s.filterSelected,
                       ]}
                       onPress={() => {
                         update(selector, item);
                         setSelector(null);
                       }}
                     >
-                      <Text style={s.text}>{item}</Text>
+                      <Text style={[s.text,{fontWeight:"700"}]}>{item}</Text>
                     </Pressable>
                   )}
                 />
@@ -845,60 +817,6 @@ export default function MatchPoolScreen({
             </View>
           </Modal>
         )}
-        {dateField !== null && Platform.OS === "android" && (
-          <DateTimePicker
-            value={dateDraft}
-            mode="date"
-            display="default"
-            maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
-            onChange={(event, date) => {
-              if (event.type === "set" && date && dateField)
-                update(dateField, iso(date));
-              setDateField(null);
-            }}
-          />
-        )}
-        <Modal
-          visible={dateField !== null && Platform.OS === "ios"}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setDateField(null)}
-        >
-          <View style={s.backdrop}>
-            <View style={s.modal}>
-              <Text style={FRAME_TITLE}>
-                {dateField ? labels[dateField] : ""}
-              </Text>
-              <DateTimePicker
-                value={dateDraft}
-                mode="date"
-                display="spinner"
-                themeVariant="dark"
-                maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
-                onChange={(_, date) => {
-                  if (date) setDateDraft(date);
-                }}
-              />
-              <View style={s.fields}>
-                <Pressable
-                  style={[s.button, { flex: 1 }]}
-                  onPress={() => setDateField(null)}
-                >
-                  <Text style={s.label}>{tr ? "İptal" : "Cancel"}</Text>
-                </Pressable>
-                <Pressable
-                  style={[s.button, { flex: 1 }]}
-                  onPress={() => {
-                    if (dateField) update(dateField, iso(dateDraft));
-                    setDateField(null);
-                  }}
-                >
-                  <Text style={s.green}>{tr ? "Seç" : "Select"}</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </ScrollView>
       {portfolio && cardOpen && selected && (
         <Modal
@@ -933,7 +851,12 @@ export default function MatchPoolScreen({
     </View>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, FRAME_STRIPE, FRAME_HEADING, FRAME_TITLE, themeColor} = colors;
+  const table = __getThemed_table(colors);
+  const s = StyleSheet.create({
   page: { padding: 16, gap: 16, paddingBottom: 40 },
   frame: {
     padding: 16,
@@ -968,14 +891,14 @@ const s = StyleSheet.create({
   inputText: { flex: 1, minWidth: 0, color: TEXT, padding: 12, fontSize: 13 },
   chip: {
     flexDirection: "row",
-    gap: 5,
+    gap: 4,
     alignItems: "center",
     alignSelf: "flex-start",
     borderWidth: 1,
-    borderColor: ACCENT,
-    borderRadius: 12,
-    padding: 5,
-    marginTop: 6,
+    borderColor: LINE,
+    borderRadius: 10,
+    padding: 7,
+    maxWidth: 200,
   },
   button: {
     flexDirection: "row",
@@ -986,7 +909,7 @@ const s = StyleSheet.create({
     borderColor: ACCENT,
     borderRadius: 14,
     padding: 12,
-    backgroundColor: "rgba(22,163,74,.08)",
+    backgroundColor: themeColor("rgba(22,163,74,.08)", 'surface'),
   },
   disabled: { opacity: 0.4 },
   error: { color: DANGER, fontSize: 13, marginTop: 12 },
@@ -1011,7 +934,7 @@ const s = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,.8)",
+    backgroundColor: themeColor("rgba(0,0,0,.8)", 'surface'),
     justifyContent: "center",
     padding: 20,
   },
@@ -1022,5 +945,9 @@ const s = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
   },
-  option: { padding: 12, borderBottomWidth: 1, borderColor: LINE },
+  filterSelected: {borderColor:ACCENT,backgroundColor:themeColor("rgba(22,163,74,0.12)", 'surface')},
+  chipText: {color:ACCENT,fontSize:11,fontWeight:"800",flexShrink:1},
+  option: {padding:14,minHeight:44,borderRadius:12,borderWidth:1,borderColor:LINE,backgroundColor:CARD},
+});
+  return {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, FRAME_STRIPE, FRAME_HEADING, FRAME_TITLE, table, s, themeColor};
 });

@@ -1,13 +1,17 @@
-import {reportModalStyles as reportStyles} from './PostMatchReportModal';
-import React, {useEffect, useState} from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
-import {Building2, CalendarDays, Globe2, Layers, MapPin, ShieldCheck, Trophy, UserCog, UsersRound} from 'lucide-react-native';
-import {ACCENT, CARD, DANGER, LINE, MUTED, TEXT} from '@/theme';
-import type {Team} from '@/services/teamPool';
-import type {PlayedMatch} from '@/services/teamAnalysis';
-import {matchDateOnly} from '@/services/matchPool';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Building2,CalendarDays,Globe2,Layers,MapPin,ShieldCheck,Trophy,UserCog,UsersRound } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import { Image,StyleSheet,Text,View } from 'react-native';
+import { getThemed_reportModalStyles as __getThemed_reportStyles } from './PostMatchReportModal';
+
+import { matchDateOnly } from '@/services/matchPool';
+import type { PlayedMatch } from '@/services/teamAnalysis';
+import type { Team } from '@/services/teamPool';
 
 export default function TeamReportCard({team,matches,tr}:{team:Team;matches:PlayedMatch[];tr:boolean}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT, reportStyles} = themed;
+
   const [stadiumFailed,setStadiumFailed]=useState(false),[logoFailed,setLogoFailed]=useState(false);
   useEffect(()=>{setStadiumFailed(false);setLogoFailed(false);},[team.id,team.stadiumImageUrl,team.logoUrl]);
   const dates=matches.map(m=>m.startingAt).filter(Boolean).sort();
@@ -37,23 +41,30 @@ export default function TeamReportCard({team,matches,tr}:{team:Team;matches:Play
     <View style={reportStyles.brand}><Text style={reportStyles.prepared}>{tr?'RAPORU HAZIRLAYAN':'REPORT PREPARED BY'}</Text><Text style={reportStyles.brandName}>SCOUT<Text style={{color:ACCENT}}>WISE</Text></Text></View>
   </View>;
 }
-const s=StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, themeColor} = colors;
+  const reportStyles = __getThemed_reportStyles(colors);
+  const s=StyleSheet.create({
   card:{gap:12},
   rule:{height:4,borderRadius:3,backgroundColor:ACCENT},
-  stadium:{borderWidth:1,borderColor:`${ACCENT}60`,borderRadius:16,overflow:'hidden',backgroundColor:'#15251B'},
+  stadium:{borderWidth:1,borderColor:`${ACCENT}60`,borderRadius:16,overflow:'hidden',backgroundColor:themeColor('#15251B', 'surface')},
   photo:{...StyleSheet.absoluteFillObject,width:'100%',height:'100%'},
-  shade:{...StyleSheet.absoluteFillObject,backgroundColor:'rgba(5,15,9,0.48)'},
+  shade:{...StyleSheet.absoluteFillObject,backgroundColor:themeColor('rgba(5,15,9,0.48)', 'surface')},
   identity:{minHeight:250,alignItems:'center',justifyContent:'center',padding:22,gap:10},
   logo:{width:100,height:110},
-  eyebrow:{color:'#C4D5C9',fontSize:10,fontWeight:'800',letterSpacing:1.7,marginTop:4},
-  name:{color:TEXT,fontSize:27,fontWeight:'900',textAlign:'center',textShadowColor:'#00000099',textShadowOffset:{width:0,height:2},textShadowRadius:6},
-  caption:{flexDirection:'row',gap:6,alignItems:'center',paddingVertical:6,paddingHorizontal:10,borderRadius:12,backgroundColor:'#08130BB3'},
+  eyebrow:{color:themeColor('#C4D5C9', 'text'),fontSize:10,fontWeight:'800',letterSpacing:1.7,marginTop:4},
+  name:{color:TEXT,fontSize:27,fontWeight:'900',textAlign:'center',textShadowColor:themeColor('#00000099'),textShadowOffset:{width:0,height:2},textShadowRadius:6},
+  caption:{flexDirection:'row',gap:6,alignItems:'center',paddingVertical:6,paddingHorizontal:10,borderRadius:12,backgroundColor:themeColor('#08130BB3', 'surface')},
   captionText:{color:TEXT,fontSize:11,fontWeight:'700',flexShrink:1,textAlign:'center'},
   grid:{flexDirection:'row',flexWrap:'wrap',gap:10},
-  fact:{flexGrow:1,flexBasis:'45%',minWidth:110,padding:11,borderWidth:1,borderColor:LINE,borderRadius:14,backgroundColor:'#FFFFFF04',gap:10},
+  fact:{flexGrow:1,flexBasis:'45%',minWidth:110,padding:11,borderWidth:1,borderColor:LINE,borderRadius:14,backgroundColor:themeColor('#FFFFFF04', 'surface'),gap:10},
   factHeader:{flexDirection:'row',gap:6,alignItems:'center'},label:{color:MUTED,fontSize:11,fontWeight:'700',flexShrink:1},
   value:{color:TEXT,fontWeight:'800',fontSize:14,lineHeight:21},
   results:{borderWidth:1,borderColor:`${ACCENT}70`,borderRadius:14,padding:12,gap:12,backgroundColor:`${ACCENT}08`},
   resultRow:{flexDirection:'row',gap:6},result:{flex:1,alignItems:'center',gap:5},count:{fontSize:25,fontWeight:'900'},resultLabel:{color:MUTED,fontSize:10,fontWeight:'700',textAlign:'center'},
   brand:{alignItems:'center',gap:5,paddingVertical:8},prepared:{color:MUTED,fontSize:10,fontWeight:'600'},brandName:{color:TEXT,fontSize:22,fontWeight:'900'},
+});
+  return {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, reportStyles, s, themeColor};
 });

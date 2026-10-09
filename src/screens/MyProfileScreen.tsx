@@ -1,23 +1,27 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // MyProfileScreen.tsx
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, ScrollView, View } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect,useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React,{ useCallback,useState } from 'react';
+import { ScrollView,StyleSheet,View } from 'react-native';
+import { SafeAreaView,useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BG } from '../theme';
+
+import type { Plan,Profile } from '@/services/api';
+import { getMe,logout } from '../services/api';
 import type { RootStackParamList } from '../types';
-import { logout, getMe } from '../services/api';
-import type { Plan, Profile } from '@/services/api';
 
-import Account from '@/components/Account';
 import AdPrivacyOptions from '@/ads/AdPrivacyOptions';
+import Account from '@/components/Account';
 import ProfileSummary from '@/components/ProfileSummary';
-import { ProfileTutorialModal, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
+import { ProfileTutorialModal,TutorialPageGuide,useTutorial } from '@/components/Tutorial';
 import { useTranslation } from 'react-i18next';
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function MyProfileScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const insets = useSafeAreaInsets();
   const rootNav = useNavigation<RootNav>();
   const { t } = useTranslation();
@@ -100,7 +104,13 @@ export default function MyProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   tutorialGuide: { marginHorizontal: 16, marginTop: 14 },
+});
+  return {BG, styles, themeColor};
 });

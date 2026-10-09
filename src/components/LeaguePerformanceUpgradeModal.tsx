@@ -1,14 +1,17 @@
-import PlanManagementButton from './PlanManagementButton';
-import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { BadgeCheck } from 'lucide-react-native';
-import { useNavigation, type NavigatorScreenParams } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useTranslation } from 'react-i18next';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import type { MainTabsParamList } from '@/types';
-import { ACCENT, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useNavigation,type NavigatorScreenParams } from '@react-navigation/native';
+import { BadgeCheck } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import { Modal,Pressable,StyleSheet,Text,View } from 'react-native';
+import PlanManagementButton from './PlanManagementButton';
+
 
 export default function LeaguePerformanceUpgradeModal({visible, required, tr, onClose, feature = 'metric', metricLabel}: {visible: boolean; feature?: 'biweekly' | 'metric'; metricLabel?: string; required: 'plus' | 'pro'; tr: boolean; onClose: () => void}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   const navigation = useNavigation<BottomTabNavigationProp<Omit<MainTabsParamList, 'Profile'> & {Profile: NavigatorScreenParams<{ManagePlan: undefined}>}>>();
   const {t} = useTranslation();
   const plans = required === 'plus' ? <><Text style={styles.plus}>PLUS</Text>{tr ? ' veya ' : ' or '}<Text style={styles.pro}>PRO</Text></> : <Text style={styles.pro}>PRO</Text>;
@@ -23,14 +26,21 @@ export default function LeaguePerformanceUpgradeModal({visible, required, tr, on
     </View></View>
   </Modal>;
 }
-const styles = StyleSheet.create({
-  backdrop: {flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.72)'},
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
+  backdrop: {flex: 1, justifyContent: 'center', padding: 24, backgroundColor: themeColor('rgba(0,0,0,0.72)', 'surface')},
   prompt: {width: '100%', maxWidth: 560, alignSelf: 'center', backgroundColor: PANEL, borderRadius: 22, borderWidth: 1, borderColor: ACCENT, padding: 22, gap: 16},
-  icon: {width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(36,245,166,0.42)', backgroundColor: 'rgba(22,163,74,0.14)', alignItems: 'center', justifyContent: 'center'},
+  icon: {width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: themeColor('rgba(36,245,166,0.42)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center'},
   header: {flexDirection: 'row', alignItems: 'center', gap: 12},
   title: {flex: 1, color: TEXT, fontSize: 19, lineHeight: 24, fontWeight: '800'},
   body: {color: MUTED, fontSize: 14, lineHeight: 21},
-  pro: {color: ACCENT, fontWeight: '900'}, plus: {color: '#38BDF8', fontWeight: '900'},
+  pro: {color: ACCENT, fontWeight: '900'}, plus: {color: themeColor('#38BDF8', 'text'), fontWeight: '900'},
   actions: {flexDirection: 'row', gap: 10},
   button: {flex: 1, minHeight: 44, backgroundColor: CARD, borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 10, alignItems: 'center', justifyContent: 'center'},
+});
+  return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

@@ -1,24 +1,25 @@
+import { createThemedStyles,useThemeColors,useThemedStyles,type ThemeColors } from '@/theme';
 // src/navigation/RootNavigator.tsx
-import React, { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { DarkTheme,DefaultTheme,NavigationContainer,useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React,{ useCallback,useEffect,useState } from 'react';
 
 import { registerPushNotifications } from '@/services/pushNotifications';
 import { trackScreen } from '@/services/telemetry';
 
 import MainTabs from '@/navigation/MainTabs';
-import WelcomeScreen from '@/screens/WelcomeScreen';
 import LoginScreen from '@/screens/LoginScreen';
-import SignUpScreen from '@/screens/SignUpScreen';
-import ResetPasswordScreen from '@/screens/ResetPasswordScreen';
-import VerificationScreen from '@/screens/VerificationScreen';
 import NewPasswordScreen from '@/screens/NewPasswordScreen';
+import ResetPasswordScreen from '@/screens/ResetPasswordScreen';
+import SignUpScreen from '@/screens/SignUpScreen';
+import VerificationScreen from '@/screens/VerificationScreen';
+import WelcomeScreen from '@/screens/WelcomeScreen';
 import { restoreSubscriptionIfAny } from '@/subscriptions/restore';
 
-import { View, ActivityIndicator, AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
-import { BG, ACCENT } from '@/theme';
+import { ActivityIndicator,AppState,View } from 'react-native';
+
 import { getMe } from '@/services/api';
 
 // We intentionally don't type these stacks with your RootStackParamList
@@ -28,6 +29,9 @@ const Auth = createNativeStackNavigator();
 const App = createNativeStackNavigator();
 
 function Splash() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, ACCENT} = themed;
+
   return (
     <View style={{ flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' }}>
       <ActivityIndicator size="large" color={ACCENT} />
@@ -64,7 +68,7 @@ function AppStack() {
       } catch {}
     })();
   }, []);
-  
+
   return (
     <App.Navigator screenOptions={{ headerShown: false }}>
       <App.Screen name="MainTabs" component={MainTabs} />
@@ -73,6 +77,13 @@ function AppStack() {
 }
 
 export default function RootNavigator() {
+  const colors = useThemeColors();
+  const navigationTheme = React.useMemo(() => ({
+    ...(colors.mode === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {...(colors.mode === 'dark' ? DarkTheme : DefaultTheme).colors,
+      primary: colors.ACCENT, background: colors.BG, card: colors.PANEL,
+      text: colors.TEXT, border: colors.LINE, notification: colors.DANGER},
+  }), [colors]);
   const navigationRef = useNavigationContainerRef();
   const lastScreen = React.useRef<string | undefined>(undefined);
   const reportScreen = () => {
@@ -95,7 +106,6 @@ export default function RootNavigator() {
       // Validate with backend; if the session was revoked/expired, this should 401.
       await getMe();
 
-     
 
       setIsAuthed(true);
     } catch (e: any) {
@@ -126,7 +136,7 @@ export default function RootNavigator() {
   if (booting || isAuthed === null) return <Splash />;
 
   return (
-    <NavigationContainer ref={navigationRef} onReady={reportScreen} onStateChange={reportScreen}>
+    <NavigationContainer theme={navigationTheme} ref={navigationRef} onReady={reportScreen} onStateChange={reportScreen}>
       <Root.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={isAuthed ? 'App' : 'Auth'}
@@ -137,3 +147,11 @@ export default function RootNavigator() {
     </NavigationContainer>
   );
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, ACCENT, themeColor} = colors;
+
+
+  return {BG, ACCENT, themeColor};
+});

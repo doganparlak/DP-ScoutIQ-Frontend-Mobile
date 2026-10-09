@@ -1,33 +1,36 @@
-import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  ActivityIndicator,
-  Image, 
-  Keyboard,
-  TouchableWithoutFeedback,
-} from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { Eye, EyeOff } from 'lucide-react-native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import type { RouteProp } from '@react-navigation/native';
+import { useNavigation,useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Eye,EyeOff } from 'lucide-react-native';
+import { useMemo,useState } from 'react';
+import {
+ActivityIndicator,
+Keyboard,
+KeyboardAvoidingView,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+TouchableWithoutFeedback,
+View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE } from '@/theme';
-import { RootStackParamList } from '@/types';
+
 import { setNewPassword } from '@/services/api';
+import { RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
 
-import scoutwiseLogo from '../../assets/scoutwise_logo.png'; 
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'NewPassword'>;
 type Route = RouteProp<RootStackParamList, 'NewPassword'>;
 
 export default function NewPasswordScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, styles, MUTED} = themed;
+
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const { params } = useRoute<Route>(); // { email }
@@ -103,11 +106,7 @@ export default function NewPasswordScreen() {
             onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
           >
             {/* Logo above app name */}
-            <Image
-              source={scoutwiseLogo}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <ScoutWiseBrandMark style={styles.logo}/>
 
             {/* App name: SCOUT white, WISE green */}
             <Text style={styles.appName}>
@@ -200,6 +199,9 @@ export default function NewPasswordScreen() {
 }
 
 function PwRule({ ok, text }: { ok: boolean; text: string }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, MUTED} = themed;
+
   return (
     <View style={styles.pwRuleRow}>
       <View style={[styles.pwRuleDot, { backgroundColor: ok ? ACCENT : MUTED }]} />
@@ -208,7 +210,11 @@ function PwRule({ ok, text }: { ok: boolean; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   // Top bar holder (absolute; left set dynamically)
   topBar: { position: 'absolute', zIndex: 10 },
 
@@ -231,7 +237,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   appNameScout: {
-    color: '#FFFFFF',
+    color: themeColor('#FFFFFF', 'text'),
   },
   appNameWise: {
     color: ACCENT,
@@ -269,7 +275,7 @@ const styles = StyleSheet.create({
   pwRuleDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
   pwRuleText: { fontSize: 12 },
 
-  error: { color: '#F87171', marginTop: 12, fontWeight: '600' },
+  error: { color: themeColor('#F87171', 'text'), marginTop: 12, fontWeight: '600' },
 
   primaryBtn: {
     marginTop: 16,
@@ -278,7 +284,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 16 },
   passwordRow: {
@@ -303,4 +309,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+});
+  return {BG, TEXT, ACCENT, PANEL, CARD, MUTED, LINE, styles, themeColor};
 });

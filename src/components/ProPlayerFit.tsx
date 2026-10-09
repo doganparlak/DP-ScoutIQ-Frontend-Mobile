@@ -1,26 +1,30 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ArrowLeft,ClipboardPenLine,RotateCcw,Shield,Target,Trophy,UserRound } from 'lucide-react-native';
 import React from 'react';
-import {ProGuidedScrollView,TutorialPageGuide} from './Tutorial';
-import {Pressable, ScrollView, Text, View} from 'react-native';
-import {useTranslation} from 'react-i18next';
-import {ClipboardPenLine, Shield, Trophy, Target, ArrowLeft, UserRound, RotateCcw} from 'lucide-react-native';
-import {ACCENT, DANGER, FRAME_TITLE} from '@/theme';
-import {getTeamOptions, searchTeams, type Team} from '@/services/teamPool';
-import {getLeagueOptions, type RawLeague} from '@/services/leaguePool';
-import {leaguePoolRequest, proWorkspaceRequest} from '@/services/api';
-import ProTeamFitAssessment from './ProTeamFitAssessment';
+import { useTranslation } from 'react-i18next';
+import { Pressable,Text,View } from 'react-native';
+import { ProGuidedScrollView,TutorialPageGuide } from './Tutorial';
+
+import { leaguePoolRequest,proWorkspaceRequest } from '@/services/api';
+import { getLeagueOptions,type RawLeague } from '@/services/leaguePool';
+import { getTeamOptions,searchTeams,type Team } from '@/services/teamPool';
+import { Badge,Status } from './LeaguePerformanceControls';
+import LeaguePlayerCardModal from './LeaguePlayerCardModal';
 import ProLeagueFitAssessment from './ProLeagueFitAssessment';
 import ProStrategyFitAssessment from './ProStrategyFitAssessment';
+import ProTeamFitAssessment from './ProTeamFitAssessment';
 import ProTeamSearchFilters from './ProTeamSearchFilters';
+import { ProButton,ProTrialHint,getThemed_proStyles as __getThemed_proStyles,workspaceRequestId,type ProPlayerEntry } from './ProWorkspaceControls';
 import TeamProfileCard from './TeamProfileCard';
-import LeaguePlayerCardModal from './LeaguePlayerCardModal';
-import {Badge, Status} from './LeaguePerformanceControls';
-import {ProButton, ProTrialHint, proStyles, workspaceRequestId, type ProPlayerEntry} from './ProWorkspaceControls';
 
 type Evidence = {metric: string; value: number; subject?: string; unit?: string; referenceValue?: number; referenceSubject?: string};
 type Section = {text: string; evidence?: Evidence[]; teamEvidence?: Evidence[]};
 type FitResult = {insights?: {overall: string; peers: (Section & {name: string; playerId: number; imageUrl?: string;roles?:string[]})[]; fit: Section; recommendation: Section}; summary?: string; overall?: string; recommendation?: string; requirements?: {title: string; category?: string; text: string; limitation: string; metrics: Evidence[]}[]; categories?: {key: string; text: string; metrics: {metric: string; values: number[]}[]}[]; roles?: string[]; league?: RawLeague};
 type TargetKind = 'team' | 'league' | 'strategy';
 export default function ProPlayerFit({guideActive=true,onGuidePageChange,trial=false, entry, sessionId, strategy, onEditStrategy, onAccessRequired, onCreditsChanged, onBusyChange, onFindSimilar, cache}: {guideActive?:boolean;onGuidePageChange?:(page:string)=>void;trial?:boolean;entry: ProPlayerEntry; sessionId: string; strategy: string; onEditStrategy: () => void; onAccessRequired: () => void; onCreditsChanged: () => void; onBusyChange: (busy: boolean) => void; onFindSimilar: () => void; cache: Map<string, FitResult>}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {proStyles, ACCENT, FRAME_TITLE, DANGER} = themed;
+
   const {i18n} = useTranslation(), tr = i18n.language.startsWith('tr');
   const [kind, setKind] = React.useState<TargetKind | null>(null), [filters, setFilters] = React.useState({country: '', league: '', team: ''});
   const [options, setOptions] = React.useState<{countries: string[]; leagues: string[]; teams?: string[]}>({countries: [], leagues: []});
@@ -90,9 +94,17 @@ export default function ProPlayerFit({guideActive=true,onGuidePageChange,trial=f
     {!targetName&&!!(teams.length||leagues.length)&&<ProTrialHint trial={trial}/>}
     {!targetName && teams.map(team => <View key={`${team.id}:${team.leagueId||team.league}`} style={proStyles.frame}><View style={proStyles.heading}><Badge url={team.logoUrl}/><View style={{flex: 1}}><Text style={FRAME_TITLE}>{team.name}</Text><Text style={proStyles.hint}>{team.league} | {team.country}</Text></View></View><ProButton Icon={Target} label={tr ? 'Bu Takıma Uyumu Değerlendir' : 'Assess Fit to This Team'} disabled={busy || !team.leagueId} onPress={() => {setSelectedTeam(team);void assess('team',{teamId:Number(team.id),leagueId:team.leagueId!},team.name);}}/>{!team.leagueId&&<Text style={proStyles.hint}>{tr?'Bu takım için lig bilgisi bulunmuyor. Lig filtresinden bir lig seçip yeniden ara.':'League information is missing for this team. Select a league filter and search again.'}</Text>}</View>)}
     {!targetName && leagues.map(league => <View key={league.id} style={proStyles.frame}><View style={proStyles.heading}><Badge url={league.content.image_url || league.content.league_image_path}/><View style={{flex: 1}}><Text style={FRAME_TITLE}>{String(league.content.league_name)}</Text><Text style={proStyles.hint}>{String(league.content.league_country_name || '')}</Text></View></View><ProButton Icon={Target} label={tr ? 'Bu Lige Uyumu Değerlendir' : 'Assess Fit to This League'} disabled={busy} onPress={() => void assess('league', {leagueId: Number(league.id.split(':')[1])}, String(league.content.league_name))}/></View>)}
-    {!!targetName && kind!=='strategy' && !selectedTeam && !(kind==='league'&&result) && <View style={proStyles.frame}><Text style={FRAME_TITLE}>{targetName}</Text>{result?.roles && <Text style={proStyles.hint}>{tr ? 'Karşılaştırılan roller' : 'Compared roles'}: {result.roles.join(' · ')}</Text>}</View>}
+    {!!targetName && kind==='team' && !selectedTeam && <View style={proStyles.frame}><Text style={FRAME_TITLE}>{targetName}</Text>{result?.roles && <Text style={proStyles.hint}>{tr ? 'Karşılaştırılan roller' : 'Compared roles'}: {result.roles.join(' · ')}</Text>}</View>}
     {result?.insights&&selectedTeam&&<ProTeamFitAssessment player={entry.player} team={selectedTeam} insights={result.insights}/>}
     {kind==='league'&&result&&<ProLeagueFitAssessment onChangeTarget={changeTarget} player={entry.player} result={result} targetName={targetName}/>}
     {kind==='strategy'&&result&&<ProStrategyFitAssessment player={entry.player} result={result}/>}
   </ProGuidedScrollView>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, DANGER, FRAME_TITLE, themeColor} = colors;
+  const proStyles = __getThemed_proStyles(colors);
+
+  return {ACCENT, DANGER, FRAME_TITLE, proStyles, themeColor};
+});

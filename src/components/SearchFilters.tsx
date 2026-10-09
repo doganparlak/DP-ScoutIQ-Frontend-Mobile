@@ -1,20 +1,20 @@
-import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
-import React from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { ChevronDown, Search, X, ListFilter, CalendarX2 } from 'lucide-react-native';
+import { PLAYER_ROLE_GRID_ORDER } from '@/services/api';
+import { Selector } from './LeaguePerformanceControls';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 
-import { ContractStatusFilter, ContractDateFilter, type ContractStatus } from '@/components/ContractFilters';
+import { CalendarX2,ChevronDown,ListFilter,Search } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import {
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+
+import { ContractDateFilter,ContractStatusFilter,type ContractStatus } from '@/components/ContractFilters';
 import { TutorialHint } from '@/components/Tutorial';
-import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
+
 
 type PlayerPoolComponentTheme = {
   panel: string;
@@ -96,7 +96,6 @@ export default function SearchFilters({
   setPosition,
   positionOpen,
   setPositionOpen,
-  positionOptionLabels,
   roleDisplayLabel,
   minAge,
   setMinAge,
@@ -115,6 +114,9 @@ export default function SearchFilters({
   theme,
   worldCupMode = false,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, FRAME_HEADING, MUTED, TEXT} = themed;
+
   const { t, i18n } = useTranslation();
   const controlsLocked = tutorialActive;
   const searchEnabled = !tutorialActive || tutorialStep === 'search';
@@ -411,59 +413,27 @@ export default function SearchFilters({
         arrow="up"
       />
 
-      <Modal
-        transparent
-        visible={positionOpen}
-        animationType="fade"
-        onRequestClose={() => setPositionOpen(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('tblRoles', 'Role')}</Text>
-              <Pressable onPress={() => setPositionOpen(false)}>
-                {({ pressed }) => (
-                  <X size={18} color={pressed ? DANGER_DARK : DANGER} strokeWidth={2.2} />
-                )}
-              </Pressable>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Pressable
-                onPress={() => {
-                  setPosition('');
-                  setPositionOpen(false);
-                }}
-                style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
-              >
-                <Text style={[styles.optionText, !position && styles.optionTextActive]}>
-                  {t('clearFilters', 'Clear filters')}
-                </Text>
-              </Pressable>
-
-              {positionOptionLabels.map((item) => (
-                <Pressable
-                  key={item}
-                  onPress={() => {
-                    setPosition(item);
-                    setPositionOpen(false);
-                  }}
-                  style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.optionText, position === item && styles.optionTextActive]}>
-                    {item}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {positionOpen && <Selector
+        columns={3}
+        title={t('tblRoles', 'Role')}
+        tr={i18n.language.startsWith('tr')}
+        selected={position}
+        options={[
+          {key: '', label: t('clearFilters', 'Clear filters')},
+          ...PLAYER_ROLE_GRID_ORDER.map(role => ({key: role, label: role})),
+        ]}
+        onSelect={role => {setPosition(role);setPositionOpen(false);}}
+        onClose={() => setPositionOpen(false)}
+      />}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
@@ -541,6 +511,8 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 8,
     minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
@@ -550,17 +522,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryButtonText: {
+    textAlign: 'center',
+    flexShrink: 1,
     color: MUTED,
     fontSize: 14,
     fontWeight: '800',
   },
   primaryButton: {
-    flex: 1.25,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 8,
     minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -580,7 +556,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: themeColor('rgba(0,0,0,0.55)', 'surface'),
     justifyContent: 'center',
     padding: 18,
   },
@@ -620,4 +596,6 @@ const styles = StyleSheet.create({
   optionTextActive: {
     color: ACCENT,
   },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL, styles, themeColor};
 });

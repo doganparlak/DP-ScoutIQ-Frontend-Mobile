@@ -1,26 +1,27 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/screens/StrategyScreen.tsx
-import { canUseChat } from '@/utils/chatAccess';
-import * as React from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Text,
-  Pressable,
-  Keyboard,
-  Platform,
-  TouchableWithoutFeedback,
-  KeyboardAvoidingView,
-  Modal,
-} from 'react-native';
-import { getMe, updateConsent } from '@/services/api';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import DataUsage from '@/components/DataUsage';
 import Header from '@/components/Header';
 import StrategyCard from '@/components/StrategyCard';
-import DataUsage from '@/components/DataUsage';
-import { ProGuidedScrollView, useProPageGuide, TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
-import { BG, ACCENT, ACCENT_DARK, MUTED, TEXT, PANEL, LINE } from '@/theme';
+import { ProGuidedScrollView,TutorialHint,TutorialPageGuide,useProPageGuide,useTutorial } from '@/components/Tutorial';
+import { getMe,updateConsent } from '@/services/api';
+import { canUseChat } from '@/utils/chatAccess';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect,useNavigation } from '@react-navigation/native';
+import * as React from 'react';
+import {
+Keyboard,
+KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TouchableWithoutFeedback,
+View,
+} from 'react-native';
+
 import type { MainTabsParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
 
@@ -29,6 +30,9 @@ type Nav = BottomTabNavigationProp<MainTabsParamList, 'Strategy'>;
 const ANDROID_SET_STRATEGY_TUTORIAL_SCROLL = 0;
 
 export default function StrategyScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
   const tutorial = useTutorial();
@@ -297,7 +301,11 @@ export default function StrategyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, ACCENT, ACCENT_DARK, MUTED, TEXT, PANEL, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: BG },
 
   tutorialCardWidth: {
@@ -346,7 +354,7 @@ const styles = StyleSheet.create({
   },
 
   checkmark: {
-    color: 'white',
+    color: themeColor('white', 'text'),
     fontWeight: '800',
     fontSize: 14,
     lineHeight: 16,
@@ -375,7 +383,7 @@ const styles = StyleSheet.create({
   startBtn: {
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     borderRadius: 12,
     padding: 14,
   },
@@ -404,7 +412,7 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: themeColor('rgba(0,0,0,0.4)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
@@ -445,4 +453,6 @@ const styles = StyleSheet.create({
     color: ACCENT_DARK,
     fontWeight: '800',
   },
+});
+  return {BG, ACCENT, ACCENT_DARK, MUTED, TEXT, PANEL, LINE, styles, themeColor};
 });

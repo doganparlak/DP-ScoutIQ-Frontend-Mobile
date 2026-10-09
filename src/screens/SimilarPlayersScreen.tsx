@@ -1,23 +1,31 @@
-import React from 'react';
-import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions} from 'react-native';
-import {useFocusEffect, useIsFocused, useRoute, useNavigation} from '@react-navigation/native';
-import {useTranslation} from 'react-i18next';
-import {ListFilter, CalendarX2, RotateCcw, Search, UserRound, UsersRound, ChevronDown} from 'lucide-react-native';
-import {getMe, getPlayerPoolOptions, type PlayerPoolFilterOptions} from '@/services/api';
-import {emptySimilarFilters, findSimilarPlayers, getSimilarEligibility, nextSimilarCount, similarFiltersValid, similarResultLimit, similarMoreAction, type SimilarFilters, type SimilarMatch, type SimilarReference} from '@/services/similarPlayers';
-import {useWorkspaceActionAd} from '@/ads/useWorkspaceActionAd';
-import {Action, Badge, SelectField, Selector, Status} from '@/components/LeaguePerformanceControls';
-import {ContractDateFilter, ContractStatusFilter} from '@/components/ContractFilters';
-import {TutorialPageGuide} from '@/components/Tutorial';
-import SimilarPlayersUpgradeModal from '@/components/SimilarPlayersUpgradeModal';
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import { ContractDateFilter,ContractStatusFilter } from '@/components/ContractFilters';
+import { Action,Badge,SelectField,Selector,Status } from '@/components/LeaguePerformanceControls';
 import LeaguePlayerCardModal from '@/components/LeaguePlayerCardModal';
-import {portfolioViewportHeight} from '@/utils/portfolioLayout';
-import {ACCENT, BG, CARD, DANGER, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT} from '@/theme';
+import SimilarPlayersUpgradeModal from '@/components/SimilarPlayersUpgradeModal';
+import { TutorialPageGuide } from '@/components/Tutorial';
+import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
+import { getMe,getPlayerPoolOptions,type PlayerPoolFilterOptions } from '@/services/api';
+import { emptySimilarFilters,findSimilarPlayers,getSimilarEligibility,nextSimilarCount,similarFiltersValid,similarMoreAction,similarResultLimit,type SimilarFilters,type SimilarMatch,type SimilarReference } from '@/services/similarPlayers';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { portfolioViewportHeight } from '@/utils/portfolioLayout';
+import { useFocusEffect,useIsFocused,useNavigation,useRoute } from '@react-navigation/native';
+import { BookMarked,CalendarX2,ChevronDown,Gem,ListFilter,RotateCcw,Search,UserRound,UsersRound } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View,useWindowDimensions } from 'react-native';
+
 
 function Frame({title, Icon, action, children}:{title:string;Icon:typeof Search;action?:React.ReactNode;children:React.ReactNode}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
+
   return <View style={s.frame}><View style={FRAME_STRIPE}/><View style={[FRAME_HEADING,{marginBottom:16}]}><Icon size={20} color={ACCENT}/><Text style={[FRAME_TITLE,{flex:1}]}>{title}</Text>{action}</View>{children}</View>;
 }
 export default function SimilarPlayersScreen(){
+  const themed = useThemedStyles(getModuleTheme);
+  const {BG, s, FEATURE_COLORS, ACCENT, DANGER, MUTED} = themed;
+
   const {t,i18n}=useTranslation(),tr=i18n.language.startsWith('tr'),focused=useIsFocused();
   const {width,height,fontScale}=useWindowDimensions(),pairColumns=(width-66)/Math.max(1,fontScale)>=240;
   const route=useRoute<any>(),nav=useNavigation<any>(),ads=useWorkspaceActionAd();
@@ -48,7 +56,11 @@ export default function SimilarPlayersScreen(){
   function toggleOption(value:string){if(!selector)return;setFilters(current=>{const values=current[selector];if(!values.includes(value)&&values.length>=50){Alert.alert(tr?'Seçim sınırı':'Selection limit',tr?'En fazla 50 seçenek seçebilirsin.':'Select up to 50 options.');return current;}return {...current,[selector]:value?(values.includes(value)?values.filter(v=>v!==value):[...values,value]):[]};});}
   const shown=(results||[]).slice(0,Math.min(visibleCount,limit));
   return <ScrollView ref={scroll} style={{flex:1,backgroundColor:BG}} contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-    {!reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><View style={{gap:16}}><Text style={s.caption}>{tr?'Oyuncu kartındaki “Benzeri” butonuna basarak alternatif profilleri keşfet. Seçtiğin oyuncunun kartı, benzerlik kriterleri ve en yakın profiller burada görünecek.':'Press Similar on a player card to explore alternatives. The selected player card, similarity criteria and closest profiles will appear here.'}</Text><Action label={tr?'Oyuncu Havuzu’na Git':'Go to Player Pool'} onPress={()=>nav.navigate('Strategy')}/></View></Frame>:<>
+    {!reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><View style={{gap:16}}><Text style={s.caption}>{tr?'Oyuncu Havuzu, Oyuncu Portföyü veya ScoutWise Pro’dan bir oyuncu seç. Kartındaki “Benzeri” butonuyla alternatif profilleri keşfet.':'Choose a player from Player Pool, Player Portfolio or ScoutWise Pro. Use Similar on their card to explore alternative profiles.'}</Text><WorkspaceSourceActions sources={[
+        {label:tr?'Oyuncu\nHavuzu':'Player\nPool',Icon:UserRound,onPress:()=>nav.navigate('Strategy')},
+        {label:tr?'Oyuncu\nPortföyü':'Player\nPortfolio',Icon:BookMarked,onPress:()=>nav.navigate('Portfolio'),secondary:true},
+        {label:'ScoutWise Pro',Icon:Gem,onPress:()=>nav.navigate('Chat',{screen:'ProHome'}),color:FEATURE_COLORS.pro,secondary:true},
+      ]}/></View></Frame>:<>
     <Frame title={tr?'Oyuncu Kartı':'Player Card'} Icon={UserRound}>
       <LeaguePlayerCardModal key={reference.id} initialEntry={reference} inline actionsDisabled={loading||ads.busy} onClose={()=>{}}/>
       {eligibility==='checking'&&<ActivityIndicator color={ACCENT} style={{paddingTop:12}}/>}
@@ -82,4 +94,11 @@ export default function SimilarPlayersScreen(){
     {ads.fallback}
   </ScrollView>;
 }
-const s=StyleSheet.create({page:{padding:16,gap:16,paddingBottom:40},frame:{borderWidth:1,borderColor:ACCENT,borderRadius:20,padding:16,backgroundColor:PANEL},input:{minHeight:46,borderWidth:1,borderColor:LINE,borderRadius:12,padding:12,color:TEXT,backgroundColor:CARD},caption:{color:MUTED,fontSize:12,lineHeight:18,flexShrink:1},name:{color:TEXT,fontSize:14,fontWeight:'800',flexShrink:1},link:{color:ACCENT,fontSize:12,fontWeight:'800'},row:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:'rgba(36,245,166,.16)',backgroundColor:'rgba(22,163,74,.055)',borderRadius:14,padding:10,minHeight:60},selected:{borderColor:ACCENT,backgroundColor:'rgba(22,163,74,.14)'},pressed:{backgroundColor:'rgba(22,163,74,.12)',transform:[{scale:.992}]},filterPair:{flexDirection:'row',alignItems:'flex-start',gap:12},filterCell:{flex:1,minWidth:0,width:'100%',gap:7},range:{flexDirection:'row',gap:12},rank:{color:ACCENT,fontSize:13,fontWeight:'800'},score:{color:ACCENT,fontSize:20,fontWeight:'900'}});
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const s=StyleSheet.create({page:{padding:16,gap:16,paddingBottom:40},frame:{borderWidth:1,borderColor:ACCENT,borderRadius:20,padding:16,backgroundColor:PANEL},input:{minHeight:46,borderWidth:1,borderColor:LINE,borderRadius:12,padding:12,color:TEXT,backgroundColor:CARD},caption:{color:MUTED,fontSize:12,lineHeight:18,flexShrink:1},name:{color:TEXT,fontSize:14,fontWeight:'800',flexShrink:1},link:{color:ACCENT,fontSize:12,fontWeight:'800'},row:{flexDirection:'row',alignItems:'center',gap:9,borderWidth:1,borderColor:themeColor('rgba(36,245,166,.16)', 'border'),backgroundColor:themeColor('rgba(22,163,74,.055)', 'surface'),borderRadius:14,padding:10,minHeight:60},selected:{borderColor:ACCENT,backgroundColor:themeColor('rgba(22,163,74,.14)', 'surface')},pressed:{backgroundColor:themeColor('rgba(22,163,74,.12)', 'surface'),transform:[{scale:.992}]},filterPair:{flexDirection:'row',alignItems:'flex-start',gap:12},filterCell:{flex:1,minWidth:0,width:'100%',gap:7},range:{flexDirection:'row',gap:12},rank:{color:ACCENT,fontSize:13,fontWeight:'800'},score:{color:ACCENT,fontSize:20,fontWeight:'900'}});
+  return {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, s, themeColor};
+});

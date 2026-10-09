@@ -1,24 +1,25 @@
-import React from "react";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-  StyleSheet,
-} from "react-native";
-import { ChevronDown, Plus, X } from "lucide-react-native";
+CATEGORIES,
+playerPoints,
+scoreGroup,
+type ComparisonRow,
+type MetricUnit,
+} from "@/utils/comparisonGroups";
+import { ChevronDown,Plus,X } from "lucide-react-native";
+import React from "react";
 import { useTranslation } from "react-i18next";
 import {
-  CATEGORIES,
-  playerPoints,
-  scoreGroup,
-  type MetricUnit,
-  type ComparisonRow,
-} from "@/utils/comparisonGroups";
-import MetricSection from "./ComparisonMetricSection";
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from "react-native";
 import type { SearchResultRow } from "./CandidatePlayers";
-import { ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT } from "@/theme";
+import MetricSection from "./ComparisonMetricSection";
+
 
 type Metric = ComparisonRow & {
   category: string;
@@ -32,6 +33,9 @@ export default function CustomMatchupComparison({
   entries: SearchResultRow[];
   worldCupMode?: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, ACCENT, DANGER, TEXT} = themed;
+
   const { t, i18n } = useTranslation(),
     tr = i18n.language.startsWith("tr");
   const players = entries.map((entry) => entry.player);
@@ -370,7 +374,12 @@ export default function CustomMatchupComparison({
     </>
   );
 }
-const styles = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   controls: { padding: 10, gap: 10 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   field: { flex: 1, minWidth: 0, gap: 5 },
@@ -396,7 +405,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 7,
-    backgroundColor: "rgba(22,163,74,.1)",
+    backgroundColor: themeColor("rgba(22,163,74,.1)", 'surface'),
   },
   addText: { color: ACCENT, fontWeight: "800", fontSize: 13 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
@@ -416,7 +425,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     paddingVertical: 60,
-    backgroundColor: "rgba(0,0,0,.8)",
+    backgroundColor: themeColor("rgba(0,0,0,.8)", 'surface'),
     justifyContent: "center",
   },
   modal: {
@@ -435,4 +444,6 @@ const styles = StyleSheet.create({
     borderColor: LINE,
     borderRadius: 10,
   },
+});
+  return {ACCENT, CARD, DANGER, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

@@ -1,20 +1,14 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { comparisonSourceLabels } from "@/utils/comparisonSourceLabel";
+import { Shield,Trophy } from "lucide-react-native";
 import React from "react";
-import { Image, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Shield, Trophy } from "lucide-react-native";
-import { ACCENT, MUTED } from "@/theme";
-import { finite } from "@/utils/comparisonGroups";
-import { sportmonksLeagueImage, sportmonksTeamImage } from "@/utils/sportmonksImages";
+import { Image,Text,View } from "react-native";
+
 import type { PlayerData } from "@/types";
-import {
-  comparisonStyles as styles,
-  roleDistribution,
-  compactPlayerName,
-  uppercaseLabel,
-  scoreColor,
-  type ComparisonTheme,
-} from "./comparisonAppearance";
+import { finite } from "@/utils/comparisonGroups";
+import { sportmonksLeagueImage,sportmonksTeamImage } from "@/utils/sportmonksImages";
+import { getThemed_scoreColor as __getThemed_scoreColor,getThemed_comparisonStyles as __getThemed_styles,compactPlayerName,roleDistribution,uppercaseLabel,type ComparisonTheme } from "./comparisonAppearance";
 
 function IdentityValue({
   value,
@@ -27,6 +21,9 @@ function IdentityValue({
   kind: "team" | "league";
   color: string;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const [failed, setFailed] = React.useState(false);
   React.useEffect(() => setFailed(false), [imageUrl]);
   const Icon = kind === "team" ? Shield : Trophy;
@@ -66,6 +63,9 @@ export default function ComparisonIdentityCard({
   slotColor?: string;
   scoreVisibility?: { potential: boolean; form: boolean };
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles, MUTED, scoreColor} = themed;
+
   const { t, i18n } = useTranslation();
   const player = data;
   const accent = slotColor ?? theme?.accent ?? ACCENT;
@@ -339,3 +339,12 @@ export default function ComparisonIdentityCard({
     </View>
   );
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, MUTED, themeColor} = colors;
+  const styles = __getThemed_styles(colors);
+  const scoreColor = __getThemed_scoreColor(colors);
+
+  return {ACCENT, MUTED, styles, scoreColor, themeColor};
+});

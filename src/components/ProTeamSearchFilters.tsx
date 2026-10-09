@@ -1,11 +1,23 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { X } from 'lucide-react-native';
 import React from 'react';
-import {Pressable,ScrollView,Text,View,useWindowDimensions} from 'react-native';
-import {X} from 'lucide-react-native';
-import {ACCENT,LINE} from '@/theme';
-import {type TeamFilters,type TeamOptions} from '@/services/teamPool';
-import {SelectField,Selector} from './LeaguePerformanceControls';
-import {ProFilterInput} from './ProWorkspaceControls';
+import { Pressable,ScrollView,Text,View,useWindowDimensions } from 'react-native';
+
+import { type TeamFilters,type TeamOptions } from '@/services/teamPool';
+import { SelectField,Selector } from './LeaguePerformanceControls';
+import { ProFilterInput } from './ProWorkspaceControls';
 export default function ProTeamSearchFilters({filters,options,onChange,disabled,tr,showTeam=true}:{filters:TeamFilters;options:TeamOptions;onChange:(key:keyof TeamFilters,value:string)=>void;disabled:boolean;tr:boolean;showTeam?:boolean}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {LINE, ACCENT} = themed;
+
  const [selector,setSelector]=React.useState<'country'|'league'|null>(null);const {width,fontScale}=useWindowDimensions();
  return <View style={{gap:14}}>{showTeam&&<ProFilterInput label={tr?'Takım':'Team'} value={filters.team} onChange={value=>onChange('team',value)} placeholder={tr?'Takım ara':'Search team'} options={options.teams} disabled={disabled}/>}<View style={{flexDirection:width/fontScale<330?'column':'row',gap:12}}>{(['country','league'] as const).map(key=><View key={key} style={{flex:1,minWidth:0,gap:6}}><SelectField label={key==='country'?(tr?'Ülke':'Country'):(tr?'Lig':'League')} value={filters[key]||(tr?'Seçiniz':'Select')} onPress={()=>{if(!disabled)setSelector(key);}}/><ScrollView horizontal keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:6}}>{(filters[key]?[filters[key]]:key==='country'?filters.league?options.countries:[]:filters.country?options.leagues:[]).map(value=><Pressable key={value} disabled={disabled} accessibilityRole="button" accessibilityLabel={filters[key]?(tr?value+' seçimini temizle':'Clear '+value):value} onPress={()=>onChange(key,filters[key]?'':value)} style={{flexDirection:'row',alignItems:'center',gap:5,borderWidth:1,borderColor:LINE,borderRadius:18,paddingHorizontal:10,paddingVertical:7}}><Text style={{color:ACCENT,fontSize:12}}>{value}</Text>{!!filters[key]&&<X size={12} color={ACCENT}/>}</Pressable>)}</ScrollView></View>)}</View>{selector&&<Selector title={selector==='country'?(tr?'Ülke Seç':'Select Country'):(tr?'Lig Seç':'Select League')} tr={tr} selected={filters[selector]} options={options[selector==='country'?'countries':'leagues'].map(value=>({key:value,label:value}))} onSelect={value=>{onChange(selector,value);setSelector(null);}} onClose={()=>setSelector(null)}/>}</View>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, LINE, themeColor} = colors;
+
+
+  return {ACCENT, LINE, themeColor};
+});

@@ -224,6 +224,9 @@ export const ROLE_LONG_TO_SHORT: Record<string, string> = {
   'Attacker': 'CF',
 };
 
+/** Row order shared by the three-column role pickers. */
+export const PLAYER_ROLE_GRID_ORDER = ['LW', 'CF', 'RW', 'LM', 'CAM', 'RM', 'LB', 'CM', 'RB', 'CB', 'CDM', 'GK'] as const;
+
 export const ROLE_PICKER_ORDER = [
   'GK',
   'LB',

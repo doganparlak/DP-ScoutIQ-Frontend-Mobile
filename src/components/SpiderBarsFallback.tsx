@@ -1,7 +1,8 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/components/SpiderBarsFallback.tsx
 import * as React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { ACCENT, TEXT, CARD, MUTED } from '@/theme';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+
 import { useTranslation } from 'react-i18next';
 import type { SpiderPoint } from './SpiderChart';
 
@@ -55,10 +56,14 @@ export default function SpiderBarsFallback({
   title,
   points,
   Icon,
-  headerColor = ACCENT,
+  headerColor,
   collapsedCount = 3,
   defaultCollapsed = true,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, CARD, styles, MUTED, TEXT, themeColor} = themed;
+  headerColor ??= ACCENT;
+
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = React.useState(defaultCollapsed);
 
@@ -73,7 +78,7 @@ export default function SpiderBarsFallback({
       {/* header bubble with icon + title */}
       <View style={styles.headerRow}>
         <View style={[styles.titleFrame, { backgroundColor: headerColor }]}>
-          {Icon ? <Icon size={18} color="white" /> : null}
+          {Icon ? <Icon size={18} color={themeColor("white", 'text')} /> : null}
           <Text style={styles.title}>{title}</Text>
         </View>
       </View>
@@ -99,7 +104,7 @@ export default function SpiderBarsFallback({
                 marginTop: 8,
                 height: 7,
                 borderRadius: 999,
-                backgroundColor: '#272a2a',
+                backgroundColor: themeColor('#272a2a', 'surface'),
                 overflow: 'hidden',
               }}
             >
@@ -142,7 +147,11 @@ export default function SpiderBarsFallback({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, TEXT, CARD, MUTED, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { color: TEXT, fontWeight: '700', fontSize: 16 },
   titleFrame: {
@@ -153,4 +162,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     gap: 8,
   },
+});
+  return {ACCENT, TEXT, CARD, MUTED, styles, themeColor};
 });

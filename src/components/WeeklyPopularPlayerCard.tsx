@@ -1,28 +1,37 @@
+import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
+import {
+incrementMatchupMissingScoreAddCount,
+incrementPlayerPoolMissingScoreActionCount,
+incrementReportActionCount,
+shouldShowMatchupMissingScoreInterstitial,
+shouldShowPlayerPoolMissingScoreActionInterstitial,
+shouldShowReportActionInterstitial,
+} from '@/ads/adGating';
+import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
 import { isAdFlowCancelled } from '@/ads/presentation';
-import React from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { Alert, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import { useMatchup } from '@/context/MatchupContext';
-import { useTutorial } from './Tutorial';
+import {
+addFavoritePlayer,getMe,
+getPlayerPoolScoutingReportProgress,getPlayerPoolScoutingReportSection,
+revealPlayerPoolForm,
+revealPlayerPoolPotential,
+type Plan,type PlayerIdentityPayload,type ScoutingReportResponse,
+} from '@/services/api';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import type { PlayerData } from '@/types';
+import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Alert,View } from 'react-native';
 import PlayerCard from './PlayerCard';
 import ScoutingReport from './ScoutingReport';
-import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
-import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
-import {
-  incrementMatchupMissingScoreAddCount, shouldShowMatchupMissingScoreInterstitial,
-  incrementPlayerPoolMissingScoreActionCount, shouldShowPlayerPoolMissingScoreActionInterstitial,
-  incrementReportActionCount, shouldShowReportActionInterstitial,
-} from '@/ads/adGating';
-import {
-  addFavoritePlayer, getMe, revealPlayerPoolPotential, revealPlayerPoolForm,
-  getPlayerPoolScoutingReportProgress, getPlayerPoolScoutingReportSection,
-  type Plan, type PlayerIdentityPayload, type ScoutingReportResponse,
-} from '@/services/api';
-import type { PlayerData } from '@/types';
-import { ACCENT } from '@/theme';
+import { useTutorial } from './Tutorial';
+
 
 export default function WeeklyPopularPlayerCard({ id, player }: { id: string; player: PlayerData }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, themeColor} = themed;
+
   const { t } = useTranslation();
   const navigation = useNavigation();
   const matchup = useMatchup();
@@ -76,7 +85,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
   }
 
   return <View>
-    <PlayerCard player={shownPlayer} similarPlayerId={id} similarDisabled={busy} visualTheme={{ cardBackground: '#19221D', accent: ACCENT }}
+    <PlayerCard player={shownPlayer} similarPlayerId={id} similarDisabled={busy} visualTheme={{ cardBackground: themeColor('#19221D'), accent: ACCENT }}
       addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || full || alreadyAdded}
       reportState={report?.status === 'ready' ? 'ready' : 'idle'}
       onAddFavorite={async () => !!await perform(async () => {
@@ -117,3 +126,11 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
     <PlusProUpsellScreen visible={upsell} onClose={() => setUpsell(false)} />
   </View>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, themeColor} = colors;
+
+
+  return {ACCENT, themeColor};
+});

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check, ChevronDown, Shield } from 'lucide-react-native';
-import { ACCENT, LINE, MUTED, TEXT } from '@/theme';
-import type { MatchReportMetric, MatchReportTeam, PostMatchCardData } from '@/services/matchPool';
-import { expectedMetricOrder, matchMetricLabel, teamMetricOrder } from '@/utils/matchReportMetrics';
-const AWAY = '#38BDF8';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Check,ChevronDown,Shield } from 'lucide-react-native';
+import { useState } from 'react';
+import { Image,Pressable,StyleSheet,Text,View } from 'react-native';
+
+import type { MatchReportMetric,MatchReportTeam,PostMatchCardData } from '@/services/matchPool';
+import { expectedMetricOrder,matchMetricLabel,teamMetricOrder } from '@/utils/matchReportMetrics';
+
 const groups = [
   ['contribution_impact', 'Katkı ve Etki', 'Contribution & Impact'],
   ['shooting', 'Şut', 'Shooting'], ['passing', 'Pas', 'Passing'],
@@ -23,6 +24,9 @@ function format(value: unknown) {
   return value == null || value === '' ? '—' : number == null ? String(value) : Number.isInteger(number) ? String(number) : number.toFixed(2);
 }
 function TeamHeading({ team, away }: { team?: MatchReportTeam; away?: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, AWAY, ACCENT} = themed;
+
   const [failed, setFailed] = useState(false);
   return <View style={s.teamHeading}>
     {team?.image_url && !failed ? <Image source={{ uri: team.image_url }} resizeMode="contain" style={s.logo} onError={() => setFailed(true)} /> : <Shield size={25} color={away ? AWAY : ACCENT} />}
@@ -30,6 +34,9 @@ function TeamHeading({ team, away }: { team?: MatchReportTeam; away?: boolean })
   </View>;
 }
 export default function MatchReportTeamComparison({ data, tr, preMatch = false }: { data: PostMatchCardData; tr: boolean; preMatch?: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT, AWAY} = themed;
+
   const [period, setPeriod] = useState<Period>('overall');
   const [section, setSection] = useState('contribution_impact');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -72,10 +79,19 @@ export default function MatchReportTeamComparison({ data, tr, preMatch = false }
     </View>
   </View>;
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const AWAY = themeColor('#38BDF8');
+
+  const s = StyleSheet.create({
   page: { gap: 14 }, controls: { borderWidth: 1, borderColor: `${ACCENT}70`, borderRadius: 18, padding: 13, gap: 12 }, rule: { height: 3, backgroundColor: ACCENT, borderRadius: 3 },
-  switch: { flexDirection: 'row', borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 4, gap: 3, backgroundColor: 'rgba(0,0,0,.16)' }, option: { flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' }, selected: { borderColor: `${ACCENT}60`, backgroundColor: `${ACCENT}20` }, optionText: { color: MUTED, fontSize: 12, fontWeight: '800' },
+  switch: { flexDirection: 'row', borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 4, gap: 3, backgroundColor: themeColor('rgba(0,0,0,.16)', 'surface') }, option: { flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' }, selected: { borderColor: `${ACCENT}60`, backgroundColor: `${ACCENT}20` }, optionText: { color: MUTED, fontSize: 12, fontWeight: '800' },
   controlLabel: { color: MUTED, fontSize: 11, fontWeight: '700' }, selector: { borderWidth: 1, borderColor: ACCENT, borderRadius: 13, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 8 }, selectorText: { flex: 1, color: TEXT, fontSize: 14, fontWeight: '700' }, options: { borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden' }, choice: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 13 }, choiceText: { flex: 1, fontSize: 13, color: TEXT, fontWeight: '600' },
-  table: { borderWidth: 1, borderColor: `${ACCENT}50`, borderRadius: 18, padding: 10, backgroundColor: 'rgba(255,255,255,.015)' }, tableHeader: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: LINE, paddingBottom: 13, marginBottom: 2, gap: 4 }, teamHeading: { flex: 1, alignItems: 'center', gap: 7 }, logo: { width: 36, height: 40 }, teamName: { fontSize: 11, fontWeight: '800', textAlign: 'center' }, metricHeading: { flex: 1.7, color: MUTED, fontSize: 10, textAlign: 'center', fontWeight: '800' },
+  table: { borderWidth: 1, borderColor: `${ACCENT}50`, borderRadius: 18, padding: 10, backgroundColor: themeColor('rgba(255,255,255,.015)', 'surface') }, tableHeader: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: LINE, paddingBottom: 13, marginBottom: 2, gap: 4 }, teamHeading: { flex: 1, alignItems: 'center', gap: 7 }, logo: { width: 36, height: 40 }, teamName: { fontSize: 11, fontWeight: '800', textAlign: 'center' }, metricHeading: { flex: 1.7, color: MUTED, fontSize: 10, textAlign: 'center', fontWeight: '800' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 4, borderBottomWidth: 1, borderBottomColor: LINE, paddingVertical: 10 }, value: { flex: 1, paddingVertical: 10, paddingHorizontal: 2, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' }, valueText: { color: TEXT, fontSize: 13, fontWeight: '800', textAlign: 'center' }, metric: { flex: 1.7, color: TEXT, fontSize: 11, lineHeight: 17, fontWeight: '700', textAlign: 'center', paddingHorizontal: 3 }, empty: { color: MUTED, fontSize: 13, lineHeight: 20, textAlign: 'center', paddingVertical: 32 },
+});
+  return {ACCENT, LINE, MUTED, TEXT, AWAY, s, themeColor};
 });

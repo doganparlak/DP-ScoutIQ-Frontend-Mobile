@@ -1,22 +1,26 @@
-import { isAdFlowCancelled } from '@/ads/presentation';
-import React from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { UserRound, X } from 'lucide-react-native';
-import { useTranslation } from 'react-i18next';
-import { useIsFocused } from '@react-navigation/native';
-import { useTutorial } from '@/components/Tutorial';
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
-import { gateLeaguePlayerAction, hasPlayerScores, isPlayerScore } from '@/services/leaguePlayerActions';
+import { isAdFlowCancelled } from '@/ads/presentation';
+import { useTutorial } from '@/components/Tutorial';
 import { useMatchup } from '@/context/MatchupContext';
-import { ACCENT, DANGER, FRAME_TITLE, PANEL } from '@/theme';
+import { gateLeaguePlayerAction,hasPlayerScores,isPlayerScore } from '@/services/leaguePlayerActions';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useIsFocused } from '@react-navigation/native';
+import { UserRound,X } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Alert,Modal,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+
+import { addFavoritePlayer,getMe,getPlayerPoolScoutingReportProgress,getPlayerPoolScoutingReportSection,revealPlayerPoolForm,revealPlayerPoolPotential,type Plan,type PlayerData,type PlayerIdentityPayload,type ScoutingReportResponse } from '@/services/api';
+import { getLeaguePerformancePlayer,type LeagueBestPlayer } from '@/services/leaguePerformance';
+import { Status } from './LeaguePerformanceControls';
 import PlayerCard from './PlayerCard';
 import ScoutingReport from './ScoutingReport';
-import { Status } from './LeaguePerformanceControls';
-import { getLeaguePerformancePlayer, type LeagueBestPlayer } from '@/services/leaguePerformance';
-import { addFavoritePlayer, getMe, getPlayerPoolScoutingReportProgress, getPlayerPoolScoutingReportSection, revealPlayerPoolForm, revealPlayerPoolPotential, type PlayerData, type PlayerIdentityPayload, type Plan, type ScoutingReportResponse } from '@/services/api';
 
 type Entry = {id: string; player: PlayerData};
 export default function LeaguePlayerCardModal({winner, initialEntry, inline = false, actionsDisabled = false, initialAction, onMatchupAdded, proMode = false, onCheckFit, onFindSimilar, renderPlayerCard, onClose}: {winner?: LeagueBestPlayer; initialEntry?: Entry; inline?: boolean; actionsDisabled?: boolean; proMode?: boolean; onCheckFit?: () => void; onFindSimilar?: () => void | Promise<void>; renderPlayerCard?: (props: React.ComponentProps<typeof PlayerCard>) => React.ReactNode; initialAction?: 'matchup'; onMatchupAdded?: () => void; onClose: () => void}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, FRAME_TITLE, DANGER} = themed;
+
   const {t, i18n} = useTranslation();
   const tr = i18n.language.startsWith('tr');
   const focused = useIsFocused();
@@ -167,8 +171,15 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     {report && reportPlayer && reportPayload && <ScoutingReport hidePlayerActions={proMode} visible={focused && reportOpen} player={reportPlayer} report={report} plan={plan} onClose={() => {setReportOpen(false); setTimeout(() => {if (mounted.current) setCardVisible(true);}, 350);}} reloadReport={() => getPlayerPoolScoutingReportProgress(reportPayload)} loadReportSection={section => getPlayerPoolScoutingReportSection(reportPayload, section)} onReportUpdate={setReport} />}
   </>;
 }
-const styles = StyleSheet.create({
-  backdrop: {flex: 1, backgroundColor: 'rgba(0,0,0,.55)', justifyContent: 'center', alignItems: 'center', padding: 16},
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, DANGER, FRAME_TITLE, PANEL, themeColor} = colors;
+
+  const styles = StyleSheet.create({
+  backdrop: {flex: 1, backgroundColor: themeColor('rgba(0,0,0,.55)', 'surface'), justifyContent: 'center', alignItems: 'center', padding: 16},
   panel: {width: '100%', maxWidth: 560, maxHeight: '90%', borderRadius: 16, overflow: 'hidden', backgroundColor: PANEL, borderWidth: 1, borderColor: ACCENT, padding: 12},
   heading: {flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10},
+});
+  return {ACCENT, DANGER, FRAME_TITLE, PANEL, styles, themeColor};
 });

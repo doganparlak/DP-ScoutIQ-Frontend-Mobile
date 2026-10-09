@@ -1,25 +1,26 @@
-import * as React from 'react';
-import { View, Alert, Text, StyleSheet } from 'react-native';
-import Svg, { Defs, Line, LinearGradient, Polygon, Rect, Stop, Text as SvgText } from 'react-native-svg';
-import { BrickWall, DraftingCompass, LogIn, Map as MapIcon, ShieldAlert, ShieldCheck, Star } from 'lucide-react-native';
 import PlayerCard from '@/components/PlayerCard';
 import SpiderChart from '@/components/SpiderChart';
+import { addFavoritePlayer,rolePickerCode } from '@/services/api';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { BrickWall,DraftingCompass,LogIn,Map as MapIcon,ShieldAlert,ShieldCheck,Star } from 'lucide-react-native';
+import * as React from 'react';
 import { useTranslation } from 'react-i18next';
-import { addFavoritePlayer, rolePickerCode } from '@/services/api';
-import { ACCENT, CARD, LINE, MUTED, PANEL, TEXT } from '@/theme';
+import { Alert,StyleSheet,Text,View } from 'react-native';
+import Svg,{ Defs,Line,LinearGradient,Polygon,Rect,Stop,Text as SvgText } from 'react-native-svg';
+
 
 import {
-  GK_METRICS,
-  SHOOTING_METRICS,
-  PASSING_METRICS,
-  CONTRIBUTION_IMPACT_METRICS,
-  ERRORS_DISCIPLINE_METRICS,
-  DEFENDING_METRICS,
-  toSpiderPoints,
+CONTRIBUTION_IMPACT_METRICS,
+DEFENDING_METRICS,
+ERRORS_DISCIPLINE_METRICS,
+GK_METRICS,
+PASSING_METRICS,
+SHOOTING_METRICS,
+toSpiderPoints,
 } from '@/components/spiderRanges';
 
-import type { PlayerData } from '@/types';
 import ErrorsDisciplineTiles from '@/components/ErrorsDisciplineTiles';
+import type { PlayerData } from '@/types';
 
 type VisualKind = 'playerCard' | 'pitchMap' | 'metrics' | 'full';
 type Props = { players: PlayerData[]; visualKind?: VisualKind };
@@ -100,6 +101,9 @@ function hasPitchMapData(player: PlayerData) {
 }
 
 export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, themeColor, PITCH_COLORS} = themed;
+
   const { t } = useTranslation();
   const { counts, namesSeen, total } = getPlayerPositionSource(player);
   const zoneCounts = normalizePitchZoneCounts(counts);
@@ -123,7 +127,7 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
     <View style={[styles.pitchBubble, pro && {padding:0, backgroundColor:'transparent'}]}>
       <View style={styles.pitchHeader}>
         <View style={[styles.categoryTitleFrame, pro && {backgroundColor:'transparent',paddingHorizontal:0,paddingVertical:0}]}>
-          <MapIcon size={18} color={pro ? ACCENT : "white"} strokeWidth={2.4} />
+          <MapIcon size={18} color={pro ? ACCENT : themeColor("white", 'text')} strokeWidth={2.4} />
           <Text style={[styles.pitchTitle, pro && {color:ACCENT,fontSize:16,fontWeight:'800'}]}>{t('pitchMap', 'Pitch Map')}</Text>
         </View>
       </View>
@@ -140,9 +144,9 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
           <Svg viewBox="0 0 56 100" width="100%" height="100%" preserveAspectRatio="none">
             <Defs>
               <LinearGradient id="chatPitchShade" x1="0" x2="0" y1="0" y2="1">
-                <Stop offset="0%" stopColor="#0A371E" />
-                <Stop offset="50%" stopColor="#082616" />
-                <Stop offset="100%" stopColor="#0A371E" />
+                <Stop offset="0%" stopColor={PITCH_COLORS.edge} />
+                <Stop offset="50%" stopColor={PITCH_COLORS.center} />
+                <Stop offset="100%" stopColor={PITCH_COLORS.edge} />
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width="56" height="100" fill="url(#chatPitchShade)" />
@@ -152,7 +156,7 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
               const active = activeZones.has(zone.code) || Boolean(colorValue);
               const intensity = colorValue && max ? colorValue / max : 0;
               const percent = count && total ? Math.round((count / total) * 100) : 0;
-              const fill = active ? `rgba(32, 201, 151, ${0.06 + intensity * 0.62})` : 'rgba(6, 16, 11, 0.24)';
+              const fill = active ? PITCH_COLORS.active(intensity) : PITCH_COLORS.inactive;
               const labelX = zone.x + zone.w / 2;
               const labelY = zone.y + zone.h / 2;
               const roleY = labelY - (percent ? 3.2 : 0);
@@ -165,7 +169,7 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
                     width={zone.w}
                     height={zone.h}
                     fill={fill}
-                    stroke="rgba(215, 239, 219, 0.36)"
+                    stroke={PITCH_COLORS.line}
                     strokeWidth={0.42}
                   />
                   <SvgText
@@ -173,7 +177,7 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
                     y={roleY}
                     textAnchor="middle"
                     alignmentBaseline="middle"
-                    fill="rgba(255,255,255,0.93)"
+                    fill={PITCH_COLORS.label}
                     fontSize="3.45"
                     fontWeight="900"
                   >
@@ -185,7 +189,7 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
                       y={percentY}
                       textAnchor="middle"
                       alignmentBaseline="middle"
-                      fill="#D1FAE5"
+                      fill={PITCH_COLORS.percent}
                       fontSize="2.75"
                       fontWeight="900"
                     >
@@ -200,8 +204,8 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
         <View style={styles.pitchDirectionSlot}>
           <View style={styles.pitchDirectionRail}>
             <Svg viewBox="0 0 10 48" width="100%" height="100%" preserveAspectRatio="none">
-              <Line x1="5" y1="43" x2="5" y2="7" stroke="rgba(148, 163, 184, 0.74)" strokeWidth="0.7" strokeLinecap="round" />
-              <Polygon points="5,4.4 3.45,8.6 6.55,8.6" fill="rgba(148, 163, 184, 0.74)" />
+              <Line x1="5" y1="43" x2="5" y2="7" stroke={themeColor("rgba(148, 163, 184, 0.74)")} strokeWidth="0.7" strokeLinecap="round" />
+              <Polygon points="5,4.4 3.45,8.6 6.55,8.6" fill={themeColor("rgba(148, 163, 184, 0.74)")} />
             </Svg>
           </View>
         </View>
@@ -339,7 +343,15 @@ function ChatVisualsBlockInner({ players, visualKind = 'full' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+
+export default React.memo(ChatVisualsBlockInner);
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {PITCH_COLORS} = colors;
+  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   pitchBubble: {
     borderRadius: 16,
     borderWidth: 1,
@@ -387,7 +399,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: 'rgba(17, 24, 19, 0.86)',
+    backgroundColor: colors.mode === 'light' ? CARD : 'rgba(17, 24, 19, 0.86)',
     paddingHorizontal: 8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,8 +423,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(167,199,172,0.55)',
-    backgroundColor: '#092E19',
+    borderColor: themeColor('rgba(167,199,172,0.55)', 'border'),
+    backgroundColor: themeColor('#092E19', 'surface'),
   },
   pitchDirectionSlot: {
     width: 72,
@@ -429,5 +441,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
-
-export default React.memo(ChatVisualsBlockInner);
+  return {PITCH_COLORS, ACCENT, CARD, LINE, MUTED, PANEL, TEXT, styles, themeColor};
+});

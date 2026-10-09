@@ -1,53 +1,45 @@
 import { reportScopeMatches } from '@/services/reportAccess';
-import { toSpiderPoints as comparisonPoints, type EnterpriseMetricUnit } from '@/utils/comparisonRanges';
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { toSpiderPoints as comparisonPoints,type EnterpriseMetricUnit } from '@/utils/comparisonRanges';
+import { useNavigation } from '@react-navigation/native';
+import type { TFunction } from 'i18next';
+import { BrickWall,ChevronLeft,ChevronRight,Clock3,DraftingCompass,ListOrdered,LockKeyhole,LogIn,Map as MapIcon,Radar,ShieldAlert,ShieldCheck,Star,Timer,X } from 'lucide-react-native';
+import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  FlatList,
-  LayoutChangeEvent,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  Image,
+FlatList,
+Image,
+LayoutChangeEvent,
+Modal,
+NativeScrollEvent,
+NativeSyntheticEvent,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, Line, LinearGradient, Polygon, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import Svg,{ Defs,Line,LinearGradient,Polygon,Rect,Stop,Text as SvgText } from 'react-native-svg';
 import {
-  toSpiderPoints,
-  GK_METRICS,
-  SHOOTING_METRICS,
-  PASSING_METRICS,
-  CONTRIBUTION_IMPACT_METRICS,
-  ERRORS_DISCIPLINE_METRICS,
-  DEFENDING_METRICS,
+CONTRIBUTION_IMPACT_METRICS,
+DEFENDING_METRICS,
+ERRORS_DISCIPLINE_METRICS,
+GK_METRICS,
+PASSING_METRICS,
+SHOOTING_METRICS,
+toSpiderPoints,
 } from '../components/spiderRanges';
-import type { TFunction } from 'i18next';
-import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
-import { Clock3, Timer, Radar, ListOrdered, BrickWall, ChevronLeft, ChevronRight, DraftingCompass, LockKeyhole, LogIn, Map as MapIcon, ShieldAlert, ShieldCheck, Star, X } from 'lucide-react-native';
 
-import PlayerCard from '../components/PlayerCard';
-import SpiderChart, { type SpiderPoint } from '../components/SpiderChart';
-import type { PlayerData } from '../types';
-import { rolePickerCode, type Plan, type ScoutingReportResponse } from '../services/api';
 import ErrorsDisciplineTiles from '../components/ErrorsDisciplineTiles';
-import ReportPhaseDistributions from './ReportPhaseDistributions';
+import PlayerCard from '../components/PlayerCard';
+import SpiderChart,{ type SpiderPoint } from '../components/SpiderChart';
+import { rolePickerCode,type Plan,type ScoutingReportResponse } from '../services/api';
+import type { PlayerData } from '../types';
 import ActionSpinner from './ActionSpinner';
+import ReportPhaseDistributions from './ReportPhaseDistributions';
 
-import {
-  CARD,
-  TEXT,
-  MUTED,
-  ACCENT,
-  LINE,
-  DANGER,
-  shadows,
-} from '../theme';
 
 type Props = {
   visible: boolean;
@@ -204,6 +196,9 @@ function getReportPositionSource(player: PlayerData, report: ScoutingReportRespo
 }
 
 function RoleDistributionPitchMap({ player, report }: { player: PlayerData; report: ScoutingReportResponse }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, themeColor, PITCH_COLORS} = themed;
+
   const [pitchSpace, setPitchSpace] = useState({ width: 0, height: 0 });
   const pitchWidth = Math.max(0, Math.min(pitchSpace.width - 32, pitchSpace.height * 0.56));
   const { counts, namesSeen, total } = getReportPositionSource(player, report);
@@ -240,9 +235,9 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
         <Svg viewBox="0 0 56 100" width="100%" height="100%" preserveAspectRatio="none">
         <Defs>
           <LinearGradient id="mobileReportPitchShade" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0%" stopColor="#0A371E" />
-            <Stop offset="50%" stopColor="#082616" />
-            <Stop offset="100%" stopColor="#0A371E" />
+            <Stop offset="0%" stopColor={PITCH_COLORS.edge} />
+            <Stop offset="50%" stopColor={PITCH_COLORS.center} />
+            <Stop offset="100%" stopColor={PITCH_COLORS.edge} />
           </LinearGradient>
         </Defs>
         <Rect x="0" y="0" width="56" height="100" fill="url(#mobileReportPitchShade)" />
@@ -252,7 +247,7 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
           const active = activeZones.has(zone.code) || Boolean(colorValue);
           const intensity = colorValue && max ? colorValue / max : 0;
           const percent = count && total ? Math.round((count / total) * 100) : 0;
-          const fill = active ? `rgba(32, 201, 151, ${0.06 + intensity * 0.62})` : 'rgba(6, 16, 11, 0.24)';
+          const fill = active ? PITCH_COLORS.active(intensity) : PITCH_COLORS.inactive;
           const labelX = zone.x + zone.w / 2;
           const labelY = zone.y + zone.h / 2;
           const roleY = labelY - (percent ? 3.2 : 0);
@@ -265,7 +260,7 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
                 width={zone.w}
                 height={zone.h}
                 fill={fill}
-                stroke="rgba(215, 239, 219, 0.36)"
+                stroke={PITCH_COLORS.line}
                 strokeWidth={0.42}
               />
               <SvgText
@@ -273,7 +268,7 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
                 y={roleY}
                 textAnchor="middle"
                 alignmentBaseline="middle"
-                fill="rgba(255,255,255,0.93)"
+                fill={PITCH_COLORS.label}
                 fontSize="3.45"
                 fontWeight="900"
               >
@@ -285,7 +280,7 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
                   y={percentY}
                   textAnchor="middle"
                   alignmentBaseline="middle"
-                  fill="#D1FAE5"
+                  fill={PITCH_COLORS.percent}
                   fontSize="2.75"
                   fontWeight="900"
                 >
@@ -300,8 +295,8 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
       <View style={styles.pitchDirectionSlot}>
         <View style={[styles.pitchDirectionRail, {height: Math.min(178, pitchWidth / 0.56)}]}>
           <Svg viewBox="0 0 10 48" width="100%" height="100%" preserveAspectRatio="none">
-            <Line x1="5" y1="43" x2="5" y2="7" stroke="rgba(148, 163, 184, 0.74)" strokeWidth="0.7" strokeLinecap="round" />
-            <Polygon points="5,4.4 3.45,8.6 6.55,8.6" fill="rgba(148, 163, 184, 0.74)" />
+            <Line x1="5" y1="43" x2="5" y2="7" stroke={themeColor("rgba(148, 163, 184, 0.74)")} strokeWidth="0.7" strokeLinecap="round" />
+            <Polygon points="5,4.4 3.45,8.6 6.55,8.6" fill={themeColor("rgba(148, 163, 184, 0.74)")} />
           </Svg>
         </View>
       </View>
@@ -374,6 +369,9 @@ function NarrativeBulletRow({
   color: string;
   translate: TFunction;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const bullet = parseNarrativeBullet(item, section, index, translate);
   return (
     <View style={[styles.narrativeRow, {borderColor: `${color}55`, backgroundColor: `${color}08` }]}>
@@ -478,7 +476,11 @@ function buildSpiderGroupsFromReport(report: ScoutingReportResponse): Array<{
   return groups;
 }
 
-function ReportPageHeading({name, imageUrl, title, Icon, accent = ACCENT}: {name: string; imageUrl?: string; title: string; Icon: ReportIcon; accent?: string}) {
+function ReportPageHeading({name, imageUrl, title, Icon, accent}: {name: string; imageUrl?: string; title: string; Icon: ReportIcon; accent?: string}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles, DANGER} = themed;
+  accent ??= ACCENT;
+
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => setImageFailed(false), [imageUrl]);
   const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
@@ -494,11 +496,19 @@ function ReportPageHeading({name, imageUrl, title, Icon, accent = ACCENT}: {name
     <View style={[styles.reportCategory,{backgroundColor:`${accent}20`}]}><Icon size={17} color={accent}/><Text style={[styles.reportCategoryText,{color:accent}]}>{title}</Text></View>
   </View>;
 }
-function ReportToggle({options, value, onChange, accent = ACCENT}: {accent?: string;options: {value:string; label:string; Icon:ReportIcon}[]; value:string; onChange:(value:any)=>void}) {
+function ReportToggle({options, value, onChange, accent}: {accent?: string;options: {value:string; label:string; Icon:ReportIcon}[]; value:string; onChange:(value:any)=>void}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles, MUTED, TEXT} = themed;
+  accent ??= ACCENT;
+
  return <View style={styles.metricSwitch}>{options.map(({value:v,label,Icon})=><Pressable key={v} accessibilityRole="button" accessibilityState={{selected:value===v}} onPress={()=>onChange(v)} style={({pressed})=>[styles.metricOption,value===v&&[styles.metricActive,{backgroundColor:`${accent}20`,borderColor:`${accent}70`}],pressed&&{opacity:.8}]}><Icon size={16} color={value===v?accent:MUTED}/><Text style={{color:value===v?TEXT:MUTED,fontSize:13,fontWeight:'700'}}>{label}</Text></Pressable>)}</View>;
 }
 
-function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent = ACCENT }: { title: string; message: string; buttonLabel: string; onOpenPlans: () => void; accent?: string }) {
+function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent }: { title: string; message: string; buttonLabel: string; onOpenPlans: () => void; accent?: string }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, styles} = themed;
+  accent ??= ACCENT;
+
   return <View style={[styles.lockedInsight, {borderColor:`${accent}55`, backgroundColor:`${accent}0A`}]}>
     <View style={styles.lockedInsightHeading}>
       <View style={[styles.lockedInsightIcon, {borderColor:`${accent}66`, backgroundColor:`${accent}18`}]}>
@@ -514,11 +524,17 @@ function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent = 
 }
 
 function ReportAnalysisState({failed,onRetry}:{failed:boolean;onRetry:()=>void}){
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
  const {t}=useTranslation();
  return <View style={styles.analysisState}>{failed?<><Text style={styles.analysisStateText}>{t('reportFailedBody','Could not generate the report. Please try again later.')}</Text><Pressable accessibilityRole="button" onPress={onRetry} style={styles.analysisRetry}><Text style={styles.analysisRetryText}>{t('tryAgain','Try Again')}</Text></Pressable></>:<><ActionSpinner size={27} color={ACCENT}/><Text style={styles.analysisStateText}>{t('generatingReport','Generating report…')}</Text></>}</View>;
 }
 
 function ReportMetricPage({ group, name, imageUrl, report }: { group: ReturnType<typeof buildSpiderGroupsFromReport>[number]; name: string; imageUrl?: string; report: ScoutingReportResponse }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {DANGER, ACCENT, styles, TEXT} = themed;
+
   const { t, i18n } = useTranslation();
   const [unit, setUnit] = useState<EnterpriseMetricUnit>('perMatch');
   const [view, setView] = useState<'radar' | 'tiles'>('radar');
@@ -541,6 +557,9 @@ function ReportMetricPage({ group, name, imageUrl, report }: { group: ReturnType
 }
 
 export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, hidePlayerActions = false, player, report: initialReport, plan = 'Free', reloadReport, loadReportSection, onReportUpdate }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, MUTED, ACCENT, DANGER, TEXT, themeColor} = themed;
+
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [page, setPage] = useState(0);
@@ -748,7 +767,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
       return {
         key: possession ? 'in-possession' : 'out-of-possession', title, Icon,
         node: <View style={{ gap: 12 }}>
-          <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={title} Icon={Icon} accent={possession ? ACCENT : '#F59E0B'} />
+          <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={title} Icon={Icon} accent={possession ? ACCENT : themeColor('#F59E0B')} />
           <ReportPhaseDistributions
             phases={report.content_json?.phase_distributions || []}
             possession={possession}
@@ -769,7 +788,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
     });
 
     return out;
-  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar, hidePlayerActions]);
+  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar, hidePlayerActions, themed]);
 
   const activeNarrativeSection = pages[page]?.key === 'strengths' ? 'strengths' : pages[page]?.key === 'weaknesses' ? 'weaknesses' : pages[page]?.key === 'conclusion' ? 'role_usage' : null;
   useEffect(()=>{
@@ -916,29 +935,34 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
   );
 }
 
-const styles = StyleSheet.create({
-  reportHeading: { flexDirection:'row', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:12, padding:14, borderRadius:18, backgroundColor:'rgba(22,163,74,.06)', borderWidth:1, borderColor:'rgba(22,163,74,.25)' },
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {PITCH_COLORS} = colors;
+  const {CARD, TEXT, MUTED, ACCENT, LINE, DANGER, shadows, themeColor} = colors;
+
+  const styles = StyleSheet.create({
+  reportHeading: { flexDirection:'row', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:12, padding:14, borderRadius:18, backgroundColor:themeColor('rgba(22,163,74,.06)', 'surface'), borderWidth:1, borderColor:themeColor('rgba(22,163,74,.25)', 'border') },
   reportPlayer: { flexDirection:'row', alignItems:'center', gap:10, flexGrow:1, flexShrink:1, minWidth:0 },
-  reportPortraitFrame: { width:46, height:52, flexShrink:0, borderRadius:13, borderWidth:1, backgroundColor:'#122019', padding:2, alignItems:'center', justifyContent:'center', overflow:'hidden' },
+  reportPortraitFrame: { width:46, height:52, flexShrink:0, borderRadius:13, borderWidth:1, backgroundColor:themeColor('#122019', 'surface'), padding:2, alignItems:'center', justifyContent:'center', overflow:'hidden' },
   reportPortrait: { width:'100%', height:'100%', borderRadius:10 },
   reportPortraitInitials: { fontSize:15, fontWeight:'900' },
   reportIdentity: { flexGrow:1, flexShrink:1, minWidth:88, gap:5 },
   reportEyebrow: { color:MUTED, fontSize:9, fontWeight:'800', letterSpacing:1.5 },
   reportName: { color:TEXT, fontSize:20, fontWeight:'800' },
-  reportCategory: { flexDirection:'row', alignItems:'center', gap:7, paddingHorizontal:10, paddingVertical:8, borderRadius:12, backgroundColor:'rgba(22,163,74,.13)', maxWidth:'100%' },
+  reportCategory: { flexDirection:'row', alignItems:'center', gap:7, paddingHorizontal:10, paddingVertical:8, borderRadius:12, backgroundColor:themeColor('rgba(22,163,74,.13)', 'surface'), maxWidth:'100%' },
   reportCategoryText: { color:ACCENT, fontSize:12, fontWeight:'800', flexShrink:1 },
-  reportControls: { gap:8, padding:8, borderRadius:18, borderWidth:1, borderColor:LINE, backgroundColor:'rgba(0,0,0,.12)' },
+  reportControls: { gap:8, padding:8, borderRadius:18, borderWidth:1, borderColor:LINE, backgroundColor:themeColor('rgba(0,0,0,.12)', 'surface') },
   metricSwitch: { flexDirection: 'row', borderRadius:12, padding:3, gap:6 },
   metricOption: { flex:1, flexDirection:'row', justifyContent:'center', gap:7, paddingVertical:10, alignItems:'center', borderRadius:10, borderWidth:1, borderColor:'transparent' },
-  metricActive: { backgroundColor:'rgba(22,163,74,.13)', borderColor:'rgba(22,163,74,.45)' },
-  radarFrame: { width: '100%', alignItems: 'center', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(22,163,74,.45)', backgroundColor: CARD, paddingTop: 14, paddingBottom: 8 },
-  radarAreaHeader: { alignSelf:'stretch', flexDirection:'row', flexWrap:'wrap', gap:8, alignItems:'center', justifyContent:'space-between', marginHorizontal:14, paddingBottom:12, borderBottomWidth:1, borderBottomColor:'rgba(22,163,74,.2)' },
+  metricActive: { backgroundColor:themeColor('rgba(22,163,74,.13)', 'surface'), borderColor:themeColor('rgba(22,163,74,.45)', 'border') },
+  radarFrame: { width: '100%', alignItems: 'center', borderRadius: 18, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.45)', 'border'), backgroundColor: CARD, paddingTop: 14, paddingBottom: 8 },
+  radarAreaHeader: { alignSelf:'stretch', flexDirection:'row', flexWrap:'wrap', gap:8, alignItems:'center', justifyContent:'space-between', marginHorizontal:14, paddingBottom:12, borderBottomWidth:1, borderBottomColor:themeColor('rgba(22,163,74,.2)', 'border') },
   radarAreaTitle: {color:TEXT,fontSize:12,fontWeight:'800'},
-  radarUnit: {color:ACCENT,fontSize:11,fontWeight:'700',backgroundColor:'rgba(22,163,74,.12)',paddingHorizontal:9,paddingVertical:5,borderRadius:8},
-  metricTile: { flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 14, borderWidth: 1, borderColor: LINE, padding: 14, backgroundColor: 'rgba(22,163,74,.04)' },
+  radarUnit: {color:ACCENT,fontSize:11,fontWeight:'700',backgroundColor:themeColor('rgba(22,163,74,.12)', 'surface'),paddingHorizontal:9,paddingVertical:5,borderRadius:8},
+  metricTile: { flexDirection: 'row', alignItems: 'center', gap: 16, borderRadius: 14, borderWidth: 1, borderColor: LINE, padding: 14, backgroundColor: themeColor('rgba(22,163,74,.04)', 'surface') },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: themeColor('rgba(0,0,0,0.55)', 'surface'),
     justifyContent: 'center',
     alignItems: 'center',
     padding: 14,
@@ -1050,9 +1074,9 @@ const styles = StyleSheet.create({
   lockedInsightIcon: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   lockedInsightTitle: { flex: 1, fontSize: 14, fontWeight: '900' },
   lockedInsightText: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
-  lockedInsightButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: 'rgba(22,163,74,0.14)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  lockedInsightButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   lockedInsightButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
-  analysisState:{minHeight:180,alignItems:'center',justifyContent:'center',gap:13,padding:18,borderWidth:1,borderColor:LINE,borderRadius:16,backgroundColor:'rgba(255,255,255,.02)'},
+  analysisState:{minHeight:180,alignItems:'center',justifyContent:'center',gap:13,padding:18,borderWidth:1,borderColor:LINE,borderRadius:16,backgroundColor:themeColor('rgba(255,255,255,.02)', 'surface')},
   analysisStateText:{color:MUTED,fontSize:13,lineHeight:20,fontWeight:'600',textAlign:'center'},
   analysisRetry:{minHeight:42,borderWidth:1,borderColor:ACCENT,borderRadius:12,paddingHorizontal:20,alignItems:'center',justifyContent:'center'},
   analysisRetryText:{color:ACCENT,fontSize:12,fontWeight:'900'},
@@ -1066,7 +1090,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: themeColor('rgba(255,255,255,0.035)', 'surface'),
     paddingHorizontal: 7,
     paddingVertical: 4,
     flexDirection: 'row',
@@ -1095,14 +1119,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: 'rgba(255,255,255,0.052)',
+    backgroundColor: themeColor('rgba(255,255,255,0.052)', 'surface'),
     overflow: 'hidden',
   },
   pitchMapWrap: {
     overflow: 'hidden',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(167, 199, 172, 0.55)',
-    backgroundColor: '#092E19',
+    borderColor: themeColor('rgba(167, 199, 172, 0.55)', 'border'),
+    backgroundColor: themeColor('#092E19', 'surface'),
   },
+});
+  return {PITCH_COLORS, CARD, TEXT, MUTED, ACCENT, LINE, DANGER, shadows, styles, themeColor};
 });

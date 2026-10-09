@@ -1,20 +1,20 @@
-import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import {
-  BarChart3,
-  BookmarkPlus,
-  Check,
-  FileText,
-  Building2,
-  Globe2,
-  MapPin,
-  ShieldCheck,
-  Trophy,
-  UserCog,
-  UsersRound,
-} from "lucide-react-native";
 import { Team } from "@/services/teamPool";
-import { ACCENT, CARD, LINE, MUTED, TEXT } from "@/theme";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import {
+BarChart3,
+BookmarkPlus,
+Building2,
+Check,
+FileText,
+Globe2,
+MapPin,
+ShieldCheck,
+Trophy,
+UserCog,
+UsersRound,
+} from "lucide-react-native";
+import { Image,Pressable,StyleSheet,Text,View } from "react-native";
+
 export default function TeamProfileCard({
   team,
   tr,
@@ -32,6 +32,9 @@ export default function TeamProfileCard({
   onOpenReport?: () => void;
   saved?: boolean; saving?: boolean; reportBusy?: boolean;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT} = themed;
+
   return (
     <>
       {(onAnalyze || onSave || onOpenReport) && <View style={s.actions}>
@@ -83,7 +86,12 @@ export default function TeamProfileCard({
     </>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const s = StyleSheet.create({
   card: {
     backgroundColor: CARD,
     borderWidth: 1,
@@ -102,7 +110,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  eyebrow: { color: '#91A99B', fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
+  eyebrow: { color: themeColor('#91A99B', 'text'), fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
   label: { fontSize: 12, color: MUTED, fontWeight: "700", marginBottom: 6 },
   name: { fontSize: 23, fontWeight: "900", color: TEXT, marginBottom: 6 },
   actions: {flexDirection: 'row', gap: 6, marginBottom: 14},
@@ -114,7 +122,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: ACCENT,
     borderRadius: 12,
-    backgroundColor: "rgba(22,163,74,0.06)",
+    backgroundColor: themeColor("rgba(22,163,74,0.06)", 'surface'),
     paddingHorizontal: 6,
     paddingVertical: 9,
     flexDirection: "row",
@@ -134,7 +142,9 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,.025)",
+    backgroundColor: themeColor("rgba(255,255,255,.025)", 'surface'),
   },
   value: { fontSize: 14, color: TEXT, fontWeight: "800", marginTop: 8 },
+});
+  return {ACCENT, CARD, LINE, MUTED, TEXT, s, themeColor};
 });

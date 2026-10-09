@@ -1,17 +1,18 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Copy,HatGlasses,User } from 'lucide-react-native';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Pressable,
-  Modal,
-  TouchableWithoutFeedback,
+ActivityIndicator,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+TouchableWithoutFeedback,
+View,
 } from 'react-native';
-import { User, HatGlasses, Copy } from 'lucide-react-native';
-import { ACCENT, PANEL, MUTED, CARD, LINE } from '@/theme';
-import { useTranslation } from 'react-i18next';
+
 import * as Clipboard from 'expo-clipboard';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   role: 'user' | 'assistant';
@@ -33,6 +34,9 @@ function splitBulletContent(content: string) {
 }
 
 export default function MessageBubble({ role, content, pending }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, CARD, ACCENT, MUTED, themeColor} = themed;
+
   const isUser = role === 'user';
   const { t } = useTranslation();
   const bulletLines = !isUser && !pending ? splitBulletContent(content) : null;
@@ -101,7 +105,7 @@ export default function MessageBubble({ role, content, pending }: Props) {
               ))}
             </View>
           ) : (
-            <Text style={styles.text}>{content}</Text>
+            <Text style={[styles.text, isUser && {color: themeColor('white', 'onAccent')}]}>{content}</Text>
           )}
         </Pressable>
 
@@ -110,7 +114,7 @@ export default function MessageBubble({ role, content, pending }: Props) {
             style={[styles.avatar, { backgroundColor: ACCENT }]}
             accessibilityLabel={t('youAL', 'You')}
           >
-            <User size={18} color="white" />
+            <User size={18} color={themeColor("white", 'onAccent')} />
           </View>
         )}
       </View>
@@ -146,7 +150,11 @@ export default function MessageBubble({ role, content, pending }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, PANEL, MUTED, CARD, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   row: {
     paddingHorizontal: 12,
     marginVertical: 6,
@@ -187,7 +195,7 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    color: 'white',
+    color: themeColor('white', 'text'),
     fontSize: 15,
     lineHeight: 21,
     textAlign: 'left',
@@ -217,7 +225,7 @@ const styles = StyleSheet.create({
   },
 
   bulletText: {
-    color: 'white',
+    color: themeColor('white', 'text'),
     flexShrink: 1,
     flexGrow: 1,
     fontSize: 15,
@@ -249,7 +257,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     paddingVertical: 6,
-    shadowColor: '#000',
+    shadowColor: themeColor('#000', 'fixed'),
     shadowOpacity: 0.15,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -265,8 +273,10 @@ const styles = StyleSheet.create({
   },
 
   popupButtonText: {
-    color: 'white',
+    color: themeColor('white', 'text'),
     fontSize: 14,
     fontWeight: '700',
   },
+});
+  return {ACCENT, PANEL, MUTED, CARD, LINE, styles, themeColor};
 });

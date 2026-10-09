@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Platform, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Platform,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BG, PANEL, TEXT, ACCENT, MUTED, LINE } from '@/theme';
+
 import { TutorialPageGuide } from '@/components/Tutorial';
 
 const SHIFT_UP = 14;
@@ -12,6 +14,9 @@ const SHIFT_UP_ANDROID = 44;
 const isAndroid = Platform.OS === 'android';
 
 export default function ScoutWiseProScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
 
@@ -29,12 +34,7 @@ export default function ScoutWiseProScreen() {
         >
           <View style={styles.content}>
             <View style={styles.logoWrap}>
-              <Image
-                source={require('../../assets/scoutwise_logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-                accessibilityIgnoresInvertColors
-              />
+              <ScoutWiseBrandMark style={styles.logo} accessibilityIgnoresInvertColors/>
             </View>
 
             <View style={styles.titleWrap}>
@@ -124,6 +124,9 @@ export default function ScoutWiseProScreen() {
 }
 
 function Benefit({ text }: { text: string }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const { i18n } = useTranslation();
 
   const renderRich = () => {
@@ -188,7 +191,11 @@ function Benefit({ text }: { text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {BG, PANEL, TEXT, ACCENT, MUTED, LINE, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   container: {
     flex: 1,
@@ -308,7 +315,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   yearlyBadgeText: {
-    color: '#FFFFFF',
+    color: themeColor('#FFFFFF', 'text'),
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.2,
@@ -377,7 +384,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
     borderWidth: 1,
     borderColor: ACCENT,
   },
@@ -408,4 +415,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
+});
+  return {BG, PANEL, TEXT, ACCENT, MUTED, LINE, styles, themeColor};
 });

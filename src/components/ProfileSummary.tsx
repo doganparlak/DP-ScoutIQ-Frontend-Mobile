@@ -1,19 +1,21 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-native";
-import { useNavigation, type NavigationProp, useFocusEffect } from "@react-navigation/native";
-import { useTranslation } from "react-i18next";
-import {
-  Shirt,
-  Gem,
-  Goal,
-  ShieldCheck,
-  BookMarked,
-  GitCompareArrows,
-  FileText,
-} from "lucide-react-native";
 import { useMatchup } from "@/context/MatchupContext";
-import { matchPoolRequest, type Profile } from "@/services/api";
-import { PANEL, TEXT, ACCENT, FEATURE_COLORS } from "@/theme";
+import { matchPoolRequest,type Profile } from "@/services/api";
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useFocusEffect,useNavigation,type NavigationProp } from "@react-navigation/native";
+import {
+ArrowUpRight,
+BookMarked,
+FileText,
+Gem,
+GitCompareArrows,
+Goal,
+ShieldCheck,
+Shirt,
+} from "lucide-react-native";
+import { useCallback,useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Pressable,StyleSheet,Text,useWindowDimensions,View } from "react-native";
+
 
 import type { MainTabsParamList } from '@/types';
 
@@ -28,6 +30,9 @@ type Summary = {
   weeklyScorePredictions?: number;
 };
 export default function ProfileSummary({ profile, profileLoading }: { profile: Profile | null; profileLoading: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {ACCENT, FEATURE_COLORS, s, themeColor} = themed;
+
   const { i18n } = useTranslation();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const tr = i18n.language.startsWith("tr");
@@ -61,6 +66,8 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
       };
     }, []),
   );
+  const showGettingStarted = !loading && !!summary &&
+    summary.portfolioPlayers === 0 && summary.portfolioTeams === 0 && summary.portfolioMatches === 0;
   const count = (key: keyof Summary) =>
     loading
       ? "…"
@@ -89,7 +96,7 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
       value: `${rows.slice(0, mode).filter(Boolean).length}/${mode}`,
       route: "Matchup",
       Icon: GitCompareArrows,
-      color: "#B4A3D3",
+      color: themeColor("#B4A3D3", 'text'),
     },
     {
       label: tr ? "ScoutWise Pro Kredin" : "ScoutWise Pro Credits",
@@ -106,33 +113,38 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
       label: tr ? "Oyuncu Raporların" : "Your Player Reports",
       value: count("readyPlayerReports"), route: "Portfolio",
       Icon: FileText,
-      color: "#22D3EE",
+      color: themeColor("#22D3EE", 'text'),
     },
     {
-      label: tr ? "Maç\nÖnü/Sonu\nRaporların" : "Pre/Post-Match\nReports",
+      label: tr ? "Maç\nRaporların" : "Match\nReports",
       value: loading ? "…" : summary ? String(summary.readyPreMatchReports + summary.readyPostMatchReports) : "—",
-      route: "MatchPortfolio", Icon: FileText, color: "#22D3EE",
+      route: "MatchPortfolio", Icon: FileText, color: themeColor("#22D3EE", 'text'),
     },
-    {label: tr ? "Takım Raporların" : "Your Team Reports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: "#22D3EE"},
+    {label: tr ? "Takım Raporların" : "Your Team Reports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: themeColor("#22D3EE", 'text')},
   ];
   const availableWidth = gridWidth ?? Math.max(0, width - 32);
   const minimumCellWidth = 104 * Math.max(1, fontScale);
   const columns = availableWidth >= minimumCellWidth * 3 + 20 ? 3 : availableWidth >= minimumCellWidth * 2 + 10 ? 2 : 1;
-  const layoutKey = `${availableWidth}:${fontScale}:${i18n.language}:${columns}`;
+  const layoutKey = `${availableWidth}:${fontScale}:${i18n.language}:${columns}:${pills.map(pill => pill.label).join("|")}`;
   const cellHeight = Math.max(112, (contentSize.key === layoutKey ? contentSize.height : 0) + 24);
-  const pillRows = Array.from({ length: Math.ceil(pills.length / columns) }, (_, index) => pills.slice(index * columns, (index + 1) * columns));
+  const displayPills = pills.map(pill => ({
+    ...pill,
+    showExploreArrow: pill.value === '0' && ['Portfolio', 'TeamPortfolio', 'MatchPortfolio'].includes(pill.route),
+  }));
+  const pillRows = Array.from({ length: Math.ceil(displayPills.length / columns) }, (_, index) => displayPills.slice(index * columns, (index + 1) * columns));
   return (
     <View style={s.grid} onLayout={event => {
       const nextWidth = event.nativeEvent.layout.width;
       setGridWidth(current => current !== null && Math.abs(current - nextWidth) < .5 ? current : nextWidth);
     }}>
+      {showGettingStarted && <Text style={s.gettingStarted}>{tr ? 'Başlamak için bir bölüm seç.' : 'Choose a section to get started.'}</Text>}
       {pillRows.map((row, index) => <View key={index} style={s.pillRow}>
-      {row.map(({ label, value, Icon, color, route }) => (
+      {row.map(({ label, value, Icon, color, route, showExploreArrow }) => (
         <Pressable
           key={label}
           accessibilityRole="button"
           onPress={() => route === 'Chat' ? navigation.navigate('Chat', { screen: 'ProHome' }) : navigation.navigate(route)}
-          accessibilityLabel={`${label.replace(/\s+/g, ' ')}: ${value === '∞' ? (tr ? 'Sınırsız' : 'Unlimited') : value}`}
+          accessibilityLabel={`${label.replace(/\s+/g, ' ')}: ${showExploreArrow ? (tr ? 'Keşfetmek için aç' : 'Open to explore') : value === '∞' ? (tr ? 'Sınırsız' : 'Unlimited') : value}`}
           style={({pressed}) => [
             s.pill,
             pressed && {opacity:0.75},
@@ -152,7 +164,11 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
             <View style={[s.icon, { backgroundColor: `${color}16` }]}>
               <Icon size={19} color={color} />
             </View>
-            <Text style={[s.value, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} maxFontSizeMultiplier={1.5}>{value}</Text>
+            {showExploreArrow ? (
+              <View style={s.exploreArrow}><ArrowUpRight size={24} color={color} strokeWidth={1.75} /></View>
+            ) : (
+              <Text style={[s.value, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55} maxFontSizeMultiplier={1.5}>{value}</Text>
+            )}
           </View>
           <Text style={s.label}>{route === 'Chat' ? <>ScoutWise <Text style={{color, fontWeight: '800'}}>Pro</Text>{tr ? ' Kredin' : ' Credits'}</> : label}</Text>
           </View>
@@ -170,7 +186,12 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
     </View>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {PANEL, TEXT, MUTED, ACCENT, FEATURE_COLORS, themeColor} = colors;
+
+  const s = StyleSheet.create({
   grid: {
     marginHorizontal: 16,
     marginTop: 14,
@@ -203,6 +224,10 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   value: { fontSize: 24, fontWeight: "800", fontVariant: ["tabular-nums"], flex: 1, minWidth: 0, textAlign: "right", includeFontPadding: false },
-  label: { color: TEXT, fontSize: 12, lineHeight: 18, fontWeight: "600", minHeight: 54 },
-  error: { color: "#AEB7B0", fontSize: 12 },
+  exploreArrow: { flex: 1, alignItems: "flex-end", justifyContent: "center", opacity: 0.75 },
+  gettingStarted: { color: MUTED, fontSize: 12, lineHeight: 18 },
+  label: { color: TEXT, fontSize: 12, lineHeight: 18, fontWeight: "600", minHeight: 36 },
+  error: { color: themeColor("#AEB7B0", 'text'), fontSize: 12 },
+});
+  return {PANEL, TEXT, MUTED, ACCENT, FEATURE_COLORS, s, themeColor};
 });

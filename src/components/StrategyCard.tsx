@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
-import { Save, RotateCcw, ClipboardPenLine } from 'lucide-react-native';
-import { ACCENT, BG, MUTED, PANEL, LINE, shadows } from '@/theme';
-import { loadStrategy, saveStrategy } from '@/storage';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { ClipboardPenLine,RotateCcw,Save } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import { Pressable,StyleSheet,Text,TextInput,View } from 'react-native';
+
+import { loadStrategy,saveStrategy } from '@/storage';
 import { useTranslation } from 'react-i18next';
 
 const MIN_HEIGHT = 240;
@@ -25,6 +26,9 @@ export default function StrategyCard({
   textEditingDisabled = false,
   allowParentScrollThroughInput = false,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, shadows, ACCENT, MUTED, themeColor} = themed;
+
   const { t } = useTranslation();
 
   const [text, setText] = useState('');                 // empty => show placeholder
@@ -57,7 +61,6 @@ export default function StrategyCard({
       }
     })();
   }, [tutorialPresetText]);
-
 
 
   const placeholder =
@@ -133,7 +136,7 @@ export default function StrategyCard({
             accessibilityRole="button"
             accessibilityLabel={t('resetStrategy', 'Reset Strategy')}
           >
-            <RotateCcw size={18} color="white" />
+            <RotateCcw size={18} color={themeColor("white", 'text')} />
             <Text style={styles.btnText}>{t('resetStrategy', 'Reset Strategy')}</Text>
           </Pressable>
 
@@ -168,7 +171,7 @@ export default function StrategyCard({
             accessibilityRole="button"
             accessibilityLabel={t('resetStrategy', 'Reset Strategy')}
           >
-            <RotateCcw size={18} color="white" />
+            <RotateCcw size={18} color={themeColor("white", 'text')} />
             <Text style={styles.btnText}>{t('resetStrategy', 'Reset Strategy')}</Text>
           </Pressable>
         </View>
@@ -177,7 +180,11 @@ export default function StrategyCard({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, MUTED, PANEL, LINE, shadows, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   card: {
     backgroundColor: PANEL,
     borderWidth: 1,
@@ -192,7 +199,7 @@ const styles = StyleSheet.create({
   hint: { color: MUTED, marginTop: 6, marginBottom: 14, fontSize: 14, textAlign: 'center'},
 
   input: {
-    color: 'white',
+    color: themeColor('white', 'text'),
     backgroundColor: BG,
     borderColor: LINE,
     borderWidth: 1.5,
@@ -232,11 +239,13 @@ const styles = StyleSheet.create({
   btnPrimary: {
     borderWidth: 1,
     borderColor: ACCENT,
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
   },
   btnOutline: { borderWidth: 1.5, borderColor: LINE, backgroundColor: 'transparent' },
-  btnText: { color: 'white', fontWeight: '800', marginLeft: 8 },
+  btnText: { color: themeColor('white', 'text'), fontWeight: '800', marginLeft: 8 },
   btnTextAccent: { color: ACCENT },
   pressed: { opacity: 0.9 },
   btnDisabled: { opacity: 0.45 },
+});
+  return {ACCENT, BG, MUTED, PANEL, LINE, shadows, styles, themeColor};
 });

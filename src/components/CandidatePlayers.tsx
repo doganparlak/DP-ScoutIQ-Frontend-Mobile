@@ -1,22 +1,23 @@
-import { FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING } from '@/theme';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+
+import { ChevronDown,Shirt,X } from 'lucide-react-native';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, X, Shirt } from 'lucide-react-native';
+import {
+ActivityIndicator,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+useWindowDimensions,
+View,
+} from 'react-native';
 
 import { TutorialHint } from '@/components/Tutorial';
 import { rolePickerCode } from '@/services/api';
-import { TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL } from '@/theme';
+
 import type { PlayerData } from '@/types';
 
 type PlayerPoolComponentTheme = {
@@ -118,6 +119,9 @@ export default function CandidatePlayers({
   theme,
   worldCupMode = false,
 }: Props) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, FRAME_HEADING, MUTED, DANGER_DARK, DANGER, themeColor} = themed;
+
   const { t } = useTranslation();
   const { width: windowWidth, fontScale } = useWindowDimensions();
   const androidCompact = Platform.OS === 'android' && (windowWidth < 390 || fontScale > 1.12);
@@ -202,7 +206,7 @@ export default function CandidatePlayers({
                   styles.rolePill,
                   worldCupMode && styles.rolePillWorldCup,
                   activeTheme && { backgroundColor: activeTheme.accentSoft, borderColor: activeTheme.line },
-                  isActive && { backgroundColor: 'rgba(36, 245, 166, 0.20)', borderColor: activeAccent },
+                  isActive && { backgroundColor: themeColor('rgba(36, 245, 166, 0.20)', 'surface'), borderColor: activeAccent },
                 ]}
               >
                 <Text
@@ -234,7 +238,7 @@ export default function CandidatePlayers({
               style={({ pressed }) => [
                 styles.row,
                 clickableCards && styles.clickableRow,
-                clickableCards && activeTheme && { borderColor: activeTheme.line, backgroundColor: 'rgba(22, 163, 74, 0.06)' },
+                clickableCards && activeTheme && { borderColor: activeTheme.line, backgroundColor: themeColor('rgba(22, 163, 74, 0.06)', 'surface') },
                 isActive && styles.selectedClickableRow,
                 isActive && Platform.OS === 'android' && styles.selectedClickableRowAndroid,
                 isActive && (activeTheme ? { backgroundColor: activeTheme.activeRow, borderColor: activeTheme.accent } : styles.dataRowActive),
@@ -257,7 +261,7 @@ export default function CandidatePlayers({
         </View>
       );
     });
-  }, [androidCompact, androidTextScale, t, theme, rowsLocked, worldCupMode]);
+  }, [androidCompact, androidTextScale, t, theme, rowsLocked, worldCupMode, themed]);
 
   const headerTextProps = androidCompact
     ? { adjustsFontSizeToFit: true, minimumFontScale: 0.58, numberOfLines: 1 as const, maxFontSizeMultiplier: 1.12 }
@@ -312,7 +316,7 @@ export default function CandidatePlayers({
           <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
 
           <View style={styles.tableHeaderWrap}>
-            <View style={[styles.row, styles.clickableHeaderRow, theme && { borderColor: theme.line, backgroundColor: 'rgba(22, 163, 74, 0.09)' }]}>
+            <View style={[styles.row, styles.clickableHeaderRow, theme && { borderColor: theme.line, backgroundColor: themeColor('rgba(22, 163, 74, 0.09)', 'surface') }]}>
               <View style={[styles.cell, { flex: COL.index }]}>
                 <Text {...headerTextProps} style={[styles.thText, androidCompact && styles.thTextCompact, styles.indexCell]}>#</Text>
               </View>
@@ -445,7 +449,11 @@ export default function CandidatePlayers({
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   panel: {
     borderRadius: 20,
     borderWidth: 1,
@@ -527,8 +535,8 @@ const styles = StyleSheet.create({
     minHeight: ROW_HEIGHT + 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.16)',
-    backgroundColor: 'rgba(22, 163, 74, 0.055)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.16)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.055)', 'surface'),
     paddingHorizontal: 4,
     overflow: 'hidden',
   },
@@ -536,19 +544,19 @@ const styles = StyleSheet.create({
     minHeight: ROW_HEIGHT + 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.22)',
-    backgroundColor: 'rgba(22, 163, 74, 0.09)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.09)', 'surface'),
     paddingHorizontal: 4,
     overflow: 'hidden',
   },
   clickableRowPressed: {
     transform: [{ scale: 0.992 }],
-    backgroundColor: 'rgba(22, 163, 74, 0.12)',
-    borderColor: 'rgba(36, 245, 166, 0.42)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
+    borderColor: themeColor('rgba(36, 245, 166, 0.42)', 'border'),
   },
   selectedClickableRow: {
-    backgroundColor: 'rgba(36, 245, 166, 0.16)',
-    borderColor: 'rgba(36, 245, 166, 0.72)',
+    backgroundColor: themeColor('rgba(36, 245, 166, 0.16)', 'surface'),
+    borderColor: themeColor('rgba(36, 245, 166, 0.72)', 'border'),
     shadowColor: ACCENT,
     shadowOpacity: 0.18,
     shadowRadius: 8,
@@ -560,7 +568,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   selectedStaticRow: {
-    backgroundColor: 'rgba(36, 245, 166, 0.13)',
+    backgroundColor: themeColor('rgba(36, 245, 166, 0.13)', 'surface'),
   },
   clickableRowGap: { height: 8 },
   clickableIndexText: {
@@ -598,8 +606,8 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(36, 245, 166, 0.22)',
-    backgroundColor: 'rgba(22, 163, 74, 0.13)',
+    borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.13)', 'surface'),
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 7,
@@ -623,8 +631,8 @@ const styles = StyleSheet.create({
   indexCell: { textAlign: 'center' },
   vsep: { width: 1, alignSelf: 'stretch', backgroundColor: LINE, opacity: 0.9 },
   dataRowActive: {
-    backgroundColor: 'rgba(36, 245, 166, 0.16)',
-    borderColor: 'rgba(36, 245, 166, 0.72)',
+    backgroundColor: themeColor('rgba(36, 245, 166, 0.16)', 'surface'),
+    borderColor: themeColor('rgba(36, 245, 166, 0.72)', 'border'),
   },
   emptyRow: {
     minHeight: ROW_HEIGHT * 2,
@@ -640,7 +648,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: themeColor('rgba(0,0,0,0.55)', 'surface'),
     justifyContent: 'center',
     padding: 18,
   },
@@ -680,4 +688,6 @@ const styles = StyleSheet.create({
   optionTextActive: {
     color: ACCENT,
   },
+});
+  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, TEXT, MUTED, LINE, ACCENT, CARD, DANGER, DANGER_DARK, PANEL, styles, themeColor};
 });

@@ -1,19 +1,20 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { portfolioViewportHeight } from "@/utils/portfolioLayout";
+import { BookmarkX } from "lucide-react-native";
 import React from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+ActivityIndicator,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+useWindowDimensions,
+View,
 } from "react-native";
-import { BookmarkX } from "lucide-react-native";
-import { ACCENT, DANGER, LINE, MUTED, TEXT } from "@/theme";
-import { MatchFixture, matchDateOnly, matchScore } from "@/services/matchPool";
-import { shortCountry, shortTeam } from "@/utils/seasonTableLabels";
+
+import { matchDateOnly,MatchFixture,matchScore } from "@/services/matchPool";
 import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
+import { shortCountry,shortTeam } from "@/utils/seasonTableLabels";
 export default function MatchPortfolioTable({
   rows,
   selectedId,
@@ -31,6 +32,9 @@ export default function MatchPortfolioTable({
   onSelect: (id: number) => void;
   onDelete: (f: MatchFixture) => void;
 }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, LINE, MUTED, ACCENT, DANGER} = themed;
+
   const { height } = useWindowDimensions();
   const flex = [1.5, 0.55, 0.6, 0.9, 0.65];
   const cells = (values: string[], header = false) => (
@@ -131,23 +135,28 @@ export default function MatchPortfolioTable({
     </View>
   );
 }
-const s = StyleSheet.create({
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, DANGER, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const s = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
     minHeight: 52,
     borderWidth: 1,
-    borderColor: "rgba(36,245,166,.16)",
-    backgroundColor: "rgba(22,163,74,.055)",
+    borderColor: themeColor("rgba(36,245,166,.16)", 'border'),
+    backgroundColor: themeColor("rgba(22,163,74,.055)", 'surface'),
     borderRadius: 14,
     paddingHorizontal: 4,
     overflow: "hidden",
   },
   header: {
-    borderColor: "rgba(36,245,166,.22)",
-    backgroundColor: "rgba(22,163,74,.09)",
+    borderColor: themeColor("rgba(36,245,166,.22)", 'border'),
+    backgroundColor: themeColor("rgba(22,163,74,.09)", 'surface'),
   },
-  selected: { borderColor: ACCENT, backgroundColor: "rgba(22,163,74,.14)" },
+  selected: { borderColor: ACCENT, backgroundColor: themeColor("rgba(22,163,74,.14)", 'surface') },
   cell: {
     minWidth: 0,
     paddingVertical: 10,
@@ -160,4 +169,6 @@ const s = StyleSheet.create({
   separator: { width: 1, alignSelf: "stretch", backgroundColor: LINE },
   deleteCell: { width: 26, alignItems: "center", justifyContent: "center" },
   empty: { textAlign: "center", padding: 16, color: MUTED },
+});
+  return {ACCENT, DANGER, LINE, MUTED, TEXT, s, themeColor};
 });

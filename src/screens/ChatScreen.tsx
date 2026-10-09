@@ -1,36 +1,37 @@
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/screens/ChatScreen.tsx
 import ChatAccessModal from '@/components/ChatAccessModal';
-import { canUseChat, isChatCreditPlan } from '@/utils/chatAccess';
+import ChatInput from '@/components/ChatInput';
+import ChatVisualsBlock from '@/components/ChatVisualsBlock';
+import Header from '@/components/Header';
+import MessageBubble from '@/components/MessageBubble';
+import ProDirectPlayerSearch from '@/components/ProDirectPlayerSearch';
+import ProWorkspaceWelcome,{ type ProWorkspaceMode } from '@/components/ProWorkspaceWelcome';
+import { ProGuidedScrollView,TutorialHint,TutorialPageGuide,useProPageGuide,useTutorial } from '@/components/Tutorial';
+import { canUseChat,isChatCreditPlan } from '@/utils/chatAccess';
+import { useFocusEffect,useNavigation } from '@react-navigation/native';
+import { LayoutGrid,RotateCcw } from 'lucide-react-native';
 import * as React from 'react';
 import {
-  View,
-  StyleSheet,
-  FlatList,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  Text,
-  KeyboardAvoidingView,
-  Platform,
-  AppState,
-  AppStateStatus,
-  Keyboard,
+ActivityIndicator,
+Alert,
+AppState,
+AppStateStatus,
+FlatList,
+Keyboard,
+KeyboardAvoidingView,
+Platform,
+StyleSheet,
+Text,
+TouchableOpacity,
+View
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Header from '@/components/Header';
-import ChatInput from '@/components/ChatInput';
-import ProDirectPlayerSearch from '@/components/ProDirectPlayerSearch';
-import MessageBubble from '@/components/MessageBubble';
-import ProWorkspaceWelcome, {type ProWorkspaceMode} from '@/components/ProWorkspaceWelcome';
-import {LayoutGrid,RotateCcw} from 'lucide-react-native';
-import ChatVisualsBlock from '@/components/ChatVisualsBlock';
-import { ProGuidedScrollView, useProPageGuide, TutorialHint, TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 
-import { getMe, healthcheck, sendChat, resetSession, type Profile } from '@/services/api';
-import { ACCENT, BG, PANEL, TEXT, MUTED } from '@/theme';
-import { getSessionId, loadHistory, saveHistory, loadStrategy } from '@/storage';
-import type { ChatMessage, PlayerData } from '@/types';
+import { getMe,healthcheck,resetSession,sendChat,type Profile } from '@/services/api';
+
+import { getSessionId,loadHistory,loadStrategy,saveHistory } from '@/storage';
+import type { ChatMessage,PlayerData } from '@/types';
 import { useTranslation } from 'react-i18next';
 
 
@@ -97,19 +98,29 @@ function hasPitchMapData(player: PlayerData) {
 }
 
 export default function ChatScreen() {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, PANEL, TEXT, MUTED} = themed;
+
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const tutorial = useTutorial();
   const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
   const [profile, setProfile] = useState<Profile | null>(null);
+  const profileRequest = useRef<Promise<Profile> | null>(null);
+  const openingModeRef = useRef(false);
+  const [openingMode, setOpeningMode] = useState(false);
+  const unlimitedProCredits = !!profile && (profile.plan === 'Pro Monthly' || profile.plan === 'Pro Yearly') &&
+    !!profile.subscriptionEndAt && new Date(profile.subscriptionEndAt).getTime() > Date.now();
   const [accessModal, setAccessModal] = useState<'tutorial' | 'exhausted' | null>(null);
   useFocusEffect(React.useCallback(() => {
     let active = true;
-    getMe().then(me => {
-      if (!active) return;
-      setProfile(me);
-
-    }).catch(() => {});
+    const request = getMe();
+    profileRequest.current = request;
+    request.then(me => {
+      if (active) setProfile(me);
+    }).catch(() => {}).finally(() => {
+      if (profileRequest.current === request) profileRequest.current = null;
+    });
     return () => { active = false; };
   }, [navigation, tutorial.active]));
   const [menuOpen,setMenuOpen]=useState(true);
@@ -521,15 +532,33 @@ export default function ChatScreen() {
 
   function openMenu(){Keyboard.dismiss();setMenuOpen(true);}
   function resumeWorkspace(){restoreOffset.current=listOffset.current;setMenuOpen(false);}
-  function selectMode(mode:ProWorkspaceMode){
-    if (!workspaceReady || resetting || sending || directBusyRef.current) return;
-    if (!tutorial.active && !profile) return;
-    directOpened.current = sessionId;
-    setActiveMode(mode);resumeWorkspace();
-    if (!tutorial.active && !profile?.consent) navigation.navigate('LegacyStrategy');
+  async function selectMode(mode:ProWorkspaceMode){
+    if (!workspaceReady || resetting || sending || directBusyRef.current || openingModeRef.current) return;
+    openingModeRef.current = true;
+    try {
+      let currentProfile = profile;
+      if (!tutorial.active && !currentProfile) {
+        setOpeningMode(true);
+        // Reuse the focus request instead of dropping the user's first tap.
+        currentProfile = await (profileRequest.current ?? getMe());
+        if (!navigation.isFocused()) return;
+        setProfile(currentProfile);
+      }
+      directOpened.current = sessionId;
+      setActiveMode(mode);resumeWorkspace();
+      if (!tutorial.active && !currentProfile?.consent) navigation.navigate('LegacyStrategy');
+    } catch {
+      if (navigation.isFocused()) Alert.alert(
+        t('error', 'Error'),
+        i18n.language.startsWith('tr') ? 'Hesap bilgileri yüklenemedi. Lütfen yeniden dene.' : 'Could not load your account. Please try again.',
+      );
+    } finally {
+      openingModeRef.current = false;
+      setOpeningMode(false);
+    }
   }
   async function startNewWorkspace(){
-    if(resetLock.current||sendingRef.current||directBusyRef.current||!workspaceReady)return;
+    if(resetLock.current||sendingRef.current||directBusyRef.current||openingModeRef.current||!workspaceReady)return;
     resetLock.current=true;setResetting(true);Keyboard.dismiss();
     const previous=sessionId;
     try{
@@ -581,10 +610,17 @@ export default function ChatScreen() {
         <Header />
 
         <View style={styles.toolbar}>
-          {!menuOpen&&<TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr')?'Menüye Dön':'Back to Menu'} onPress={openMenu} style={styles.workspaceButton}><LayoutGrid size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{i18n.language.startsWith('tr')?'Menü':'Menu'}</Text></TouchableOpacity>}
-          <TouchableOpacity onPress={()=>void startNewWorkspace()} disabled={sending||directBusy||resetting||!workspaceReady||isScoutWiseTutorial} style={[styles.workspaceButton,(sending||directBusy||resetting||!workspaceReady||isScoutWiseTutorial)&&styles.toolbarBtnDisabled]} accessibilityRole="button" accessibilityLabel={t('newWorkspace','New Workspace')}><RotateCcw size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{t('newWorkspace','New Workspace')}</Text></TouchableOpacity>
+          {!menuOpen&&<View style={styles.toolbarCell}><TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr')?'Menüye Dön':'Back to Menu'} onPress={openMenu} style={styles.workspaceButton}><LayoutGrid size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{i18n.language.startsWith('tr')?'Menü':'Menu'}</Text></TouchableOpacity></View>}
+          <View style={styles.toolbarCell}><TouchableOpacity onPress={()=>void startNewWorkspace()} disabled={sending||directBusy||resetting||openingMode||!workspaceReady||isScoutWiseTutorial} style={[styles.workspaceButton,(sending||directBusy||resetting||openingMode||!workspaceReady||isScoutWiseTutorial)&&styles.toolbarBtnDisabled]} accessibilityRole="button" accessibilityLabel={t('newWorkspace','New Workspace')}><RotateCcw size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{t('newWorkspace','New Workspace')}</Text></TouchableOpacity></View>
+          {!tutorial.active && profile && (
+            <View style={styles.toolbarCell}><View style={[styles.workspaceButton, styles.creditBadge]}>
+              <Text style={styles.creditText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>
+                {i18n.language.startsWith('tr') ? 'Pro Kredin' : 'Pro Credits'}: {unlimitedProCredits ? '∞' : Math.max(0, profile.freeChatMessagesRemaining ?? 0)}
+              </Text>
+            </View></View>
+          )}
         </View>
-        {!tutorial.active&&profile&&isChatCreditPlan(profile.plan)&&<View style={{alignItems:'flex-end',paddingHorizontal:16,paddingBottom:8}}><View style={styles.creditBadge}><Text style={styles.creditText}>{i18n.language.startsWith('tr')?'Kalan Pro deneme hakkı':'Pro trial credits remaining'}: {profile.freeChatMessagesRemaining??0}/5</Text></View></View>}
+
 
         <ChatAccessModal visible={accessModal !== null} tutorial={accessModal === 'tutorial'} onClose={() => setAccessModal(null)} onAction={() => {
           const preview = accessModal === 'tutorial';
@@ -593,7 +629,7 @@ export default function ChatScreen() {
           else { navigation.getParent()?.navigate('Profile', { screen: 'ManagePlan' }); }
         }} />
         {directOpened.current === sessionId && !!sessionId && <View style={{flex: !menuOpen && (activeMode === 'direct'||activeMode === 'discovery') ? 1 : 0, display: !menuOpen && (activeMode === 'direct'||activeMode === 'discovery') ? 'flex' : 'none'}}><ProDirectPlayerSearch onGuidePageChange={setProChildGuidePage} trial={!!profile&&isChatCreditPlan(profile.plan)} mode={activeMode==='discovery'?'discovery':'direct'} key={sessionId} sessionId={sessionId} strategy={strategy} onEditStrategy={() => navigation.navigate('LegacyStrategy')} onAccessRequired={() => setAccessModal('exhausted')} onBusyChange={busy => {directBusyRef.current = busy; setDirectBusy(busy);}} onCreditsChanged={() => {void getMe().then(setProfile).catch(() => {});}} /></View>}
-        {menuOpen?<ProGuidedScrollView style={{flex:1}} contentContainerStyle={{padding:16,paddingBottom:32}} keyboardShouldPersistTaps="handled"><ProWorkspaceWelcome trial={!!profile&&isChatCreditPlan(profile.plan)} disabled={!workspaceReady||resetting||sending||directBusy} onSelect={selectMode} onResume={activeMode||messages.length||inputText?resumeWorkspace:undefined}/>{!tutorial.active&&profile&&!canUseChat(profile)&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('ProPlans')} style={{padding:16,alignItems:'center'}}><Text style={{color:ACCENT,fontWeight:'800'}}>{i18n.language.startsWith('tr')?'Pro Planlarını İncele':'Explore Pro Plans'}</Text></TouchableOpacity>}</ProGuidedScrollView>:(activeMode === 'direct'||activeMode === 'discovery') ? null : <>
+        {menuOpen?<ProGuidedScrollView style={{flex:1}} contentContainerStyle={{padding:16,paddingBottom:32}} keyboardShouldPersistTaps="handled"><ProWorkspaceWelcome trial={!!profile&&isChatCreditPlan(profile.plan)} disabled={!workspaceReady||resetting||sending||directBusy||openingMode} onSelect={mode=>void selectMode(mode)} onResume={activeMode||messages.length||inputText?resumeWorkspace:undefined}/>{openingMode&&<View accessibilityLiveRegion="polite" style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,padding:12}}><ActivityIndicator size="small" color={ACCENT}/><Text style={{color:MUTED}}>{i18n.language.startsWith('tr')?'Açılıyor…':'Opening…'}</Text></View>}{!tutorial.active&&profile&&!canUseChat(profile)&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('ProPlans')} style={{padding:16,alignItems:'center'}}><Text style={{color:ACCENT,fontWeight:'800'}}>{i18n.language.startsWith('tr')?'Pro Planlarını İncele':'Explore Pro Plans'}</Text></TouchableOpacity>}</ProGuidedScrollView>:(activeMode === 'direct'||activeMode === 'discovery') ? null : <>
         <FlatList
           ref={flatRef}
           data={messages}
@@ -665,40 +701,33 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, BG, PANEL, TEXT, MUTED, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: BG },
   toolbar: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: BG,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
     gap:8,
   },
+  toolbarCell: { flex: 1, flexBasis: 0, minWidth: 0, minHeight: 46 },
   workspaceButton:{flex:1,minWidth:0,minHeight:46,borderWidth:1,borderColor:ACCENT,borderRadius:12,paddingHorizontal:6,paddingVertical:8,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},
   workspaceButtonText:{color:ACCENT,fontSize:12,lineHeight:17,fontWeight:'800',flexShrink:1,textAlign:'center'},
-  creditSlot: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
   creditBadge: {
-    maxWidth: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    backgroundColor: 'rgba(36,245,166,0.10)',
+    borderColor: themeColor('rgba(36,245,166,0.30)', 'border'),
+    backgroundColor: themeColor('rgba(36,245,166,0.08)', 'surface'),
   },
   creditText: {
     color: ACCENT,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '800',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
@@ -737,4 +766,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 14,
   },
+});
+  return {ACCENT, BG, PANEL, TEXT, MUTED, styles, themeColor};
 });

@@ -4,7 +4,7 @@
     "slug": "dp-scoutiq",
     "version": "2.0.3",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "dpscoutiq",
     "icon": "./assets/scoutwise_logo_green.png",
     "ios": {

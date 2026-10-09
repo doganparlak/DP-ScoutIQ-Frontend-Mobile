@@ -1,19 +1,20 @@
 import { reportScopeMatches } from '@/services/reportAccess';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Activity,ArrowRightLeft,BadgeInfo,CalendarDays,ChartNoAxesCombined,ChevronLeft,ChevronRight,CloudSun,Globe,Layers,MapPin,Shield,Trophy,UserRound,Users,X } from 'lucide-react-native';
+import { useEffect,useMemo,useRef,useState } from 'react';
+import { FlatList,Image,Modal,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Activity, ArrowRightLeft, BadgeInfo, CalendarDays, ChartNoAxesCombined, ChevronLeft, ChevronRight, CloudSun, Globe, Layers, MapPin, Shield, Trophy, UserRound, Users, X } from 'lucide-react-native';
-import { ACCENT, CARD, DANGER, LINE, MUTED, TEXT } from '@/theme';
-import { ensureSavedPostMatchSection, openSavedPostMatchReport, pollSavedPostMatchReport, type SavedPostMatchReport, type MatchFixture, type PostMatchCardData } from '@/services/matchPool';
+
+import { getMe,type Plan } from '@/services/api';
+import { ensureSavedPostMatchSection,openSavedPostMatchReport,pollSavedPostMatchReport,type MatchFixture,type PostMatchCardData,type SavedPostMatchReport } from '@/services/matchPool';
 import ActionSpinner from './ActionSpinner';
 import MatchReportLineups from './MatchReportLineups';
 import MatchReportMomentum from './MatchReportMomentum';
-import MatchReportTimeline from './MatchReportTimeline';
-import MatchReportTeamComparison from './MatchReportTeamComparison';
+import MatchReportPlayerAnalysis from './MatchReportPlayerAnalysis';
 import MatchReportPlayerPerspectives from './MatchReportPlayerPerspectives';
 import MatchReportTeamAnalysis from './MatchReportTeamAnalysis';
-import MatchReportPlayerAnalysis from './MatchReportPlayerAnalysis';
-import {getMe,type Plan} from '@/services/api';
+import MatchReportTeamComparison from './MatchReportTeamComparison';
+import MatchReportTimeline from './MatchReportTimeline';
 
 const reportSections = [
   { tr: 'Maç Kartı', en: 'Match Card', Icon: BadgeInfo },
@@ -50,19 +51,25 @@ function statusLabel(state: PostMatchCardData['state'], tr: boolean) {
   return raw;
 }
 function Team({ team, away }: { team?: PostMatchCardData['teams'][number]; away?: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT, themeColor} = themed;
+
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [team?.image_url]);
   return <View style={s.team}>
     <View style={s.crest}>
       {team?.image_url && !failed ? <Image source={{ uri: team.image_url }} resizeMode="contain" style={s.image} onError={() => setFailed(true)} />
-        : <Shield size={40} color={away ? '#38BDF8' : ACCENT} />}
+        : <Shield size={40} color={away ? themeColor('#38BDF8', 'text') : ACCENT} />}
     </View>
     <Text style={s.teamName}>{team?.name || '—'}</Text>
     {!!team?.coach_name && <Text style={s.coach}>{team.coach_name}</Text>}
-    {!!team?.formation && <Text style={[s.formation, away && { color: '#38BDF8' }]}>{team.formation}</Text>}
+    {!!team?.formation && <Text style={[s.formation, away && { color: themeColor('#38BDF8', 'text') }]}>{team.formation}</Text>}
   </View>;
 }
 export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardData; tr: boolean; preMatch?: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, ACCENT} = themed;
+
   const home = data.teams.find(team => team.location === 'home') || data.teams[0];
   const away = data.teams.find(team => team.location === 'away') || data.teams[1];
   const goals = (id?: number) => data.scores.find(score => score.description === 'CURRENT' && Number(score.participant_id) === id)?.score?.goals ?? '—';
@@ -120,6 +127,9 @@ export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardD
 }
 
 export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fixture, tr }: { visible: boolean; onClose: () => void; onOpenPlans: () => void; fixture: MatchFixture; tr: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, DANGER, ACCENT, TEXT} = themed;
+
   const insets = useSafeAreaInsets();
   const [plan,setPlan]=useState<Plan>('Free');
   const [page, setPage] = useState(0);
@@ -215,13 +225,18 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
     </View>
   </Modal>;
 }
-const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,.55)', justifyContent: 'center', alignItems: 'center', padding: 14 },
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, themeColor} = colors;
+
+  const s = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: themeColor('rgba(0,0,0,.55)', 'surface'), justifyContent: 'center', alignItems: 'center', padding: 14 },
   modal: { width: '100%', maxWidth: 620, height: '88%', borderRadius: 18, borderWidth: 1, borderColor: LINE, backgroundColor: CARD, padding: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 13, borderBottomWidth: 1, borderBottomColor: LINE },
   headerText: { flex: 1, gap: 4 }, headerTitle: { color: TEXT, fontSize: 16, fontWeight: '800' }, sectionTitle: { color: ACCENT, fontSize: 13, fontWeight: '700' },
   pager: { flex: 1, marginVertical: 12 }, pageContent: { flexGrow: 1, paddingBottom: 4 }, content: { gap: 12 },
-  hero: { borderWidth: 1, borderColor: `${ACCENT}90`, borderRadius: 20, backgroundColor: 'rgba(22,163,74,.06)', padding: 13 },
+  hero: { borderWidth: 1, borderColor: `${ACCENT}90`, borderRadius: 20, backgroundColor: themeColor('rgba(22,163,74,.06)', 'surface'), padding: 13 },
   rule: { height: 3, width: '100%', backgroundColor: ACCENT, borderRadius: 3, marginBottom: 16 },
   eyebrow: { textAlign: 'center', color: ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
   subtitle: { color: MUTED, textAlign: 'center', fontSize: 12, lineHeight: 19, marginTop: 6 },
@@ -229,8 +244,8 @@ const s = StyleSheet.create({
   team: { flex: 1, minWidth: 0, alignItems: 'center', gap: 7 }, crest: { height: 68, width: '100%', alignItems: 'center', justifyContent: 'center' }, image: { width: '100%', maxWidth: 76, height: 68 },
   teamName: { textAlign: 'center', color: TEXT, fontSize: 14, fontWeight: '800' }, coach: { color: MUTED, fontSize: 10, textAlign: 'center' }, formation: { color: ACCENT, fontWeight: '700', fontSize: 12 },
   scoreColumn: { width: '28%', alignItems: 'center', gap: 8 }, matchday: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1 }, vs: { color: ACCENT, fontSize: 19, fontWeight: '900', fontStyle: 'italic' },
-  scoreBox: { width: '100%', borderWidth: 1, borderColor: ACCENT, borderRadius: 12, backgroundColor: 'rgba(0,0,0,.22)', paddingVertical: 10, paddingHorizontal: 5 }, score: { color: TEXT, fontSize: 25, fontWeight: '900', textAlign: 'center' }, status: { color: MUTED, fontSize: 10, textAlign: 'center', fontWeight: '700' },
-  facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, fact: { flexBasis: '45%', flexGrow: 1, minWidth: 0, borderWidth: 1, borderColor: `${ACCENT}40`, borderRadius: 14, padding: 12, gap: 8, backgroundColor: 'rgba(255,255,255,.025)' }, wideFact: { flexBasis: '100%' },
+  scoreBox: { width: '100%', borderWidth: 1, borderColor: ACCENT, borderRadius: 12, backgroundColor: themeColor('rgba(0,0,0,.22)', 'surface'), paddingVertical: 10, paddingHorizontal: 5 }, score: { color: TEXT, fontSize: 25, fontWeight: '900', textAlign: 'center' }, status: { color: MUTED, fontSize: 10, textAlign: 'center', fontWeight: '700' },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, fact: { flexBasis: '45%', flexGrow: 1, minWidth: 0, borderWidth: 1, borderColor: `${ACCENT}40`, borderRadius: 14, padding: 12, gap: 8, backgroundColor: themeColor('rgba(255,255,255,.025)', 'surface') }, wideFact: { flexBasis: '100%' },
   factHeading: { flexDirection: 'row', gap: 7, alignItems: 'center' }, factLabel: { color: MUTED, fontSize: 11, fontWeight: '600', flex: 1 }, factValue: { color: TEXT, fontSize: 13, fontWeight: '700', lineHeight: 19 },
   brand: { borderWidth: 1, borderColor: `${ACCENT}60`, borderRadius: 18, padding: 20, alignItems: 'center', gap: 8 }, prepared: { color: MUTED, letterSpacing: 2, fontWeight: '700', fontSize: 9 }, brandName: { color: TEXT, fontSize: 25, fontWeight: '900' },
   center: { flex: 1, minHeight: 250, alignItems: 'center', justifyContent: 'center', gap: 14 }, retry: { borderWidth: 1, borderColor: ACCENT, borderRadius: 12, paddingHorizontal: 22, paddingVertical: 12 },
@@ -238,4 +253,7 @@ const s = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: LINE, paddingTop: 12 }, nav: { borderWidth: 1, borderColor: LINE, padding: 10, borderRadius: 14 }, disabled: { opacity: .3 }, dots: { flexDirection: 'row', flexShrink: 1 }, dotTarget: { paddingVertical: 14, paddingHorizontal: 5 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: LINE },
 });
 
-export const reportModalStyles = s;
+  const reportModalStyles = s;
+  return {ACCENT, CARD, DANGER, LINE, MUTED, TEXT, s, reportModalStyles, themeColor};
+});
+export const getThemed_reportModalStyles = (colors: ThemeColors) => getModuleTheme(colors).reportModalStyles;

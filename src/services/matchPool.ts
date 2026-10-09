@@ -197,7 +197,7 @@ export const fixtureDate = (value: string, tr: boolean) =>
     minute: "2-digit",
   });
 
-/** Fill missing dates on search exactly as the enterprise match workspace does. */
+/** Use a 100-day window with two upcoming weeks when neither date is selected. */
 export function effectiveMatchFilters(
   filters: MatchFilters,
   now = new Date(),
@@ -213,10 +213,10 @@ export function effectiveMatchFilters(
   const today = localIso(now);
   return {
     ...filters,
-    startDate: filters.startDate || shift(filters.endDate || today, -100),
+    startDate: filters.startDate || shift(filters.endDate || shift(today, 14), -100),
     endDate:
       filters.endDate ||
-      (filters.startDate ? shift(filters.startDate, 100) : today),
+      (filters.startDate ? shift(filters.startDate, 100) : shift(today, 14)),
   };
 }
 

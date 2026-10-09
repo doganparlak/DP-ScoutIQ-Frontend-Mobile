@@ -1,16 +1,20 @@
-import React from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View, ScrollView, type ScrollViewProps } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUp, BarChart3, BookMarked, BookOpenCheck,
-  CalendarSearch, ClipboardList, ClipboardPenLine, Compass, Database,
-  GitCompareArrows, LayoutDashboard, MessageSquareText, Search, Shield, ShieldCheck,
-  Table2, Target, Goal, Trophy, UserRound, UsersRound, X,
+ArrowDown,ArrowLeft,ArrowRight,ArrowUp,BarChart3,BookMarked,BookOpenCheck,
+CalendarSearch,ClipboardList,ClipboardPenLine,Compass,Database,
+GitCompareArrows,
+Goal,
+LayoutDashboard,MessageSquareText,Search,Shield,ShieldCheck,
+Table2,Target,
+Trophy,UserRound,UsersRound,X,
 } from 'lucide-react-native';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,Text,View,type ScrollViewProps } from 'react-native';
 
-import {useFocusEffect} from '@react-navigation/native';
-import { ACCENT, LINE, MUTED, PANEL, TEXT } from '@/theme';
-import { getMe, updateTutorialCompletion } from '@/services/api';
+import { useFocusEffect } from '@react-navigation/native';
+
+import { getMe,updateTutorialCompletion } from '@/services/api';
 
 export type PlayerPoolTutorialStep =
   | 'worldCupMode'
@@ -93,6 +97,9 @@ type EmbeddedGuideValue = {
 const EmbeddedGuideContext = React.createContext<EmbeddedGuideValue | null>(null);
 
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, themeColor} = themed;
+
   const [active, setActive] = React.useState(false);
   const [proGuidePage,setProGuidePage]=React.useState<string|null>(null);
   const [postTutorialReady] = React.useState(false);
@@ -244,7 +251,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         <View style={styles.introCard}>
           <View style={styles.introGlow} />
           <View style={styles.introGuideIconLarge}>
-            <BookOpenCheck size={25} color="#4ADE80" />
+            <BookOpenCheck size={25} color={themeColor("#4ADE80", 'text')} />
           </View>
           <Text style={styles.introEyebrow}>{t('tutorialWelcomeEyebrow')}</Text>
           <Text style={styles.introTitle}>
@@ -253,7 +260,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
           <Text style={styles.introBody}>{t('tutorialWelcomeBody')}</Text>
           <View style={styles.introGuideHint}>
             <View style={styles.introHeaderGuideIcon}>
-              <BookOpenCheck size={20} color="#4ADE80" />
+              <BookOpenCheck size={20} color={themeColor("#4ADE80", 'text')} />
             </View>
             <Text style={styles.introGuideHintText}>{t('tutorialWelcomeGuideHint')}</Text>
           </View>
@@ -264,7 +271,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
             style={({ pressed }) => [styles.introWelcomeButton, (pressed || welcomeSaving) && styles.pressed]}
           >
             {welcomeSaving
-              ? <ActivityIndicator size="small" color="#07110B" />
+              ? <ActivityIndicator size="small" color={themeColor("#07110B", 'onAccent')} />
               : <Text style={styles.introPrimaryText}>{t('tutorialWelcomeAction')}</Text>}
           </Pressable>
         </View>
@@ -298,6 +305,9 @@ export function useProPageGuide(page:string){
 }
 
 export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3, enabled=true }: { page: string; frame?: number; onShow?: (y: number) => void; summaryLines?: number; enabled?: boolean }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT, TEXT, themeColor} = themed;
+
   const guide = React.useContext(EmbeddedGuideContext);
   const guideScroll=React.useContext(GuideScrollContext),guideRef=React.useRef<View>(null);
   const { t } = useTranslation();
@@ -322,12 +332,12 @@ export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3, e
         <Text numberOfLines={1} style={styles.guideTitle}>{guide.current.title}</Text>
         <Text style={styles.guideFrameCount}>{guide.frameIndex + 1}/{guide.frameTotal}</Text>
       </View>
-      <Pressable accessibilityLabel={t('tutorialClose', 'Close guide')} onPress={guide.finish} hitSlop={6} style={({ pressed }) => [styles.guideCloseButton, pressed && styles.pressed]}><X size={16} color="#F87171" /></Pressable>
+      <Pressable accessibilityLabel={t('tutorialClose', 'Close guide')} onPress={guide.finish} hitSlop={6} style={({ pressed }) => [styles.guideCloseButton, pressed && styles.pressed]}><X size={16} color={themeColor("#F87171", 'text')} /></Pressable>
     </View>
     <Text numberOfLines={summaryLines} style={styles.guideSummary}>{guide.current.summary}</Text>
     <View style={styles.guideActions}>
       <Pressable disabled={guide.frameIndex === 0} onPress={guide.previous} accessibilityLabel={t('tutorialPrevious', 'Previous')} style={({ pressed }) => [styles.guideBack, guide.frameIndex === 0 && styles.guideDisabled, pressed && styles.pressed]}><ArrowLeft size={16} color={TEXT} /></Pressable>
-      <Pressable onPress={guide.next} style={({ pressed }) => [styles.guidePrimary, pressed && styles.pressed]}><Text style={styles.guidePrimaryText}>{guide.frameIndex === guide.frameTotal - 1 ? t('tutorialDone', 'Done') : t('tutorialNext', 'Next')}</Text><ArrowRight size={16} color="#07110B" /></Pressable>
+      <Pressable onPress={guide.next} style={({ pressed }) => [styles.guidePrimary, pressed && styles.pressed]}><Text style={styles.guidePrimaryText}>{guide.frameIndex === guide.frameTotal - 1 ? t('tutorialDone', 'Done') : t('tutorialNext', 'Next')}</Text><ArrowRight size={16} color={themeColor("#07110B", 'onAccent')} /></Pressable>
     </View>
   </View>;
 }
@@ -357,6 +367,9 @@ export function TutorialHint({
   targetArrow,
   targetContent,
 }: TutorialHintProps) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles, ACCENT} = themed;
+
   const { t, i18n } = useTranslation();
 
   if (!visible) return null;
@@ -398,6 +411,9 @@ export function TutorialHint({
 }
 
 export function TutorialStrong({ children }: { children: React.ReactNode }) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   return <Text style={styles.hintBodyStrong}>{children}</Text>;
 }
 
@@ -408,6 +424,9 @@ type ProfileTutorialModalProps = {
 };
 
 export function ProfileTutorialModal({ visible, onDone, onSkip }: ProfileTutorialModalProps) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {styles} = themed;
+
   const { t } = useTranslation();
 
   return (
@@ -436,7 +455,11 @@ export function ProfileTutorialModal({ visible, onDone, onSkip }: ProfileTutoria
   );
 }
 
-const styles = StyleSheet.create({
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+
+  const styles = StyleSheet.create({
   hintWrap: {
     alignItems: 'center',
     gap: 8,
@@ -446,8 +469,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.38)',
-    backgroundColor: '#142019',
+    borderColor: themeColor('rgba(22, 163, 74, 0.38)', 'border'),
+    backgroundColor: themeColor('#142019', 'surface'),
     padding: 14,
   },
   hintTopRow: {
@@ -461,7 +484,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     overflow: 'hidden',
     borderRadius: 999,
-    backgroundColor: 'rgba(22, 163, 74, 0.16)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.16)', 'surface'),
     color: ACCENT,
     fontSize: 11,
     fontWeight: '900',
@@ -511,7 +534,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   hintButtonText: {
-    color: '#07110B',
+    color: themeColor('#07110B', 'onAccent'),
     fontSize: 13,
     fontWeight: '900',
   },
@@ -520,39 +543,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 22,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: themeColor('rgba(0,0,0,0.72)', 'surface'),
   },
   embeddedGuideCard: {
     width: '100%',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,.5)',
-    backgroundColor: '#131D17',
+    borderColor: themeColor('rgba(22,163,74,.5)', 'border'),
+    backgroundColor: themeColor('#131D17', 'surface'),
     padding: 11,
     gap: 8,
   },
-  guidePausedCard: { width: '100%', minHeight: 58, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(22,163,74,.36)', backgroundColor: '#131D17', paddingHorizontal: 10, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  guidePausedIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(22,163,74,.12)' },
+  guidePausedCard: { width: '100%', minHeight: 58, borderRadius: 15, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.36)', 'border'), backgroundColor: themeColor('#131D17', 'surface'), paddingHorizontal: 10, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  guidePausedIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: themeColor('rgba(22,163,74,.12)', 'surface') },
   guidePausedCopy: { flex: 1, minWidth: 0, gap: 1 },
   guidePausedLabel: { color: MUTED, fontSize: 8, fontWeight: '900', letterSpacing: .8 },
   guidePausedTitle: { color: TEXT, fontSize: 13, lineHeight: 17, fontWeight: '800' },
   guideResume: { minHeight: 34, borderRadius: 11, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: ACCENT },
-  guideResumeText: { color: '#07110B', fontSize: 10, fontWeight: '900' },
-  guideCloseButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 9, borderWidth: 1, borderColor: 'rgba(248,113,113,.42)', backgroundColor: 'rgba(248,113,113,.09)' },
-  guideTrack: { height: 3, borderRadius: 3, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,.07)' },
+  guideResumeText: { color: themeColor('#07110B', 'onAccent'), fontSize: 10, fontWeight: '900' },
+  guideCloseButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 9, borderWidth: 1, borderColor: themeColor('rgba(248,113,113,.42)', 'border'), backgroundColor: themeColor('rgba(248,113,113,.09)', 'surface') },
+  guideTrack: { height: 3, borderRadius: 3, overflow: 'hidden', backgroundColor: themeColor('rgba(255,255,255,.07)', 'surface') },
   guideTrackFill: { height: '100%', borderRadius: 3, backgroundColor: ACCENT },
   guideIdentity: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  guideIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(22,163,74,.38)', backgroundColor: 'rgba(22,163,74,.11)' },
+  guideIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.38)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.11)', 'surface') },
   guideTitleWrap: { flex: 1, minWidth: 0, gap: 1 },
   guideTitle: { color: TEXT, fontSize: 15, lineHeight: 19, fontWeight: '900' },
   guideFrameCount: { color: ACCENT, fontSize: 9, fontWeight: '800' },
-  guideSummary: { color: '#DCE5DF', fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  guideSummary: { color: themeColor('#DCE5DF', 'text'), fontSize: 12, lineHeight: 18, fontWeight: '600' },
   guideActions: { flexDirection: 'row', alignItems: 'stretch', gap: 6 },
   guideBack: { width: 36, minHeight: 35, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE, borderRadius: 11 },
-  guideSkip: { flex: 1, minHeight: 35, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(22,163,74,.5)', borderRadius: 11, paddingHorizontal: 5, backgroundColor: 'rgba(22,163,74,.1)' },
-  guideSkipText: { color: '#B8C9BE', fontSize: 9, fontWeight: '900' },
+  guideSkip: { flex: 1, minHeight: 35, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.5)', 'border'), borderRadius: 11, paddingHorizontal: 5, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') },
+  guideSkipText: { color: themeColor('#B8C9BE', 'text'), fontSize: 9, fontWeight: '900' },
   guidePrimary: { flex: 1, minHeight: 35, flexDirection: 'row', gap: 4, alignItems: 'center', justifyContent: 'center', borderRadius: 11, paddingHorizontal: 6, backgroundColor: ACCENT },
-  guidePrimaryText: { color: '#07110B', fontSize: 10, fontWeight: '900' },
+  guidePrimaryText: { color: themeColor('#07110B', 'onAccent'), fontSize: 10, fontWeight: '900' },
   guideDisabled: { opacity: .35 },
   modalCard: {
     width: '100%',
@@ -569,10 +592,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(22, 163, 74, 0.42)',
-    backgroundColor: '#101815',
+    borderColor: themeColor('rgba(22, 163, 74, 0.42)', 'border'),
+    backgroundColor: themeColor('#101815', 'surface'),
     padding: 22,
-    shadowColor: '#000',
+    shadowColor: themeColor('#000', 'fixed'),
     shadowOpacity: 0.35,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 14 },
@@ -585,14 +608,14 @@ const styles = StyleSheet.create({
     width: 142,
     height: 142,
     borderRadius: 999,
-    backgroundColor: 'rgba(22, 163, 74, 0.18)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.18)', 'surface'),
   },
   introEyebrow: {
     marginTop: 12,
     alignSelf: 'flex-start',
     overflow: 'hidden',
     borderRadius: 999,
-    backgroundColor: 'rgba(22, 163, 74, 0.16)',
+    backgroundColor: themeColor('rgba(22, 163, 74, 0.16)', 'surface'),
     color: ACCENT,
     fontSize: 12,
     fontWeight: '900',
@@ -615,8 +638,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,.52)',
-    backgroundColor: 'rgba(22,163,74,.14)',
+    borderColor: themeColor('rgba(22,163,74,.52)', 'border'),
+    backgroundColor: themeColor('rgba(22,163,74,.14)', 'surface'),
   },
   introBody: {
     marginTop: 10,
@@ -632,8 +655,8 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(126,148,135,.22)',
-    backgroundColor: 'rgba(255,255,255,.025)',
+    borderColor: themeColor('rgba(126,148,135,.22)', 'border'),
+    backgroundColor: themeColor('rgba(255,255,255,.025)', 'surface'),
     padding: 12,
   },
   introHeaderGuideIcon: {
@@ -644,12 +667,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(22,163,74,.62)',
-    backgroundColor: 'rgba(22,163,74,.14)',
+    borderColor: themeColor('rgba(22,163,74,.62)', 'border'),
+    backgroundColor: themeColor('rgba(22,163,74,.14)', 'surface'),
   },
   introGuideHintText: {
     flex: 1,
-    color: '#DCE5DF',
+    color: themeColor('#DCE5DF', 'text'),
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '700',
@@ -694,7 +717,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   introPrimaryText: {
-    color: '#07110B',
+    color: themeColor('#07110B', 'onAccent'),
     fontSize: 13,
     fontWeight: '900',
     textAlign: 'center',
@@ -739,11 +762,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   modalButtonText: {
-    color: '#07110B',
+    color: themeColor('#07110B', 'onAccent'),
     fontSize: 14,
     fontWeight: '900',
   },
   pressed: {
     opacity: 0.9,
   },
+});
+  return {ACCENT, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

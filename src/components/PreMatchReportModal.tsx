@@ -1,21 +1,22 @@
 import { reportScopeMatches } from '@/services/reportAccess';
-import {PreMatchReportContext} from './PreMatchReportContext';
-import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { Activity,ArrowRightLeft,BadgeInfo,ChartNoAxesCombined,ChevronLeft,ChevronRight,Shield,TrendingUp,UserRound,Users,X } from 'lucide-react-native';
+import { useEffect,useRef,useState } from 'react';
+import { FlatList,Modal,Pressable,ScrollView,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Activity, ArrowRightLeft, BadgeInfo, ChartNoAxesCombined, ChevronLeft, ChevronRight, Shield, TrendingUp, Users, UserRound, X } from 'lucide-react-native';
-import { ACCENT, DANGER, TEXT } from '@/theme';
-import { ensureSavedPreMatchSection, openSavedPreMatchReport, pollSavedPreMatchReport, type SavedPreMatchReport, type MatchFixture, type PostMatchCardData } from '@/services/matchPool';
-import {getMe,type Plan} from '@/services/api';
-import { MatchCard, reportModalStyles as s } from './PostMatchReportModal';
-import PreMatchTeamAnalysis from './PreMatchTeamAnalysis';
-import PreMatchTeamComparison from './PreMatchTeamComparison';
-import PreMatchScoreFlow from './PreMatchScoreFlow';
-import PreMatchMomentum from './PreMatchMomentum';
-import PreMatchPlayers from './PreMatchPlayers';
+import { PreMatchReportContext } from './PreMatchReportContext';
+
+import { getMe,type Plan } from '@/services/api';
+import { ensureSavedPreMatchSection,openSavedPreMatchReport,pollSavedPreMatchReport,type MatchFixture,type PostMatchCardData,type SavedPreMatchReport } from '@/services/matchPool';
+import ActionSpinner from './ActionSpinner';
+import { MatchCard,getThemed_reportModalStyles as __getThemed_s } from './PostMatchReportModal';
 import PreMatchFormResults from './PreMatchFormResults';
 import PreMatchLineups from './PreMatchLineups';
-import ActionSpinner from './ActionSpinner';
+import PreMatchMomentum from './PreMatchMomentum';
+import PreMatchPlayers from './PreMatchPlayers';
+import PreMatchScoreFlow from './PreMatchScoreFlow';
+import PreMatchTeamAnalysis from './PreMatchTeamAnalysis';
+import PreMatchTeamComparison from './PreMatchTeamComparison';
 const sections=[
   {tr:'Maç Kartı',en:'Match Card',Icon:BadgeInfo},
   {tr:'Kadro ve Diziliş',en:'Lineup & Formation',Icon:Users},
@@ -27,6 +28,9 @@ const sections=[
   {tr:'Takım Analizi',en:'Team Analysis',Icon:Shield},
 ];
 export default function PreMatchReportModal({fixture,tr,onClose,onOpenPlans}:{fixture:MatchFixture;tr:boolean;onClose:()=>void;onOpenPlans:()=>void}) {
+  const themed = useThemedStyles(getModuleTheme);
+  const {s, DANGER, ACCENT, TEXT} = themed;
+
   const insets=useSafeAreaInsets();const [page,setPage]=useState(0),[width,setWidth]=useState(0),[data,setData]=useState<PostMatchCardData|null>(null),[error,setError]=useState(false),[retry,setRetry]=useState(0);
   const [plan,setPlan]=useState<Plan>('Free');
   const [snapshot,setSnapshot]=useState<SavedPreMatchReport|null>(null);
@@ -68,3 +72,11 @@ export default function PreMatchReportModal({fixture,tr,onClose,onOpenPlans}:{fi
     <View style={s.footer}><Pressable disabled={page===0} style={[s.nav,page===0&&s.disabled]} onPress={()=>go(page-1)} accessibilityLabel={tr?'Önceki bölüm':'Previous section'}><ChevronLeft size={22} color={TEXT}/></Pressable><View style={s.dots}>{sections.map((item,index)=><Pressable key={item.en} style={s.dotTarget} onPress={()=>go(index)} accessibilityLabel={tr?item.tr:item.en}><View style={[s.dot,index===page&&{backgroundColor:ACCENT}]}/></Pressable>)}</View><Pressable disabled={page===sections.length-1} style={[s.nav,page===sections.length-1&&s.disabled]} onPress={()=>go(page+1)} accessibilityLabel={tr?'Sonraki bölüm':'Next section'}><ChevronRight size={22} color={TEXT}/></Pressable></View>
   </View></View></Modal></PreMatchReportContext.Provider>;
 }
+
+
+const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
+  const {ACCENT, DANGER, TEXT, themeColor} = colors;
+  const s = __getThemed_s(colors);
+
+  return {ACCENT, DANGER, TEXT, s, themeColor};
+});
