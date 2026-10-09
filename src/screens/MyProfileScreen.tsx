@@ -39,10 +39,6 @@ export default function MyProfileScreen() {
     }
   }, []);
 
-  React.useEffect(() => {
-    loadMe();
-  }, [loadMe]);
-
   useFocusEffect(
     useCallback(() => {
       loadMe();
