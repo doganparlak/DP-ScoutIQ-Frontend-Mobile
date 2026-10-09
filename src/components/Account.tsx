@@ -1,3 +1,4 @@
+import ConnectedAccounts from '@/components/ConnectedAccounts';
 import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
 import ThemeToggle from '@/components/ThemeToggle';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
@@ -50,9 +51,6 @@ export default function Account({
         const me: Profile = await getMe();
         if (!alive) return;
         setEmail(me?.email ?? "—");
-        if (me?.uiLanguage && me.uiLanguage !== lang) {
-          await setLang(me.uiLanguage);
-        }
       } catch {
         // keep placeholder on error
       }
@@ -60,7 +58,7 @@ export default function Account({
     return () => {
       alive = false;
     };
-  }, [lang, setLang]);
+  }, []);
 
   // Map plan code to localized label, e.g. plan_Pro
   const planLabel =
@@ -179,6 +177,7 @@ export default function Account({
         </View>
       </View>
       <ThemeToggle />
+      <ConnectedAccounts disabled={navigationLocked} />
       <View style={styles.actions}>
         <Pressable
           onPress={onOpenPlans}

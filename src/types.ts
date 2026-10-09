@@ -46,8 +46,8 @@ export type RootStackParamList = {
   MyProfile: undefined;
   HelpCenter: undefined;
   ManagePlan: undefined;
-  SignUp: undefined;
-  NewPassword: { email: string };
+  SignUp: { social?: import('./services/socialAuth').SocialPending } | undefined;
+  NewPassword: { email: string; resetToken?: string };
   Verification: { email: string; password?: string; context: 'signup' | 'reset' };
   ResetPassword?: undefined;
   MainTabs: NavigatorScreenParams<MainTabsParamList>;

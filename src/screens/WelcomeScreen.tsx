@@ -1,222 +1,98 @@
+import SocialAuthButtons from '@/components/SocialAuthButtons';
 import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
-import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { createThemedStyles, useThemedStyles, type ThemeColors } from '@/theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useMemo,useState } from 'react';
-import { Pressable,StyleSheet,Text,View } from 'react-native';
-
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Globe, ChevronDown, Check } from 'lucide-react-native';
 import { useLanguage } from '@/context/LanguageProvider';
 import { RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
 
-import { Fontisto } from '@expo/vector-icons';
-
-
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function WelcomeScreen() {
-  const themed = useThemedStyles(getModuleTheme);
-  const {styles, ACCENT} = themed;
-
+  const { styles, MUTED, ACCENT } = useThemedStyles(getModuleTheme);
   const navigation = useNavigation<Nav>();
   const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
-
+  const { width, height } = useWindowDimensions();
   const [langOpen, setLangOpen] = useState(false);
+  const logoSize = Math.max(96, Math.min(148, height * 0.17, width * 0.35));
 
-  // Default language to English (only if it's not already set)
-  useMemo(() => {
-    if (!lang) setLang('en');
-  }, [lang, setLang]);
+  useEffect(() => { if (!lang) void setLang('en'); }, [lang, setLang]);
 
   return (
-    <View style={styles.wrap}>
-      {/* Logo */}
-      <ScoutWiseBrandMark style={styles.logo}/>
-
-      {/* App name: "scout" white, "wise" green */}
-      <Text style={styles.appName}>
-        <Text style={styles.appNameScout}>SCOUT</Text>
-        <Text style={styles.appNameWise}>WISE</Text>
-      </Text>
-
-      {/* Language picker (world icon + dropdown) */}
-      <View style={styles.langRow}>
-        <View style={styles.langWrapper}>
-          <Pressable
-            onPress={() => setLangOpen((v) => !v)}
-            style={({ pressed }) => [
-              styles.langIconBtn,
-              pressed && { opacity: 0.9 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Change language"
-          >
-            <Fontisto name="world-o" size={32} color={ACCENT} />
-          </Pressable>
-
-          {langOpen && (
-            <View style={styles.langDropdown}>
-              <Pressable
-                onPress={() => {
-                  setLang('en');
-                  setLangOpen(false);
-                }}
-                style={({ pressed }) => [
-                  styles.langOption,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.langOptionText}>English</Text>
-              </Pressable>
-
-              <View style={styles.langDivider} />
-
-              <Pressable
-                onPress={() => {
-                  setLang('tr');
-                  setLangOpen(false);
-                }}
-                style={({ pressed }) => [
-                  styles.langOption,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
-                <Text style={styles.langOptionText}>Türkçe</Text>
-              </Pressable>
-            </View>
-          )}
-          <View style={styles.buttonsSpacer} />
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <View style={styles.langWrapper}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('language')}
+              accessibilityState={{ expanded: langOpen }} onPress={() => setLangOpen(v => !v)}
+              style={({ pressed }) => [styles.langButton, pressed && { opacity: 0.7 }]}>
+              <Globe size={17} color={MUTED} />
+              <Text style={styles.langLabel}>{lang === 'tr' ? 'Türkçe' : 'English'}</Text>
+              <ChevronDown size={15} color={MUTED} />
+            </Pressable>
+            {langOpen && <View style={styles.langDropdown}>
+              {(['tr', 'en'] as const).map(value => <Pressable key={value} accessibilityRole="button"
+                accessibilityState={{ selected: lang === value }}
+                onPress={() => { void setLang(value); setLangOpen(false); }}
+                style={({ pressed }) => [styles.langOption, pressed && { opacity: 0.7 }]}>
+                <Text style={styles.langOptionText}>{value === 'tr' ? 'Türkçe' : 'English'}</Text>
+                {lang === value && <Check size={16} color={ACCENT} />}
+              </Pressable>)}
+            </View>}
+          </View>
         </View>
-      </View>
 
-      <Pressable
-        onPress={() => navigation.navigate('Login')}
-        style={({ pressed }) => [
-          styles.primaryBtn,
-          pressed && { opacity: 0.9 },
-        ]}
-      >
-        <Text style={styles.primaryBtnText}>{t('login')}</Text>
-      </Pressable>
+        <View style={[styles.hero, { paddingVertical: height < 700 ? 24 : 40 }]}>
+          <ScoutWiseBrandMark style={{ width: logoSize, height: logoSize }} />
+          <Text style={[styles.appName, { fontSize: Math.min(36, width * 0.085) }]}>
+            <Text style={styles.appNameScout}>SCOUT</Text><Text style={styles.appNameWise}>WISE</Text>
+          </Text>
+          <Text style={styles.tagline}>{t('navigationTagline')}</Text>
+        </View>
 
-      <Pressable
-        onPress={() => navigation.navigate('SignUp')}
-        style={({ pressed }) => [
-          styles.secondaryBtn,
-          { opacity: pressed ? 0.85 : 1 },
-        ]}
-      >
-        <Text style={styles.secondaryBtnText}>{t('signup')}</Text>
-      </Pressable>
-    </View>
+        <View style={styles.actions}>
+          <SocialAuthButtons appearance="welcome" />
+          <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Login')}
+            style={({ pressed }) => [styles.actionButton, styles.loginButton, pressed && { opacity: 0.85 }]}>
+            <Text style={styles.loginText}>{t('login')}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SignUp')}
+            style={({ pressed }) => [styles.actionButton, styles.signupButton, pressed && { opacity: 0.75 }]}>
+            <Text style={styles.signupText}>{t('signup')}</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-
-const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
-  const {BG, TEXT, ACCENT, LINE, PANEL, themeColor} = colors;
-
-  const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    backgroundColor: BG,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 26,
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: '800',
-    marginBottom: 60,
-  },
-  appNameScout: {
-    color: themeColor('#FFFFFF', 'text'),
-  },
-  appNameWise: {
-    color: ACCENT,
-  },
-
-  // Language
-  langRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 40,
-  },
-  langWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-  },
-  langIconBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    backgroundColor: PANEL,
-    borderColor: LINE,
-  },
-  langDropdown: {
-    position: 'absolute',
-    top: 54, // was 48 (a bit lower so it doesn't overlap the icon)
-    left: '50%',
-    transform: [{ translateX: -70 }], // half of width (140) to center it
-    width: 140,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: PANEL,
-    overflow: 'hidden',
-    zIndex: 999,
-    elevation: 6,
-  },
-
-  langOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    alignItems: 'center',       // ✅ centers text horizontally
-    justifyContent: 'center',   // ✅ centers text vertically
-  },
-
-  langOptionText: {
-    color: TEXT,
-    fontWeight: '700',
-    fontSize: 16,
-    textAlign: 'center', // ✅ ensures centered alignment for text
-  },
-  langDivider: {
-    height: 1,
-    backgroundColor: LINE,
-  },
-
-  primaryBtn: {
-    width: '80%',
-    borderRadius: 14,
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: themeColor('rgba(22, 163, 74, 0.12)', 'surface'),
-  },
-  primaryBtnText: { color: ACCENT, fontWeight: '900', fontSize: 17 },
-  secondaryBtn: {
-    width: '80%',
-    borderRadius: 14,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: PANEL,
-  },
-  secondaryBtnText: { color: TEXT, fontWeight: '700', fontSize: 17 },
-  buttonsSpacer: {
-  height: 55, // increases vertical gap so Login/Signup sit a bit lower
-},
-});
-  return {BG, TEXT, ACCENT, LINE, PANEL, styles, themeColor};
-});
+const getModuleTheme = createThemedStyles((c: ThemeColors) => ({ MUTED: c.MUTED, ACCENT: c.ACCENT,
+  styles: StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.BG },
+    wrap: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24 },
+    header: { width: '100%', maxWidth: 480, alignItems: 'flex-end', zIndex: 2 },
+    langWrapper: { position: 'relative' },
+    langButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40, paddingHorizontal: 12, borderRadius: 20, backgroundColor: c.PANEL, borderWidth: 1, borderColor: c.LINE },
+    langLabel: { color: c.TEXT, fontSize: 13, fontWeight: '600' },
+    langDropdown: { position: 'absolute', top: 46, right: 0, width: 152, borderRadius: 14, borderWidth: 1, borderColor: c.LINE, backgroundColor: c.PANEL, overflow: 'hidden', zIndex: 3, elevation: 6 },
+    langOption: { minHeight: 46, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    langOptionText: { color: c.TEXT, fontSize: 14, fontWeight: '600' },
+    hero: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
+    appName: { fontWeight: '800', letterSpacing: 0.5, marginTop: 20 },
+    appNameScout: { color: c.TEXT },
+    appNameWise: { color: c.ACCENT },
+    tagline: { color: c.MUTED, fontSize: 15, lineHeight: 22, textAlign: 'center', marginTop: 10 },
+    actions: { width: '100%', maxWidth: 420, gap: 12 },
+    actionButton: { width: '100%', minHeight: 52, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+    loginButton: { backgroundColor: c.ACCENT_DARK, borderColor: c.ACCENT_DARK },
+    loginText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', textAlign: 'center' },
+    signupButton: { backgroundColor: c.PANEL, borderColor: c.LINE },
+    signupText: { color: c.TEXT, fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  }),
+}));

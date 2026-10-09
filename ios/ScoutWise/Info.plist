@@ -84,5 +84,7 @@
 		<string>remote-notification</string>
 		<string>fetch</string>
 	</array>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
 </dict>
 </plist>

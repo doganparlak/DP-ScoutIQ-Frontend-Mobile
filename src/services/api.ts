@@ -974,7 +974,7 @@ export async function updateTutorialCompletion(tutorialCompleted = true): Promis
 export async function requestPasswordReset(email: string): Promise<{ ok: boolean }> {
   return request('/auth/request_reset', { method: 'POST', body: JSON.stringify({ email }) });
 }
-export async function verifyResetCode(email: string, code: string): Promise<{ ok: boolean }> {
+export async function verifyResetCode(email: string, code: string): Promise<{ ok: boolean; resetToken: string }> {
   return request('/auth/verify_reset', { method: 'POST', body: JSON.stringify({ email, code }) });
 }
 
@@ -986,7 +986,7 @@ export async function verifySignupCode(email: string, code: string): Promise<{ o
   return request('/auth/verify_signup_code', { method: 'POST', body: JSON.stringify({ email, code }) });
 }
 
-export async function setNewPassword(input: { email: string; new_password: string }): Promise<{ ok: boolean }> {
+export async function setNewPassword(input: { email: string; new_password: string; resetToken?: string }): Promise<{ ok: boolean }> {
   return request('/auth/set_new_password', {
     method: 'POST',
     body: JSON.stringify(input),

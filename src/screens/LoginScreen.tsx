@@ -1,3 +1,4 @@
+import SocialAuthButtons from '@/components/SocialAuthButtons';
 import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/screens/LoginScreen.tsx
@@ -8,14 +9,13 @@ import { Eye,EyeOff } from 'lucide-react-native';
 import { useMemo,useState } from 'react';
 import {
 ActivityIndicator,
-Keyboard,
 KeyboardAvoidingView,
 Platform,
 Pressable,
+ScrollView,
 StyleSheet,
 Text,
 TextInput,
-TouchableWithoutFeedback,
 View
 } from 'react-native';
 
@@ -23,12 +23,14 @@ import { useLanguage } from '@/context/LanguageProvider';
 import { login } from '@/services/api';
 import { RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const themed = useThemedStyles(getModuleTheme);
   const {BG, styles, MUTED, ACCENT_DARK} = themed;
 
@@ -39,6 +41,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [socialBusy, setSocialBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(
@@ -50,7 +53,7 @@ export default function LoginScreen() {
   const goToSignUp = () => navigation.navigate('SignUp');
 
   const handleLogin = async () => {
-    if (!isValid || submitting) return;
+    if (!isValid || submitting || socialBusy) return;
     try {
       setError(null);
       setSubmitting(true);
@@ -74,11 +77,16 @@ export default function LoginScreen() {
     return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: BG }}
-      behavior={Platform.select({ ios: 'padding', android: 'padding' })}
+      enabled={Platform.OS === 'android'}
+      behavior="height"
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ flex: 1 }}>
-          <View style={styles.wrap}>
+          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            alwaysBounceVertical={Platform.OS === 'ios'} showsVerticalScrollIndicator
+            contentContainerStyle={[styles.wrap, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+
             {/* Logo above app name */}
             <ScoutWiseBrandMark style={styles.logo}/>
 
@@ -96,6 +104,7 @@ export default function LoginScreen() {
                 {t('greeting', 'Spot the next star before anyone else.')}
               </Text>
 
+              <SocialAuthButtons disabled={submitting} onBusyChange={setSocialBusy} />
               <View style={styles.fieldBlock}>
                 <Text style={styles.label}>{t('email', 'E-mail')}</Text>
                 <TextInput
@@ -146,11 +155,11 @@ export default function LoginScreen() {
 
               <Pressable
                 onPress={handleLogin}
-                disabled={!isValid || submitting}
+                disabled={!isValid || submitting || socialBusy}
                 style={({ pressed }) => [
                   styles.primaryBtn,
                   {
-                    opacity: !isValid || submitting ? 0.6 : pressed ? 0.9 : 1,
+                    opacity: !isValid || submitting || socialBusy ? 0.6 : pressed ? 0.9 : 1,
                   },
                 ]}
               >
@@ -167,9 +176,8 @@ export default function LoginScreen() {
                 </Text>
               </Pressable>
             </View>
-          </View>
+          </ScrollView>
         </View>
-      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 
@@ -181,7 +189,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
 
   const styles = StyleSheet.create({
   wrap: {
-    flex: 1,
+    flexGrow: 1,
+    paddingVertical: 24,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,

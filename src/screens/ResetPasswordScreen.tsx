@@ -5,14 +5,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMemo,useState } from 'react';
 import {
 ActivityIndicator,
-Keyboard,
 KeyboardAvoidingView,
 Platform,
 Pressable,
+ScrollView,
 StyleSheet,
 Text,
 TextInput,
-TouchableWithoutFeedback,
 View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,9 +72,9 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: BG }}
-      behavior={Platform.select({ ios: 'padding', android: 'padding' })}
+      enabled={Platform.OS === 'android'}
+      behavior="height"
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ flex: 1 }}>
           {/* Top-left back button aligned to the card's left edge */}
           <View style={[styles.topBar, { top: insets.top + 8, left: cardLeft }]}>
@@ -91,10 +90,14 @@ export default function ResetPasswordScreen() {
             </Pressable>
           </View>
 
-          <View
-            style={styles.wrap}
+          <ScrollView style={{ flex: 1 }}
+            contentContainerStyle={[styles.wrap, { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 24 }]}
             onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-          >
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            alwaysBounceVertical={Platform.OS === 'ios'} showsVerticalScrollIndicator>
+
             {/* Logo above app name */}
             <ScoutWiseBrandMark style={styles.logo}/>
 
@@ -176,9 +179,8 @@ export default function ResetPasswordScreen() {
                 </>
               )}
             </View>
-          </View>
+          </ScrollView>
         </View>
-      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 
@@ -195,7 +197,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   backIcon: { color: TEXT, fontSize: 24, fontWeight: '800', marginRight: 2 },
   backText: { color: TEXT, fontWeight: '700', fontSize: 18 },
 
-  wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  wrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
 
   logo: {
     width: 120,

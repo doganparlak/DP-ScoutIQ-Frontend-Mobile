@@ -22,7 +22,8 @@
       "googleServicesFile": "./firebase/GoogleService-Info.plist",
       "entitlements": {
         "aps-environment": "development"
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
@@ -84,7 +85,10 @@
       "./plugins/withFirebaseDiagnostics",
       "@react-native-firebase/messaging",
       "./plugins/withFirebaseMessaging",
-      "@react-native-firebase/perf"
+      "@react-native-firebase/perf",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "./plugins/withSocialAuth"
     ],
     "extra": {
       "eas": {

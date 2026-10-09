@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n from '@/i18n';
 
@@ -21,11 +21,11 @@ export const LanguageProvider: React.FC<React.PropsWithChildren> = ({ children }
     })();
   }, []);
 
-  const setLang = async (l: Lang) => {
+  const setLang = useCallback(async (l: Lang) => {
     setLangState(l);
     await AsyncStorage.setItem('app.lang', l);
     await i18n.changeLanguage(l);
-  };
+  }, []);
 
   return <LanguageContext.Provider value={{ lang, setLang, ready }}>{children}</LanguageContext.Provider>;
 };

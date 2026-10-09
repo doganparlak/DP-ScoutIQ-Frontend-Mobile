@@ -1,14 +1,15 @@
+import SocialAuthButtons from '@/components/SocialAuthButtons';
+import { linkSocialAccount, registerSocialAccount, saveSocialSession, SocialAuthError } from '@/services/socialAuth';
+import { useLanguage } from '@/context/LanguageProvider';
 import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation,useRoute,type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Eye,EyeOff } from 'lucide-react-native';
-import { useMemo,useMemo as useRNMemo,useState } from 'react';
+import { useMemo,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
-FlatList,
-Keyboard,
 KeyboardAvoidingView,
 Linking,
 Modal,
@@ -19,21 +20,18 @@ StyleSheet,
 Switch,
 Text,
 TextInput,
-TouchableWithoutFeedback,
 View
 } from 'react-native';
 
 import DataUsage from '@/components/DataUsage';
-import { COUNTRIES } from '@/constants/countries';
 import { requestSignupCode,signUp } from '@/services/api';
 import { RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView,useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'SignUp'>;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
 
 const LEGAL_URLS = {
   en: {
@@ -47,37 +45,27 @@ const LEGAL_URLS = {
   iosTerms: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
 } as const;
 
-// Format "DD-MM-YYYY" as the user types
-function formatDob(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
-}
-
-// helper
-function toIsoDob(dmy: string): string {
-  const [dd, mm, yyyy] = dmy.split('-');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 export default function SignUpScreen() {
   const themed = useThemedStyles(getModuleTheme);
-  const {styles, MUTED, TEXT, ACCENT_DARK} = themed;
+  const {styles, MUTED, TEXT, ACCENT_DARK, LINE} = themed;
 
   const navigation = useNavigation<Nav>();
+  const route = useRoute<RouteProp<RootStackParamList, 'SignUp'>>();
+  const social = route.params?.social;
+  const { setLang } = useLanguage();
+  const [socialMode, setSocialMode] = useState<'link' | 'create'>('create');
+  const linking = !!social && socialMode === 'link';
+  const [socialBusy, setSocialBusy] = useState(false);
   const { t, i18n } = useTranslation();
   const lang = (i18n.language || 'en').toLowerCase().startsWith('tr') ? 'tr' : 'en';
   const privacyUrl = LEGAL_URLS[lang].privacy;
   const termsUrl =
     Platform.OS === 'ios' ? LEGAL_URLS.iosTerms : LEGAL_URLS[lang].terms;
 
-  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
-  const [dob, setDob] = useState('');
 
   const hasMin = password.length >= 8;
   const hasLetter = /[A-Za-z]/.test(password);
@@ -89,31 +77,14 @@ export default function SignUpScreen() {
   const [agreeDataUsage, setAgreeDataUsage] = useState(false);
   const [dataUsageOpen, setDataUsageOpen] = useState(false);
 
-  const [newsletter, setNewsletter] = useState(false);
-
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [country, setCountry] = useState('Unknown');
-
-  const [countryModalOpen, setCountryModalOpen] = useState(false);
-  const [countryQuery, setCountryQuery] = useState('');
-
-  const filteredCountries = useRNMemo(() => {
-    const q = countryQuery.trim().toLowerCase();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter(c => c.toLowerCase().includes(q));
-  }, [countryQuery]);
-
   const isValid = useMemo(() => {
     return (
-      emailRegex.test(email) &&
-      pwValid &&
-      (!dob || dateRegex.test(dob)) &&
-      agreePrivacy &&
-      agreeTerms &&
-      agreeDataUsage
+      (social ? (linking ? emailRegex.test(email) && password.length > 0 : true) : emailRegex.test(email) && pwValid) &&
+      (linking || (agreePrivacy && agreeTerms && agreeDataUsage))
     );
-  }, [email, pwValid, dob, agreePrivacy, agreeTerms, agreeDataUsage]);
+  }, [email, password, pwValid, agreePrivacy, agreeTerms, agreeDataUsage, social, linking]);
 
   const goToLogin = () => navigation.replace('Login');
 
@@ -137,18 +108,29 @@ export default function SignUpScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!isValid || submitting) return;
+    if (!isValid || submitting || socialBusy) return;
     try {
       setError(null);
       setSubmitting(true);
+      if (social) {
+        const result = linking
+          ? await linkSocialAccount(social.challenge, email.trim(), password, lang)
+          : await registerSocialAccount({ challenge: social.challenge, dob: null,
+              country: 'Unknown', newsletter: false, uiLanguage: lang,
+              privacyAccepted: agreePrivacy, termsAccepted: agreeTerms, dataUsageAccepted: agreeDataUsage });
+        const user = await saveSocialSession(result);
+        if (user.uiLanguage && user.uiLanguage !== lang) await setLang(user.uiLanguage);
+        navigation.reset({ index: 0, routes: [{ name: 'App' }] });
+        return;
+      }
       await signUp({
         email,
         password,
-        dob: dob ? toIsoDob(dob) : '',
-        country: country.trim() ? country : 'Unknown',
+        dob: '',
+        country: 'Unknown',
         plan: 'Free',
         favorite_players: [],
-        newsletter,
+        newsletter: false,
       });
       await requestSignupCode(email);
       navigation.replace('Verification', {
@@ -157,7 +139,8 @@ export default function SignUpScreen() {
         context: 'signup',
       });
     } catch (e: any) {
-      setError(t('signupFailed', 'Sign up failed. Please try again.'));
+      if (social && e instanceof SocialAuthError && e.status === 409) setSocialMode('link');
+      setError(social ? t(e instanceof SocialAuthError && e.status === 409 ? 'socialUseExisting' : e instanceof SocialAuthError && e.status === 401 ? 'socialLinkFailed' : 'socialSignInFailed') : t('signupFailed', 'Sign up failed. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -167,10 +150,9 @@ export default function SignUpScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        enabled={Platform.OS === 'android'}
+        behavior="height"
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={styles.flex}>
             <ScrollView
               style={styles.flex}
@@ -178,9 +160,10 @@ export default function SignUpScreen() {
                 styles.scrollContent,
               ]}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
               automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator
+              alwaysBounceVertical={Platform.OS === 'ios'}
             >
               <View style={styles.wrap}>
                 <ScoutWiseBrandMark style={styles.logo}/>
@@ -191,11 +174,24 @@ export default function SignUpScreen() {
                 </Text>
 
                 <View style={styles.card}>
-                  <Text style={styles.title}>{t('createAccount', 'Create your account')}</Text>
+                  <Text style={styles.title}>{social ? t('socialFinishTitle') : t('createAccount', 'Create your account')}</Text>
                   <Text style={styles.subtitle}>
-                    {t('signupSubtitle', 'Join the data-driven scouting revolution.')}
+                    {social ? t('socialFinishBody') : t('signupSubtitle', 'Join the data-driven scouting revolution.')}
                   </Text>
 
+                  {!social && <SocialAuthButtons disabled={submitting} onBusyChange={setSocialBusy} />}
+                  {social && <View style={styles.socialModeSwitch}>
+                    {(['create', 'link'] as const).map(mode => <Pressable key={mode}
+                      accessibilityRole="tab" accessibilityState={{ selected: mode === socialMode, disabled: submitting }}
+                      disabled={submitting} onPress={() => { setSocialMode(mode); setError(null); }}
+                      style={[styles.socialModeSegment, mode === socialMode && styles.socialModeSelected]}>
+                      <Text style={[styles.socialModeText, mode === socialMode && styles.socialModeSelectedText]}>
+                        {t(mode === 'create' ? 'socialNewAccountTab' : 'socialExistingAccountTab')}
+                      </Text>
+                    </Pressable>)}
+                  </View>}
+                  {social && !linking && <Text style={styles.socialAccountNote}>{t('socialExistingAccountNote')}</Text>}
+                  {(!social || linking) && <>
                   {/* Email */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>{t('email', 'E-mail')}</Text>
@@ -238,66 +234,23 @@ export default function SignUpScreen() {
                       </Pressable>
                     </View>
 
-                    <View style={styles.pwChecklist}>
+                    {linking && <Pressable accessibilityRole="link" disabled={submitting}
+                      onPress={() => navigation.navigate('ResetPassword')}
+                      style={({ pressed }) => [styles.socialForgotPassword, { opacity: pressed ? 0.7 : 1 }]}>
+                      <Text style={styles.socialForgotPasswordText}>{t('forgotPassword')}</Text>
+                    </Pressable>}
+                    {!social && <View style={styles.pwChecklist}>
                       <PwRule ok={hasMin} text={t('pwAtLeast8', 'At least 8 characters')} />
                       <PwRule
                         ok={hasLetter}
                         text={t('pwLetter', 'Contains a letter (A–Z or a–z)')}
                       />
                       <PwRule ok={hasNumber} text={t('pwNumber', 'Contains a number (0–9)')} />
-                    </View>
+                    </View>}
                   </View>
 
-                  {/* DOB + Country (side by side) */}
-                  <View style={styles.row2}>
-                    {/* DOB */}
-                    <View style={[styles.fieldBlock, { flex: 1, marginRight: 6 }]}>
-                      <Text style={styles.label}>
-                        {t('dob', 'Date of birth')} {t('optional', '(Optional)')}
-                      </Text>
-                      <TextInput
-                        value={dob}
-                        onChangeText={(text) => setDob(formatDob(text))}
-                        placeholder={t('placeholderDob', 'DD-MM-YYYY')}
-                        placeholderTextColor={MUTED}
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        inputMode="numeric"
-                        autoCorrect={false}
-                        autoComplete="off"
-                        importantForAutofill="no"
-                        maxLength={10}
-                      />
-                    </View>
-
-                    {/* Country */}
-                    <View style={[styles.fieldBlock, { flex: 1, marginLeft: 6 }]}>
-                      <Text style={styles.label}>
-                        {t('country', 'Country')} {t('optional', '(Optional)')}
-                      </Text>
-                      <Pressable
-                        onPress={() => setCountryModalOpen(true)}
-                        style={({ pressed }) => [
-                          styles.input,
-                          { justifyContent: 'center', opacity: pressed ? 0.9 : 1 },
-                        ]}
-                      >
-                        <Text style={{ color: country === 'Unknown' ? MUTED : TEXT }}>
-                          {country === 'Unknown'
-                            ? t('selectCountryOptional', 'Select your country')
-                            : country}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  <View style={[styles.switchRow, { marginTop: 12 }]}>
-                    <Text style={styles.switchLabel}>
-                      {t('newsletter', 'Subscribe to newsletter')}
-                    </Text>
-                    <Switch value={newsletter} onValueChange={setNewsletter} />
-                  </View>
-
+                  </>}
+                  {!linking && <>
                   <View style={styles.switchRow}>
                     <View style={styles.switchLabelWrap}>
                       <Text style={styles.switchLabel}>
@@ -337,22 +290,23 @@ export default function SignUpScreen() {
                     <Switch value={agreeDataUsage} onValueChange={setAgreeDataUsage} />
                   </View>
 
+                  </>}
                   {error ? <Text style={styles.error}>{error}</Text> : null}
 
                   <Pressable
                     onPress={handleSubmit}
-                    disabled={!isValid || submitting}
+                    disabled={!isValid || submitting || socialBusy}
                     style={({ pressed }) => [
                       styles.primaryBtn,
                       {
-                        opacity: !isValid || submitting ? 0.6 : pressed ? 0.9 : 1,
+                        opacity: !isValid || submitting || socialBusy ? 0.6 : pressed ? 0.9 : 1,
                       },
                     ]}
                   >
                     {submitting ? (
                       <ActivityIndicator />
                     ) : (
-                      <Text style={styles.primaryBtnText}>{t('signup', 'Sign up')}</Text>
+                      <Text style={styles.primaryBtnText}>{social ? t(linking ? 'socialLinkAndContinue' : 'socialCreateAndContinue') : t('signup', 'Sign up')}</Text>
                     )}
                   </Pressable>
 
@@ -399,61 +353,8 @@ export default function SignUpScreen() {
               </View>
             </Modal>
 
-            <Modal
-              visible={countryModalOpen}
-              animationType="slide"
-              transparent
-              onRequestClose={() => setCountryModalOpen(false)}
-            >
-              <View style={styles.modalBackdrop}>
-                <View style={[styles.modalCard, styles.countryModalCard]}>
-                  <View style={styles.dataUsageHeader}>
-                    <Text style={styles.modalTitle}>
-                      {t('selectCountry', 'Select your country')}
-                    </Text>
-                    <Pressable
-                      onPress={() => setCountryModalOpen(false)}
-                      hitSlop={8}
-                      style={styles.dataUsageCloseBtn}
-                    >
-                      <Text style={styles.dataUsageCloseText}>{t('close', 'Close')}</Text>
-                    </Pressable>
-                  </View>
 
-                  <TextInput
-                    value={countryQuery}
-                    onChangeText={setCountryQuery}
-                    placeholder={t('searchCountry', 'Search country...')}
-                    placeholderTextColor={MUTED}
-                    style={[styles.input, { marginBottom: 12 }]}
-                  />
-
-                  <FlatList
-                    data={[t('noCountrySelected', 'No country selected'), ...filteredCountries]}
-                    keyExtractor={(item) => item}
-                    keyboardShouldPersistTaps="handled"
-                    renderItem={({ item }) => (
-                      <Pressable
-                        onPress={() => {
-                          setCountry(
-                            item === t('noCountrySelected', 'No country selected')
-                              ? 'Unknown'
-                              : item,
-                          );
-                          setCountryModalOpen(false);
-                          setCountryQuery('');
-                        }}
-                        style={styles.countryRow}
-                      >
-                        <Text style={{ color: TEXT }}>{item}</Text>
-                      </Pressable>
-                    )}
-                  />
-                </View>
-              </View>
-            </Modal>
           </View>
-        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -476,6 +377,32 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {BG, TEXT, ACCENT, ACCENT_DARK, PANEL, CARD, MUTED, LINE, themeColor} = colors;
 
   const styles = StyleSheet.create({
+  socialAccountNote: { color: MUTED, fontSize: 13, lineHeight: 19, marginTop: 10, marginBottom: 4 },
+  socialForgotPassword: { alignSelf: 'flex-end', marginTop: 10, paddingVertical: 4 },
+  socialForgotPasswordText: { color: ACCENT_DARK, fontSize: 13, fontWeight: '600' },
+  socialModeSwitch: {
+    flexDirection: 'row',
+    backgroundColor: PANEL,
+    borderWidth: 1,
+    borderColor: LINE,
+    borderRadius: 15,
+    padding: 4,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  socialModeSegment: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialModeSelected: { backgroundColor: ACCENT_DARK },
+  socialModeText: { color: MUTED, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  socialModeSelectedText: { color: '#FFFFFF', fontWeight: '700' },
   safe: {
     flex: 1,
     backgroundColor: BG,
