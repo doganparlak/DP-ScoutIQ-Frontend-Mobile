@@ -40,7 +40,6 @@ export default function Account({
 
   const [email, setEmail] = React.useState<string>("—");
   const [savingLanguage, setSavingLanguage] = React.useState(false);
-  const [languageOpen, setLanguageOpen] = React.useState(false);
   const { t } = useTranslation();
   const { lang, setLang } = useLanguage();
 
@@ -101,83 +100,50 @@ export default function Account({
           : "Your portfolios, reports and analyses, together."}
       </Text>
       <View style={styles.preferencesRow}>
-        <View style={styles.planBadge}>
-          <View style={styles.planDot} />
-          <Text style={styles.planText}>{planLabel}</Text>
+        <View style={styles.accountPreferences}>
+          <View style={styles.preferenceCell}>
+            <View style={styles.planBadge}>
+              <View style={styles.planDot} />
+              <Text style={styles.planText}>{planLabel}</Text>
+            </View>
+          </View>
+          <ConnectedAccounts disabled={navigationLocked} />
         </View>
 
-        <View style={styles.kv}>
-          <Text style={styles.k}>{t("language", "Language")}</Text>
-          <View style={styles.languageWrap}>
-            <Pressable
-              disabled={savingLanguage}
-              onPress={() => setLanguageOpen((open) => !open)}
-              style={({ pressed }) => [
-                styles.languagePill,
-                pressed && { opacity: 0.86 },
-              ]}
-            >
-              {savingLanguage ? (
-                <ActivityIndicator size="small" color={ACCENT} />
-              ) : (
-                <Text style={styles.languagePillText}>
-                  {lang === "tr"
-                    ? t("turkish", "Turkish")
-                    : t("english", "English")}{" "}
-                  ▾
-                </Text>
-              )}
-            </Pressable>
-
-            {languageOpen && (
-              <View style={styles.languageDropdown}>
-                {(
-                  [
-                    ["en", t("english", "English")],
-                    ["tr", t("turkish", "Turkish")],
-                  ] as Array<[UILang, string]>
-                ).map(([code, label]) => (
-                  <Pressable
-                    key={code}
-                    disabled={savingLanguage || lang === code}
-                    onPress={async () => {
-                      try {
-                        setSavingLanguage(true);
-                        await updateMe({ uiLanguage: code });
-                        await setLang(code);
-                        setLanguageOpen(false);
-                      } catch (e: any) {
-                        Alert.alert(
-                          t("languageUpdateFailed", "Language update failed"),
-                          String(e?.message || e),
-                        );
-                      } finally {
-                        setSavingLanguage(false);
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.languageOption,
-                      lang === code && styles.languageOptionActive,
-                      pressed && lang !== code && { opacity: 0.86 },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.languageOptionText,
-                        lang === code && styles.languageOptionTextActive,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+        <View style={styles.displayPreferences}>
+          <View style={styles.kv}>
+            <Text style={styles.k}>{t("language", "Language")}</Text>
+            <View style={styles.languageSegment} accessibilityRole="radiogroup" accessibilityLabel={t("language", "Language")} accessibilityState={{ busy: savingLanguage }}>
+              {(["tr", "en"] as UILang[]).map((code) => (
+                <Pressable
+                  key={code}
+                  disabled={savingLanguage || lang === code}
+                  accessibilityRole="radio"
+                  accessibilityLabel={code === "tr" ? t("turkish", "Turkish") : t("english", "English")}
+                  accessibilityState={{ checked: lang === code, disabled: savingLanguage }}
+                  onPress={async () => {
+                    try {
+                      setSavingLanguage(true);
+                      await updateMe({ uiLanguage: code });
+                      await setLang(code);
+                    } catch (e: any) {
+                      Alert.alert(t("languageUpdateFailed", "Language update failed"), String(e?.message || e));
+                    } finally {
+                      setSavingLanguage(false);
+                    }
+                  }}
+                  style={({ pressed }) => [styles.languageOption, lang === code && styles.languageOptionActive, pressed && { opacity: 0.7 }]}
+                >
+                  {savingLanguage && lang !== code ? <ActivityIndicator size="small" color={ACCENT} /> : (
+                    <Text style={[styles.languageOptionText, lang === code && styles.languageOptionTextActive]}>{code.toUpperCase()}</Text>
+                  )}
+                </Pressable>
+              ))}
+            </View>
           </View>
+        <ThemeToggle />
         </View>
       </View>
-      <ThemeToggle />
-      <ConnectedAccounts disabled={navigationLocked} />
       <View style={styles.actions}>
         <Pressable
           onPress={onOpenPlans}
@@ -237,57 +203,45 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   preferencesRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
     marginTop: 16,
     zIndex: 10,
   },
+  accountPreferences: { flexGrow: 1, flexBasis: 140, minWidth: 140, gap: 8 },
+  preferenceCell: { minHeight: 40, justifyContent: "center" },
+  displayPreferences: { width: 178, gap: 8, marginLeft: "auto" },
   kv: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
     zIndex: 10,
   },
-  k: { color: MUTED },
+  k: { color: MUTED, width: 78, fontSize: 12, fontWeight: "600" },
   v: { color: TEXT, fontWeight: "600" },
 
-  languageWrap: {
-    alignItems: "flex-end",
-    position: "relative",
-    zIndex: 2,
-  },
-  languagePill: {
-    borderRadius: 999,
+  languageSegment: {
+    width: 92,
+    height: 40,
+    flexDirection: "row",
     borderWidth: 1,
     borderColor: LINE,
-    backgroundColor: CARD,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  languagePillText: { color: TEXT, fontWeight: "700", fontSize: 13 },
-  languageDropdown: {
-    position: "absolute",
-    top: 32,
-    right: 0,
-    minWidth: 132,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: LINE,
+    padding: 3,
+    gap: 3,
     backgroundColor: CARD,
-    padding: 4,
-    zIndex: 5,
   },
   languageOption: {
-    borderRadius: 9,
+    flex: 1,
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    justifyContent: "center",
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
-  languageOptionActive: {
-    backgroundColor: themeColor("rgba(22, 163, 74, 0.12)", 'surface'),
-  },
-  languageOptionText: { color: MUTED, fontWeight: "800", fontSize: 14 },
+  languageOptionActive: { borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}12` },
+  languageOptionText: { color: MUTED, fontWeight: "700", fontSize: 12 },
   languageOptionTextActive: { color: ACCENT },
 
   welcomeRow: { flexDirection: "row", alignItems: "center", gap: 12 },

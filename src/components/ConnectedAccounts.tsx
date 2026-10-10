@@ -49,7 +49,7 @@ export default function ConnectedAccounts({ disabled = false }: { disabled?: boo
   </>;
 }
 const getStyles = createThemedStyles((c: ThemeColors) => ({ ACCENT: c.ACCENT, DANGER: c.DANGER, styles: StyleSheet.create({
-  open: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 12 },
+  open: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 40, paddingVertical: 8 },
   openText: { color: c.ACCENT, fontWeight: '700', fontSize: 13 },
   backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.55)', padding: 20 },
   card: { width: '100%', maxWidth: 480, borderRadius: 22, borderWidth: 1, borderColor: c.ACCENT, backgroundColor: c.PANEL, padding: 20, gap: 14 },

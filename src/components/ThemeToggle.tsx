@@ -17,7 +17,6 @@ export default function ThemeToggle() {
           accessibilityLabel={label} onPress={() => setMode(value as ThemeMode)}
           style={({pressed}) => [styles.option, mode === value && styles.selected, pressed && {opacity: 0.7}]}>
           <Icon size={15} color={mode === value ? ACCENT : MUTED}/>
-          <Text style={[styles.optionText, mode === value && {color: ACCENT}]}>{label}</Text>
         </Pressable>
       )}
     </View>
@@ -25,11 +24,10 @@ export default function ThemeToggle() {
 }
 const getStyles = createThemedStyles(({ACCENT, CARD, LINE, MUTED}) => ({ACCENT, MUTED,
   styles: StyleSheet.create({
-    row: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginTop: 14},
-    label: {color: MUTED, fontSize: 12, fontWeight: '600'},
-    segment: {flexDirection: 'row', alignItems: 'stretch', borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 3, gap: 3, backgroundColor: CARD},
-    option: {flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 34, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9, borderWidth: 1, borderColor: 'transparent'},
-    optionText: {color: MUTED, fontSize: 12, fontWeight: '700'},
+    row: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    label: {color: MUTED, width: 78, fontSize: 12, fontWeight: '600'},
+    segment: {width: 92, height: 40, flexDirection: 'row', alignItems: 'stretch', borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 3, gap: 3, backgroundColor: CARD},
+    option: {flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 9, borderWidth: 1, borderColor: 'transparent'},
     selected: {borderColor: `${ACCENT}55`, backgroundColor: `${ACCENT}12`},
   }),
 }));
