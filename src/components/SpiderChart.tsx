@@ -18,6 +18,7 @@ VictoryChart,
 VictoryGroup,
 VictoryLabel,
 VictoryPolarAxis,
+VictoryScatter,
 } from 'victory-native';
 
 import { useTranslation } from 'react-i18next';
@@ -328,6 +329,11 @@ export default function SpiderChart({ title, points, Icon, chartSize, hideTitle 
             }}
           />
         </VictoryGroup>
+        <VictoryScatter
+          data={withDisplay.map((p) => ({ x: toSpoke(p.x), y: p.y }))}
+          size={3}
+          style={{ data: { fill: themeColor('#A7F3D0'), stroke: themeColor('#143d2b'), strokeWidth: 1.5 } }}
+        />
         </VictoryChart>
       </View>
     </View>

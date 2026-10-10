@@ -1,3 +1,4 @@
+import { formatNarrativeNumbers } from '@/utils/narrativeNumbers';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { ChevronDown,Shield } from 'lucide-react-native';
 import { useState } from 'react';
@@ -43,7 +44,7 @@ export default function MatchReportPlayerPerspectives({ data, tr, analysis, load
         const player = data.lineups.find(item => Number(item.player_id) === Number(insight.player_id));
         return <View key={`${insight.player_id}`} style={[s.insight, { borderColor: `${color}70`, backgroundColor: `${color}09` }]}>
           <View style={s.insightHeading}><ReportPlayerPortrait imageUrl={player?.player_image_url} accent={color} size={45}/><View style={{flex:1,gap:4}}><Text style={[s.insightTitle, { color }]}>{insight.player_name}</Text><Text style={[s.numberText,{color}]}>{String(index + 1).padStart(2, '0')}</Text></View></View>
-          <Text style={[s.caption, { color }]}>{insight.selection_type === 'development' ? tr ? 'Gelişim Alanı' : 'Development Area' : tr ? `Öne Çıkan ${index + 1}` : `Standout ${index + 1}`}</Text><Text style={s.explanation}>{insight.text}</Text>
+          <Text style={[s.caption, { color }]}>{insight.selection_type === 'development' ? tr ? 'Gelişim Alanı' : 'Development Area' : tr ? `Öne Çıkan ${index + 1}` : `Standout ${index + 1}`}</Text><Text style={s.explanation}>{formatNarrativeNumbers(insight.text, tr ? 'tr' : 'en')}</Text>
         </View>;
       })}
   </View>;

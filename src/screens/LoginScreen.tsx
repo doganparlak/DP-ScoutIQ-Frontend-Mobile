@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Eye,EyeOff } from 'lucide-react-native';
-import { useMemo,useState } from 'react';
+import { useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 KeyboardAvoidingView,
@@ -39,6 +39,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const passwordInput = useRef<TextInput>(null);
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [socialBusy, setSocialBusy] = useState(false);
@@ -115,6 +116,8 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   style={styles.input}
                   returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => passwordInput.current?.focus()}
                 />
               </View>
 
@@ -122,6 +125,7 @@ export default function LoginScreen() {
                 <Text style={styles.label}>{t('password', 'Password')}</Text>
                 <View style={styles.passwordRow}>
                   <TextInput
+                    ref={passwordInput}
                     value={password}
                     onChangeText={setPassword}
                     placeholder={t('placeholderPassword', '••••••••')}

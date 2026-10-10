@@ -3,7 +3,7 @@ import { ChevronDown,Shield,X } from 'lucide-react-native';
 import React,{ useRef,useState } from 'react';
 import { Image,Modal,Pressable,ScrollView,StyleSheet,Text,View,useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg,{ Line,Polygon,Text as SvgText,TSpan } from 'react-native-svg';
+import Svg,{ Circle,Line,Polygon,Text as SvgText,TSpan } from 'react-native-svg';
 
 import type { MatchReportLineup,PostMatchCardData } from '@/services/matchPool';
 import { toSpiderPoints } from '@/utils/comparisonRanges';
@@ -49,6 +49,7 @@ export function Metrics({ player, tr, accent, onClose, unit = 'perMatch' }: { pl
         {[.25, .5, .75, 1].map(scale => <Polygon key={scale} points={polygon(scale)} fill="none" stroke={MUTED} strokeOpacity={.2} />)}
         {radar.map((p, i) => { const pos = coordinate(i, 186); const words = label(p.name).split(/\s+/); const lines: string[] = []; for (const word of words) { const last = lines.length - 1; if (last >= 0 && `${lines[last]} ${word}`.length <= 17) lines[last] += ` ${word}`; else lines.push(word); } return <React.Fragment key={`${p.name}-${i}`}><Line x1={250} y1={212} x2={pos.x} y2={pos.y} stroke={MUTED} strokeOpacity={.15} /><SvgText x={pos.x} y={pos.y} textAnchor="middle" fill={MUTED} fontSize={14} fontWeight="800">{lines.map((line, j) => <TSpan key={j} x={pos.x} dy={j ? 16 : -(lines.length - 1) * 8}>{line}</TSpan>)}</SvgText></React.Fragment>; })}
         <Polygon points={radar.map((p, i) => { const pos = coordinate(i, 138 * p.normalized!); return `${pos.x},${pos.y}`; }).join(' ')} fill={accent} fillOpacity={.2} stroke={accent} strokeWidth={2.8} />
+        {radar.map((p, i) => { const pos = coordinate(i, 138 * p.normalized!); return <Circle key={`${p.name}-${i}`} cx={pos.x} cy={pos.y} r={3} fill={themeColor('#A7F3D0')} stroke={accent} strokeWidth={1.5}/>; })}
       </Svg></View>}
       {points.map((p, i) => <View key={`${p.name}-${i}`} style={s.tile}><View style={s.metricRow}><Text style={[s.body, { flex: 1 }]}>{label(p.name)}</Text><Text style={[s.title, { color: accent }]}>{format(p.value)}</Text></View><View style={s.track}><View style={{ height: 6, borderRadius: 3, backgroundColor: accent, width: `${p.normalized == null ? 0 : Math.max(3, p.normalized * 100)}%` }} /></View></View>)}
       {!points.length && <Text style={s.empty}>{tr ? 'Oyuncu metriği bulunmuyor.' : 'No player metrics available.'}</Text>}

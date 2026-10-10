@@ -4,12 +4,12 @@ export type ThemeMode = 'dark' | 'light';
 const dark = {
   BG: '#111315', PANEL: '#1A1D1A', CARD: '#1F2220', TEXT: '#FFFFFF', MUTED: '#7A7A85',
   LINE: '#1F2937', ACCENT: '#16A34A', ACCENT_DARK: '#15803D', DANGER: '#E5484D', DANGER_DARK: '#C43C42',
-  FEATURE_COLORS: {pro: '#FBBF24', scorePrediction: '#60A5FA'},
+  FEATURE_COLORS: {pro: '#FBBF24', scorePrediction: '#60A5FA', discoveryLeague: '#B4A3D3'},
 };
 const light: typeof dark = {
   BG: '#F3F6F4', PANEL: '#FFFFFF', CARD: '#EAF0EC', TEXT: '#17271E', MUTED: '#59685F',
   LINE: '#CFDCD3', ACCENT: '#137A3A', ACCENT_DARK: '#166534', DANGER: '#C92A35', DANGER_DARK: '#A61F2A',
-  FEATURE_COLORS: {pro: '#855E00', scorePrediction: '#1D4ED8'},
+  FEATURE_COLORS: {pro: '#855E00', scorePrediction: '#1D4ED8', discoveryLeague: '#71529C'},
 };
 
 export const WORLD_CUP_COLORS = {

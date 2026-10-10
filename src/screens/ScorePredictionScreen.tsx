@@ -1,6 +1,4 @@
-import ScorePredictionPrizes from '@/components/ScorePredictionPrizes';
-import { usePredictionPrizeClaims } from '@/context/PredictionPrizeClaimsContext';
-import { getPredictionPrizeWeeks, refreshRemoteConfig, subscribePredictionPrizes } from '@/services/remoteConfig';
+import LeagueRulesModal from '@/components/LeagueRulesModal';
 import MatchReportActions from '@/components/MatchReportActions';
 import PredictionHonorsBadge from '@/components/PredictionHonorsBadge';
 import { TutorialPageGuide } from '@/components/Tutorial';
@@ -10,7 +8,7 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { predictionDateTime,predictionWeekLabel } from '@/utils/predictionPresentation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect,useNavigation } from '@react-navigation/native';
-import { BadgeInfo,CalendarDays,Check,ChevronRight,Clock3,Goal,Gift,Info,ListOrdered,Medal,Send,ShieldCheck,Trophy,UserRound,X } from 'lucide-react-native';
+import { BadgeInfo,CalendarDays,Check,ChevronRight,Clock3,Goal,Info,ListOrdered,Send,ShieldCheck,Trophy,UserRound,X } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator,AppState,Image,InputAccessoryView,Keyboard,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View,useWindowDimensions } from 'react-native';
@@ -46,7 +44,6 @@ function Team({ team }: { team: MatchFixture['homeTeam'] }) {
 }
 
 export default function ScorePredictionScreen() {
-  const prizeClaims = usePredictionPrizeClaims();
   const themed = useThemedStyles(getModuleTheme);
   const {s, ACCENT, MUTED, FRAME_STRIPE, FEATURE_COLORS, FRAME_HEADING, FRAME_TITLE, TEXT, tierLabelColor, tierColor, themeColor} = themed;
 
@@ -67,12 +64,6 @@ export default function ScorePredictionScreen() {
   const [loading, setLoading] = React.useState(true), [error, setError] = React.useState('');
   const [week, setWeek] = React.useState<string>(), [nickname, setNickname] = React.useState('');
   const [registering, setRegistering] = React.useState(false), [savingPrediction, setSavingPrediction] = React.useState<number | null>(null);
-  const prizeWeeks = React.useSyncExternalStore(subscribePredictionPrizes, getPredictionPrizeWeeks);
-  const [prizesOpen, setPrizesOpen] = React.useState(false);
-  const [heroActionsWidth, setHeroActionsWidth] = React.useState(0);
-  const heroActionSize = heroActionsWidth > 10 ? { width: (heroActionsWidth - 10) / 2, flexGrow: 0, flexShrink: 0 } : { flex: 1 };
-  const prizeLabelSize = Math.min(13, Math.max(9, (((heroActionsWidth || width - 72) - 10) / 2 - 45) / (tr ? 8.8 : 7.5)));
-  useFocusEffect(React.useCallback(() => { void refreshRemoteConfig(); return () => setPrizesOpen(false); }, []));
   const [rules, setRules] = React.useState(false), [ranking, setRanking] = React.useState(false);
   const [rankingTab, setRankingTab] = React.useState<'weekly' | 'allTime'>('weekly');
   const [allTimeSort, setAllTimeSort] = React.useState<'total' | 'average'>('total');
@@ -148,15 +139,13 @@ export default function ScorePredictionScreen() {
   }, [draft, data?.round?.id, data?.viewerId]);
 
   const round = data?.round, entry = data?.entry, fixtures = round?.fixtures ?? [];
-  const prizes = round ? prizeWeeks[round.weekStart] : undefined;
-  React.useEffect(() => { setPrizesOpen(false); }, [round?.weekStart]);
+  const viewerTier = entry?.tier ?? data?.tier ?? 'free';
+  const startingPoints = viewerTier === 'pro' ? 4 : viewerTier === 'plus' ? 2 : 0;
   const eligible = fixtures.filter(f => f.predictionStatus !== 'excluded');
   const savedCount = eligible.filter(f => entry?.picks[String(f.fixtureId)]).length;
   const remaining = round?.deadline ? Math.max(0, Date.parse(round.deadline) - (now + offset)) : 0;
   const locked = loading || !round?.deadline || remaining <= 0 || round.status !== 'open';
   const mine = data?.leaderboard.find(row => row.isYou);
-  const canClaim = round?.status === 'settled' && !!mine && mine.rank <= 3;
-  const prizeClaimSubmitted = !!data?.prizeClaimSubmitted || (!!round && prizeClaims.claimedRoundIds.includes(round.id));
   const secondsLeft = Math.floor(remaining / 1000);
   const clockParts = [
     { label: tr ? 'Gün' : 'Days', value: Math.floor(secondsLeft / 86400) },
@@ -236,18 +225,18 @@ export default function ScorePredictionScreen() {
     "Çekim salı günü yapılır; cuma–pazartesi maçları seçilir. Toplam 10 maç yoksa yarışma açılmaz.",
     "Tam skor 5 puan kazandırır. Tam skor tutmazsa doğru sonuç 2, doğru gol farkı 1 ve doğru tahmin edilen her takımın gol sayısı 1 puan kazandırır. Gol farkının yönü de doğru olmalı.",
     "Maç 3–1 biterse tahmin örnekleri:\n• 3–1 → 5 puan: tam skor.\n• 2–0 → 3 puan: doğru sonuç (2) + doğru gol farkı (1).\n• 3–0 → 3 puan: doğru sonuç (2) + ev sahibi golü (1).\n• 2–1 → 3 puan: doğru sonuç (2) + deplasman golü (1).\n• 1–0 → 2 puan: yalnızca doğru sonuç.\n• 3–3 → 1 puan: yalnızca ev sahibi golü.\n• 0–1 → 1 puan: yalnızca deplasman golü.\n• 0–2 → 0 puan: hiçbir koşul tutmadı.",
-    "Tüm üyelikler aynı koşullarda yarışır. Abonelikler ek puan veya sıralama önceliği sağlamaz.",
+    "Plus haftaya +2, Pro +4 sabit puanla başlar. Bu puanlar maç puanlarına eklenir.",
     "İstediğin maçlara ayrı ayrı tahmin gönderebilir, ilk maçın başlama saatine kadar düzenleyip yeniden gönderebilirsin. Son gönderdiğin skor geçerlidir.",
     "Ertelenen, iptal edilen, oynanmayan veya yarıda kalan maçlar puanlamadan çıkarılır. Yerlerine yeni maç eklenmez.",
-    "Toplam puan eşitse son tahmin gönderimini daha erken yapan öne geçer.",
+    "Toplam puan eşitse önce Pro, sonra Plus öne geçer. Aynı üyelikte son tahmin gönderimini daha erken yapan kazanır.",
   ] : [
     "The draw opens on Tuesday for Friday–Monday matches. A competition opens only when 10 matches are available.",
     "An exact score earns 5 points. Otherwise, the correct result earns 2, the correct goal difference earns 1, and each correctly predicted team goal total earns 1 point. The goal difference must have the correct direction.",
     "If the match ends 3–1, example predictions are:\n• 3–1 → 5 points: exact score.\n• 2–0 → 3 points: correct result (2) + goal difference (1).\n• 3–0 → 3 points: correct result (2) + home team goals (1).\n• 2–1 → 3 points: correct result (2) + away team goals (1).\n• 1–0 → 2 points: correct result only.\n• 3–3 → 1 point: home team goals only.\n• 0–1 → 1 point: away team goals only.\n• 0–2 → 0 points: no scoring condition matched.",
-    "Every plan competes on equal terms. Subscriptions provide no extra points or ranking priority.",
+    "Plus starts each week with +2 fixed points and Pro with +4. These are added to match points.",
     "Submit predictions for any matches individually. Edit and resubmit until the earliest kickoff. Your latest submitted score counts.",
     "Postponed, cancelled, unplayed or abandoned matches are excluded from scoring and are not replaced.",
-    "At equal total points, the earlier last prediction submission ranks first.",
+    "At equal total points, Pro ranks first, followed by Plus. Within the same tier, the earlier last prediction submission wins.",
   ];
 
   return <>
@@ -264,7 +253,7 @@ export default function ScorePredictionScreen() {
           </View>
           <Text style={s.heroDescription}>{tr ? 'Skoru sen yaz. Haftanın zirvesine oyna.' : 'Make your score count. Compete for the top spot.'}</Text>
           <View style={s.identityRow}>
-            <View style={[s.row, { maxWidth: '100%', minWidth: 0 }]}><View style={[s.identityChip, { flexShrink: 1 }]}><UserRound size={15} color={ACCENT} /><Text style={s.identityText}>{data?.nickname || (tr ? 'Takma adını belirle' : 'Choose your nickname')}</Text></View></View>
+            <View style={[s.row, { maxWidth: '100%', minWidth: 0 }]}><View style={[s.identityChip, { flexShrink: 1 }]}><UserRound size={15} color={ACCENT} /><Text style={s.identityText}>{data?.nickname || (tr ? 'Takma adını belirle' : 'Choose your nickname')}</Text></View><View style={[s.identityChip, { borderColor: tierLabelColor(viewerTier) }]}><Text style={[s.identityText, { color: tierLabelColor(viewerTier) }]}>{viewerTier.toUpperCase()}</Text></View></View>
             {round && <View style={s.identityChip}><CalendarDays size={15} color={MUTED} /><Text style={s.caption}>{weekLabel(round.weekStart, tr)} {tr ? 'Haftası' : 'Week'}</Text></View>}
           </View>
           <PredictionHonorsBadge wins={data?.championships ?? 0} secondPlaces={data?.secondPlaces ?? 0} thirdPlaces={data?.thirdPlaces ?? 0} />
@@ -275,15 +264,11 @@ export default function ScorePredictionScreen() {
           </View>}
           <View style={s.heroStats}>
             <View style={s.heroStat}><Text style={s.statValue}>{savedCount}<Text style={s.statDenominator}>/{eligible.length}</Text></Text><Text style={s.caption}>{tr ? 'Tahminlerin' : 'Predictions'}</Text></View>
-            <View style={[s.heroStat, s.statDivider]}><Text style={[s.statValue, { color: ACCENT }]}>{number(entry?.totalPoints ?? 0)}</Text><Text style={s.caption}>{tr ? 'Puanın' : 'Your Points'}</Text></View>
+            <View style={[s.heroStat, s.statDivider]}><Text style={[s.statValue, { color: tierColor(viewerTier) }]}>{number(entry?.totalPoints ?? startingPoints)}</Text><Text style={s.caption}>{tr ? 'Puanın' : 'Your Points'}</Text></View>
             <View style={s.heroStat}><Text style={s.statValue}>{mine ? `#${mine.rank}` : '—'}</Text><Text style={s.caption}>{tr ? 'Sıralaman' : 'Your Rank'}</Text></View>
           </View>
           {!!eligible.length && <View style={s.progressTrack}><View style={[s.progressFill, { width: `${savedCount / eligible.length * 100}%` }]} /></View>}
-          <Pressable accessibilityRole='button' onPress={() => { setRankingTab('weekly'); setAllTimeSort('total'); setRanking(true); void load(); }} style={[s.rankingButton, { minHeight: 48, marginBottom: 10 }]}><ListOrdered size={19} color={ACCENT} /><Text style={[s.actionText, s.heroActionText]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={.85} maxFontSizeMultiplier={1.3}>{tr ? 'Sıralamaları Gör' : 'View Rankings'}</Text><ChevronRight size={18} color={ACCENT} /></Pressable>
-          <View style={s.heroActions} onLayout={({ nativeEvent }) => setHeroActionsWidth(nativeEvent.layout.width)}>
-            <Pressable accessibilityRole="button" onPress={() => setPrizesOpen(true)} style={[s.rankingButton, s.heroAction, heroActionSize, { borderColor: FEATURE_COLORS.scorePrediction }]}><Gift size={19} color={FEATURE_COLORS.scorePrediction} /><Text style={[s.actionText, s.heroActionText, s.prizeActionText, { color: FEATURE_COLORS.scorePrediction, fontSize: prizeLabelSize }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.75} maxFontSizeMultiplier={1.3}>{tr ? 'Haftanın Ödülleri' : 'Weekly Prizes'}</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={prizeClaims.openPrizes} style={[s.rankingButton, s.heroAction, heroActionSize, { borderColor: FEATURE_COLORS.scorePrediction }]}><Medal size={19} color={FEATURE_COLORS.scorePrediction} /><Text style={[s.actionText, s.heroActionText, s.prizeActionText, { color: FEATURE_COLORS.scorePrediction, fontSize: prizeLabelSize }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.75} maxFontSizeMultiplier={1.3}>{tr ? 'Ödüllerim' : 'My Prizes'}</Text></Pressable>
-          </View>
+          <Pressable accessibilityRole='button' onPress={() => { setRankingTab('weekly'); setAllTimeSort('total'); setRanking(true); void load(); }} style={[s.rankingButton, { minHeight: 48 }]}><ListOrdered size={19} color={ACCENT} /><Text style={[s.actionText, s.heroActionText]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={.85} maxFontSizeMultiplier={1.3}>{tr ? 'Sıralamaları Gör' : 'View Rankings'}</Text><ChevronRight size={18} color={ACCENT} /></Pressable>
           {!!data?.weeks.length && data.weeks.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 14 }}>{data.weeks.map(value => <Pressable key={value} accessibilityRole='button' accessibilityState={{ selected: round?.weekStart === value }} disabled={savingPrediction !== null} onPress={() => { if (value === round?.weekStart) return; setLoading(true); setWeek(value); }} style={[s.weekChip, round?.weekStart === value && { borderColor: ACCENT }]}><Text style={[s.caption, round?.weekStart === value && { color: ACCENT }]}>{weekLabel(value, tr)}</Text></Pressable>)}</ScrollView>}
         </View>
         <TutorialPageGuide page='scorePrediction' frame={1} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
@@ -311,7 +296,6 @@ export default function ScorePredictionScreen() {
     </ScrollView>
     </KeyboardAvoidingView>
     {Platform.OS === 'ios' && <InputAccessoryView nativeID='prediction-score-keyboard'><View style={s.keyboardBar}><Pressable accessibilityRole='button' onPress={Keyboard.dismiss} style={s.keyboardDone}><Text style={s.actionText}>{tr ? 'Tamam' : 'Done'}</Text></Pressable></View></InputAccessoryView>}
-    {round && <ScorePredictionPrizes prizes={prizes} weekStart={round.weekStart} roundId={round.id} canClaim={canClaim} claimed={prizeClaimSubmitted} onClaimed={() => { prizeClaims.markClaimed(round.id); setData(current => current?.round?.id === round.id ? { ...current, prizeClaimSubmitted: true } : current); void prizeClaims.refresh(); }} tr={tr} visible={prizesOpen} onClose={() => setPrizesOpen(false)} />}
     <Modal visible={ranking} transparent animationType='fade' onRequestClose={() => setRanking(false)}>
       <View style={s.backdrop}><View style={[s.modal, { height: Math.min(760, height * .86) }]} accessibilityViewIsModal>
         <View style={s.modalHeader}><View style={s.modalIcon}><ListOrdered size={21} color={ACCENT} /></View><View style={{ flex: 1, minWidth: 0 }}><Text style={s.modalTitle}>{rankingTab === 'weekly' ? (tr ? 'Haftalık Sıralama' : 'Weekly Rankings') : (tr ? 'Tüm Zamanlar' : 'All Time')}</Text><Text style={s.caption}>{rankingTab === 'allTime' ? (tr ? 'Genel Başarı Sıralaması' : 'Overall Achievement Rankings') : round ? weekLabel(round.weekStart, tr) + (tr ? ' Haftası' : ' Week') : '—'}</Text></View><Pressable accessibilityRole='button' accessibilityLabel={tr ? 'Kapat' : 'Close'} hitSlop={10} style={s.iconButton} onPress={() => setRanking(false)}><X size={20} color={MUTED} /></Pressable></View>
@@ -329,27 +313,22 @@ export default function ScorePredictionScreen() {
               ].map(award => <View key={award.label} style={s.placementCount} accessibilityLabel={`${award.label}: ${award.count}`}><Trophy size={12} color={award.color} /><Text style={[s.caption, { color: award.color }]}>{award.count}</Text></View>)}</View></View>
               <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '45%', flexShrink: 1 }}><View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', gap: 6 }}><Text style={s.caption}>{row.weeksParticipated} {tr ? 'Hafta' : 'Weeks'}</Text><Text style={[s.rankPoints, { color: TEXT }]} numberOfLines={1}>{allTimeSort === 'average' ? averageNumber(row.averagePoints, tr) : number(row.totalPoints)}</Text></View><Text style={s.caption}>{allTimeSort === 'average' ? (tr ? 'puan/hafta' : 'pts/week') : (tr ? 'puan' : 'pts')}</Text></View>
             </View>)
-          ) : !data?.leaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Henüz gönderilmiş tahmin yok.' : 'No predictions have been submitted yet.'}</Text></View> : data.leaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank]}>
+          ) : !data?.leaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Henüz gönderilmiş tahmin yok.' : 'No predictions have been submitted yet.'}</Text></View> : data.leaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank, row.tier !== 'free' && { borderColor: tierColor(row.tier), backgroundColor: themeColor(row.tier === 'pro' ? 'rgba(22,163,74,.08)' : 'rgba(56,189,248,.08)', 'surface') }]}>
             <View style={s.rankNumber}>{row.rank <= 3 ? <Trophy size={18} color={row.rank === 1 ? themeColor('#FBBF24', 'text') : row.rank === 2 ? themeColor('#CBD5E1', 'text') : themeColor('#D6A779', 'text')} /> : null}<Text style={s.rank}>{row.rank}</Text></View>
             <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><Text style={[s.caption, { color: tierLabelColor(row.tier) }]}>{row.tier.toUpperCase()}</Text></View>
             <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '48%', flexShrink: 1 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', columnGap: 6, rowGap: 2 }}>
+                {row.bonusPoints > 0 && <Text style={[s.caption, { color: tierColor(row.tier), fontSize: 11 }]}>{number(row.basePoints)} + {number(row.bonusPoints)}</Text>}
                 <Text style={[s.rankPoints, { color: tierColor(row.tier) }]} numberOfLines={1}>{number(row.totalPoints)}</Text>
               </View>
               <Text style={s.caption}>{tr ? 'puan' : 'pts'}</Text>
             </View>
           </View>)}
         </ScrollView>
-        <View style={s.modalFooter}>{rankingTab === 'weekly' && !!entry?.submittedAt && <View style={s.scoreSummary}>{[{ label: tr ? 'Maç Puanı' : 'Match Points', value: entry.basePoints }, { label: tr ? 'Tam Skor' : 'Exact Scores', value: entry.exactScores }, { label: tr ? 'Toplam' : 'Total', value: entry.totalPoints }].map(item => <View key={item.label} style={s.summaryCell}><Text style={s.caption}>{item.label}</Text><Text style={[s.summaryValue, { color: ACCENT }]}>{number(item.value)}</Text></View>)}</View>}<Pressable accessibilityRole='button' style={s.primary} onPress={() => setRanking(false)}><Text style={s.actionText}>{tr ? 'Tamam' : 'OK'}</Text></Pressable></View>
+        <View style={s.modalFooter}>{rankingTab === 'weekly' && !!entry?.submittedAt && <View style={s.scoreSummary}>{[{ label: tr ? 'Maç Puanı' : 'Match Points', value: entry.basePoints }, { label: tr ? 'Üyelik Puanı' : 'Membership Points', value: entry.bonusPoints }, { label: tr ? 'Toplam' : 'Total', value: entry.totalPoints }].map(item => <View key={item.label} style={s.summaryCell}><Text style={s.caption}>{item.label}</Text><Text style={[s.summaryValue, { color: ACCENT }]}>{number(item.value)}</Text></View>)}</View>}<Pressable accessibilityRole='button' style={s.primary} onPress={() => setRanking(false)}><Text style={s.actionText}>{tr ? 'Tamam' : 'OK'}</Text></Pressable></View>
       </View></View>
     </Modal>
-    <Modal visible={rules} transparent animationType='fade' onRequestClose={() => setRules(false)}>
-      <View style={s.backdrop}><View style={s.modal} accessibilityViewIsModal>
-        <View style={s.modalHeader}><View style={s.modalIcon}><Info size={21} color={ACCENT} /></View><Text style={[s.modalTitle, { flex: 1 }]}>{tr ? 'Nasıl Puanlanır?' : 'How Scoring Works'}</Text><Pressable accessibilityRole='button' accessibilityLabel={tr ? 'Kapat' : 'Close'} hitSlop={10} style={s.iconButton} onPress={() => setRules(false)}><X size={20} color={MUTED} /></Pressable></View>
-        <ScrollView style={{ maxHeight: height * .6 }} contentContainerStyle={{ gap: 16, padding: 18 }}>{ruleLines.map((line, i) => <View key={line} style={[s.row, { alignItems: 'flex-start' }]}><Text style={s.ruleNumber}>{String(i + 1).padStart(2, '0')}</Text><Text style={s.rule}>{line}</Text></View>)}</ScrollView>
-        <View style={s.modalFooter}><Pressable accessibilityRole='button' style={s.primary} onPress={() => setRules(false)}><Text style={s.actionText}>{tr ? 'Tamam' : 'OK'}</Text></Pressable></View>
-      </View></View>
-    </Modal>
+    <LeagueRulesModal visible={rules} onClose={() => setRules(false)} lines={ruleLines}/>
   </>;
 }
 
@@ -374,7 +353,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   keyboardBar: { backgroundColor: PANEL, borderTopWidth: 1, borderTopColor: LINE, alignItems: 'flex-end', paddingHorizontal: 12 }, keyboardDone: { minHeight: 44, minWidth: 72, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   matchPointsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: CARD }, matchPoints: { color: ACCENT, fontSize: 24, fontWeight: '900' },
   heroStats: { flexDirection: 'row', marginVertical: 18 }, heroStat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 }, statDivider: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: themeColor('rgba(126,148,135,.18)', 'border') }, statValue: { color: TEXT, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] }, statDenominator: { color: MUTED, fontSize: 13, fontWeight: '600' },
-  heroActions: { flexDirection: 'row', alignItems: 'stretch', gap: 10 }, heroAction: { minWidth: 0, minHeight: 48, paddingHorizontal: 10, paddingVertical: 10, gap: 6 }, heroActionText: { flex: 1, minWidth: 0, textAlign: 'left', lineHeight: 18 }, prizeActionText: { fontSize: 13 },
+  heroActionText: { flex: 1, minWidth: 0, textAlign: 'left', lineHeight: 18 },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: themeColor('#303931', 'surface'), overflow: 'hidden', marginBottom: 18 }, progressFill: { height: '100%', backgroundColor: ACCENT }, rankingButton: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: 13, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.5)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.07)', 'surface') },
   notice: { padding: 14, borderWidth: 1, borderColor: LINE, borderRadius: 14, backgroundColor: CARD, gap: 8 }, error: { color: DANGER, fontSize: 13, lineHeight: 20 },
   nicknameInput: { marginVertical: 14, minHeight: 48, borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 12, color: TEXT, backgroundColor: CARD }, weekChip: { borderRadius: 11, borderWidth: 1, borderColor: LINE, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: CARD },
@@ -389,7 +368,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   rankingSwitchButton: { flex: 1, minWidth: 0, minHeight: 42, justifyContent: 'center', alignItems: 'center', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
   rankingSwitchSelected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') },
   placementCount: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, paddingHorizontal: 6, borderRadius: 7, backgroundColor: themeColor('rgba(255,255,255,.03)', 'surface') },
-  rankContent: { padding: 14, gap: 8 }, rankRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 12, backgroundColor: CARD }, ownRank: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') }, rankNumber: { minWidth: 28, alignItems: 'center', gap: 4 }, rank: { color: MUTED, fontSize: 12, fontWeight: '800' }, rankName: { color: TEXT, fontSize: 13, fontWeight: '700' }, rankPoints: { color: ACCENT, fontSize: 21, fontWeight: '900', fontVariant: ['tabular-nums'] }, emptyRank: { alignItems: 'center', paddingVertical: 30, gap: 16 }, scoreSummary: { flexDirection: 'row', gap: 8 }, summaryCell: { flex: 1, minWidth: 0, gap: 5, alignItems: 'center' }, summaryValue: { color: TEXT, fontSize: 18, fontWeight: '900' }, ruleNumber: { color: ACCENT, fontSize: 12, fontWeight: '800', paddingTop: 3 }, rule: { flex: 1, color: TEXT, fontSize: 13, lineHeight: 22 },
+  rankContent: { padding: 14, gap: 8 }, rankRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 12, backgroundColor: CARD }, ownRank: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') }, rankNumber: { minWidth: 28, alignItems: 'center', gap: 4 }, rank: { color: MUTED, fontSize: 12, fontWeight: '800' }, rankName: { color: TEXT, fontSize: 13, fontWeight: '700' }, rankPoints: { color: ACCENT, fontSize: 21, fontWeight: '900', fontVariant: ['tabular-nums'] }, emptyRank: { alignItems: 'center', paddingVertical: 30, gap: 16 }, scoreSummary: { flexDirection: 'row', gap: 8 }, summaryCell: { flex: 1, minWidth: 0, gap: 5, alignItems: 'center' }, summaryValue: { color: TEXT, fontSize: 18, fontWeight: '900' },
 });
   return {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, tierColor, tierLabelColor, s, themeColor};
 });

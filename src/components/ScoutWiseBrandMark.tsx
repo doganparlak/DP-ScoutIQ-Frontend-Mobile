@@ -6,9 +6,11 @@ import Svg,{ Circle,ClipPath,Defs,Polygon,Rect,Image as SvgImage } from 'react-n
 /** Match the web brand in light mode and preserve the transparent dark-mode mark. */
 export default function ScoutWiseBrandMark({style, accessible = false, accessibilityLabel, accessibilityRole, accessibilityIgnoresInvertColors}: Pick<ImageProps, 'style' | 'accessible' | 'accessibilityLabel' | 'accessibilityRole' | 'accessibilityIgnoresInvertColors'>) {
   const {TEXT, mode} = useThemeColors();
-  const clip = React.useId().replace(/[^a-zA-Z0-9]/g, '');
+  const clip = `${React.useId().replace(/[^a-zA-Z0-9]/g, '')}${mode}`;
   return <View style={style as StyleProp<ViewStyle>} accessible={accessible} accessibilityLabel={accessibilityLabel} accessibilityRole={accessibilityRole} accessibilityIgnoresInvertColors={accessibilityIgnoresInvertColors}>
-    <Svg width="100%" height="100%" viewBox="0 0 1024 1024">
+    {/* Recreate native SVG definitions on theme changes; Android can retain the
+        light-mode rectangular clip when switching back to the circular mark. */}
+    <Svg key={mode} width="100%" height="100%" viewBox="0 0 1024 1024" style={{backgroundColor: 'transparent'}}>
       <Defs><ClipPath id={clip}>{mode === 'light'
         ? <Rect width="1024" height="1024" rx={1024 * 8 / 30}/>
         : <Circle cx="512" cy="491" r="397"/>}</ClipPath></Defs>

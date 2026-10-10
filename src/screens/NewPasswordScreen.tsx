@@ -4,7 +4,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useNavigation,useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Eye,EyeOff } from 'lucide-react-native';
-import { useMemo,useState } from 'react';
+import { useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 KeyboardAvoidingView,
@@ -36,6 +36,7 @@ export default function NewPasswordScreen() {
   const email = params.email;
   const { t } = useTranslation();
 
+  const confirmationInput = useRef<TextInput>(null);
   const [password, setPassword] = useState('');
   const [again, setAgain] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -135,6 +136,8 @@ export default function NewPasswordScreen() {
                     secureTextEntry={!showPassword}
                     style={styles.passwordInput}
                     returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => confirmationInput.current?.focus()}
                   />
                   <Pressable
                     onPress={() => setShowPassword(prev => !prev)}
@@ -156,6 +159,7 @@ export default function NewPasswordScreen() {
               <View style={styles.fieldBlock}>
                 <Text style={styles.label}>{t('reenterNewPassword', 'Re-enter new password')}</Text>
                 <TextInput
+                  ref={confirmationInput}
                   value={again}
                   onChangeText={setAgain}
                   placeholder={t('placeholderPassword', '••••••••')}

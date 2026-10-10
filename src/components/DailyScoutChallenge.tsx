@@ -1,5 +1,5 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { ListOrdered,Target,Trophy,X } from "lucide-react-native";
+import { Target,X } from "lucide-react-native";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,90 +17,22 @@ View,
 import DailyScoutPlayerCard from "@/components/DailyScoutPlayerCard";
 import {
 getDailyScoutChallenge,
-getDailyScoutLeaderboard,
 setDailyScoutNickname,
 skipDailyScoutChallenge,
 submitDailyScoutAnswer,
 type DailyScoutChallenge,
-type DailyScoutLeaderboard,
 } from "@/services/api";
 
 
 type ChallengeModalProps = {
   embedded?: boolean;
-  onOpenLeaderboard?: () => void;
+  header?: React.ReactNode;
+  refreshKey?: number;
+  onUpdated?: () => void;
   visible?: boolean;
   autoOpen?: boolean;
   onClose?: () => void;
 };
-
-export function DailyScoutChallengeFrame({
-  onOpenChallenge,
-  onOpenLeaderboard,
-  navigationLocked = false,
-}: {
-  onOpenChallenge: () => void;
-  onOpenLeaderboard: () => void;
-  navigationLocked?: boolean;
-}) {
-  const themed = useThemedStyles(getModuleTheme);
-  const {styles, ACCENT, TEXT} = themed;
-
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.profileFrame}>
-      <View style={styles.challengeHeader}>
-        <View style={styles.iconBubble}>
-          <Target size={18} color={ACCENT} strokeWidth={2.5} />
-        </View>
-        <View style={styles.titleTextWrap}>
-          <Text style={styles.profileFrameTitle}>
-            {t("dailyScoutChallengeTitle", "Daily Scout Challenge")}
-          </Text>
-          <Text style={styles.subtitle}>
-            {t(
-              "dailyScoutAccountBody",
-              "Play today or check this week's scoreboard.",
-            )}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.frameActions}>
-        <Pressable
-          onPress={onOpenChallenge}
-          disabled={navigationLocked}
-          style={({ pressed }) => [
-            styles.framePrimary,
-            navigationLocked && styles.disabledButton,
-            pressed && !navigationLocked && styles.pressed,
-          ]}
-        >
-          <Target size={15} color={ACCENT} strokeWidth={2.5} />
-          <Text style={styles.framePrimaryText}>
-            {t("dailyScoutOpenChallenge", "Open Challenge")}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={onOpenLeaderboard}
-          disabled={navigationLocked}
-          style={({ pressed }) => [
-            styles.frameSecondary,
-            navigationLocked && styles.disabledButton,
-            pressed && !navigationLocked && styles.pressed,
-          ]}
-        >
-          <ListOrdered size={15} color={TEXT} strokeWidth={2.4} />
-          <Text style={styles.frameSecondaryText}>
-            {t("dailyScoutWeeklyScoreboard", "Weekly Scoreboard")}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
 
 function useLocalizedText() {
   const { i18n } = useTranslation();
@@ -120,7 +52,7 @@ function isNicknameTakenError(message: string) {
 export function DailyScoutChallengeModal({
   visible,
   embedded = false,
-  onOpenLeaderboard,
+  header, refreshKey, onUpdated,
   autoOpen = false,
   onClose,
 }: ChallengeModalProps) {
@@ -168,7 +100,7 @@ export function DailyScoutChallengeModal({
 
   React.useEffect(() => {
     if (visible) loadChallenge(false);
-  }, [loadChallenge, visible]);
+  }, [loadChallenge, visible, refreshKey]);
 
   const completed = challenge?.attempt.status === "completed";
   const skipped = challenge?.attempt.status === "skipped";
@@ -200,7 +132,7 @@ export function DailyScoutChallengeModal({
   };
 
   const handleAnswer = async (choiceId: string) => {
-    if (!challenge || completed || submittingId) return;
+    if (!challenge || completed || submittingId || loading) return;
 
     try {
       setSubmittingId(choiceId);
@@ -209,11 +141,15 @@ export function DailyScoutChallengeModal({
         choiceId,
       );
       setChallenge(next);
+      onUpdated?.();
     } catch (err: any) {
       Alert.alert(
         t("dailyScoutErrorTitle", "Challenge failed"),
-        String(err?.message || err),
+        String(err?.message || err).includes('DAILY_CHALLENGE_EXPIRED')
+          ? t('dailyScoutExpired', 'Today’s question has changed. Loading the new question…')
+          : String(err?.message || err),
       );
+      if (String(err?.message || err).includes('DAILY_CHALLENGE_EXPIRED')) { void loadChallenge(false); onUpdated?.(); }
     } finally {
       setSubmittingId(null);
     }
@@ -235,6 +171,7 @@ export function DailyScoutChallengeModal({
           : current,
       );
       setNickname("");
+      onUpdated?.();
     } catch (err: any) {
       const message = String(err?.message || err);
       Alert.alert(
@@ -259,7 +196,7 @@ export function DailyScoutChallengeModal({
         </View>
         <View style={styles.titleTextWrap}>
           <Text style={styles.title}>
-            {t("dailyScoutChallengeTitle", "Daily Scout Challenge")}
+            {embedded ? t("dailyScoutTodayQuestion", "Today’s Question") : t("dailyScoutChallengeTitle", "Player Discovery League")}
           </Text>
           <Text style={styles.subtitle}>
             {t(
@@ -289,19 +226,7 @@ export function DailyScoutChallengeModal({
             embedded ? styles.embeddedScrollContent : styles.scrollContent
           }
         >
-          {embedded && (
-            <Pressable
-              testID="daily-scout-weekly-scores"
-              accessibilityRole="button"
-              onPress={onOpenLeaderboard}
-              style={styles.weeklyScoreButton}
-            >
-              <ListOrdered size={20} color={ACCENT} />
-              <Text style={styles.weeklyScoreText}>
-                {t("dailyScoutWeeklyScoreboard")}
-              </Text>
-            </Pressable>
-          )}
+          {header}
           <View
             testID="daily-scout-question-frame"
             style={embedded ? styles.questionFrame : undefined}
@@ -438,7 +363,7 @@ export function DailyScoutChallengeModal({
                   >
                     <Pressable
                       accessibilityRole="button"
-                      disabled={completed || !!submittingId}
+                      disabled={completed || !!submittingId || loading}
                       onPress={() => handleAnswer(choice.id)}
                       style={[
                         styles.optionHeader,
@@ -512,118 +437,6 @@ export function DailyScoutChallengeModal({
   );
 }
 
-export function DailyScoutLeaderboardModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
-  const themed = useThemedStyles(getModuleTheme);
-  const {styles, ACCENT, MUTED} = themed;
-
-  const { t } = useTranslation();
-  const [leaderboard, setLeaderboard] =
-    React.useState<DailyScoutLeaderboard | null>(null);
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!visible) return;
-
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const next = await getDailyScoutLeaderboard(20);
-        if (alive) setLeaderboard(next);
-      } catch (err: any) {
-        Alert.alert(
-          t("dailyScoutLeaderboardFailed", "Scoreboard failed"),
-          String(err?.message || err),
-        );
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [t, visible]);
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.backdrop}>
-        <View style={styles.modal}>
-          <View style={styles.header}>
-            <View style={styles.titleRow}>
-              <View style={styles.iconBubble}>
-                <Trophy size={18} color={ACCENT} strokeWidth={2.4} />
-              </View>
-              <View>
-                <Text style={styles.title}>
-                  {t("dailyScoutLeaderboardTitle", "Weekly Scoreboard")}
-                </Text>
-                <Text style={styles.subtitle}>
-                  {t("dailyScoutLeaderboardWeek", "Week of {{week}}", {
-                    week: leaderboard?.weekStart ?? "-",
-                  })}
-                </Text>
-              </View>
-            </View>
-            <Pressable
-              onPress={onClose}
-              hitSlop={10}
-              style={styles.closeButton}
-            >
-              <X size={18} color={MUTED} />
-            </Pressable>
-          </View>
-
-          {loading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color={ACCENT} />
-            </View>
-          ) : (
-            <ScrollView contentContainerStyle={styles.leaderboardContent}>
-              {(leaderboard?.rows ?? []).length === 0 ? (
-                <Text style={styles.emptyText}>
-                  {t("dailyScoutLeaderboardEmpty", "No scores yet this week.")}
-                </Text>
-              ) : (
-                leaderboard?.rows.map((row, index) => (
-                  <View
-                    key={`${row.nickname}-${index}`}
-                    style={styles.leaderboardRow}
-                  >
-                    <Text style={styles.rank}>{index + 1}</Text>
-                    <Text style={styles.nickname}>{row.nickname}</Text>
-                    <View style={styles.scoreBlock}>
-                      <Text style={styles.scoreNumber}>{row.score}</Text>
-                      <Text style={styles.scoreLabel}>
-                        {t("dailyScoutPoints", "pts")}
-                      </Text>
-                    </View>
-                    <Text style={styles.recordText}>
-                      {row.correct}/{row.played}
-                    </Text>
-                  </View>
-                ))
-              )}
-            </ScrollView>
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
 
@@ -638,19 +451,6 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   questionBody: { padding: 14, gap: 12 },
   embeddedChoice: { borderColor: ACCENT },
-  weeklyScoreButton: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    borderRadius: 16,
-    backgroundColor: themeColor("rgba(22,163,74,0.10)", 'surface'),
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 14,
-    gap: 10,
-  },
-  weeklyScoreText: { color: ACCENT, fontSize: 14, fontWeight: "900" },
 
   backdrop: {
     flex: 1,
@@ -668,51 +468,6 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     backgroundColor: PANEL,
     overflow: "hidden",
   },
-  profileFrame: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: PANEL,
-    padding: 16,
-    gap: 12,
-  },
-  profileFrameTitle: { color: ACCENT, fontSize: 16, fontWeight: "900" },
-  challengeHeader: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  frameActions: { flexDirection: "row", gap: 10 },
-  framePrimary: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: ACCENT,
-    backgroundColor: themeColor("rgba(22, 163, 74, 0.12)", 'surface'),
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 7,
-    paddingHorizontal: 8,
-  },
-  framePrimaryText: { color: ACCENT, fontWeight: "900", fontSize: 13 },
-  frameSecondary: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 7,
-    paddingHorizontal: 8,
-  },
-  frameSecondaryText: { color: TEXT, fontWeight: "800", fontSize: 13 },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -822,14 +577,6 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   resultTitle: { color: TEXT, fontWeight: "900", fontSize: 15 },
   resultText: { color: MUTED, lineHeight: 19, fontWeight: "600" },
   scoreText: { color: ACCENT, fontWeight: "900" },
-  nicknameBox: {
-    borderWidth: 1,
-    borderColor: LINE,
-    borderRadius: 16,
-    padding: 12,
-    gap: 8,
-    backgroundColor: CARD,
-  },
   nicknameBoxInline: {
     marginTop: 8,
     borderTopWidth: 1,
@@ -865,35 +612,6 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   skipButtonText: { color: MUTED, fontWeight: "800" },
   pressed: { opacity: 0.86 },
-  leaderboardContent: { padding: 14, gap: 8 },
-  leaderboardRow: {
-    minHeight: 54,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: CARD,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-  },
-  rank: { width: 26, color: ACCENT, fontWeight: "900", fontSize: 16 },
-  nickname: { flex: 1, color: TEXT, fontWeight: "900" },
-  scoreBlock: { alignItems: "flex-end" },
-  scoreNumber: { color: TEXT, fontWeight: "900", fontSize: 16 },
-  scoreLabel: { color: MUTED, fontWeight: "700", fontSize: 11 },
-  recordText: {
-    width: 44,
-    textAlign: "right",
-    color: MUTED,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: MUTED,
-    textAlign: "center",
-    paddingVertical: 30,
-    fontWeight: "700",
-  },
 });
   return {ACCENT, BG, CARD, DANGER, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

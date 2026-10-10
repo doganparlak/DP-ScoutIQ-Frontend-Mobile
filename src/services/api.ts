@@ -413,17 +413,6 @@ export type DailyScoutChallenge = {
   explanation?: DailyScoutText | null;
   attempt: DailyScoutAttempt;
 };
-export type DailyScoutLeaderboardRow = {
-  nickname: string;
-  score: number;
-  played: number;
-  correct: number;
-};
-export type DailyScoutLeaderboard = {
-  weekStart: string;
-  rows: DailyScoutLeaderboardRow[];
-};
-
 type PlayerPoolRawRow = {
   id?: string | number;
   content?: unknown;
@@ -808,9 +797,7 @@ export async function setDailyScoutNickname(nickname: string): Promise<{ nicknam
   });
 }
 
-export async function getDailyScoutLeaderboard(limit = 20): Promise<DailyScoutLeaderboard> {
-  return request<DailyScoutLeaderboard>(`${ENDPOINTS.dailyScoutChallengeLeaderboard}?limit=${limit}`);
-}
+
 
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
   const favorites = await request<FavoritePlayer[]>('/me/favorites');

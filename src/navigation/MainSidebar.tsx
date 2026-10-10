@@ -37,7 +37,7 @@ const items = [
   { route: 'Chat', label: 'tabScoutWisePro', fallback: 'ScoutWise Pro', Icon: Gem, group: '', groupFallback: '' },
   { route: 'Weekly', label: 'tabWeeklySearches', fallback: 'Weekly Searches', Icon: Search, group: 'interactionCenter', groupFallback: 'Interaction Center' },
   { route: 'ScorePrediction', label: 'scorePredictionTitle', fallback: 'Score Prediction League', Icon: Goal, group: '', groupFallback: '' },
-  { route: 'DailyScout', label: 'dailyScoutChallengeTitle', fallback: 'Daily Scout Challenge', Icon: Target, group: '', groupFallback: '' },
+  { route: 'DailyScout', label: 'dailyScoutChallengeTitle', fallback: 'Player Discovery League', Icon: Target, group: '', groupFallback: '' },
   { route: 'LeaguePerformance', label: 'leaguePerformanceWorkspace', fallback: 'League Performance', Icon: Table2, group: 'organizationCenter', groupFallback: 'Organization Center' },
   { route: 'Strategy', label: 'tabPlayerPool', fallback: 'Player Pool', Icon: UserRound, group: 'dataCenter', groupFallback: 'Data Center' },
   { route: 'TeamPool', label: 'teamPoolWorkspace', fallback: 'Team Pool', Icon: Shield, group: '', groupFallback: '' },
@@ -272,8 +272,10 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
                 const active = item.route === currentRoute;
                 const prediction = item.route === 'ScorePrediction';
                 const pro = item.route === 'Chat';
-                const color = prediction ? FEATURE_COLORS.scorePrediction : pro ? FEATURE_COLORS.pro : active ? themeColor('#4ADE80') : themeColor('#E5EBE7');
-                const featureActive = active && pro ? { borderColor: color, backgroundColor: themeColor('rgba(251,191,36,0.12)', 'surface') } : undefined;
+                const discovery = item.route === 'DailyScout';
+                const color = discovery ? FEATURE_COLORS.discoveryLeague : prediction ? FEATURE_COLORS.scorePrediction : pro ? FEATURE_COLORS.pro : active ? themeColor('#4ADE80') : themeColor('#E5EBE7');
+                const discoveryIcon = discovery ? { borderColor: `${color}47`, backgroundColor: `${color}17` } : undefined;
+                const featureActive = active && discovery ? { borderColor: color, backgroundColor: `${color}1F` } : active && pro ? { borderColor: color, backgroundColor: themeColor('rgba(251,191,36,0.12)', 'surface') } : undefined;
                 return (
                   <React.Fragment key={item.route}>
                   {!!item.group && <Text style={[styles.sectionLabel, { marginTop: 12 }]}>{t(item.group, item.groupFallback)}</Text>}
@@ -285,8 +287,8 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
                     onPress={() => { void select(item); }}
                     style={({ pressed }) => [styles.navItem, active && styles.activeItem, featureActive, pressed && styles.pressed]}
                   >
-                    {active && <View style={[styles.activeMarker, (prediction || pro) && { backgroundColor: color }]} />}
-                    <View style={[styles.navIcon, pro && styles.proIcon, active && styles.activeIcon, featureActive]}><item.Icon size={21} color={color} /></View>
+                    {active && <View style={[styles.activeMarker, (prediction || pro || discovery) && { backgroundColor: color }]} />}
+                    <View style={[styles.navIcon, pro && styles.proIcon, active && styles.activeIcon, discoveryIcon, featureActive]}><item.Icon size={21} color={color} /></View>
                     <Text style={[styles.navLabel, { color }]}>{t(item.label, item.fallback)}</Text>
                     {pending && item.route === 'Chat'
                       ? <ActivityIndicator size="small" color={ACCENT} />

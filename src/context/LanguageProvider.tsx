@@ -23,8 +23,9 @@ export const LanguageProvider: React.FC<React.PropsWithChildren> = ({ children }
 
   const setLang = useCallback(async (l: Lang) => {
     setLangState(l);
-    await AsyncStorage.setItem('app.lang', l);
+    // Update visible translations before waiting for local persistence.
     await i18n.changeLanguage(l);
+    await AsyncStorage.setItem('app.lang', l);
   }, []);
 
   return <LanguageContext.Provider value={{ lang, setLang, ready }}>{children}</LanguageContext.Provider>;

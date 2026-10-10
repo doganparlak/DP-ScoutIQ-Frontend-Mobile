@@ -6,10 +6,11 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useNavigation,useRoute,type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Eye,EyeOff } from 'lucide-react-native';
-import { useMemo,useState } from 'react';
+import { useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
+Keyboard,
 KeyboardAvoidingView,
 Linking,
 Modal,
@@ -65,6 +66,7 @@ export default function SignUpScreen() {
 
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const passwordInput = useRef<TextInput>(null);
   const [password, setPassword] = useState('');
 
   const hasMin = password.length >= 8;
@@ -203,6 +205,8 @@ export default function SignUpScreen() {
                       autoCapitalize="none"
                       style={styles.input}
                       returnKeyType="next"
+                      blurOnSubmit={false}
+                      onSubmitEditing={() => passwordInput.current?.focus()}
                     />
                   </View>
 
@@ -212,13 +216,15 @@ export default function SignUpScreen() {
 
                     <View style={styles.passwordRow}>
                       <TextInput
+                        ref={passwordInput}
                         value={password}
                         onChangeText={setPassword}
                         placeholder={t('placeholderPassword', '••••••••')}
                         placeholderTextColor={MUTED}
                         secureTextEntry={!showPassword}
                         style={styles.passwordInput}
-                        returnKeyType="next"
+                        returnKeyType="done"
+                        onSubmitEditing={Keyboard.dismiss}
                       />
                       <Pressable
                         onPress={() => setShowPassword(prev => !prev)}

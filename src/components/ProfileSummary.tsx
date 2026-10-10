@@ -1,4 +1,3 @@
-import { useMatchup } from "@/context/MatchupContext";
 import { matchPoolRequest,type Profile } from "@/services/api";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useFocusEffect,useNavigation,type NavigationProp } from "@react-navigation/native";
@@ -7,7 +6,7 @@ ArrowUpRight,
 BookMarked,
 FileText,
 Gem,
-GitCompareArrows,
+Target,
 Goal,
 ShieldCheck,
 Shirt,
@@ -28,6 +27,8 @@ type Summary = {
   readyPostMatchReports: number;
   readyPreMatchReports: number;
   weeklyScorePredictions?: number;
+  weeklyPlayerPredictions?: number;
+  weeklyPlayerQuestionsAvailable?: number;
 };
 export default function ProfileSummary({ profile, profileLoading }: { profile: Profile | null; profileLoading: boolean }) {
   const themed = useThemedStyles(getModuleTheme);
@@ -36,7 +37,6 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
   const { i18n } = useTranslation();
   const navigation = useNavigation<NavigationProp<MainTabsParamList>>();
   const tr = i18n.language.startsWith("tr");
-  const { rows, mode } = useMatchup();
   const { width, fontScale } = useWindowDimensions();
   const [gridWidth, setGridWidth] = useState<number | null>(null);
   const [contentSize, setContentSize] = useState({ key: '', height: 0 });
@@ -77,7 +77,7 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
   const activePro = !!profile && (profile.plan === 'Pro Monthly' || profile.plan === 'Pro Yearly') &&
     !!profile.subscriptionEndAt && new Date(profile.subscriptionEndAt).getTime() > Date.now();
   const proCredits = profileLoading ? '…' : !profile ? '—' : activePro ? '∞' : String(Math.max(0, profile.freeChatMessagesRemaining ?? 0));
-  const pills: {label:string;value:string;Icon:typeof Shirt;color:string;route:'Portfolio'|'TeamPortfolio'|'MatchPortfolio'|'Matchup'|'Chat'|'ScorePrediction'}[] = [
+  const pills: {label:string;value:string;Icon:typeof Shirt;color:string;route:'Portfolio'|'TeamPortfolio'|'MatchPortfolio'|'DailyScout'|'Chat'|'ScorePrediction'}[] = [
     {
       label: tr ? "Portföy\nOyuncuların" : "Portfolio\nPlayers",
       value: count("portfolioPlayers"), route: "Portfolio",
@@ -92,11 +92,11 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
     },
     {label: tr ? "Portföy\nTakımların" : "Portfolio\nTeams", value: count("portfolioTeams"), route: "TeamPortfolio", Icon: ShieldCheck, color: ACCENT},
     {
-      label: tr ? "Eşleşme Merkezi" : "Matchup Center",
-      value: `${rows.slice(0, mode).filter(Boolean).length}/${mode}`,
-      route: "Matchup",
-      Icon: GitCompareArrows,
-      color: themeColor("#B4A3D3", 'text'),
+      label: tr ? "Haftalık Oyuncu\nTahminlerin" : "Weekly Player\nPredictions",
+      value: `${count("weeklyPlayerPredictions")}/${count("weeklyPlayerQuestionsAvailable")}`,
+      route: "DailyScout",
+      Icon: Target,
+      color: FEATURE_COLORS.discoveryLeague,
     },
     {
       label: tr ? "ScoutWise Pro Kredin" : "ScoutWise Pro Credits",
@@ -120,7 +120,7 @@ export default function ProfileSummary({ profile, profileLoading }: { profile: P
       value: loading ? "…" : summary ? String(summary.readyPreMatchReports + summary.readyPostMatchReports) : "—",
       route: "MatchPortfolio", Icon: FileText, color: themeColor("#22D3EE", 'text'),
     },
-    {label: tr ? "Takım Raporların" : "Your Team Reports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: themeColor("#22D3EE", 'text')},
+    {label: tr ? "Takım\nRaporların" : "Your Team\nReports", value: count("readyTeamReports"), route: "TeamPortfolio", Icon: FileText, color: themeColor("#22D3EE", 'text')},
   ];
   const availableWidth = gridWidth ?? Math.max(0, width - 32);
   const minimumCellWidth = 104 * Math.max(1, fontScale);

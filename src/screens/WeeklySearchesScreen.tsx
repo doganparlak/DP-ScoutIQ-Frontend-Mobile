@@ -54,7 +54,7 @@ export default function WeeklySearchesScreen() {
       ListHeaderComponent={<View style={styles.headerGroup}><View style={styles.hero}>
         <View style={styles.heroGlow} />
         <View style={styles.heroTop}><View style={styles.eyebrow}><Flame size={15} color={themeColor("#4ADE80", 'text')} /><Text style={styles.eyebrowText}>{t('weeklySpotlight', 'WEEKLY SPOTLIGHT')}</Text></View><Trophy size={31} color={themeColor("#D8B86A", 'text')} strokeWidth={1.6} /></View>
-        <Text style={styles.title}>{t('weeklySearchesTitle', "This week’s most searched")}</Text>
+        <Text style={styles.title}>{t('weeklySearchesTitle', "This Week’s Most Searches")}</Text>
         <Text style={styles.subtitle}>{t('weeklySearchesSubtitle', 'Discover the players catching everyone’s attention, ranked by this week’s searches.')}</Text>
         <View style={styles.heroBottom}><View style={styles.dot} /><Text style={styles.heroMeta}>{t('weeklySearchesRanking', 'The weekly top 10')}</Text><ArrowUpRight size={18} color={themeColor("#4ADE80", 'text')} /></View>
       </View><TutorialPageGuide page="weekly" onShow={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })} /></View>}

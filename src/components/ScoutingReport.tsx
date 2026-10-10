@@ -1,3 +1,4 @@
+import { formatNarrativeNumbers } from '@/utils/narrativeNumbers';
 import { reportScopeMatches } from '@/services/reportAccess';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { toSpiderPoints as comparisonPoints,type EnterpriseMetricUnit } from '@/utils/comparisonRanges';
@@ -372,11 +373,12 @@ function NarrativeBulletRow({
   const themed = useThemedStyles(getModuleTheme);
   const {styles} = themed;
 
+  const { i18n } = useTranslation();
   const bullet = parseNarrativeBullet(item, section, index, translate);
   return (
     <View style={[styles.narrativeRow, {borderColor: `${color}55`, backgroundColor: `${color}08` }]}>
       {bullet.title ? <View style={styles.narrativeHeading}><View style={[styles.narrativeMarker, {backgroundColor:color}]} /><Text style={[styles.narrativeTitle, {color}]}>{bullet.title}</Text></View> : null}
-      <Text style={styles.narrativeText}>{bullet.body}</Text>
+      <Text style={styles.narrativeText}>{formatNarrativeNumbers(bullet.body, i18n.language)}</Text>
     </View>
   );
 }

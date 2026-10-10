@@ -40,6 +40,7 @@ export default function Account({
 
   const [email, setEmail] = React.useState<string>("—");
   const [savingLanguage, setSavingLanguage] = React.useState(false);
+  const languageSavePending = React.useRef(false);
   const { t } = useTranslation();
   const { lang, setLang } = useLanguage();
 
@@ -122,19 +123,25 @@ export default function Account({
                   accessibilityLabel={code === "tr" ? t("turkish", "Turkish") : t("english", "English")}
                   accessibilityState={{ checked: lang === code, disabled: savingLanguage }}
                   onPress={async () => {
+                    if (languageSavePending.current || lang === code) return;
+                    languageSavePending.current = true;
+                    const previousLanguage = lang;
+                    setSavingLanguage(true);
                     try {
-                      setSavingLanguage(true);
-                      await updateMe({ uiLanguage: code });
                       await setLang(code);
+                      await updateMe({ uiLanguage: code });
                     } catch (e: any) {
+                      // Keep the device and account preference consistent on failure.
+                      try { await setLang(previousLanguage); } catch { /* The UI has already reverted. */ }
                       Alert.alert(t("languageUpdateFailed", "Language update failed"), String(e?.message || e));
                     } finally {
+                      languageSavePending.current = false;
                       setSavingLanguage(false);
                     }
                   }}
                   style={({ pressed }) => [styles.languageOption, lang === code && styles.languageOptionActive, pressed && { opacity: 0.7 }]}
                 >
-                  {savingLanguage && lang !== code ? <ActivityIndicator size="small" color={ACCENT} /> : (
+                  {savingLanguage && lang === code ? <ActivityIndicator size="small" color={ACCENT} /> : (
                     <Text style={[styles.languageOptionText, lang === code && styles.languageOptionTextActive]}>{code.toUpperCase()}</Text>
                   )}
                 </Pressable>

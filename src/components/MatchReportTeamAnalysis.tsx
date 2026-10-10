@@ -1,3 +1,4 @@
+import { formatNarrativeNumbers } from '@/utils/narrativeNumbers';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { ChevronDown,Shield } from 'lucide-react-native';
 import { useState } from 'react';
@@ -41,7 +42,7 @@ export default function MatchReportTeamAnalysis({ data, tr, analysis, loading, e
         if (free && index === 2) return <TeamReportLockedDetail key="locked-third-analysis" tr={tr} accent={color} kind="thirdTeamAnalysis" onOpenPlans={onOpenPlans} />;
         return <View key={`${index}-${insight.header}`} style={[s.insight, { borderColor: `${color}70`, backgroundColor: `${color}09` }]}>
           <View style={s.insightHeading}><View style={[s.number, { backgroundColor: `${color}18`, borderColor: `${color}50` }]}><Text style={[s.numberText, { color }]}>{String(index + 1).padStart(2, '0')}</Text></View><Text style={[s.insightTitle, { color }]}>{insight.header}</Text></View>
-          <Text style={s.explanation}>{insight.text}</Text>
+          <Text style={s.explanation}>{formatNarrativeNumbers(insight.text, tr ? 'tr' : 'en')}</Text>
         </View>;
       })}
   </View>;

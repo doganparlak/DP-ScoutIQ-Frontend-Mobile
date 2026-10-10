@@ -19,6 +19,7 @@ VictoryChart,
 VictoryGroup,
 VictoryLabel,
 VictoryPolarAxis,
+VictoryScatter,
 } from "victory-native";
 
 import type {
@@ -64,7 +65,7 @@ export default function MetricSection({
   allowPlotType?: boolean;
 }) {
   const themed = useThemedStyles(getModuleTheme);
-  const {ACCENT, styles, COMPARISON_COLORS, PANEL, LINE, MUTED, DANGER, themeColor} = themed;
+  const {ACCENT, CARD, styles, COMPARISON_COLORS, PANEL, LINE, MUTED, DANGER, themeColor} = themed;
 
   const [plot, setPlot] = React.useState(defaultPlot);
   const [plotType, setPlotType] = React.useState<"radar" | "bars">("radar");
@@ -400,6 +401,14 @@ export default function MetricSection({
                 />
               ))}
             </VictoryGroup>
+            {players.map((_, i) => (
+              <VictoryScatter
+                key={`vertices-${i}`}
+                data={group.rows.map((row, j) => ({ x: String(j + 1), y: normalized(row, i) }))}
+                size={3}
+                style={{ data: { fill: theme?.card ?? CARD, stroke: COMPARISON_COLORS[i], strokeWidth: 1.5 } }}
+              />
+            ))}
           </VictoryChart>
         </View>
       ) : (
