@@ -13,7 +13,7 @@ import {
 } from '@/services/socialAuth';
 
 export default function SocialAuthButtons({ intent = 'signin', disabled = false, connected = [], onConnected, onBusyChange, appearance = 'default' }: {
-  appearance?: 'default' | 'welcome';
+  appearance?: 'default' | 'welcome' | 'compact';
   intent?: 'signin' | 'connect'; disabled?: boolean; connected?: SocialProvider[];
   onConnected?: () => void; onBusyChange?: (busy: boolean) => void;
 }) {
@@ -61,29 +61,30 @@ export default function SocialAuthButtons({ intent = 'signin', disabled = false,
   };
   const appleForeground = mode === 'light' ? '#FFFFFF' : '#000000';
   return (
-    <View style={[styles.wrap, appearance === 'welcome' && styles.welcomeWrap]}>
+    <View style={[styles.wrap, appearance === 'welcome' && styles.welcomeWrap, appearance === 'compact' && styles.compactWrap]}>
+      {intent === 'signin' && appearance === 'compact' && <View style={styles.divider}><View style={styles.line} /><Text style={styles.or}>{t('socialOrContinue')}</Text><View style={styles.line} /></View>}
       {apple ? (
         <Pressable accessibilityRole="button"
           accessibilityLabel={connected.includes('apple') ? t('socialAppleConnected') : t('socialContinueApple')}
           disabled={disabled || !!busy || connected.includes('apple')} onPress={() => { void run('apple'); }}
-          style={({ pressed }) => [styles.button, appearance === 'welcome' && styles.welcomeButton,
+          style={({ pressed }) => [styles.button, appearance === 'welcome' && styles.welcomeButton, appearance === 'compact' && styles.compactButton,
             { backgroundColor: mode === 'light' ? '#000000' : '#FFFFFF', borderColor: mode === 'light' ? '#000000' : '#FFFFFF' },
             (pressed || disabled || !!busy || connected.includes('apple')) && { opacity: 0.55 }]}>
           <FontAwesome name="apple" size={22} color={appleForeground} />
-          <Text style={[styles.label, appearance === 'welcome' && styles.welcomeLabel, { color: appleForeground }]}>
+          <Text style={[styles.label, appearance === 'welcome' && styles.welcomeLabel, appearance === 'compact' && styles.compactLabel, { color: appleForeground }]}>
             {connected.includes('apple') ? t('socialAppleConnected') : t('socialContinueApple')}
           </Text>
         </Pressable>
       ) : null}
       {google ? (
-        <Pressable accessibilityRole="button" disabled={disabled || !!busy || connected.includes('google')} onPress={() => { void run('google'); }} style={({ pressed }) => [styles.button, appearance === 'welcome' && styles.welcomeButton, (pressed || disabled || connected.includes('google')) && { opacity: 0.6 }]}>
+        <Pressable accessibilityRole="button" disabled={disabled || !!busy || connected.includes('google')} onPress={() => { void run('google'); }} style={({ pressed }) => [styles.button, appearance === 'welcome' && styles.welcomeButton, appearance === 'compact' && styles.compactButton, (pressed || disabled || connected.includes('google')) && { opacity: 0.6 }]}>
           <GoogleMark />
-          <Text style={[styles.label, appearance === 'welcome' && styles.welcomeLabel]}>{connected.includes('google') ? t('socialGoogleConnected') : t('socialContinueGoogle')}</Text>
+          <Text style={[styles.label, appearance === 'welcome' && styles.welcomeLabel, appearance === 'compact' && styles.compactLabel]}>{connected.includes('google') ? t('socialGoogleConnected') : t('socialContinueGoogle')}</Text>
         </Pressable>
       ) : null}
       {busy && <ActivityIndicator color={TEXT} />}
       {!!error && <Text accessibilityRole="alert" style={{ color: DANGER, fontSize: 13 }}>{error}</Text>}
-      {intent === 'signin' && <View style={styles.divider}><View style={styles.line} /><Text style={styles.or}>{t('socialOrEmail')}</Text><View style={styles.line} /></View>}
+      {intent === 'signin' && appearance !== 'compact' && <View style={styles.divider}><View style={styles.line} /><Text style={styles.or}>{t('socialOrEmail')}</Text><View style={styles.line} /></View>}
     </View>
   );
 }
@@ -99,6 +100,9 @@ function GoogleMark() {
   </Svg>;
 }
 const getStyles = createThemedStyles((c: ThemeColors) => ({ TEXT: c.TEXT, DANGER: c.DANGER, mode: c.mode, styles: StyleSheet.create({
+  compactWrap: { gap: 8, marginTop: 14, marginBottom: 0 },
+  compactButton: { minHeight: 44 },
+  compactLabel: { fontSize: 14 },
   welcomeWrap: { marginTop: 0, marginBottom: 0 },
   welcomeButton: { minHeight: 52, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16 },
   welcomeLabel: { fontSize: 16, fontWeight: '600' },

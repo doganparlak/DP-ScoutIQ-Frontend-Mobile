@@ -1,4 +1,5 @@
 import { TutorialProvider } from '@/components/Tutorial';
+import { PredictionPrizeClaimsProvider } from '@/context/PredictionPrizeClaimsContext';
 import { TeamAnalysisProvider } from '@/context/TeamAnalysisContext';
 import ChatScreen from '@/screens/ChatScreen';
 import DailyScoutScreen from '@/screens/DailyScoutScreen';
@@ -108,6 +109,7 @@ export default function MainTabs() {
       <MatchupProvider>
       <TeamAnalysisProvider>
       <MainNavigationContext.Provider value={true}>
+        <PredictionPrizeClaimsProvider>
         <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: BG }}>
           <Tab.Navigator
             initialRouteName="Profile"
@@ -140,6 +142,7 @@ export default function MainTabs() {
             <Tab.Screen name="HelpCenter" component={HelpCenter} />
           </Tab.Navigator>
         </SafeAreaView>
+        </PredictionPrizeClaimsProvider>
       </MainNavigationContext.Provider>
       </TeamAnalysisProvider>
     </MatchupProvider>

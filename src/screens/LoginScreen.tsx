@@ -104,7 +104,6 @@ export default function LoginScreen() {
                 {t('greeting', 'Spot the next star before anyone else.')}
               </Text>
 
-              <SocialAuthButtons disabled={submitting} onBusyChange={setSocialBusy} />
               <View style={styles.fieldBlock}>
                 <Text style={styles.label}>{t('email', 'E-mail')}</Text>
                 <TextInput
@@ -175,6 +174,7 @@ export default function LoginScreen() {
                   <Text style={{ fontWeight: '700', color: ACCENT_DARK }}>{t('signup', 'Sign up')}</Text>
                 </Text>
               </Pressable>
+              <SocialAuthButtons appearance="compact" disabled={submitting} onBusyChange={setSocialBusy} />
             </View>
           </ScrollView>
         </View>

@@ -1,3 +1,6 @@
+import ScorePredictionPrizes from '@/components/ScorePredictionPrizes';
+import { usePredictionPrizeClaims } from '@/context/PredictionPrizeClaimsContext';
+import { getPredictionPrizeWeeks, refreshRemoteConfig, subscribePredictionPrizes } from '@/services/remoteConfig';
 import MatchReportActions from '@/components/MatchReportActions';
 import PredictionHonorsBadge from '@/components/PredictionHonorsBadge';
 import { TutorialPageGuide } from '@/components/Tutorial';
@@ -7,7 +10,7 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { predictionDateTime,predictionWeekLabel } from '@/utils/predictionPresentation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect,useNavigation } from '@react-navigation/native';
-import { BadgeInfo,CalendarDays,Check,ChevronRight,Clock3,Goal,Info,Send,ShieldCheck,Trophy,UserRound,X } from 'lucide-react-native';
+import { BadgeInfo,CalendarDays,Check,ChevronRight,Clock3,Goal,Gift,Info,ListOrdered,Medal,Send,ShieldCheck,Trophy,UserRound,X } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator,AppState,Image,InputAccessoryView,Keyboard,KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View,useWindowDimensions } from 'react-native';
@@ -43,6 +46,7 @@ function Team({ team }: { team: MatchFixture['homeTeam'] }) {
 }
 
 export default function ScorePredictionScreen() {
+  const prizeClaims = usePredictionPrizeClaims();
   const themed = useThemedStyles(getModuleTheme);
   const {s, ACCENT, MUTED, FRAME_STRIPE, FEATURE_COLORS, FRAME_HEADING, FRAME_TITLE, TEXT, tierLabelColor, tierColor, themeColor} = themed;
 
@@ -63,6 +67,12 @@ export default function ScorePredictionScreen() {
   const [loading, setLoading] = React.useState(true), [error, setError] = React.useState('');
   const [week, setWeek] = React.useState<string>(), [nickname, setNickname] = React.useState('');
   const [registering, setRegistering] = React.useState(false), [savingPrediction, setSavingPrediction] = React.useState<number | null>(null);
+  const prizeWeeks = React.useSyncExternalStore(subscribePredictionPrizes, getPredictionPrizeWeeks);
+  const [prizesOpen, setPrizesOpen] = React.useState(false);
+  const [heroActionsWidth, setHeroActionsWidth] = React.useState(0);
+  const heroActionSize = heroActionsWidth > 10 ? { width: (heroActionsWidth - 10) / 2, flexGrow: 0, flexShrink: 0 } : { flex: 1 };
+  const prizeLabelSize = Math.min(13, Math.max(9, (((heroActionsWidth || width - 72) - 10) / 2 - 45) / (tr ? 8.8 : 7.5)));
+  useFocusEffect(React.useCallback(() => { void refreshRemoteConfig(); return () => setPrizesOpen(false); }, []));
   const [rules, setRules] = React.useState(false), [ranking, setRanking] = React.useState(false);
   const [rankingTab, setRankingTab] = React.useState<'weekly' | 'allTime'>('weekly');
   const [allTimeSort, setAllTimeSort] = React.useState<'total' | 'average'>('total');
@@ -138,11 +148,15 @@ export default function ScorePredictionScreen() {
   }, [draft, data?.round?.id, data?.viewerId]);
 
   const round = data?.round, entry = data?.entry, fixtures = round?.fixtures ?? [];
+  const prizes = round ? prizeWeeks[round.weekStart] : undefined;
+  React.useEffect(() => { setPrizesOpen(false); }, [round?.weekStart]);
   const eligible = fixtures.filter(f => f.predictionStatus !== 'excluded');
   const savedCount = eligible.filter(f => entry?.picks[String(f.fixtureId)]).length;
   const remaining = round?.deadline ? Math.max(0, Date.parse(round.deadline) - (now + offset)) : 0;
   const locked = loading || !round?.deadline || remaining <= 0 || round.status !== 'open';
   const mine = data?.leaderboard.find(row => row.isYou);
+  const canClaim = round?.status === 'settled' && !!mine && mine.rank <= 3;
+  const prizeClaimSubmitted = !!data?.prizeClaimSubmitted || (!!round && prizeClaims.claimedRoundIds.includes(round.id));
   const secondsLeft = Math.floor(remaining / 1000);
   const clockParts = [
     { label: tr ? 'Gün' : 'Days', value: Math.floor(secondsLeft / 86400) },
@@ -265,7 +279,11 @@ export default function ScorePredictionScreen() {
             <View style={s.heroStat}><Text style={s.statValue}>{mine ? `#${mine.rank}` : '—'}</Text><Text style={s.caption}>{tr ? 'Sıralaman' : 'Your Rank'}</Text></View>
           </View>
           {!!eligible.length && <View style={s.progressTrack}><View style={[s.progressFill, { width: `${savedCount / eligible.length * 100}%` }]} /></View>}
-          <Pressable accessibilityRole='button' onPress={() => { setRankingTab('weekly'); setAllTimeSort('total'); setRanking(true); void load(); }} style={s.rankingButton}><Trophy size={19} color={ACCENT} /><Text style={[s.actionText, { flex: 1, textAlign: 'left' }]}>{tr ? 'Sıralamaları Gör' : 'View Rankings'}</Text><ChevronRight size={18} color={ACCENT} /></Pressable>
+          <Pressable accessibilityRole='button' onPress={() => { setRankingTab('weekly'); setAllTimeSort('total'); setRanking(true); void load(); }} style={[s.rankingButton, { minHeight: 48, marginBottom: 10 }]}><ListOrdered size={19} color={ACCENT} /><Text style={[s.actionText, s.heroActionText]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={.85} maxFontSizeMultiplier={1.3}>{tr ? 'Sıralamaları Gör' : 'View Rankings'}</Text><ChevronRight size={18} color={ACCENT} /></Pressable>
+          <View style={s.heroActions} onLayout={({ nativeEvent }) => setHeroActionsWidth(nativeEvent.layout.width)}>
+            <Pressable accessibilityRole="button" onPress={() => setPrizesOpen(true)} style={[s.rankingButton, s.heroAction, heroActionSize, { borderColor: FEATURE_COLORS.scorePrediction }]}><Gift size={19} color={FEATURE_COLORS.scorePrediction} /><Text style={[s.actionText, s.heroActionText, s.prizeActionText, { color: FEATURE_COLORS.scorePrediction, fontSize: prizeLabelSize }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.75} maxFontSizeMultiplier={1.3}>{tr ? 'Haftanın Ödülleri' : 'Weekly Prizes'}</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={prizeClaims.openPrizes} style={[s.rankingButton, s.heroAction, heroActionSize, { borderColor: FEATURE_COLORS.scorePrediction }]}><Medal size={19} color={FEATURE_COLORS.scorePrediction} /><Text style={[s.actionText, s.heroActionText, s.prizeActionText, { color: FEATURE_COLORS.scorePrediction, fontSize: prizeLabelSize }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.75} maxFontSizeMultiplier={1.3}>{tr ? 'Ödüllerim' : 'My Prizes'}</Text></Pressable>
+          </View>
           {!!data?.weeks.length && data.weeks.length > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 14 }}>{data.weeks.map(value => <Pressable key={value} accessibilityRole='button' accessibilityState={{ selected: round?.weekStart === value }} disabled={savingPrediction !== null} onPress={() => { if (value === round?.weekStart) return; setLoading(true); setWeek(value); }} style={[s.weekChip, round?.weekStart === value && { borderColor: ACCENT }]}><Text style={[s.caption, round?.weekStart === value && { color: ACCENT }]}>{weekLabel(value, tr)}</Text></Pressable>)}</ScrollView>}
         </View>
         <TutorialPageGuide page='scorePrediction' frame={1} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
@@ -293,9 +311,10 @@ export default function ScorePredictionScreen() {
     </ScrollView>
     </KeyboardAvoidingView>
     {Platform.OS === 'ios' && <InputAccessoryView nativeID='prediction-score-keyboard'><View style={s.keyboardBar}><Pressable accessibilityRole='button' onPress={Keyboard.dismiss} style={s.keyboardDone}><Text style={s.actionText}>{tr ? 'Tamam' : 'Done'}</Text></Pressable></View></InputAccessoryView>}
+    {round && <ScorePredictionPrizes prizes={prizes} weekStart={round.weekStart} roundId={round.id} canClaim={canClaim} claimed={prizeClaimSubmitted} onClaimed={() => { prizeClaims.markClaimed(round.id); setData(current => current?.round?.id === round.id ? { ...current, prizeClaimSubmitted: true } : current); void prizeClaims.refresh(); }} tr={tr} visible={prizesOpen} onClose={() => setPrizesOpen(false)} />}
     <Modal visible={ranking} transparent animationType='fade' onRequestClose={() => setRanking(false)}>
       <View style={s.backdrop}><View style={[s.modal, { height: Math.min(760, height * .86) }]} accessibilityViewIsModal>
-        <View style={s.modalHeader}><View style={s.modalIcon}><Trophy size={21} color={ACCENT} /></View><View style={{ flex: 1, minWidth: 0 }}><Text style={s.modalTitle}>{rankingTab === 'weekly' ? (tr ? 'Haftalık Sıralama' : 'Weekly Rankings') : (tr ? 'Tüm Zamanlar' : 'All Time')}</Text><Text style={s.caption}>{rankingTab === 'allTime' ? (tr ? 'Genel Başarı Sıralaması' : 'Overall Achievement Rankings') : round ? weekLabel(round.weekStart, tr) + (tr ? ' Haftası' : ' Week') : '—'}</Text></View><Pressable accessibilityRole='button' accessibilityLabel={tr ? 'Kapat' : 'Close'} hitSlop={10} style={s.iconButton} onPress={() => setRanking(false)}><X size={20} color={MUTED} /></Pressable></View>
+        <View style={s.modalHeader}><View style={s.modalIcon}><ListOrdered size={21} color={ACCENT} /></View><View style={{ flex: 1, minWidth: 0 }}><Text style={s.modalTitle}>{rankingTab === 'weekly' ? (tr ? 'Haftalık Sıralama' : 'Weekly Rankings') : (tr ? 'Tüm Zamanlar' : 'All Time')}</Text><Text style={s.caption}>{rankingTab === 'allTime' ? (tr ? 'Genel Başarı Sıralaması' : 'Overall Achievement Rankings') : round ? weekLabel(round.weekStart, tr) + (tr ? ' Haftası' : ' Week') : '—'}</Text></View><Pressable accessibilityRole='button' accessibilityLabel={tr ? 'Kapat' : 'Close'} hitSlop={10} style={s.iconButton} onPress={() => setRanking(false)}><X size={20} color={MUTED} /></Pressable></View>
         <View style={s.rankingSwitch}>{(['weekly', 'allTime'] as const).map(tab => <Pressable key={tab} accessibilityRole='tab' accessibilityState={{ selected: rankingTab === tab }} onPress={() => setRankingTab(tab)} style={[s.rankingSwitchButton, rankingTab === tab && s.rankingSwitchSelected]}><Text style={[s.actionText, { color: rankingTab === tab ? ACCENT : MUTED }]}>{tab === 'weekly' ? (tr ? 'Haftalık' : 'Weekly') : (tr ? 'Tüm Zamanlar' : 'All Time')}</Text></Pressable>)}</View>
         <Text style={[s.caption, { paddingHorizontal: 18, paddingTop: 14 }]}>{rankingTab === 'allTime' ? (tr ? 'Birincilik 3, ikincilik 2, üçüncülük 1 puan.' : 'First place 3, second place 2, third place 1 point.') : round?.status === 'settled' ? (tr ? 'Haftanın sıralaması kesinleşti.' : 'This week’s rankings are final.') : (tr ? 'Tamamlanan maçlarla puanlar güncellenir.' : 'Points update as matches finish.')}</Text>
         {rankingTab === 'allTime' && <View style={[s.rankingSwitch, { marginTop: 12 }]}>{(['total', 'average'] as const).map(sort => <Pressable key={sort} accessibilityRole='tab' accessibilityState={{ selected: allTimeSort === sort }} onPress={() => setAllTimeSort(sort)} style={[s.rankingSwitchButton, allTimeSort === sort && s.rankingSwitchSelected]}><Text style={[s.actionText, { color: allTimeSort === sort ? ACCENT : MUTED }]}>{sort === 'total' ? (tr ? 'Toplam Puan' : 'Total Points') : (tr ? 'Haftalık Ortalama' : 'Weekly Average')}</Text></Pressable>)}</View>}
@@ -355,6 +374,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   keyboardBar: { backgroundColor: PANEL, borderTopWidth: 1, borderTopColor: LINE, alignItems: 'flex-end', paddingHorizontal: 12 }, keyboardDone: { minHeight: 44, minWidth: 72, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   matchPointsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: CARD }, matchPoints: { color: ACCENT, fontSize: 24, fontWeight: '900' },
   heroStats: { flexDirection: 'row', marginVertical: 18 }, heroStat: { flex: 1, minWidth: 0, alignItems: 'center', gap: 6 }, statDivider: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: themeColor('rgba(126,148,135,.18)', 'border') }, statValue: { color: TEXT, fontSize: 22, fontWeight: '900', fontVariant: ['tabular-nums'] }, statDenominator: { color: MUTED, fontSize: 13, fontWeight: '600' },
+  heroActions: { flexDirection: 'row', alignItems: 'stretch', gap: 10 }, heroAction: { minWidth: 0, minHeight: 48, paddingHorizontal: 10, paddingVertical: 10, gap: 6 }, heroActionText: { flex: 1, minWidth: 0, textAlign: 'left', lineHeight: 18 }, prizeActionText: { fontSize: 13 },
   progressTrack: { height: 4, borderRadius: 4, backgroundColor: themeColor('#303931', 'surface'), overflow: 'hidden', marginBottom: 18 }, progressFill: { height: '100%', backgroundColor: ACCENT }, rankingButton: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: 13, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,.5)', 'border'), backgroundColor: themeColor('rgba(22,163,74,.07)', 'surface') },
   notice: { padding: 14, borderWidth: 1, borderColor: LINE, borderRadius: 14, backgroundColor: CARD, gap: 8 }, error: { color: DANGER, fontSize: 13, lineHeight: 20 },
   nicknameInput: { marginVertical: 14, minHeight: 48, borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 12, color: TEXT, backgroundColor: CARD }, weekChip: { borderRadius: 11, borderWidth: 1, borderColor: LINE, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: CARD },

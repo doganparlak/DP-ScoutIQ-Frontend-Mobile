@@ -1,3 +1,4 @@
+import { EMPTY_PREDICTION_PRIZES, PREDICTION_PRIZES_KEY, parsePredictionPrizes, type PredictionPrizeWeeks } from '@/utils/predictionPrizes';
 import { AppState } from 'react-native';
 import { getRemoteConfig, ensureInitialized, fetchAndActivate, getValue } from '@react-native-firebase/remote-config';
 import { remoteConfigDefaults, validatedFrequency, type AdFrequencyKey } from './remoteConfigDefaults';
@@ -5,6 +6,15 @@ import { remoteConfigDefaults, validatedFrequency, type AdFrequencyKey } from '.
 let values: Record<AdFrequencyKey, number> = { ...remoteConfigDefaults };
 let pending: Promise<void> | undefined;
 let lastError: string | null = null;
+let prizeRaw = EMPTY_PREDICTION_PRIZES;
+let prizeWeeks: PredictionPrizeWeeks = {};
+const prizeListeners = new Set<() => void>();
+
+export const getPredictionPrizeWeeks = () => prizeWeeks;
+export function subscribePredictionPrizes(listener: () => void) {
+  prizeListeners.add(listener);
+  return () => { prizeListeners.delete(listener); };
+}
 
 export function getAdFrequency(key: AdFrequencyKey): number {
   return values[key];
@@ -17,6 +27,12 @@ function readActivatedValues() {
     next[key] = validatedFrequency(key, getValue(config, key).asString());
   }
   values = next;
+  const raw = getValue(config, PREDICTION_PRIZES_KEY).asString();
+  if (raw !== prizeRaw) {
+    prizeRaw = raw;
+    prizeWeeks = parsePredictionPrizes(raw);
+    prizeListeners.forEach(listener => listener());
+  }
 }
 
 export function refreshRemoteConfig(): Promise<void> {
@@ -24,7 +40,7 @@ export function refreshRemoteConfig(): Promise<void> {
   pending = (async () => {
     try {
       const config = getRemoteConfig();
-      config.defaultConfig = remoteConfigDefaults;
+      config.defaultConfig = { ...remoteConfigDefaults, [PREDICTION_PRIZES_KEY]: EMPTY_PREDICTION_PRIZES };
       config.settings = {
         minimumFetchIntervalMillis: __DEV__ ? 0 : 60 * 60 * 1000,
         fetchTimeoutMillis: 10000,

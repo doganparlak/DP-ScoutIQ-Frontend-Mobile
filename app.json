@@ -88,7 +88,12 @@
       "@react-native-firebase/perf",
       "expo-web-browser",
       "expo-apple-authentication",
-      "./plugins/withSocialAuth"
+      [
+        "./plugins/withSocialAuth",
+        {
+          "iosClientId": "1089033390925-5qo09accv172dhaj5ovgflau1rfopeir.apps.googleusercontent.com"
+        }
+      ]
     ],
     "extra": {
       "eas": {

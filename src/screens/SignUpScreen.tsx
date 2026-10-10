@@ -179,7 +179,6 @@ export default function SignUpScreen() {
                     {social ? t('socialFinishBody') : t('signupSubtitle', 'Join the data-driven scouting revolution.')}
                   </Text>
 
-                  {!social && <SocialAuthButtons disabled={submitting} onBusyChange={setSocialBusy} />}
                   {social && <View style={styles.socialModeSwitch}>
                     {(['create', 'link'] as const).map(mode => <Pressable key={mode}
                       accessibilityRole="tab" accessibilityState={{ selected: mode === socialMode, disabled: submitting }}
@@ -321,6 +320,7 @@ export default function SignUpScreen() {
                       </Text>
                     </Text>
                   </Pressable>
+                  {!social && <SocialAuthButtons appearance="compact" disabled={submitting} onBusyChange={setSocialBusy} />}
                 </View>
               </View>
             </ScrollView>

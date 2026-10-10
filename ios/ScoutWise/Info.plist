@@ -31,6 +31,12 @@
 				<string>com.anonymous.dp-scoutiq</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1089033390925-5qo09accv172dhaj5ovgflau1rfopeir</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>2</string>

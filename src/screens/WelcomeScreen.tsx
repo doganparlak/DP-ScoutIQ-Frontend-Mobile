@@ -60,11 +60,7 @@ export default function WelcomeScreen() {
           <SocialAuthButtons appearance="welcome" />
           <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Login')}
             style={({ pressed }) => [styles.actionButton, styles.loginButton, pressed && { opacity: 0.85 }]}>
-            <Text style={styles.loginText}>{t('login')}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => navigation.navigate('SignUp')}
-            style={({ pressed }) => [styles.actionButton, styles.signupButton, pressed && { opacity: 0.75 }]}>
-            <Text style={styles.signupText}>{t('signup')}</Text>
+            <Text style={styles.loginText}>{t('continueWithEmail')}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -92,7 +88,5 @@ const getModuleTheme = createThemedStyles((c: ThemeColors) => ({ MUTED: c.MUTED,
     actionButton: { width: '100%', minHeight: 52, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
     loginButton: { backgroundColor: c.ACCENT_DARK, borderColor: c.ACCENT_DARK },
     loginText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', textAlign: 'center' },
-    signupButton: { backgroundColor: c.PANEL, borderColor: c.LINE },
-    signupText: { color: c.TEXT, fontSize: 16, fontWeight: '600', textAlign: 'center' },
   }),
 }));

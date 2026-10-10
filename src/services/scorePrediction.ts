@@ -6,7 +6,7 @@ export type PredictionEntry = {picks:PredictionPicks;submittedAt:string|null;bas
 export type PredictionRound = {id:number;weekStart:string;deadline:string|null;fixtures:PredictionFixture[];status:'waiting'|'unavailable'|'open'|'closed'|'finalizing'|'settled';updatedAt:string};
 export type PredictionRank = {nickname:string;basePoints:number;bonusPoints:number;totalPoints:number;exactScores:number;tier:string;rank:number;isYou:boolean};
 export type AllTimePredictionRank = {nickname:string;championships:number;secondPlaces:number;thirdPlaces:number;totalPoints:number;weeksParticipated:number;averagePoints:number;rank:number;isYou:boolean};
-export type PredictionState = {viewerId:string;championships:number;secondPlaces?:number;thirdPlaces?:number;serverNow:string;nickname:string|null;tier:string;headStartPoints:number;bonusRate:number;weeks:string[];entry:PredictionEntry|null;round:PredictionRound|null;favorites:FavoriteMatch[];leaderboard:PredictionRank[]};
+export type PredictionState = {prizeClaimSubmitted?:boolean;viewerId:string;championships:number;secondPlaces?:number;thirdPlaces?:number;serverNow:string;nickname:string|null;tier:string;headStartPoints:number;bonusRate:number;weeks:string[];entry:PredictionEntry|null;round:PredictionRound|null;favorites:FavoriteMatch[];leaderboard:PredictionRank[]};
 export const getPredictionState=(week?:string)=>matchPoolRequest<PredictionState>(`/score-prediction${week?'?weekStart='+encodeURIComponent(week):''}`);
 export const savePredictionEntry=(roundId:number,picks:PredictionPicks,submit:boolean)=>matchPoolRequest<PredictionEntry>('/score-prediction/entry',{roundId,picks,submit});
 export const savePredictionNickname=(nickname:string)=>matchPoolRequest<{nickname:string}>('/score-prediction/nickname',{nickname});
@@ -14,3 +14,11 @@ export const savePredictionNickname=(nickname:string)=>matchPoolRequest<{nicknam
 export const getPredictionHonors=()=>matchPoolRequest<{championships:number;secondPlaces:number;thirdPlaces:number}>('/score-prediction/honors');
 
 export const getAllTimePredictionRankings=(sort:'total'|'average'='total')=>matchPoolRequest<AllTimePredictionRank[]>(`/score-prediction/rankings/all-time?sort=${sort}`);
+
+export const submitPrizeClaim=(roundId:number,contactEmail:string,phone:string)=>matchPoolRequest<{submitted:boolean}>('/score-prediction/prize-claim',{roundId,contactEmail,phone});
+
+export type PendingPrizeClaim = {roundId:number;weekStart:string;rank:number};
+export const getPendingPrizeClaims=()=>matchPoolRequest<PendingPrizeClaim[]>('/score-prediction/prize-claims/pending');
+
+export type PrizeWin = PendingPrizeClaim & {claimed:boolean;isLatest:boolean;prizes?:import('@/utils/predictionPrizes').PredictionPrizes};
+export const getMyPrizes=()=>matchPoolRequest<PrizeWin[]>('/score-prediction/prizes/mine');
