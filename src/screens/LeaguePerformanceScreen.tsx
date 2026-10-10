@@ -1,6 +1,6 @@
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { List,ListFilter,Table2 } from 'lucide-react-native';
+import { List,ListFilter,RotateCcw,Search,Table2 } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable,ScrollView,StyleSheet,Text,useWindowDimensions,View } from 'react-native';
@@ -12,15 +12,15 @@ import { getLeaguePerformanceOptions,getLeagueStandings,searchLeaguePerformance,
 const EMPTY: LeagueFilters = {countries: [], leagues: []};
 const DEFAULT: LeagueFilters = {countries: ['Turkey'], leagues: ['Super Lig']};
 
-function Section({title, Icon, children}: {title: string; Icon: typeof List; children: React.ReactNode}) {
+function Section({title, Icon, children, action}: {title: string; Icon: typeof List; children: React.ReactNode; action?: React.ReactNode}) {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, FRAME_STRIPE, FRAME_HEADING, ACCENT, FRAME_TITLE} = themed;
 
-  return <View style={styles.panel}><View style={FRAME_STRIPE} /><View style={[FRAME_HEADING, {marginBottom: 14}]}><Icon size={20} color={ACCENT} /><Text style={FRAME_TITLE}>{title}</Text></View>{children}</View>;
+  return <View style={styles.panel}><View style={FRAME_STRIPE} /><View style={[FRAME_HEADING, {marginBottom: 14}]}><Icon size={20} color={ACCENT} /><Text style={[FRAME_TITLE, {flex: 1, minWidth: 0}]}>{title}</Text>{action}</View>{children}</View>;
 }
 export default function LeaguePerformanceScreen() {
   const themed = useThemedStyles(getModuleTheme);
-  const {BG, styles, shared, CARD, ACCENT, MUTED, themeColor} = themed;
+  const {BG, styles, shared, CARD, ACCENT, DANGER, MUTED, themeColor} = themed;
 
   const ads = useWorkspaceActionAd();
   const {i18n} = useTranslation();
@@ -100,13 +100,13 @@ export default function LeaguePerformanceScreen() {
   // Do not show the previous league while the effect for the new selection starts.
   const currentStandings = standings?.leagueId === selectedId ? standings : null;
   return <ScrollView ref={pageScroll} style={{flex: 1, backgroundColor: BG}} contentContainerStyle={[styles.page, {paddingHorizontal: pagePadding}]} keyboardShouldPersistTaps="handled">
-    <Section title={tr ? 'Lig Havuzu Filtreleri' : 'League Pool Filters'} Icon={ListFilter}><View style={{gap: 14}}>
+    <Section title={tr ? 'Lig Arama Filtreleri' : 'League Search Filters'} Icon={ListFilter} action={<Pressable accessibilityRole="button" accessibilityLabel={tr ? 'Filtreleri Temizle' : 'Clear Filters'} onPress={clear} hitSlop={12} style={{padding: 6, flexShrink: 0}}><RotateCcw size={20} color={DANGER} /></Pressable>}><View style={{gap: 14}}>
       <SelectField label={tr ? 'Ülke' : 'Country'} value={filters.countries[0] || (tr ? 'Ülke seç' : 'Select country')} onPress={() => setSelector('countries')} />
       <SelectField label={tr ? 'Lig' : 'League'} value={filters.leagues[0] || (tr ? 'Lig seç' : 'Select league')} onPress={() => setSelector('leagues')} />
       {optionsLoading && <Status busy text={tr ? 'Filtreler yükleniyor…' : 'Loading filters…'} />}
       {optionsError && <><Status error text={tr ? 'Filtre seçenekleri yüklenemedi.' : 'Filter options could not be loaded.'} /><Action label={tr ? 'Tekrar dene' : 'Retry'} onPress={() => setOptionsRetry(value => value + 1)} /></>}
-      <View style={[shared.row, {flexWrap: 'wrap', justifyContent: 'flex-start'}]}><Action label={loading || ads.busy ? (tr ? 'Aranıyor…' : 'Searching…') : (tr ? 'Ara' : 'Search')} onPress={() => void manualSearch()} disabled={loading || ads.busy} /><Action label={tr ? 'Filtreleri Temizle' : 'Clear Filters'} danger onPress={clear} /></View>
       {searchError && <Status error text={tr ? 'Ligler yüklenemedi. Tekrar aramayı deneyin.' : 'Leagues could not be loaded. Try searching again.'} />}
+      <Action label={loading || ads.busy ? (tr ? 'Aranıyor…' : 'Searching…') : (tr ? 'Ara' : 'Search')} icon={<Search size={18} color={ACCENT} />} onPress={() => void manualSearch()} disabled={loading || ads.busy} />
     </View></Section>
     <TutorialPageGuide page="leaguePerformance" frame={0} summaryLines={0} onShow={showGuide} />
     <Section title={tr ? 'Lig Sonuçları' : 'League Results'} Icon={List}>
@@ -129,7 +129,7 @@ export default function LeaguePerformanceScreen() {
 
 
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
-  const {ACCENT, BG, CARD, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+  const {ACCENT, DANGER, BG, CARD, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
   const shared = __getThemed_shared(colors);
   const styles = StyleSheet.create({
   page: {padding: 14, paddingBottom: 32, gap: 16}, panel: {backgroundColor: PANEL, borderRadius: 18, padding: 14, borderWidth: 1, borderColor: ACCENT},
@@ -141,5 +141,5 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   leagueBadge: {width: 64, height: 64, backgroundColor: themeColor('rgba(255,255,255,.9)', 'surface'), borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
   tableTab: {padding: 12, borderWidth: 1, borderColor: LINE, borderRadius: 12, backgroundColor: CARD},
 });
-  return {ACCENT, BG, CARD, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, shared, styles, themeColor};
+  return {ACCENT, DANGER, BG, CARD, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, shared, styles, themeColor};
 });
