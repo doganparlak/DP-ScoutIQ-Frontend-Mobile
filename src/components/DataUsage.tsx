@@ -31,7 +31,7 @@ export default function DataUsage() {
       <Text style={styles.summaryBox}>
         {t(
           'dataUsageAiSummary',
-          'When you use AI features, your chat messages, strategy inputs, and search queries are sent to OpenAI and DeepSeek to generate responses.'
+          'When you use AI features, your chat messages, strategy inputs, and search queries are sent to OpenAI to generate responses.'
         )}
       </Text>
 
@@ -47,7 +47,6 @@ export default function DataUsage() {
       <Text style={styles.sectionTitle}>{t('dataUsageAiSectionTitle')}</Text>
       <Text style={styles.text}>{t('dataUsageAiSectionIntro')}</Text>
       <Bullet>{t('dataUsageAiSectionItem1')}</Bullet>
-      <Bullet>{t('dataUsageAiSectionItem2')}</Bullet>
       <Bullet>{t('dataUsageAiSectionItem3')}</Bullet>
       <Bullet>{t('dataUsageAiSectionItem4')}</Bullet>
 

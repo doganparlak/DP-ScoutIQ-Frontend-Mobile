@@ -3,20 +3,26 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import type {TFunction} from 'i18next';
 import {
 Alert,
+AppState,
+Linking,
 Platform,
 Pressable,
 ScrollView,
 StyleSheet,
 Text,
+TextInput,
 TouchableOpacity,
 View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-import type { Plan } from '@/services/api';
+import type { Plan, ReferralState } from '@/services/api';
+import {getReferralOffers, setReferralCode} from '@/services/api';
+import {formatMoney, paidPlans, planPeriod, referralPlanKey, subscriptionSavings, subscriptionPrice} from '@/utils/subscriptionOffers';
 import { activateIAPSubscription,getMe,type ActivateIAPSubscriptionIn } from '@/services/api';
 
 import {
@@ -25,6 +31,9 @@ ErrorCode,
 fetchProducts,
 finishTransaction,
 initConnection,
+getStorefront,
+getAppTransactionIOS,
+presentCodeRedemptionSheetIOS,
 purchaseErrorListener,
 purchaseUpdatedListener,
 requestPurchase,
@@ -32,6 +41,7 @@ type EventSubscription,
 type Purchase,
 type PurchaseAndroid,
 type PurchaseIOS,
+type ProductSubscription,
 } from 'react-native-iap';
 
 // ✅ Monthly SKUs
@@ -49,37 +59,10 @@ const ANDROID_SKU_YEARLY = 'scoutwise_pro_yearly_android';
 const isPro = (p: Plan) => p === 'Pro Monthly' || p === 'Pro Yearly';
 const isPaidSubscription = (p: Plan) => p === 'No Ads Monthly' || isPro(p);
 
-const multiplyDisplayPrice = (displayPrice: string | undefined, multiplier: number) => {
-  if (!displayPrice) return null;
-
-  const match = displayPrice.match(/\d[\d\s.,]*/);
-  if (!match || match.index == null) return null;
-
-  const rawNumber = match[0].trim().replace(/\s/g, '');
-  const commaIndex = rawNumber.lastIndexOf(',');
-  const dotIndex = rawNumber.lastIndexOf('.');
-  const lastSeparatorIndex = Math.max(commaIndex, dotIndex);
-  const digitsAfterSeparator = lastSeparatorIndex >= 0
-    ? rawNumber.length - lastSeparatorIndex - 1
-    : 0;
-  const decimalSeparator = lastSeparatorIndex >= 0 && digitsAfterSeparator > 0 && digitsAfterSeparator <= 2
-    ? rawNumber[lastSeparatorIndex]
-    : null;
-  const decimalPlaces = decimalSeparator ? digitsAfterSeparator : 0;
-  const normalized = decimalSeparator
-    ? `${rawNumber.slice(0, lastSeparatorIndex).replace(/[.,]/g, '')}.${rawNumber.slice(lastSeparatorIndex + 1)}`
-    : rawNumber.replace(/[.,]/g, '');
-  const amount = Number(normalized);
-
-  if (!Number.isFinite(amount)) return null;
-
-  const multiplied = (amount * multiplier).toFixed(decimalPlaces);
-  const localizedNumber = decimalSeparator === ',' ? multiplied.replace('.', ',') : multiplied;
-  const prefix = displayPrice.slice(0, match.index);
-  const suffix = displayPrice.slice(match.index + match[0].length);
-
-  return `${prefix}${localizedNumber}${suffix}`;
-};
+function periodLabel(period: string, t: TFunction) {
+  const match = /^P(\d+)([DWMY])$/.exec(period);
+  return match ? t(`offerPeriod${match[2]}`, {count: Number(match[1])}) : period;
+}
 
 //const log = (...args: any[]) => console.log('[IAP]', ...args);
 
@@ -98,7 +81,7 @@ export default function ManagePlan() {
   const {styles, themeColor} = themed;
 
   const nav = useNavigation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const goToProfileHome = React.useCallback(() => {
     (nav as any).navigate('Profile', { screen: 'MyProfile' });
   }, [nav]);
@@ -113,7 +96,57 @@ export default function ManagePlan() {
   const [saving, setSaving] = React.useState(false);
   const [subscriptionEndAt, setSubscriptionEndAt] = React.useState<string | null>(null);
   const [iapReady, setIapReady] = React.useState(false);
-  const [priceMap, setPriceMap] = React.useState<Record<string, string>>({});
+  const [products, setProducts] = React.useState<ProductSubscription[]>([]);
+  const [referral, setReferral] = React.useState<ReferralState>({code: null, offers: {}});
+  const [referralInput, setReferralInput] = React.useState('');
+  const [referralBusy, setReferralBusy] = React.useState(false);
+  const [referralError, setReferralError] = React.useState('');
+  const [storeEnvironment, setStoreEnvironment] = React.useState<'production' | 'sandbox'>('production');
+  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+  const pricing = React.useMemo(() => {
+    const result: Partial<Record<Plan, ReturnType<typeof subscriptionPrice>>> = {};
+    for (const plan of paidPlans) {
+      const sku = platform === 'ios'
+        ? plan === 'No Ads Monthly' ? IOS_SKU_NO_ADS_MONTHLY : plan === 'Pro Monthly' ? IOS_SKU_MONTHLY : IOS_SKU_YEARLY
+        : plan === 'No Ads Monthly' ? ANDROID_SKU_NO_ADS_MONTHLY : plan === 'Pro Monthly' ? ANDROID_SKU_MONTHLY : ANDROID_SKU_YEARLY;
+      const product = products.find(item => item.id === sku);
+      if (product) result[plan] = subscriptionPrice(product, plan, referral.offers[referralPlanKey(plan)], storeEnvironment);
+    }
+    return result;
+  }, [products, referral, platform, storeEnvironment]);
+  const refreshCatalog = React.useCallback(async () => {
+    const skus = platform === 'ios'
+      ? [IOS_SKU_MONTHLY, IOS_SKU_NO_ADS_MONTHLY, IOS_SKU_YEARLY]
+      : [ANDROID_SKU_MONTHLY, ANDROID_SKU_NO_ADS_MONTHLY, ANDROID_SKU_YEARLY];
+    const subs = await fetchProducts({skus, type: 'subs'});
+    const nextProducts = (subs ?? []).filter((item): item is ProductSubscription => item.type === 'subs');
+    const country = await getStorefront().catch(() => '');
+    // TestFlight is a release build, but StoreKit identifies its sandbox environment.
+    let nextEnvironment: 'production' | 'sandbox' = 'production';
+    if (platform === 'ios') {
+      const appTransaction = await getAppTransactionIOS().catch(() => null);
+      const environment = appTransaction?.environment?.toLowerCase();
+      if (environment === 'sandbox' || (!environment && __DEV__)) nextEnvironment = 'sandbox';
+    }
+    const nextReferral = await getReferralOffers(platform, country, nextEnvironment);
+    setProducts(nextProducts);
+    setReferral(nextReferral);
+    setStoreEnvironment(nextEnvironment);
+    setReferralError('');
+    return {products: nextProducts, referral: nextReferral, storeEnvironment: nextEnvironment};
+  }, [platform]);
+  const applyReferral = async () => {
+    if (referralBusy || saving || !referralInput.trim()) return;
+    setReferralBusy(true);
+    setReferralError('');
+    try {
+      const saved = await setReferralCode(referralInput);
+      setReferral(previous => ({...previous, code: saved.code}));
+      setReferralInput('');
+      await refreshCatalog();
+    } catch { setReferralError(t('referralApplyFailed')); }
+    finally { setReferralBusy(false); }
+  };
 
   // ✅ plan label for UI
   const planLabel = React.useCallback(
@@ -134,11 +167,6 @@ export default function ManagePlan() {
         : ['NoAds', 'UnlimitedPro', 'ComprehensiveSimilar', 'DetailedLeague', 'DetailedReports', 'FourWay', 'Custom'];
     return keys.map(key => t(`planPill${key}`));
   }, [t]);
-
-  const yearlyReferencePrice = React.useMemo(
-    () => multiplyDisplayPrice(priceMap['Pro Monthly'], 12),
-    [priceMap],
-  );
 
   // ✅ pick SKU by selected plan
   const selectedSku = React.useMemo(() => {
@@ -181,41 +209,7 @@ export default function ManagePlan() {
     let errorSub: EventSubscription | null = null;
 
     const initIap = async () => {
-      try {
-        await initConnection({});
-        //log('initConnection OK', { platform: Platform.OS});
-        const subs = await fetchProducts({
-          skus: [
-            IOS_SKU_MONTHLY,
-            ANDROID_SKU_MONTHLY,
-            IOS_SKU_NO_ADS_MONTHLY,
-            ANDROID_SKU_NO_ADS_MONTHLY,
-            IOS_SKU_YEARLY,
-            ANDROID_SKU_YEARLY,
-          ],
-          type: 'subs',
-        });
-
-        const map: Record<string, string> = {};
-        //log('Subs:', subs);
-        if (subs) {
-          for (const s of subs) {
-            if (s.id === IOS_SKU_NO_ADS_MONTHLY || s.id === ANDROID_SKU_NO_ADS_MONTHLY) {
-              map['No Ads Monthly'] = s.displayPrice;
-            }
-            if (s.id === IOS_SKU_MONTHLY || s.id === ANDROID_SKU_MONTHLY) {
-              map['Pro Monthly'] = s.displayPrice;
-            }
-            if (s.id === IOS_SKU_YEARLY || s.id === ANDROID_SKU_YEARLY) {
-              map['Pro Yearly'] = s.displayPrice;
-            }
-          }
-        }
-        setPriceMap(map);
-        setIapReady(true);
-      } catch (err) {
-        //log('initConnection FAILED', err);
-      }
+      setIapReady(false);
       purchaseSub = purchaseUpdatedListener(async (purchase: Purchase) => {
         //log('purchaseUpdatedListener purchase=', JSON.stringify(purchase, null, 2));
         try {
@@ -234,10 +228,7 @@ export default function ManagePlan() {
           }
 
           if (!externalId) {
-            //log('No externalId -> finishTransaction and stop');
-            await finishTransaction({ purchase, isConsumable: false });
-            setSaving(false);
-            return;
+            throw new Error('Purchase identifier unavailable');
           }
 
           const payload: ActivateIAPSubscriptionIn = {
@@ -249,9 +240,8 @@ export default function ManagePlan() {
           //log('activateIAPSubscription payload=', payload);
           const res = await activateIAPSubscription(payload);
           //log('activateIAPSubscription response=', res);
-          await finishTransaction({ purchase, isConsumable: false });
-          //log('finishTransaction done');
           if (res?.ok) {
+            await finishTransaction({purchase, isConsumable: false});
             setCurrentPlan(res.plan);
             setSelected(res.plan);
             if (res.subscriptionEndAt) {
@@ -271,7 +261,7 @@ export default function ManagePlan() {
             );
           }
         } catch (err: any) {
-
+          Alert.alert(t('error'), t('couldNotUpdatePlan'));
         } finally {
           setSaving(false);
         }
@@ -285,6 +275,14 @@ export default function ManagePlan() {
         setSaving(false);
         Alert.alert(t('error', 'Error'), err.message || 'Payment failed.');
       });
+      try {
+        await initConnection({});
+        //log('initConnection OK', { platform: Platform.OS});
+        await refreshCatalog();
+        setIapReady(true);
+      } catch (err) {
+        setReferralError(t('referralLoadFailed'));
+      }
     };
 
     initIap();
@@ -294,8 +292,21 @@ export default function ManagePlan() {
       errorSub?.remove();
       endConnection();
     };
-  }, [nav, t]);
+  }, [nav, t, refreshCatalog]);
   //*/
+
+  React.useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && iapReady) {
+        refreshCatalog().catch(() => { setReferralError(t('referralLoadFailed')); });
+        getMe().then(me => {
+          setCurrentPlan(me.plan as Plan);
+          setSubscriptionEndAt(me.subscriptionEndAt ?? null);
+        }).catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, [iapReady, refreshCatalog, t]);
 
   const formattedEndDate = React.useMemo(() => {
     if (!subscriptionEndAt) return null;
@@ -345,7 +356,9 @@ export default function ManagePlan() {
 
   const onSave = async () => {
     // If user selected the same plan they already have, block and warn
-    if (selected === currentPlan) {
+    if (saving || referralBusy) return;
+    const appleRedemption = platform === 'ios' && pricing[selected]?.hasOffer;
+    if (!appleRedemption && selected === currentPlan) {
       if (isPro(currentPlan)) {
         Alert.alert(
           t('alreadyProTitle', 'Already on Pro'),
@@ -366,7 +379,7 @@ export default function ManagePlan() {
     }
 
     // ✅ Store-managed paid plan changes
-    if (isPaidSubscription(currentPlan) && isPaidSubscription(selected)) {
+    if (!appleRedemption && isPaidSubscription(currentPlan) && isPaidSubscription(selected)) {
       showManageStoreSubscriptionAlert();
       return;
     }
@@ -404,15 +417,42 @@ export default function ManagePlan() {
 
     try {
       setSaving(true);
-      ///**
-      await requestPurchase({
-        type: 'subs',
-        request: {
-          ios: { sku: selectedSku },
-          android: { skus: [selectedSku] },
-        },
-      });
-      //*/
+      // Revalidate mappings immediately before checkout (a code/offer may be disabled).
+      const fresh = await refreshCatalog();
+      const product = fresh.products.find(item => item.id === selectedSku);
+      if (!product) throw new Error('Product unavailable');
+      const price = subscriptionPrice(product, selected, fresh.referral.offers[referralPlanKey(selected)], fresh.storeEnvironment);
+      const shown = pricing[selected];
+      if (price.hasOffer !== shown?.hasOffer || price.redemptionCode !== shown?.redemptionCode || price.sandbox !== shown?.sandbox
+        || price.offerToken !== shown?.offerToken || price.offerAmount !== shown?.offerAmount
+        || price.regularAmount !== shown?.regularAmount || price.currency !== shown?.currency
+        || JSON.stringify(price.phases) !== JSON.stringify(shown?.phases)) {
+        setSaving(false);
+        Alert.alert(t('referralOfferChanged'), t('referralReviewPrices'));
+        return;
+      }
+      if (platform === 'ios' && price.hasOffer) {
+        setSaving(false);
+        Alert.alert(t('referralRedeemTitle'), t(fresh.storeEnvironment === 'sandbox' ? 'referralSandboxBody' : 'referralRedeemBody', {code: price.redemptionCode}), [
+          {text: t('cancel'), style: 'cancel'},
+          {text: t('referralRedeem'), onPress: async () => {
+            try {
+              if (fresh.storeEnvironment === 'sandbox') {
+                // Apple's sandbox uses one-time codes entered by the tester in this sheet.
+                await presentCodeRedemptionSheetIOS();
+              } else {
+                await Linking.openURL(`https://apps.apple.com/redeem?ctx=offercodes&id=6755595849&code=${encodeURIComponent(price.redemptionCode!)}`);
+              }
+            } catch { Alert.alert(t('error'), t('referralRedemptionFailed')); }
+          }},
+        ]);
+        return;
+      }
+      if (platform === 'android' && !price.offerToken) throw new Error('Base plan unavailable');
+      await requestPurchase({type: 'subs', request: {
+        ios: {sku: selectedSku},
+        android: {skus: [selectedSku], subscriptionOffers: [{sku: selectedSku, offerToken: price.offerToken!}]},
+      }});
     } catch (e: any) {
       setSaving(false);
       Alert.alert(
@@ -444,6 +484,22 @@ export default function ManagePlan() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.card}>
+          <View style={styles.referralBox}>
+            <Text style={styles.referralTitle}>{t(referral.code ? 'referralApplied' : 'referralOptional', {code: referral.code})}</Text>
+            {!referral.code && <View style={styles.referralInputRow}>
+              <TextInput value={referralInput} onChangeText={setReferralInput}
+                placeholder={t('referralPlaceholder')} placeholderTextColor={themed.MUTED}
+                autoCapitalize="characters" autoCorrect={false} maxLength={32}
+                editable={!saving && !referralBusy} style={styles.referralInput}
+                returnKeyType="done" onSubmitEditing={applyReferral} />
+              <Pressable onPress={applyReferral} disabled={saving || referralBusy || !referralInput.trim()}
+                style={[styles.referralApply, (saving || referralBusy || !referralInput.trim()) && {opacity: .5}]}>
+                <Text style={styles.referralApplyText}>{t(referralBusy ? 'saving' : 'referralApply')}</Text>
+              </Pressable>
+            </View>}
+            <Text style={styles.billingHint}>{t(referral.code ? 'referralStoreEligibility' : 'referralPermanent')}</Text>
+            {!!referralError && <Text style={styles.referralError}>{referralError}</Text>}
+          </View>
           {/* 1) Mobile-first plan comparison */}
           <View style={styles.planComparisonHeader}>
             <Text style={styles.planComparisonTitle}>{t('tblFeatures', 'Features')}</Text>
@@ -452,6 +508,16 @@ export default function ManagePlan() {
 
           <View style={styles.planCards}>
             {PLANS.map(p => {
+              const price = pricing[p.name];
+              const offeredPrice = price?.offerAmount != null ? formatMoney(price.offerAmount, price.currency, i18n.language) : undefined;
+              const displayPrice = price?.offerDisplay ?? offeredPrice ?? price?.regularDisplay;
+              const {reference, discount} = subscriptionSavings(p.name, price, pricing['Pro Monthly']);
+              const originalPrice = discount && reference != null && price
+                ? formatMoney(reference, price.currency, i18n.language) : undefined;
+              const regularYearlyPrice = p.name === 'Pro Yearly' && price?.hasOffer && price.comparable
+                && price.regularAmount != null && price.offerAmount != null
+                && price.offerAmount < price.regularAmount && price.regularAmount !== reference
+                ? formatMoney(price.regularAmount, price.currency, i18n.language) : undefined;
               const active = selected === p.name;
               const proCard = isPro(p.name);
               const featureColor = proCard ? themeColor('#4ADE80') : p.name === 'No Ads Monthly' ? themeColor('#38BDF8') : themeColor('#CBD5E1');
@@ -493,19 +559,36 @@ export default function ManagePlan() {
                       </View>
                     </View>
                     <View style={styles.planPriceGroup}>
-                      {p.name === 'Pro Yearly' ? (
-                        <View style={styles.discountBadge}><Text style={styles.discountBadgeText}>{t('proYearlyDiscount', '-30%')}</Text></View>
+                      {discount != null ? (
+                        <View style={styles.discountBadge}><Text style={styles.discountBadgeText}>−{new Intl.NumberFormat(i18n.language, {maximumFractionDigits: 1}).format(discount)}%</Text></View>
                       ) : null}
-                      <View style={styles.planPriceRow}>
-                        {p.name === 'Pro Yearly' && yearlyReferencePrice ? (
-                          <Text style={styles.planOriginalPrice}>{yearlyReferencePrice}</Text>
+                      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.planPriceRow}>
+                        {originalPrice ? (
+                          <Text style={styles.planOriginalPrice}>{originalPrice}{'  '}</Text>
+                        ) : null}
+                        {regularYearlyPrice ? (
+                          <Text style={styles.planOriginalPrice}>{regularYearlyPrice}{'  '}</Text>
                         ) : null}
                         <Text style={[styles.planPrice, active && styles.planPriceActive]}>
-                          {p.name === 'Free' ? t('freePrice', 'Free') : priceMap[p.name] ?? t('pricePending', '...')}
+                          {p.name === 'Free' ? t('freePrice', 'Free') : displayPrice ?? t('pricePending', '...')}
                         </Text>
-                      </View>
+                      </Text>
                     </View>
                   </Pressable>
+
+                  {price?.hasOffer && <View style={styles.offerDetails}>
+                    <Text style={styles.referralTitle}>{t('referralOfferAvailable')}</Text>
+                    {price.phases ? price.phases.map((phase, index) => <Text key={index} style={styles.offerDetailText}>
+                      {phase.recurrenceMode === 1
+                        ? t('referralRenewal', {price: phase.formattedPrice, period: periodLabel(phase.billingPeriod, t)})
+                        : t('referralPhase', {price: phase.formattedPrice, period: periodLabel(phase.billingPeriod, t), count: phase.billingCycleCount || 1})}
+                    </Text>) : <>
+                      <Text style={styles.offerDetailText}>{price.offerAmount != null
+                        ? t('referralPhase', {price: displayPrice, period: periodLabel(price.offerPeriod ?? planPeriod(p.name), t), count: price.offerCycles})
+                        : t('referralApplePriceConfirmation')}</Text>
+                      <Text style={styles.offerDetailText}>{t('referralRenewal', {price: price.regularDisplay, period: periodLabel(planPeriod(p.name), t)})}</Text>
+                    </>}
+                  </View>}
 
                   {proCard && <View style={styles.billingSection}>
                     <View accessibilityRole="radiogroup" accessibilityLabel={t('planBillingPeriod', 'Billing period')} style={styles.billingSwitch}>
@@ -520,7 +603,6 @@ export default function ManagePlan() {
                         </Pressable>;
                       })}
                     </View>
-                    <Text style={styles.billingHint}>{t('planBillingSameFeatures', 'The same Pro features, with your preferred billing period.')}</Text>
                   </View>}
 
                   <View style={styles.planFeatureList}>
@@ -561,12 +643,12 @@ export default function ManagePlan() {
           {/* Save */}
           <TouchableOpacity
             onPress={onSave}
-            disabled={saving}
+            disabled={saving || referralBusy}
             accessibilityRole="button"
             style={[styles.primaryBtn, saving && { opacity: 0.6 }]}
           >
             <Text style={styles.primaryBtnText}>
-              {saving ? t('saving', 'Saving...') : t('setPlan', 'Set Plan')}
+              {saving ? t('saving', 'Saving...') : platform === 'ios' && pricing[selected]?.hasOffer ? t('referralRedeem') : t('setPlan', 'Set Plan')}
             </Text>
           </TouchableOpacity>
 
@@ -656,6 +738,16 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
 
   sectionTitle: { color: MUTED, fontWeight: '600', marginBottom: 10 },
+  referralBox: {marginBottom: 18, gap: 8},
+  referralTitle: {color: ACCENT, fontWeight: '800', fontSize: 13},
+  referralInputRow: {flexDirection: 'row', gap: 8, alignItems: 'center'},
+  referralInput: {flex: 1, minWidth: 0, color: TEXT, backgroundColor: CARD, borderColor: LINE, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, minHeight: 46},
+  referralApply: {backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 14, minHeight: 46, justifyContent: 'center'},
+  referralApplyText: {color: '#fff', fontWeight: '800'},
+  referralError: {color: themeColor('#EF4444'), fontSize: 12},
+  offerDetails: {padding: 12, gap: 5, borderWidth: 1, borderColor: LINE,
+    borderRadius: 12, backgroundColor: BG},
+  offerDetailText: {color: MUTED, fontSize: 12, lineHeight: 18},
 
   planComparisonHeader: { alignItems: 'center', gap: 4, marginBottom: 12 },
   planComparisonTitle: { color: TEXT, fontSize: 18, fontWeight: '900' },
@@ -679,8 +771,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     elevation: 3,
   },
   planCardPressed: { opacity: 0.9, transform: [{ scale: 0.992 }] },
-  planCardTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  planIdentity: { flexGrow: 1, flexBasis: 155, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  planCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  planIdentity: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
   planSelector: {
     width: 22,
     height: 22,
@@ -700,8 +792,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   planSubtitleDivider: { color: themeColor('#667069', 'text'), fontSize: 10, fontWeight: '800' },
   planBestPrice: { color: themeColor('#A7B5AC', 'text'), fontSize: 11, fontWeight: '800' },
   planBestPriceActive: { color: themeColor('#4ADE80', 'text') },
-  planPriceGroup: { flexGrow: 1, alignItems: 'flex-end', gap: 5 },
-  planPriceRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'flex-end', gap: 7 },
+  planPriceGroup: { flexGrow: 1.65, flexShrink: 1, flexBasis: 0, minWidth: 0, alignItems: 'flex-end', gap: 5 },
+  planPriceRow: { alignSelf: 'stretch', textAlign: 'right', fontSize: 14 },
   planOriginalPrice: {
     color: MUTED,
     fontSize: 11,

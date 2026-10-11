@@ -195,6 +195,9 @@ export default function ScorePredictionScreen() {
   }
   function predictionForm(fixture: PredictionFixture) {
     const id = String(fixture.fixtureId), saved = entry?.picks[id];
+    const matchPoints = entry?.matchPoints[id];
+    const hasMatchPoints = typeof matchPoints === 'number';
+    const showMatchPoints = fixture.predictionStatus === 'finished' || hasMatchPoints;
     const value = locked && saved ? { home: String(saved.home), away: String(saved.away) } : draft[id] ?? { home: '', away: '' };
     const isSaving = savingPrediction === fixture.fixtureId;
     const disabled = locked || savingPrediction !== null || !data?.nickname || !validScore(value.home) || !validScore(value.away);
@@ -218,7 +221,7 @@ export default function ScorePredictionScreen() {
         {!data?.nickname && <Text style={s.caption}>{tr ? 'Tahmin göndermek için önce takma adını belirle.' : 'Choose your nickname before submitting a prediction.'}</Text>}
       </>}
       {!saved && locked && <Text style={s.caption}>{tr ? 'Bu maç için kayıtlı tahminin yok.' : 'You have no saved prediction for this match.'}</Text>}
-      {fixture.predictionStatus === 'finished' && <View style={s.matchPointsRow}><View style={{ flex: 1, gap: 4 }}><Text style={s.predictionLabel}>{tr ? 'Bu Maçtan Kazandığın Puan' : 'Points Earned From This Match'}</Text>{!saved && <Text style={s.caption}>{tr ? 'Bu maça tahmin göndermedin.' : 'You did not submit a prediction for this match.'}</Text>}</View><Text style={[s.matchPoints, { color: ACCENT }]}>{saved && entry?.matchPoints[id] === undefined ? '…' : entry?.matchPoints[id] ?? 0}</Text></View>}
+      {showMatchPoints && <View style={s.matchPointsRow}><View style={{ flex: 1, gap: 4 }}><Text style={s.predictionLabel}>{tr ? 'Bu Maçtan Kazandığın Puan' : 'Points Earned From This Match'}</Text>{!saved && <Text style={s.caption}>{tr ? 'Bu maça tahmin göndermedin.' : 'You did not submit a prediction for this match.'}</Text>}</View><Text style={[s.matchPoints, { color: ACCENT }]}>{matchPoints ?? 0}</Text></View>}
     </View>;
   }
   const ruleLines = tr ? [

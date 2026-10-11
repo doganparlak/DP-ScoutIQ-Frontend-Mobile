@@ -295,7 +295,9 @@ export const ProGuidedScrollView=React.forwardRef<ScrollView,ScrollViewProps>(fu
   React.useImperativeHandle(forwardedRef,()=>scroll.current!);
   const layout=StyleSheet.flatten(contentContainerStyle);
   const context=React.useMemo(()=>({scroll,content}),[]);
-  return <GuideScrollContext.Provider value={context}><ScrollView {...props} ref={scroll} contentContainerStyle={contentContainerStyle}><View ref={content} collapsable={false} style={{width:'100%',minWidth:0,gap:layout?.gap}}>{children}</View></ScrollView></GuideScrollContext.Provider>;
+  // Android's edge stretch distorts the whole workspace when dragging past
+  // the bottom. Keep the Pro content stationary at its scroll boundaries.
+  return <GuideScrollContext.Provider value={context}><ScrollView overScrollMode="never" {...props} ref={scroll} contentContainerStyle={contentContainerStyle}><View ref={content} collapsable={false} style={{width:'100%',minWidth:0,gap:layout?.gap}}>{children}</View></ScrollView></GuideScrollContext.Provider>;
 });
 export function useProPageGuide(page:string){
   const {setProGuidePage,closeTutorial}=useTutorial();

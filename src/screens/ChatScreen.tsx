@@ -1,5 +1,6 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // src/screens/ChatScreen.tsx
+import ProAIConsentCard from '@/components/ProAIConsentCard';
 import ChatAccessModal from '@/components/ChatAccessModal';
 import ChatInput from '@/components/ChatInput';
 import ChatVisualsBlock from '@/components/ChatVisualsBlock';
@@ -27,7 +28,7 @@ TouchableOpacity,
 View
 } from 'react-native';
 
-import { getMe,healthcheck,resetSession,sendChat,type Profile } from '@/services/api';
+import { getMe,healthcheck,resetSession,sendChat,updateConsent,type Profile } from '@/services/api';
 
 import { getSessionId,loadHistory,loadStrategy,saveHistory } from '@/storage';
 import type { ChatMessage,PlayerData } from '@/types';
@@ -101,10 +102,13 @@ export default function ChatScreen() {
   const {styles, ACCENT, PANEL, TEXT, MUTED} = themed;
 
   const { t, i18n } = useTranslation();
+  const newWorkspaceLabel = i18n.language.startsWith('tr') ? 'Yeni Çalışma' : 'New Workspace';
   const navigation = useNavigation<any>();
   const tutorial = useTutorial();
   const isScoutWiseTutorial = tutorial.active && tutorial.stage === 'scoutwise';
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [savingConsent, setSavingConsent] = useState(false);
+  const consentSaveLock = useRef(false);
   const profileRequest = useRef<Promise<Profile> | null>(null);
   const openingModeRef = useRef(false);
   const [openingMode, setOpeningMode] = useState(false);
@@ -465,7 +469,7 @@ export default function ChatScreen() {
     if (!currentProfile.consent) {
       sendingRef.current=false;
       Keyboard.dismiss();
-      navigation.navigate('LegacyStrategy');
+      setMenuOpen(true);
       return;
     }
 
@@ -506,10 +510,25 @@ export default function ChatScreen() {
     void runAttempt(payload, sessionId, requestId);
   }
 
+  async function acceptAIConsent() {
+    if (!profile || profile.consent || consentSaveLock.current) return;
+    consentSaveLock.current = true;
+    setSavingConsent(true);
+    try {
+      const updated = await updateConsent(true);
+      setProfile(updated);
+    } catch {
+      Alert.alert(t('error'), t('proAIConsentSaveError'));
+    } finally {
+      consentSaveLock.current = false;
+      setSavingConsent(false);
+    }
+  }
+
   function openMenu(){Keyboard.dismiss();setMenuOpen(true);}
   function resumeWorkspace(){restoreOffset.current=listOffset.current;setMenuOpen(false);}
   async function selectMode(mode:ProWorkspaceMode){
-    if (!workspaceReady || resetting || sending || directBusyRef.current || openingModeRef.current) return;
+    if (!workspaceReady || resetting || sending || savingConsent || directBusyRef.current || openingModeRef.current) return;
     openingModeRef.current = true;
     try {
       let currentProfile = profile;
@@ -520,9 +539,9 @@ export default function ChatScreen() {
         if (!navigation.isFocused()) return;
         setProfile(currentProfile);
       }
+      if (!tutorial.active && !currentProfile?.consent) { setMenuOpen(true); return; }
       directOpened.current = sessionId;
       setActiveMode(mode);resumeWorkspace();
-      if (!tutorial.active && !currentProfile?.consent) navigation.navigate('LegacyStrategy');
     } catch {
       if (navigation.isFocused()) Alert.alert(
         t('error', 'Error'),
@@ -587,7 +606,7 @@ export default function ChatScreen() {
 
         <View style={styles.toolbar}>
           {!menuOpen&&<View style={styles.toolbarCell}><TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr')?'Menüye Dön':'Back to Menu'} onPress={openMenu} style={styles.workspaceButton}><LayoutGrid size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{i18n.language.startsWith('tr')?'Menü':'Menu'}</Text></TouchableOpacity></View>}
-          <View style={styles.toolbarCell}><TouchableOpacity onPress={()=>void startNewWorkspace()} disabled={sending||directBusy||resetting||openingMode||!workspaceReady||isScoutWiseTutorial} style={[styles.workspaceButton,(sending||directBusy||resetting||openingMode||!workspaceReady||isScoutWiseTutorial)&&styles.toolbarBtnDisabled]} accessibilityRole="button" accessibilityLabel={t('newWorkspace','New Workspace')}><RotateCcw size={17} color={ACCENT}/><Text style={styles.workspaceButtonText}>{t('newWorkspace','New Workspace')}</Text></TouchableOpacity></View>
+          <View style={styles.toolbarCell}><TouchableOpacity onPress={()=>void startNewWorkspace()} disabled={sending||directBusy||resetting||openingMode||!workspaceReady||isScoutWiseTutorial} style={[styles.workspaceButton,(sending||directBusy||resetting||openingMode||!workspaceReady||isScoutWiseTutorial)&&styles.toolbarBtnDisabled]} accessibilityRole="button" accessibilityLabel={newWorkspaceLabel}><RotateCcw size={17} color={ACCENT}/><View style={styles.workspaceLabel}>{newWorkspaceLabel.split(" ").map(word => <Text key={word} style={styles.workspaceButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{word}</Text>)}</View></TouchableOpacity></View>
           {!tutorial.active && profile && (
             <View style={styles.toolbarCell}><View style={[styles.workspaceButton, styles.creditBadge]}>
               <Text style={styles.creditText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>
@@ -605,7 +624,7 @@ export default function ChatScreen() {
           else { navigation.getParent()?.navigate('Profile', { screen: 'ManagePlan' }); }
         }} />
         {directOpened.current === sessionId && !!sessionId && <View style={{flex: !menuOpen && (activeMode === 'direct'||activeMode === 'discovery') ? 1 : 0, display: !menuOpen && (activeMode === 'direct'||activeMode === 'discovery') ? 'flex' : 'none'}}><ProDirectPlayerSearch onGuidePageChange={setProChildGuidePage} trial={!!profile&&isChatCreditPlan(profile.plan)} mode={activeMode==='discovery'?'discovery':'direct'} key={sessionId} sessionId={sessionId} strategy={strategy} onEditStrategy={() => navigation.navigate('LegacyStrategy')} onAccessRequired={() => setAccessModal('exhausted')} onBusyChange={busy => {directBusyRef.current = busy; setDirectBusy(busy);}} onCreditsChanged={() => {void getMe().then(setProfile).catch(() => {});}} /></View>}
-        {menuOpen?<ProGuidedScrollView style={{flex:1}} contentContainerStyle={{padding:16,paddingBottom:32}} keyboardShouldPersistTaps="handled"><ProWorkspaceWelcome trial={!!profile&&isChatCreditPlan(profile.plan)} disabled={!workspaceReady||resetting||sending||directBusy||openingMode} onSelect={mode=>void selectMode(mode)} onResume={activeMode||messages.length||inputText?resumeWorkspace:undefined}/>{openingMode&&<View accessibilityLiveRegion="polite" style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,padding:12}}><ActivityIndicator size="small" color={ACCENT}/><Text style={{color:MUTED}}>{i18n.language.startsWith('tr')?'Açılıyor…':'Opening…'}</Text></View>}{!tutorial.active&&profile&&!canUseChat(profile)&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('ProPlans')} style={{padding:16,alignItems:'center'}}><Text style={{color:ACCENT,fontWeight:'800'}}>{i18n.language.startsWith('tr')?'Pro Planlarını İncele':'Explore Pro Plans'}</Text></TouchableOpacity>}</ProGuidedScrollView>:(activeMode === 'direct'||activeMode === 'discovery') ? null : <>
+        {menuOpen?<ProGuidedScrollView style={{flex:1}} contentContainerStyle={{padding:16,paddingBottom:32}} keyboardShouldPersistTaps="handled"><ProWorkspaceWelcome consent={!tutorial.active && profile && !profile.consent ? <ProAIConsentCard saving={savingConsent} onAccept={() => void acceptAIConsent()}/> : undefined} trial={!!profile&&isChatCreditPlan(profile.plan)} disabled={!workspaceReady||resetting||sending||directBusy||openingMode||savingConsent||(!tutorial.active&&!profile?.consent)} onSelect={mode=>void selectMode(mode)} onResume={activeMode||messages.length||inputText?resumeWorkspace:undefined}/>{openingMode&&<View accessibilityLiveRegion="polite" style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,padding:12}}><ActivityIndicator size="small" color={ACCENT}/><Text style={{color:MUTED}}>{i18n.language.startsWith('tr')?'Açılıyor…':'Opening…'}</Text></View>}{!tutorial.active&&profile&&!canUseChat(profile)&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('ProPlans')} style={{padding:16,alignItems:'center'}}><Text style={{color:ACCENT,fontWeight:'800'}}>{i18n.language.startsWith('tr')?'Pro Planlarını İncele':'Explore Pro Plans'}</Text></TouchableOpacity>}</ProGuidedScrollView>:(activeMode === 'direct'||activeMode === 'discovery') ? null : <>
         <FlatList
           ref={flatRef}
           data={messages}
@@ -694,6 +713,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   toolbarCell: { flex: 1, flexBasis: 0, minWidth: 0, minHeight: 46 },
   workspaceButton:{flex:1,minWidth:0,minHeight:46,borderWidth:1,borderColor:ACCENT,borderRadius:12,paddingHorizontal:6,paddingVertical:8,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6},
+  workspaceLabel:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4,flexShrink:1,minWidth:0},
   workspaceButtonText:{color:ACCENT,fontSize:12,lineHeight:17,fontWeight:'800',flexShrink:1,textAlign:'center'},
   creditBadge: {
     borderColor: themeColor('rgba(36,245,166,0.30)', 'border'),

@@ -895,6 +895,7 @@ export async function health(): Promise<boolean> {
 
 // -------- Auth
 export async function signUp(input: {
+  referralCode?: string;
   email: string;
   password: string;
   dob: string;      // YYYY-MM-DD
@@ -969,8 +970,32 @@ export async function verifyResetCode(email: string, code: string): Promise<{ ok
 export async function requestSignupCode(email: string): Promise<{ ok: boolean }> {
   return request('/auth/request_signup_code', { method: 'POST', body: JSON.stringify({ email }) });
 }
-export async function verifySignupCode(email: string, code: string): Promise<{ ok: boolean }> {
-  return request('/auth/verify_signup_code', { method: 'POST', body: JSON.stringify({ email, code }) });
+export async function verifySignupCode(email: string, code: string, referralCode?: string): Promise<{ ok: boolean }> {
+  return request('/auth/verify_signup_code', { method: 'POST', body: JSON.stringify({ email, code, referralCode }) });
+}
+
+export type ReferralOffer = {
+  sandbox?: boolean;
+  productId: string;
+  redemptionCode?: string;
+  basePlanId?: string;
+  offerId?: string;
+  price?: {amount: number; currency: string} | null;
+  period?: string;
+  cycles?: number;
+};
+export type ReferralState = {
+  code: string | null;
+  offers: Partial<Record<'plus_monthly' | 'pro_monthly' | 'pro_yearly', ReferralOffer>>;
+};
+export function validateReferralCode(code: string) {
+  return request<{code: string}>('/auth/referral/validate', {method: 'POST', body: JSON.stringify({code})});
+}
+export function setReferralCode(code: string) {
+  return request<{code: string}>('/me/referral', {method: 'POST', body: JSON.stringify({code})});
+}
+export function getReferralOffers(platform: 'ios' | 'android', storefront = '', storeEnvironment: 'production' | 'sandbox' = 'production') {
+  return request<ReferralState>(`/me/referral?platform=${platform}&storefront=${encodeURIComponent(storefront)}&store_environment=${storeEnvironment}`);
 }
 
 export async function setNewPassword(input: { email: string; new_password: string; resetToken?: string }): Promise<{ ok: boolean }> {

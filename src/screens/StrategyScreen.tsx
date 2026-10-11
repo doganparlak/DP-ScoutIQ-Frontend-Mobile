@@ -251,7 +251,7 @@ export default function StrategyScreen() {
                 <Text style={styles.aiDisclosureText}>
                   {t(
                     'aiDisclosureInline',
-                    'By continuing, you confirm that your chat messages, strategy inputs, and search queries will be sent to OpenAI and DeepSeek to generate AI responses.'
+                    'By continuing, you confirm that your chat messages, strategy inputs, and search queries will be sent to OpenAI to generate AI responses.'
                   )}
                 </Text>
               )}

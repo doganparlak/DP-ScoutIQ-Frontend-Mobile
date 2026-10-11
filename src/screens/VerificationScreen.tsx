@@ -63,7 +63,7 @@ export default function VerificationScreen() {
         const verified = await verifyResetCode(params.email, code);
         navigation.replace('NewPassword', { email: params.email, resetToken: verified.resetToken });
       } else {
-        await verifySignupCode(params.email, code);
+        await verifySignupCode(params.email, code, params.referralCode);
         if (!params.password) {
           setError('Missing password for auto-login. Please log in once.');
           navigation.replace('Login');

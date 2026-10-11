@@ -114,6 +114,7 @@ export function linkSocialAccount(challenge: string, email: string, password: st
 }
 
 export function registerSocialAccount(body: {
+  referralCode?: string;
   challenge: string; dob: string | null; country: string; newsletter: boolean;
   privacyAccepted: boolean; termsAccepted: boolean; dataUsageAccepted: boolean; uiLanguage: UILang;
 }) { return request<SocialResult>('/auth/social/register', body); }

@@ -11,7 +11,7 @@ export const proWorkspaceCopy=(tr:boolean)=>({
   direct:{title:tr?'Doğrudan Arama':'Direct Search',description:tr?'İsim, ülke ve takım bilgileriyle oyuncunu bul; kartını, metriklerini ve yorumlarını incele.':'Find your player by name, country and team; explore their profile, metrics and insights.',prompt:tr?'Hangi oyuncuyu incelemek istersin? Oyuncunun adını yaz.':'Which player would you like to explore? Enter their name.',placeholder:tr?'Oyuncunun adını yaz…':'Enter a player’s name…'},
   discovery:{title:tr?'Oyuncu Keşfi':'Player Discovery',description:tr?'Pozisyon, arama öncelikleri ve takım stratejinle ihtiyacına uygun oyuncuları keşfet.':'Use positions, quality priorities and your team strategy to discover players suited to your needs.',prompt:tr?'Aradığın oyuncuyu tarif et. Pozisyon, yaş, uyruk, lig ve aradığın özellikleri ekleyebilirsin.':'Describe the player you need. Include position, age, nationality, league and desired qualities.',placeholder:tr?'Aradığın oyuncuyu tarif et…':'Describe your ideal player…'},
 });
-export default function ProWorkspaceWelcome({onSelect,onResume,disabled=false}:{trial?:boolean;onSelect:(mode:ProWorkspaceMode)=>void;onResume?:()=>void;disabled?:boolean}){
+export default function ProWorkspaceWelcome({onSelect,onResume,disabled=false,consent}:{consent?:React.ReactNode;trial?:boolean;onSelect:(mode:ProWorkspaceMode)=>void;onResume?:()=>void;disabled?:boolean}){
   const themed = useThemedStyles(getModuleTheme);
   const {ACCENT, s, themeColor} = themed;
 
@@ -26,12 +26,16 @@ export default function ProWorkspaceWelcome({onSelect,onResume,disabled=false}:{
  // inner content lets tiles shrink again after rotation or a language change.
  // Remount measurement content when the layout key changes: an unchanged
  // child size otherwise emits no new onLayout after the grid width settles.
- const featureHeight=measuredHeights.length?Math.ceil(Math.max(32,...measuredHeights))+26:undefined;
+ const featureHeight=measuredHeights.length?Math.max(32,...measuredHeights)+27:undefined;
  function measureFeature(index:number,height:number){
+  // Android alternates fractional layout values as these centered cards resize.
+  // Quantize the natural measurement so equal-height sizing cannot feed back
+  // into another resize. The extra point above preserves room for the content.
+  const roundedHeight=Math.round(height);
   setFeatureMeasurements(current=>{
    const heights=current.layout===featureLayout?current.heights:{};
-   if(heights[index]===height)return current;
-   return {layout:featureLayout,heights:{...heights,[index]:height}};
+   if(heights[index]===roundedHeight)return current;
+   return {layout:featureLayout,heights:{...heights,[index]:roundedHeight}};
   });
  }
  const options=[{id:'direct',Icon:UserRoundSearch,color:ACCENT,soft:themeColor('rgba(22,163,74,.10)')},{id:'discovery',Icon:Compass,color:themeColor('#2DD4BF', 'text'),soft:themeColor('rgba(45,212,191,.08)')}] as const;
@@ -48,6 +52,7 @@ export default function ProWorkspaceWelcome({onSelect,onResume,disabled=false}:{
    <View style={s.heroCopy}><Text accessibilityRole="header" style={s.title}>{tr?'ScoutWise Pro’ya Hoş Geldin':'Welcome to ScoutWise Pro'}</Text><Text style={s.subtitle}>{tr?'Oyuncu bul, güçlü yönlerini incele ve uyumunu değerlendir. Başlamak istediğin bölümü seç.':'Find players, explore their strengths and assess their fit. Choose where to start.'}</Text></View>
  </View>
  <TutorialPageGuide page='proWelcome' summaryLines={0}/>
+ {consent}
  <View style={s.sectionHeading}><View style={s.headingLine}/><Text style={s.sectionLabel}>{tr?'NEREDEN BAŞLAMAK İSTERSİN?':'WHERE WOULD YOU LIKE TO START?'}</Text></View>
  <View style={{flexDirection:wide?'row':'column',gap:12}}>{options.map(({id,Icon,color,soft},index)=><Pressable key={id} accessibilityRole="button" accessibilityLabel={copy[id].title} accessibilityState={{disabled}} disabled={disabled} onPress={()=>onSelect(id)} style={({pressed})=>[s.option,wide&&{flex:1},pressed&&{borderColor:color,backgroundColor:soft},disabled&&{opacity:.6}]}>
    <View style={s.optionTop}><View style={[s.optionIcon,{backgroundColor:soft,borderColor:color+'40'}]}><Icon color={color} size={22}/></View><Text style={s.optionTitle}>{copy[id].title}</Text><Text style={s.optionNumber}>{String(index+1).padStart(2,'0')}</Text></View>

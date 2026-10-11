@@ -25,7 +25,7 @@ View
 } from 'react-native';
 
 import DataUsage from '@/components/DataUsage';
-import { requestSignupCode,signUp } from '@/services/api';
+import { requestSignupCode,signUp,validateReferralCode } from '@/services/api';
 import { RootStackParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,6 +65,7 @@ export default function SignUpScreen() {
 
 
   const [email, setEmail] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const passwordInput = useRef<TextInput>(null);
   const [password, setPassword] = useState('');
@@ -114,10 +115,14 @@ export default function SignUpScreen() {
     try {
       setError(null);
       setSubmitting(true);
+      const referral = !linking && referralCode.trim()
+        ? await validateReferralCode(referralCode).catch(() => { throw new Error(t('referralInvalid')); })
+        : undefined;
       if (social) {
         const result = linking
           ? await linkSocialAccount(social.challenge, email.trim(), password, lang)
           : await registerSocialAccount({ challenge: social.challenge, dob: null,
+              referralCode: referral?.code,
               country: 'Unknown', newsletter: false, uiLanguage: lang,
               privacyAccepted: agreePrivacy, termsAccepted: agreeTerms, dataUsageAccepted: agreeDataUsage });
         const user = await saveSocialSession(result);
@@ -126,6 +131,7 @@ export default function SignUpScreen() {
         return;
       }
       await signUp({
+        referralCode: referral?.code,
         email,
         password,
         dob: '',
@@ -139,10 +145,11 @@ export default function SignUpScreen() {
         email,
         password,
         context: 'signup',
+        referralCode: referral?.code,
       });
     } catch (e: any) {
       if (social && e instanceof SocialAuthError && e.status === 409) setSocialMode('link');
-      setError(social ? t(e instanceof SocialAuthError && e.status === 409 ? 'socialUseExisting' : e instanceof SocialAuthError && e.status === 401 ? 'socialLinkFailed' : 'socialSignInFailed') : t('signupFailed', 'Sign up failed. Please try again.'));
+      setError(e?.message === t('referralInvalid') ? e.message : social ? t(e instanceof SocialAuthError && e.status === 409 ? 'socialUseExisting' : e instanceof SocialAuthError && e.status === 401 ? 'socialLinkFailed' : 'socialSignInFailed') : t('signupFailed', 'Sign up failed. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -203,6 +210,9 @@ export default function SignUpScreen() {
                       placeholderTextColor={MUTED}
                       keyboardType="email-address"
                       autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="email"
+                      contextMenuHidden={false}
                       style={styles.input}
                       returnKeyType="next"
                       blurOnSubmit={false}
@@ -256,6 +266,13 @@ export default function SignUpScreen() {
 
                   </>}
                   {!linking && <>
+                  <View style={styles.fieldBlock}>
+                    <Text style={styles.label}>{t('referralOptional')}</Text>
+                    <TextInput value={referralCode} onChangeText={setReferralCode}
+                      placeholder={t('referralPlaceholder')} placeholderTextColor={MUTED}
+                      autoCapitalize="characters" autoCorrect={false} maxLength={32}
+                      style={styles.input} returnKeyType="done" onSubmitEditing={Keyboard.dismiss} />
+                  </View>
                   <View style={styles.switchRow}>
                     <View style={styles.switchLabelWrap}>
                       <Text style={styles.switchLabel}>
