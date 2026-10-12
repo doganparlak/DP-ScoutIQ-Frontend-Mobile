@@ -1,7 +1,7 @@
 import { leaguePerformanceRequest, getLeaguePerformancePlayer } from './api';
 export { getLeaguePerformancePlayer };
 export type LeagueFilters = { countries: string[]; leagues: string[] };
-export type LeagueResult = { league_id: number; league_name: string; country_name: string | null; image_url: string | null; team_count: number };
+export type LeagueResult = { league_id: number; league_name: string; country_name: string | null; image_url: string | null; team_count: number | null };
 export type LeagueStanding = {
   position: number | null; teamId: number | null; teamName: string; teamImageUrl: string | null;
   played: number | null; won: number | null; drawn: number | null; lost: number | null;
@@ -9,11 +9,14 @@ export type LeagueStanding = {
   form: string | null; standingRule: {name: string; code: string} | null;
 };
 export type StandingTable = { key: string; label: string; rows: LeagueStanding[] };
-export type LeagueStandings = { leagueId: number; seasonId: number; seasonName: string | null; tables: StandingTable[] };
+export type LeagueScope = 'league' | 'knockout' | 'overall';
+export type KnockoutMatch = {id: number; aggregateId: number | null; startingAt: string | null; stateId: number; placeholder: boolean; leg: string | null; home: {id: number | null; name: string | null; imageUrl: string | null}; away: {id: number | null; name: string | null; imageUrl: string | null}; homeScore: number | null; awayScore: number | null; homePenalties: number | null; awayPenalties: number | null};
+export type KnockoutRound = {id: number; label: string; matches: KnockoutMatch[]};
+export type LeagueStandings = { stageScoped?: boolean; knockoutRounds?: KnockoutRound[]; leagueId: number; seasonId: number; seasonName: string | null; tables: StandingTable[] };
 export const getLeaguePerformanceOptions = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueFilters>('/league-performance/options', filters);
 export const searchLeaguePerformance = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueResult[]>('/league-performance/search', {...filters, limit: 100});
 export const getLeagueStandings = (leagueId: number) => leaguePerformanceRequest<LeagueStandings>('/league-standings', {leagueId});
-export const getLeagueInsights = (leagueId: number, seasonId: number, periodStart = '') => leaguePerformanceRequest<LeagueInsights>('/league-insights', {leagueId, seasonId, periodStart: periodStart || null});
+export const getLeagueInsights = (leagueId: number, seasonId: number, periodStart = '', scope?: LeagueScope) => leaguePerformanceRequest<LeagueInsights>('/league-insights', {leagueId, seasonId, periodStart: periodStart || null, scope});
 export type LeagueBestPlayer = {
   playerId: number; teamId: number; name: string; teamName: string;
   imageUrl: string | null; averageRating: number; appearances: number;
@@ -33,7 +36,7 @@ type Summary = {
   fixture_count: number;
 };
 export type LeagueInsights = {
-  leagueId: number; seasonId: number; refreshing: boolean;
+  leagueId: number; seasonId: number; refreshing: boolean; scope?: LeagueScope;
   access: {tier: 'free' | 'plus' | 'pro'; biweekly: boolean};
   season: Summary & { team_metrics: Record<string, TeamSeasonMetrics>; metric_catalog: LeagueMetric[] };
   biweekly: (Summary & { period_start: string; period_end: string }) | null;

@@ -7,7 +7,7 @@ import { matchMetricLabel } from '@/utils/matchReportMetrics';
 import { getThemed_styles as __getThemed_shared,getThemed_standingRuleMeta as __getThemed_standingRuleMeta,Badge } from './LeaguePerformanceControls';
 
 type Props = {
-  rows: LeagueStanding[]; teams: Record<string, TeamSeasonMetrics>; metric?: LeagueMetric;
+  official?: boolean; phaseScoped?: boolean; rows: LeagueStanding[]; teams: Record<string, TeamSeasonMetrics>; metric?: LeagueMetric;
   playerView: boolean; perMatch: boolean; tr: boolean; showSeason: boolean; showBiweekly: boolean;
   seasonPlayers: Record<string, LeagueBestPlayer>; biweeklyPlayers: Record<string, LeagueBestPlayer>;
   seasonPending: boolean; biweeklyPending: boolean; unavailable: boolean;
@@ -42,16 +42,16 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
     {key: 'goalDifference', label: props.tr ? 'AV' : 'GD'},
     {key: 'points', label: props.tr ? 'PUAN' : 'PTS'},
   ];
-  const visibleColumns = props.playerView ? [] : props.metric ? columns.filter(column => column.key === 'points') : columns;
+  const visibleColumns = props.official === false ? (props.playerView || props.metric ? [] : columns.filter(column => column.key === 'played')) : props.playerView ? [] : props.metric ? columns.filter(column => column.key === 'points') : columns;
   const number = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString(props.tr ? 'tr-TR' : 'en-GB', {maximumFractionDigits: 2});
   const extraWidth = (props.metric ? metricWidth : 0) + (props.showBiweekly ? playerWidth : 0) + (props.showSeason ? playerWidth : 0);
   const scrolls = statWidth * visibleColumns.length + extraWidth > width - pinnedWidth + 1;
   const cell = {width: statWidth};
   return <View style={{gap: 8}}>
-    {scrolls && <Text style={shared.hint}>{props.tr ? 'Takım ve resmî sıra sabit kalır. Diğer sütunlar için yatay kaydırın →' : 'Team and official position stay fixed. Swipe for more columns →'}</Text>}
+    {scrolls && <Text style={shared.hint}>{props.tr ? 'Diğer sütunlar için yatay kaydırın →' : 'Swipe for more columns →'}</Text>}
     <View onLayout={event => setMeasuredWidth(event.nativeEvent.layout.width)} style={styles.table}>
       <View style={{width: pinnedWidth, backgroundColor: PANEL, borderRightWidth: 1, borderRightColor: LINE}}>
-        <View style={[styles.row, styles.header, {height: headerHeight}]}><Text style={[styles.heading, {width: rankWidth, paddingHorizontal: 2}]} accessibilityLabel={props.tr ? 'Resmî sıra' : 'Official position'}>#</Text><View style={teamCell}><Text style={[styles.heading, {textAlign: teamTextAlign, paddingHorizontal: 0}]}>{props.tr ? 'TAKIM' : 'TEAM'}</Text></View></View>
+        <View style={[styles.row, styles.header, {height: headerHeight}]}><Text style={[styles.heading, {width: rankWidth, paddingHorizontal: 2}]} accessibilityLabel={props.official === false ? (props.tr ? 'İstatistik sırası' : 'Statistical position') : (props.tr ? 'Resmî sıra' : 'Official position')}>#</Text><View style={teamCell}><Text style={[styles.heading, {textAlign: teamTextAlign, paddingHorizontal: 0}]}>{props.tr ? 'TAKIM' : 'TEAM'}</Text></View></View>
         {props.rows.map(row => {
           const rule = standingRuleMeta(row.standingRule, props.tr);
           return <View key={`${row.position}:${row.teamId}`} style={[styles.row, {height: rowHeight}]}>
@@ -67,7 +67,7 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
             {visibleColumns.map(column => <Text key={column.key} style={[styles.heading, cell, column.key === 'points' && styles.points]}>{column.label}</Text>)}
             {props.metric && <Text numberOfLines={3} style={[styles.heading, {width: metricWidth, color: themeColor('#7DD3FC', 'text')}]}>{matchMetricLabel(props.metric.label, props.tr ? 'tr' : 'en').toLocaleUpperCase(props.tr ? 'tr-TR' : 'en-GB')}</Text>}
             {props.showBiweekly && <Text style={[styles.heading, {width: playerWidth}]}>{props.tr ? 'İKİ HAFTANIN OYUNCUSU' : 'TWO-WEEK TOP PLAYER'}</Text>}
-            {props.showSeason && <Text style={[styles.heading, {width: playerWidth}]}>{props.tr ? 'SEZONUN OYUNCUSU' : 'PLAYER OF THE SEASON'}</Text>}
+            {props.showSeason && <Text style={[styles.heading, {width: playerWidth}]}>{props.phaseScoped ? (props.tr ? 'AŞAMANIN OYUNCUSU' : 'PHASE TOP PLAYER') : (props.tr ? 'SEZONUN OYUNCUSU' : 'PLAYER OF THE SEASON')}</Text>}
           </View>
           {props.rows.map(row => {
             const team = props.teams[String(row.teamId)];
@@ -82,7 +82,7 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
         </View>
       </ScrollView>
     </View>
-    {!props.playerView && !props.metric && <Text style={shared.hint}>{props.tr ? 'O: Oynanan · G: Galibiyet · B: Beraberlik · M: Mağlubiyet · AV: Averaj' : 'P: Played · W: Won · D: Drawn · L: Lost · GD: Goal difference'}</Text>}
+    {props.official !== false && !props.playerView && !props.metric && <Text style={shared.hint}>{props.tr ? 'O: Oynanan · G: Galibiyet · B: Beraberlik · M: Mağlubiyet · AV: Averaj' : 'P: Played · W: Won · D: Drawn · L: Lost · GD: Goal difference'}</Text>}
   </View>;
 }
 function TeamPlayer({player, pending, unavailable, tr, onPlayer}: {player?: LeagueBestPlayer; pending: boolean; unavailable: boolean; tr: boolean; onPlayer: (player: LeagueBestPlayer) => void}) {

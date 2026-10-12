@@ -10,6 +10,7 @@ Alert,
 Pressable,
 StyleSheet,
 Text,
+useWindowDimensions,
 View,
 } from "react-native";
 
@@ -43,6 +44,9 @@ export default function Account({
   const languageSavePending = React.useRef(false);
   const { t } = useTranslation();
   const { lang, setLang } = useLanguage();
+  const { width, fontScale } = useWindowDimensions();
+  const [preferencesWidth, setPreferencesWidth] = React.useState<number | null>(null);
+  const compactPreferences = (preferencesWidth ?? width - 66) / 2 - 6 < 134 * Math.max(1, fontScale);
 
   React.useEffect(() => {
     let alive = true;
@@ -100,55 +104,59 @@ export default function Account({
           ? "Portföylerin, raporların ve analizlerin bir arada."
           : "Your portfolios, reports and analyses, together."}
       </Text>
-      <View style={styles.preferencesRow}>
-        <View style={styles.accountPreferences}>
+      <View style={styles.preferences} onLayout={({ nativeEvent }) => {
+        const nextWidth = nativeEvent.layout.width;
+        setPreferencesWidth(current => current !== null && Math.abs(current - nextWidth) < .5 ? current : nextWidth);
+      }}>
+        <View style={styles.preferencesRow}>
           <View style={styles.preferenceCell}>
             <View style={styles.planBadge}>
               <View style={styles.planDot} />
               <Text style={styles.planText}>{planLabel}</Text>
             </View>
           </View>
-          <ConnectedAccounts disabled={navigationLocked} />
-        </View>
-
-        <View style={styles.displayPreferences}>
-          <View style={styles.kv}>
-            <Text style={styles.k}>{t("language", "Language")}</Text>
-            <View style={styles.languageSegment} accessibilityRole="radiogroup" accessibilityLabel={t("language", "Language")} accessibilityState={{ busy: savingLanguage }}>
-              {(["tr", "en"] as UILang[]).map((code) => (
-                <Pressable
-                  key={code}
-                  disabled={savingLanguage || lang === code}
-                  accessibilityRole="radio"
-                  accessibilityLabel={code === "tr" ? t("turkish", "Turkish") : t("english", "English")}
-                  accessibilityState={{ checked: lang === code, disabled: savingLanguage }}
-                  onPress={async () => {
-                    if (languageSavePending.current || lang === code) return;
-                    languageSavePending.current = true;
-                    const previousLanguage = lang;
-                    setSavingLanguage(true);
-                    try {
-                      await setLang(code);
-                      await updateMe({ uiLanguage: code });
-                    } catch (e: any) {
-                      // Keep the device and account preference consistent on failure.
-                      try { await setLang(previousLanguage); } catch { /* The UI has already reverted. */ }
-                      Alert.alert(t("languageUpdateFailed", "Language update failed"), String(e?.message || e));
-                    } finally {
-                      languageSavePending.current = false;
-                      setSavingLanguage(false);
-                    }
-                  }}
-                  style={({ pressed }) => [styles.languageOption, lang === code && styles.languageOptionActive, pressed && { opacity: 0.7 }]}
-                >
-                  {savingLanguage && lang === code ? <ActivityIndicator size="small" color={ACCENT} /> : (
-                    <Text style={[styles.languageOptionText, lang === code && styles.languageOptionTextActive]}>{code.toUpperCase()}</Text>
-                  )}
-                </Pressable>
-              ))}
+          <View style={styles.displayPreferences}>
+            <View style={[styles.kv, compactPreferences && styles.compactPreference]}>
+              <Text style={[styles.k, compactPreferences && styles.compactLabel]}>{t("language", "Language")}</Text>
+              <View style={styles.languageSegment} accessibilityRole="radiogroup" accessibilityLabel={t("language", "Language")} accessibilityState={{ busy: savingLanguage }}>
+                {(["tr", "en"] as UILang[]).map((code) => (
+                  <Pressable
+                    key={code}
+                    disabled={savingLanguage || lang === code}
+                    accessibilityRole="radio"
+                    accessibilityLabel={code === "tr" ? t("turkish", "Turkish") : t("english", "English")}
+                    accessibilityState={{ checked: lang === code, disabled: savingLanguage }}
+                    onPress={async () => {
+                      if (languageSavePending.current || lang === code) return;
+                      languageSavePending.current = true;
+                      const previousLanguage = lang;
+                      setSavingLanguage(true);
+                      try {
+                        await setLang(code);
+                        await updateMe({ uiLanguage: code });
+                      } catch (e: any) {
+                        // Keep the device and account preference consistent on failure.
+                        try { await setLang(previousLanguage); } catch { /* The UI has already reverted. */ }
+                        Alert.alert(t("languageUpdateFailed", "Language update failed"), String(e?.message || e));
+                      } finally {
+                        languageSavePending.current = false;
+                        setSavingLanguage(false);
+                      }
+                    }}
+                    style={({ pressed }) => [styles.languageOption, lang === code && styles.languageOptionActive, pressed && { opacity: 0.7 }]}
+                  >
+                    {savingLanguage && lang === code ? <ActivityIndicator size="small" color={ACCENT} /> : (
+                      <Text style={[styles.languageOptionText, lang === code && styles.languageOptionTextActive]}>{code.toUpperCase()}</Text>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
-        <ThemeToggle />
+        </View>
+        <View style={styles.preferencesRow}>
+          <View style={styles.preferenceCell}><ConnectedAccounts disabled={navigationLocked} /></View>
+          <View style={styles.displayPreferences}><ThemeToggle compact={compactPreferences} /></View>
         </View>
       </View>
       <View style={styles.actions}>
@@ -207,30 +215,29 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     marginBottom: 10,
   },
 
+  preferences: { gap: 12, marginTop: 16 },
   preferencesRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+    alignItems: "center",
     gap: 12,
-    marginTop: 16,
-    zIndex: 10,
   },
-  accountPreferences: { flexGrow: 1, flexBasis: 140, minWidth: 140, gap: 8 },
-  preferenceCell: { minHeight: 40, justifyContent: "center" },
-  displayPreferences: { width: 178, gap: 8, marginLeft: "auto" },
+  preferenceCell: { flex: 1, minWidth: 0, minHeight: 40, justifyContent: "center" },
+  displayPreferences: { flex: 1, minWidth: 0, alignItems: "flex-end" },
+  compactPreference: { flexDirection: "column", alignItems: "flex-end", gap: 4 },
+  compactLabel: { width: "auto", textAlign: "right", flexShrink: 1 },
   kv: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    zIndex: 10,
+    width: "100%",
+    maxWidth: 178,
   },
-  k: { color: MUTED, width: 78, fontSize: 12, fontWeight: "600" },
+  k: { color: MUTED, width: 78, minWidth: 0, flexShrink: 1, fontSize: 12, fontWeight: "600" },
   v: { color: TEXT, fontWeight: "600" },
 
   languageSegment: {
     width: 92,
-    height: 40,
+    minHeight: 44,
     flexDirection: "row",
     borderWidth: 1,
     borderColor: LINE,
@@ -241,6 +248,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   languageOption: {
     flex: 1,
+    minHeight: 36,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 9,
@@ -271,6 +279,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   intro: { color: themeColor("#AAB7AC", 'text'), fontSize: 13, lineHeight: 20, marginTop: 7 },
   planBadge: {
     alignSelf: "flex-start",
+    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
@@ -280,7 +289,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     paddingVertical: 7,
   },
   planDot: { height: 6, width: 6, borderRadius: 3, backgroundColor: ACCENT },
-  planText: { color: ACCENT, fontWeight: "700", fontSize: 12 },
+  planText: { color: ACCENT, fontWeight: "700", fontSize: 12, flexShrink: 1 },
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",

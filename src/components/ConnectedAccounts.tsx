@@ -49,8 +49,8 @@ export default function ConnectedAccounts({ disabled = false }: { disabled?: boo
   </>;
 }
 const getStyles = createThemedStyles((c: ThemeColors) => ({ ACCENT: c.ACCENT, DANGER: c.DANGER, styles: StyleSheet.create({
-  open: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 40, paddingVertical: 8 },
-  openText: { color: c.ACCENT, fontWeight: '700', fontSize: 13 },
+  open: { alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 40, paddingVertical: 8 },
+  openText: { color: c.ACCENT, fontWeight: '700', fontSize: 13, flexShrink: 1 },
   backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,.55)', padding: 20 },
   card: { width: '100%', maxWidth: 480, borderRadius: 22, borderWidth: 1, borderColor: c.ACCENT, backgroundColor: c.PANEL, padding: 20, gap: 14 },
   header: { flexDirection: 'row', gap: 10, alignItems: 'center' }, title: { color: c.TEXT, flex: 1, fontSize: 20, fontWeight: '800' },

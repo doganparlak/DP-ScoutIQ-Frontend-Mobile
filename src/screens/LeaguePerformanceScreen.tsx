@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next';
 import { Pressable,ScrollView,StyleSheet,Text,useWindowDimensions,View } from 'react-native';
 
 import { getThemed_styles as __getThemed_shared,Action,Badge,SelectField,Selector,Status } from '@/components/LeaguePerformanceControls';
+import LeagueKnockoutRounds from '@/components/LeagueKnockoutRounds';
 import LeaguePerformanceStandings from '@/components/LeaguePerformanceStandings';
 import { TutorialPageGuide } from '@/components/Tutorial';
-import { getLeaguePerformanceOptions,getLeagueStandings,searchLeaguePerformance,type LeagueFilters,type LeagueResult,type LeagueStandings } from '@/services/leaguePerformance';
+import { getLeaguePerformanceOptions,getLeagueStandings,searchLeaguePerformance,type LeagueFilters,type LeagueResult,type LeagueStandings,type LeagueScope } from '@/services/leaguePerformance';
 const EMPTY: LeagueFilters = {countries: [], leagues: []};
 const DEFAULT: LeagueFilters = {countries: ['Turkey'], leagues: ['Super Lig']};
 
@@ -33,6 +34,7 @@ export default function LeaguePerformanceScreen() {
   const [options, setOptions] = React.useState<LeagueFilters>(EMPTY);
   const [rows, setRows] = React.useState<LeagueResult[]>([]);
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
+  const [scope, setScope] = React.useState<LeagueScope>('league');
   const [standings, setStandings] = React.useState<LeagueStandings | null>(null);
   const [tableKey, setTableKey] = React.useState('');
   const [selector, setSelector] = React.useState<'countries' | 'leagues' | null>(null);
@@ -79,11 +81,15 @@ export default function LeaguePerformanceScreen() {
   }, [filters, optionsRetry]);
   React.useEffect(() => {
     let alive = true;
-    setStandings(null); setTableKey(''); setStandingsError(false);
+    setStandings(null); setTableKey(''); setScope('league'); setStandingsError(false);
     if (!selectedId) {setStandingsLoading(false); return;}
     setStandingsLoading(true);
     getLeagueStandings(selectedId).then(value => {
       if (!alive) return;
+      if (value.stageScoped) {
+        const count = new Set(value.tables.flatMap(table => table.rows.map(row => row.teamId).filter(Boolean))).size;
+        setRows(current => current.map(row => row.league_id === selectedId ? {...row, team_count: count || null} : row));
+      }
       setStandings(value); setTableKey(value.tables[0]?.key || '');
     }).catch(() => {if (alive) setStandingsError(true);}).finally(() => {if (alive) setStandingsLoading(false);});
     return () => {alive = false;};
@@ -111,15 +117,17 @@ export default function LeaguePerformanceScreen() {
     <TutorialPageGuide page="leaguePerformance" frame={0} summaryLines={0} onShow={showGuide} />
     <Section title={tr ? 'Lig Sonuçları' : 'League Results'} Icon={List}>
       <Text style={[shared.hint, {marginBottom: 10}]}>{rows.length} {tr ? 'sonuç' : 'results'}</Text>
-      {loading ? <Status busy text={tr ? 'Ligler aranıyor…' : 'Searching leagues…'} /> : rows.length ? <View><View style={[styles.resultRow, {backgroundColor: CARD}]}><Text style={[styles.country, styles.headerText]}>{tr ? 'ÜLKE' : 'COUNTRY'}</Text><Text style={[styles.league, styles.headerText]}>{tr ? 'LİG' : 'LEAGUE'}</Text><Text style={[styles.count, styles.headerText]}>{tr ? 'TAKIM' : 'TEAMS'}</Text></View><ScrollView style={{maxHeight: 360}} nestedScrollEnabled>{rows.map(row => <Pressable key={row.league_id} accessibilityRole="button" accessibilityState={{selected: row.league_id === selectedId}} accessibilityLabel={`${row.country_name}, ${row.league_name}, ${row.team_count}`} onPress={() => setSelectedId(row.league_id)} style={[styles.resultRow, row.league_id === selectedId && {backgroundColor: themeColor('rgba(22,163,74,.12)', 'surface')}]}><Text style={styles.country}>{row.country_name || '—'}</Text><View style={[styles.league, shared.row, {justifyContent: 'flex-start', gap: 6}]}><Badge url={row.image_url} size={24} /><Text style={[shared.text, {flex: 1}]}>{row.league_name}</Text></View><Text style={styles.count}>{row.team_count}</Text></Pressable>)}</ScrollView></View> : <Status text={tr ? 'Filtreleri seçip ligleri getirin.' : 'Choose filters to find leagues.'} />}
+      {loading ? <Status busy text={tr ? 'Ligler aranıyor…' : 'Searching leagues…'} /> : rows.length ? <View><View style={[styles.resultRow, {backgroundColor: CARD}]}><Text style={[styles.country, styles.headerText]}>{tr ? 'ÜLKE' : 'COUNTRY'}</Text><Text style={[styles.league, styles.headerText]}>{tr ? 'LİG' : 'LEAGUE'}</Text><Text style={[styles.count, styles.headerText]}>{tr ? 'TAKIM' : 'TEAMS'}</Text></View><ScrollView style={{maxHeight: 360}} nestedScrollEnabled>{rows.map(row => <Pressable key={row.league_id} accessibilityRole="button" accessibilityState={{selected: row.league_id === selectedId}} accessibilityLabel={`${row.country_name}, ${row.league_name}, ${row.team_count ?? '—'}`} onPress={() => setSelectedId(row.league_id)} style={[styles.resultRow, row.league_id === selectedId && {backgroundColor: themeColor('rgba(22,163,74,.12)', 'surface')}]}><Text style={styles.country}>{row.country_name || '—'}</Text><View style={[styles.league, shared.row, {justifyContent: 'flex-start', gap: 6}]}><Badge url={row.image_url} size={24} /><Text style={[shared.text, {flex: 1}]}>{row.league_name}</Text></View><Text style={styles.count}>{row.team_count ?? '—'}</Text></Pressable>)}</ScrollView></View> : <Status text={tr ? 'Filtreleri seçip ligleri getirin.' : 'Choose filters to find leagues.'} />}
     </Section>
     <TutorialPageGuide page="leaguePerformance" frame={1} summaryLines={0} onShow={showGuide} />
     <Section title={tr ? 'Lig Sıralaması' : 'League Standings'} Icon={Table2}>
       {selected && <View style={[shared.row, {justifyContent: 'flex-start', marginBottom: 16}]}><View style={styles.leagueBadge}><Badge url={selected.image_url} size={48} /></View><View style={{flex: 1, gap: 5}}><Text style={{color: themeColor('#7DD3FC', 'text'), fontSize: 12}}>{selected.country_name}</Text><Text style={styles.title}>{selected.league_name}</Text>{currentStandings?.seasonName && <Text style={{color: ACCENT, fontSize: 12, fontWeight: '800'}}>{currentStandings.seasonName}</Text>}</View></View>}
-        {(currentStandings?.tables.length || 0) > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={[shared.row, {gap: 8}]}>{currentStandings!.tables.map(item => <Pressable key={item.key} accessibilityRole="button" accessibilityState={{selected: item.key === tableKey}} onPress={() => setTableKey(item.key)} style={[styles.tableTab, item.key === tableKey && {borderColor: ACCENT}]}><Text style={{color: item.key === tableKey ? ACCENT : MUTED, fontSize: 12, fontWeight: '700'}}>{item.label}</Text></Pressable>)}</View></ScrollView>}
-      {standingsLoading || (selectedId && !currentStandings && !standingsError) ? <Status busy text={tr ? 'Lig sıralaması yükleniyor…' : 'Loading standings…'} /> : standingsError ? <View style={{gap: 10}}><Status error text={tr ? 'Lig sıralaması yüklenemedi.' : 'League standings could not be loaded.'} /><Action label={tr ? 'Tekrar dene' : 'Retry'} onPress={() => setStandingsRetry(value => value + 1)} /></View> : currentStandings && table?.rows.length ? <View style={{gap: 14}}>
+        {currentStandings?.stageScoped && <View style={[shared.row, {flexWrap: 'wrap', gap: 8}]}>{(['league', 'knockout', 'overall'] as const).map(key => <Pressable key={key} accessibilityRole="button" accessibilityState={{selected: scope === key}} onPress={() => setScope(key)} style={[styles.tableTab, scope === key && {borderColor: ACCENT}]}><Text style={{color: scope === key ? ACCENT : MUTED, fontSize: 12, fontWeight: '700'}}>{key === 'league' ? (tr ? 'Lig Aşaması' : 'League Phase') : key === 'knockout' ? (tr ? 'Eleme Aşaması' : 'Knockout Phase') : (tr ? 'Genel' : 'Overall')}</Text></Pressable>)}</View>}
+        {(!currentStandings?.stageScoped || scope === 'league') && (currentStandings?.tables.length || 0) > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={[shared.row, {gap: 8}]}>{currentStandings!.tables.map(item => <Pressable key={item.key} accessibilityRole="button" accessibilityState={{selected: item.key === tableKey}} onPress={() => setTableKey(item.key)} style={[styles.tableTab, item.key === tableKey && {borderColor: ACCENT}]}><Text style={{color: item.key === tableKey ? ACCENT : MUTED, fontSize: 12, fontWeight: '700'}}>{item.label}</Text></Pressable>)}</View></ScrollView>}
+      {standingsLoading || (selectedId && !currentStandings && !standingsError) ? <Status busy text={tr ? 'Lig sıralaması yükleniyor…' : 'Loading standings…'} /> : standingsError ? <View style={{gap: 10}}><Status error text={tr ? 'Lig sıralaması yüklenemedi.' : 'League standings could not be loaded.'} /><Action label={tr ? 'Tekrar dene' : 'Retry'} onPress={() => setStandingsRetry(value => value + 1)} /></View> : currentStandings && (table?.rows.length || currentStandings.stageScoped) ? <View style={{gap: 14}}>
 
-        <LeaguePerformanceStandings key={`${selectedId}:${currentStandings.seasonId}`} leagueId={selectedId!} seasonId={currentStandings.seasonId} rows={table.rows} tr={tr} />
+        {currentStandings.stageScoped && scope === 'knockout' && <LeagueKnockoutRounds rounds={currentStandings.knockoutRounds || []} tr={tr} />}
+        <LeaguePerformanceStandings key={`${selectedId}:${currentStandings.seasonId}:${currentStandings.stageScoped ? scope : 'overall'}`} leagueId={selectedId!} seasonId={currentStandings.seasonId} rows={table?.rows || []} tr={tr} scope={currentStandings.stageScoped ? scope : undefined} official={!currentStandings.stageScoped || scope === 'league'} />
       </View> : <Status text={selected ? (tr ? 'Bu lig için sıralama bulunamadı.' : 'No standings found for this league.') : (tr ? 'Lig sonuçlarından bir lig seçin.' : 'Select a league result.')} />}
     </Section>
     {ads.fallback}
@@ -138,7 +146,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   country: {flex: .8, minWidth: 0, color: MUTED, paddingHorizontal: 6, fontSize: 11, fontWeight: '700'},
   league: {flex: 1.6, minWidth: 0, paddingHorizontal: 6}, count: {width: 46, flexShrink: 0, textAlign: 'center', color: ACCENT, fontSize: 12, fontWeight: '800'},
   headerText: {color: MUTED, fontSize: 10, fontWeight: '800'},
-  leagueBadge: {width: 64, height: 64, backgroundColor: themeColor('rgba(255,255,255,.9)', 'surface'), borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
+  leagueBadge: {width: 64, height: 64, backgroundColor: colors.mode === 'light' ? CARD : 'rgba(255,255,255,.9)', borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
   tableTab: {padding: 12, borderWidth: 1, borderColor: LINE, borderRadius: 12, backgroundColor: CARD},
 });
   return {ACCENT, DANGER, BG, CARD, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, shared, styles, themeColor};
