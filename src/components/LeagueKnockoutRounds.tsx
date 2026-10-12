@@ -1,10 +1,10 @@
 import React from 'react';
-import {Text, View} from 'react-native';
+import {Pressable, Text, View} from 'react-native';
 import type {KnockoutMatch, KnockoutRound} from '@/services/leaguePerformance';
 import {createThemedStyles, useThemedStyles, type ThemeColors} from '@/theme';
 import {getThemed_styles, Badge, Status} from './LeaguePerformanceControls';
 
-const ROUND_NAMES: Record<string, string> = {'round of 16': 'Son 16', '8th finals': 'Son 16', 'quarter-finals': 'Çeyrek Final', 'quarter finals': 'Çeyrek Final', 'semi-finals': 'Yarı Final', 'semi finals': 'Yarı Final', 'final': 'Final', 'knockout round play-offs': 'Eleme Play-off Turu', 'knockout phase play-offs': 'Eleme Play-off Turu'};
+const ROUND_NAMES: Record<string, string> = {'1st qualifying round': '1. Ön Eleme Turu', '2nd qualifying round': '2. Ön Eleme Turu', '3rd qualifying round': '3. Ön Eleme Turu', 'first qualifying round': '1. Ön Eleme Turu', 'second qualifying round': '2. Ön Eleme Turu', 'third qualifying round': '3. Ön Eleme Turu', 'preliminary round': 'Ön Tur', 'play-offs': 'Play-off Turu', 'round of 16': 'Son 16', '8th finals': 'Son 16', 'quarter-finals': 'Çeyrek Final', 'quarter finals': 'Çeyrek Final', 'semi-finals': 'Yarı Final', 'semi finals': 'Yarı Final', 'final': 'Final', 'knockout round play-offs': 'Eleme Play-off Turu', 'knockout phase play-offs': 'Eleme Play-off Turu'};
 const FINISHED = [5, 7, 8];
 function ties(matches: KnockoutMatch[]) {
   const grouped = new Map<string, KnockoutMatch[]>();
@@ -14,10 +14,13 @@ function ties(matches: KnockoutMatch[]) {
   });
   return [...grouped.values()];
 }
-export default function LeagueKnockoutRounds({rounds, tr}: {rounds: KnockoutRound[]; tr: boolean}) {
+export default function LeagueKnockoutRounds({rounds, tr, qualifying = false}: {rounds: KnockoutRound[]; tr: boolean; qualifying?: boolean}) {
   const {shared, LINE, CARD, TEXT, ACCENT} = useThemedStyles(theme);
-  if (!rounds.length) return <Status text={tr ? 'Eleme eşleşmeleri henüz açıklanmadı.' : 'Knockout fixtures have not been announced yet.'} />;
-  return <View style={{gap: 16}}>{rounds.map(round => <View key={round.id} style={{gap: 10}}>
+  const [expanded, setExpanded] = React.useState(!qualifying);
+  if (!rounds.length) return <Status text={qualifying ? (tr ? 'Ön eleme eşleşmeleri henüz açıklanmadı.' : 'Qualifying fixtures have not been announced yet.') : (tr ? 'Eleme eşleşmeleri henüz açıklanmadı.' : 'Knockout fixtures have not been announced yet.')} />;
+  return <View style={{gap: 16}}>
+    {qualifying && <Pressable accessibilityRole="button" accessibilityState={{expanded}} onPress={() => setExpanded(value => !value)} style={{borderWidth: 1, borderColor: LINE, borderRadius: 12, padding: 12, backgroundColor: CARD, flexDirection: 'row', alignItems: 'center', gap: 8}}><Text style={[shared.text, {flex: 1, fontWeight: '700'}]}>{tr ? 'Ön Eleme Eşleşmeleri' : 'Qualifying Fixtures'} · {rounds.reduce((count, round) => count + round.matches.length, 0)} {tr ? 'maç' : 'matches'}</Text><Text style={{color: ACCENT, fontWeight: '700'}}>{expanded ? (tr ? 'Gizle' : 'Hide') : (tr ? 'Göster' : 'Show')}</Text></Pressable>}
+    {expanded && rounds.map(round => <View key={round.id} style={{gap: 10}}>
     <Text style={[shared.text, {fontWeight: '800'}]}>{tr ? ROUND_NAMES[round.label.toLowerCase()] || round.label : round.label}</Text>
     {ties(round.matches).map(matches => {
       const first = matches[0];

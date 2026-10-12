@@ -35,6 +35,7 @@ export default function LeaguePerformanceScreen() {
   const [rows, setRows] = React.useState<LeagueResult[]>([]);
   const [selectedId, setSelectedId] = React.useState<number | null>(null);
   const [scope, setScope] = React.useState<LeagueScope>('league');
+  const [scopeSelector, setScopeSelector] = React.useState(false);
   const [standings, setStandings] = React.useState<LeagueStandings | null>(null);
   const [tableKey, setTableKey] = React.useState('');
   const [selector, setSelector] = React.useState<'countries' | 'leagues' | null>(null);
@@ -101,6 +102,12 @@ export default function LeaguePerformanceScreen() {
   function clear() {
     searchVersion.current++; setFilters(EMPTY); setRows([]); setSelectedId(null); setLoading(false); setSearchError(false);
   }
+  const scopeOptions: {key: LeagueScope; label: string}[] = [
+    {key: 'qualifying', label: tr ? 'Ön Elemeler' : 'Qualifiers'},
+    {key: 'league', label: tr ? 'Lig Aşaması' : 'League Phase'},
+    {key: 'knockout', label: tr ? 'Eleme Aşaması' : 'Knockout Phase'},
+    {key: 'overall', label: tr ? 'Genel' : 'Overall'},
+  ];
   const selected = rows.find(row => row.league_id === selectedId);
   const table = standings?.tables.find(item => item.key === tableKey);
   // Do not show the previous league while the effect for the new selection starts.
@@ -122,15 +129,17 @@ export default function LeaguePerformanceScreen() {
     <TutorialPageGuide page="leaguePerformance" frame={1} summaryLines={0} onShow={showGuide} />
     <Section title={tr ? 'Lig Sıralaması' : 'League Standings'} Icon={Table2}>
       {selected && <View style={[shared.row, {justifyContent: 'flex-start', marginBottom: 16}]}><View style={styles.leagueBadge}><Badge url={selected.image_url} size={48} /></View><View style={{flex: 1, gap: 5}}><Text style={{color: themeColor('#7DD3FC', 'text'), fontSize: 12}}>{selected.country_name}</Text><Text style={styles.title}>{selected.league_name}</Text>{currentStandings?.seasonName && <Text style={{color: ACCENT, fontSize: 12, fontWeight: '800'}}>{currentStandings.seasonName}</Text>}</View></View>}
-        {currentStandings?.stageScoped && <View style={[shared.row, {flexWrap: 'wrap', gap: 8}]}>{(['league', 'knockout', 'overall'] as const).map(key => <Pressable key={key} accessibilityRole="button" accessibilityState={{selected: scope === key}} onPress={() => setScope(key)} style={[styles.tableTab, scope === key && {borderColor: ACCENT}]}><Text style={{color: scope === key ? ACCENT : MUTED, fontSize: 12, fontWeight: '700'}}>{key === 'league' ? (tr ? 'Lig Aşaması' : 'League Phase') : key === 'knockout' ? (tr ? 'Eleme Aşaması' : 'Knockout Phase') : (tr ? 'Genel' : 'Overall')}</Text></Pressable>)}</View>}
+        {currentStandings?.stageScoped && <View style={{marginBottom: 14}}><SelectField label={tr ? 'Aşama' : 'Stage'} value={scopeOptions.find(option => option.key === scope)!.label} onPress={() => setScopeSelector(true)} /></View>}
         {(!currentStandings?.stageScoped || scope === 'league') && (currentStandings?.tables.length || 0) > 1 && <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={[shared.row, {gap: 8}]}>{currentStandings!.tables.map(item => <Pressable key={item.key} accessibilityRole="button" accessibilityState={{selected: item.key === tableKey}} onPress={() => setTableKey(item.key)} style={[styles.tableTab, item.key === tableKey && {borderColor: ACCENT}]}><Text style={{color: item.key === tableKey ? ACCENT : MUTED, fontSize: 12, fontWeight: '700'}}>{item.label}</Text></Pressable>)}</View></ScrollView>}
       {standingsLoading || (selectedId && !currentStandings && !standingsError) ? <Status busy text={tr ? 'Lig sıralaması yükleniyor…' : 'Loading standings…'} /> : standingsError ? <View style={{gap: 10}}><Status error text={tr ? 'Lig sıralaması yüklenemedi.' : 'League standings could not be loaded.'} /><Action label={tr ? 'Tekrar dene' : 'Retry'} onPress={() => setStandingsRetry(value => value + 1)} /></View> : currentStandings && (table?.rows.length || currentStandings.stageScoped) ? <View style={{gap: 14}}>
 
+        {currentStandings.stageScoped && scope === 'qualifying' && <LeagueKnockoutRounds rounds={currentStandings.qualifyingRounds || []} tr={tr} qualifying />}
         {currentStandings.stageScoped && scope === 'knockout' && <LeagueKnockoutRounds rounds={currentStandings.knockoutRounds || []} tr={tr} />}
         <LeaguePerformanceStandings key={`${selectedId}:${currentStandings.seasonId}:${currentStandings.stageScoped ? scope : 'overall'}`} leagueId={selectedId!} seasonId={currentStandings.seasonId} rows={table?.rows || []} tr={tr} scope={currentStandings.stageScoped ? scope : undefined} official={!currentStandings.stageScoped || scope === 'league'} />
       </View> : <Status text={selected ? (tr ? 'Bu lig için sıralama bulunamadı.' : 'No standings found for this league.') : (tr ? 'Lig sonuçlarından bir lig seçin.' : 'Select a league result.')} />}
     </Section>
     {ads.fallback}
+    {scopeSelector && <Selector title={tr ? 'Aşama Seç' : 'Select Stage'} tr={tr} showSearch={false} options={scopeOptions} selected={scope} onClose={() => setScopeSelector(false)} onSelect={key => {const option = scopeOptions.find(item => item.key === key); if (option) setScope(option.key); setScopeSelector(false);}} />}
     {selector && <Selector key={selector} title={selector === 'countries' ? (tr ? 'Ülke Seç' : 'Select Country') : (tr ? 'Lig Seç' : 'Select League')} tr={tr} options={[{key: '', label: tr ? 'Seçimi temizle' : 'Clear selection'}, ...options[selector].map(value => ({key: value, label: value}))]} selected={filters[selector][0] || ''} onClose={() => setSelector(null)} onSelect={value => {setFilters(current => ({...current, [selector]: value ? [value] : []})); setSelector(null);}} />}
   </ScrollView>;
 }

@@ -9,10 +9,10 @@ export type LeagueStanding = {
   form: string | null; standingRule: {name: string; code: string} | null;
 };
 export type StandingTable = { key: string; label: string; rows: LeagueStanding[] };
-export type LeagueScope = 'league' | 'knockout' | 'overall';
+export type LeagueScope = 'qualifying' | 'league' | 'knockout' | 'overall';
 export type KnockoutMatch = {id: number; aggregateId: number | null; startingAt: string | null; stateId: number; placeholder: boolean; leg: string | null; home: {id: number | null; name: string | null; imageUrl: string | null}; away: {id: number | null; name: string | null; imageUrl: string | null}; homeScore: number | null; awayScore: number | null; homePenalties: number | null; awayPenalties: number | null};
 export type KnockoutRound = {id: number; label: string; matches: KnockoutMatch[]};
-export type LeagueStandings = { stageScoped?: boolean; knockoutRounds?: KnockoutRound[]; leagueId: number; seasonId: number; seasonName: string | null; tables: StandingTable[] };
+export type LeagueStandings = { stageScoped?: boolean; qualifyingRounds?: KnockoutRound[]; knockoutRounds?: KnockoutRound[]; leagueId: number; seasonId: number; seasonName: string | null; tables: StandingTable[] };
 export const getLeaguePerformanceOptions = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueFilters>('/league-performance/options', filters);
 export const searchLeaguePerformance = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueResult[]>('/league-performance/search', {...filters, limit: 100});
 export const getLeagueStandings = (leagueId: number) => leaguePerformanceRequest<LeagueStandings>('/league-standings', {leagueId});

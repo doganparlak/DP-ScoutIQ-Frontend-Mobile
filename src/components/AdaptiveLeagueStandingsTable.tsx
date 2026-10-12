@@ -42,7 +42,7 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
     {key: 'goalDifference', label: props.tr ? 'AV' : 'GD'},
     {key: 'points', label: props.tr ? 'PUAN' : 'PTS'},
   ];
-  const visibleColumns = props.official === false ? (props.playerView || props.metric ? [] : columns.filter(column => column.key === 'played')) : props.playerView ? [] : props.metric ? columns.filter(column => column.key === 'points') : columns;
+  const visibleColumns = props.official === false ? columns.filter(column => column.key === 'played') : props.playerView ? [] : props.metric ? columns.filter(column => column.key === 'points') : columns;
   const number = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString(props.tr ? 'tr-TR' : 'en-GB', {maximumFractionDigits: 2});
   const extraWidth = (props.metric ? metricWidth : 0) + (props.showBiweekly ? playerWidth : 0) + (props.showSeason ? playerWidth : 0);
   const scrolls = statWidth * visibleColumns.length + extraWidth > width - pinnedWidth + 1;
@@ -65,7 +65,7 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
         <View>
           <View style={[styles.row, styles.header, {height: headerHeight}]}>
             {visibleColumns.map(column => <Text key={column.key} style={[styles.heading, cell, column.key === 'points' && styles.points]}>{column.label}</Text>)}
-            {props.metric && <Text numberOfLines={3} style={[styles.heading, {width: metricWidth, color: themeColor('#7DD3FC', 'text')}]}>{matchMetricLabel(props.metric.label, props.tr ? 'tr' : 'en').toLocaleUpperCase(props.tr ? 'tr-TR' : 'en-GB')}</Text>}
+            {props.metric && <Text numberOfLines={3} style={[styles.heading, {width: metricWidth, color: themeColor('#7DD3FC', 'text')}]}>{matchMetricLabel(props.metric.label, props.tr ? 'tr' : 'en').toLocaleUpperCase(props.tr ? 'tr-TR' : 'en-GB')}{props.perMatch && props.metric.aggregation === 'total' ? (props.tr ? ' / MAÇ' : ' / MATCH') : ''}</Text>}
             {props.showBiweekly && <Text style={[styles.heading, {width: playerWidth}]}>{props.tr ? 'İKİ HAFTANIN OYUNCUSU' : 'TWO-WEEK TOP PLAYER'}</Text>}
             {props.showSeason && <Text style={[styles.heading, {width: playerWidth}]}>{props.phaseScoped ? (props.tr ? 'AŞAMANIN OYUNCUSU' : 'PHASE TOP PLAYER') : (props.tr ? 'SEZONUN OYUNCUSU' : 'PLAYER OF THE SEASON')}</Text>}
           </View>
