@@ -226,8 +226,9 @@ export default function PlayerCard({
   const locale = i18n.language.startsWith('tr') ? 'tr-TR' : 'en-GB';
   const loanEnd = meta?.isOnLoan === true ? formatPlayerContractDate(meta.loanEndDate, locale) : undefined;
   const contractEnd = formatPlayerContractDate(meta?.contractEndDate, locale);
+  const endDate = formatPlayerContractDate(meta?.endDate, locale);
   const hasStatus = typeof meta?.isOnLoan === 'boolean';
-  const hasContract = hasStatus || meta?.contractTeamName || loanEnd || contractEnd;
+  const hasContract = hasStatus || meta?.contractTeamName || loanEnd || contractEnd || endDate;
   const contractColor = meta?.isOnLoan ? themeColor('#FBBF24') : cardAccent;
   const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toLocaleUpperCase(locale);
   const physicalDetails = [
@@ -309,9 +310,10 @@ export default function PlayerCard({
             : <Shield size={20} color={contractColor} />}</View>
           <View style={styles.clubCopy}><Text style={styles.detailLabel}>{t('playerCardContractClub', 'Contract club')}</Text><Text style={styles.clubName}>{meta.contractTeamName}</Text></View>
         </View>}
-        {(loanEnd || contractEnd) && <View style={styles.datesRow}>
+        {(loanEnd || contractEnd || endDate) && <View style={styles.datesRow}>
           {loanEnd && <View testID="player-loan-end" style={styles.dateTile}><View style={styles.dateLabelRow}><CalendarDays size={13} color={themeColor("#FBBF24", 'text')} /><Text style={styles.dateLabel}>{t('contractLoanEnd', 'Loan end date')}</Text></View><Text style={styles.dateValue}>{loanEnd}</Text></View>}
           {contractEnd && <View testID="player-contract-end" style={styles.dateTile}><View style={styles.dateLabelRow}><CalendarDays size={13} color={cardAccent} /><Text style={styles.dateLabel}>{t('contractPermanentEnd', 'Contract end date')}</Text></View><Text style={styles.dateValue}>{contractEnd}</Text></View>}
+          {endDate && <View testID="player-end-date" style={styles.dateTile}><View style={styles.dateLabelRow}><CalendarDays size={13} color={cardAccent} /><Text style={styles.dateLabel}>{t('playerEndDate', 'End Date')}</Text></View><Text style={styles.dateValue}>{endDate}</Text></View>}
         </View>}
       </View> : null}
 

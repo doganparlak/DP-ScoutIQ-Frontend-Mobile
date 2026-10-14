@@ -4,6 +4,7 @@ export type PlayerContract = {
   contractTeamName?: string;
   loanEndDate?: string;
   contractEndDate?: string;
+  endDate?: string;
 };
 
 function textValue(value: unknown): string | undefined {
@@ -23,6 +24,7 @@ export function normalizePlayerContract(raw: Record<string, unknown>): PlayerCon
     contractTeamName: textValue(raw.contractTeamName ?? raw.contract_team_name),
     loanEndDate: textValue(raw.loanEndDate ?? raw.loan_end_date),
     contractEndDate: textValue(raw.contractEndDate ?? raw.contract_end_date),
+    endDate: textValue(raw.endDate ?? raw.end_date),
   };
 }
 

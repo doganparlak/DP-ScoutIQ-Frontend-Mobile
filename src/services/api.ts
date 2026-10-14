@@ -420,8 +420,8 @@ type PlayerPoolRawRow = {
 };
 
 const PLAYER_POOL_METADATA_SKIP_KEYS = new Set([
-  'is_on_loan', 'contract_team_id', 'contract_team_name', 'loan_end_date', 'contract_end_date',
-  'isOnLoan', 'contractTeamId', 'contractTeamName', 'loanEndDate', 'contractEndDate',
+  'is_on_loan', 'contract_team_id', 'contract_team_name', 'loan_end_date', 'contract_end_date', 'end_date',
+  'isOnLoan', 'contractTeamId', 'contractTeamName', 'loanEndDate', 'contractEndDate', 'endDate',
   'id',
   'player_id',
   'team_id',
