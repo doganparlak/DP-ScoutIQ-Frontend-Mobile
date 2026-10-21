@@ -3,6 +3,7 @@ import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { useMatchup } from '@/context/MatchupContext';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { portfolioViewportHeight } from '@/utils/portfolioLayout';
+import { playerNameMatchesSearch } from '@/utils/searchSuggestions';
 
 import { useFocusEffect,useNavigation } from '@react-navigation/native';
 import { Network,Shirt,UserRound,UserX,X } from 'lucide-react-native';
@@ -345,7 +346,7 @@ export default function FavoritePlayers({
 
     const list = rows.filter((p) => {
       if (workspaceFilters && !matchesPortfolioFilters(p, workspaceFilters)) return false;
-      if (!searchIncludes(p.name, qName)) return false;
+      if (!playerNameMatchesSearch(p.name, qName)) return false;
       if (!searchIncludes(p.nationality, qNat)) return false;
       if (!searchIncludes(p.league, qLeague)) return false;
       if (!searchIncludes(p.team, qTeam)) return false;

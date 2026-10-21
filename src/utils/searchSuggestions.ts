@@ -25,6 +25,11 @@ export function normalizeSearchText(value: string) {
     .toLowerCase();
 }
 
+export function playerNameMatchesSearch(name: string | null | undefined, query: string) {
+  const normalizedQuery = normalizeSearchText(query);
+  return !normalizedQuery || optionMatchesSearch(name || '', normalizedQuery);
+}
+
 export function optionMatchesSearch(option: string, normalizedQuery: string) {
   const normalizedOption = normalizeSearchText(option);
   if (normalizedOption.includes(normalizedQuery)) return true;

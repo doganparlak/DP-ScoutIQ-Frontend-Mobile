@@ -1,4 +1,5 @@
 import type { PlayerContract } from './playerContract';
+import { playerNameMatchesSearch } from './searchSuggestions';
 
 export type PortfolioFilters = {
   values: Record<string, string>;
@@ -16,6 +17,7 @@ export function matchesPortfolioFilters(player: PortfolioPlayer, filters: Portfo
   const { values, status, roles } = filters;
   if (!(['name', 'country', 'team'] as const).every(key => {
     const actual = key === 'country' ? player.nationality : player[key];
+    if (key === 'name') return playerNameMatchesSearch(actual, values[key] || '');
     return !values[key] || fold(actual ?? '').includes(fold(values[key]));
   })) return false;
   for (const key of ['age', 'form', 'potential'] as const) {
