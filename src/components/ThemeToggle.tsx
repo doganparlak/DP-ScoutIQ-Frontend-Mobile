@@ -9,8 +9,8 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
   const tr = i18n.language.startsWith('tr');
   const {styles, ACCENT, MUTED} = useThemedStyles(getStyles);
   return <View style={[styles.row, compact && styles.compactRow]}>
-    <Text style={[styles.label, compact && styles.compactLabel]}>{tr ? 'Görünüm' : 'Appearance'}</Text>
-    <View style={styles.segment} accessibilityRole="radiogroup" accessibilityLabel={tr ? 'Görünüm' : 'Appearance'}>
+    <Text style={[styles.label, compact && styles.compactLabel]}>{tr ? 'Görünüm' : 'Theme'}</Text>
+    <View style={styles.segment} accessibilityRole="radiogroup" accessibilityLabel={tr ? 'Görünüm' : 'Theme'}>
       {([{value: 'light', Icon: Sun, label: tr ? 'Açık' : 'Light'},
         {value: 'dark', Icon: Moon, label: tr ? 'Koyu' : 'Dark'}] as const).map(({value, Icon, label}) =>
         <Pressable key={value} accessibilityRole="radio" accessibilityState={{checked: mode === value}}

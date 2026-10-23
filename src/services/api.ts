@@ -785,7 +785,7 @@ export async function submitDailyScoutAnswer(
   return normalizeDailyScoutChallenge(
     await request<any>(ENDPOINTS.dailyScoutChallengeAnswer, {
       method: 'POST',
-      body: JSON.stringify({ challengeId, chosenPlayerId }),
+      body: JSON.stringify({ challengeId, chosenPlayerId, requireNickname: true }),
     }),
   );
 }
@@ -1154,6 +1154,9 @@ export function teamPortfolioRequest<T>(path: string, method: 'GET' | 'POST' | '
 // Pro workspace uses the same authenticated transport and pool normalizer.
 export async function proWorkspaceRequest<T>(action: string, payload: unknown): Promise<T> {
   return request<T>(`/pro/${action}`, {method: 'POST', body: JSON.stringify(payload)});
+}
+export function getProPlayerPercentiles(playerId: string, signal?: AbortSignal) {
+  return request<import('@/utils/reportPercentiles').DomesticPercentiles>(`/pro/players/${encodeURIComponent(playerId)}/percentiles`, {signal});
 }
 export function normalizeProPlayer(row: {id: string | number; content: Record<string, unknown>}): {id: string; player: PlayerData} {
   const id = String(row.id);

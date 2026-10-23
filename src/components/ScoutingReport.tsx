@@ -40,6 +40,8 @@ import { rolePickerCode,type Plan,type ScoutingReportResponse } from '../service
 import type { PlayerData } from '../types';
 import ActionSpinner from './ActionSpinner';
 import ReportPhaseDistributions from './ReportPhaseDistributions';
+import ReportPercentileTiles, {ReportPercentileScopeSwitch} from './ReportPercentileTiles';
+import {REPORT_PERCENTILE_METRICS, reportPercentileCompetition, reportPercentileLimit, type DomesticPercentiles} from '@/utils/reportPercentiles';
 
 
 type Props = {
@@ -285,7 +287,7 @@ function RoleDistributionPitchMap({ player, report }: { player: PlayerData; repo
                   fontSize="2.75"
                   fontWeight="900"
                 >
-                  {percent} %
+                  {`${percent}%`}
                 </SvgText>
               ) : null}
             </React.Fragment>
@@ -533,27 +535,47 @@ function ReportAnalysisState({failed,onRetry}:{failed:boolean;onRetry:()=>void})
  return <View style={styles.analysisState}>{failed?<><Text style={styles.analysisStateText}>{t('reportFailedBody','Could not generate the report. Please try again later.')}</Text><Pressable accessibilityRole="button" onPress={onRetry} style={styles.analysisRetry}><Text style={styles.analysisRetryText}>{t('tryAgain','Try Again')}</Text></Pressable></>:<><ActionSpinner size={27} color={ACCENT}/><Text style={styles.analysisStateText}>{t('generatingReport','Generating report…')}</Text></>}</View>;
 }
 
-function ReportMetricPage({ group, name, imageUrl, report }: { group: ReturnType<typeof buildSpiderGroupsFromReport>[number]; name: string; imageUrl?: string; report: ScoutingReportResponse }) {
+function ReportMetricPage({ group, name, imageUrl, report, scope, onScopeChange, role, onRoleChange, unit, onUnitChange, plan, onOpenPlans }: {
+  group: ReturnType<typeof buildSpiderGroupsFromReport>[number]; name: string; imageUrl?: string; report: ScoutingReportResponse;
+  scope: string; onScopeChange: (scope: string) => void; role: string; onRoleChange: (role: string) => void;
+  unit: EnterpriseMetricUnit; onUnitChange: (unit: EnterpriseMetricUnit) => void;
+  plan: Plan; onOpenPlans: () => void;
+}) {
   const themed = useThemedStyles(getModuleTheme);
   const {DANGER, ACCENT, styles, TEXT} = themed;
-
   const { t, i18n } = useTranslation();
-  const [unit, setUnit] = useState<EnterpriseMetricUnit>('perMatch');
+  const tr = i18n.language.startsWith('tr');
   const [view, setView] = useState<'radar' | 'tiles'>('radar');
   const [width, setWidth] = useState(320);
+  const percentiles = report.content_json?.domestic_percentiles as DomesticPercentiles | undefined;
+  const supportsPercentiles = group.titleKey in REPORT_PERCENTILE_METRICS;
+  const competition = supportsPercentiles ? reportPercentileCompetition(percentiles, scope) : undefined;
   const meta = report.content_json?.metrics_docs?.[0]?.metadata ?? {};
   const stats = Object.entries(meta).flatMap(([metric, value]) => typeof value === 'number' || typeof value === 'string' ? [{metric, value}] : []);
   const points = comparisonPoints(stats, group.points.map(p=>p.label), {unit});
   const isErrors = group.titleKey === 'errors_discipline';
-  const accent = isErrors ? DANGER : ACCENT;
+  const accent = isErrors && !competition ? DANGER : ACCENT;
   return <View style={{gap:14, width:'100%'}} onLayout={e=>setWidth(e.nativeEvent.layout.width)}>
     <ReportPageHeading name={name} imageUrl={imageUrl} title={t(group.titleKey,group.fallbackTitle)} Icon={group.Icon} accent={accent}/>
     <View style={styles.reportControls}>
-      <ReportToggle accent={accent} value={unit} onChange={setUnit} options={[{value:'perMatch',label:i18n.language.startsWith('tr')?'Maç Başı':'Per Match',Icon:Clock3},{value:'per90',label:i18n.language.startsWith('tr')?'90 Dakika':'Per 90',Icon:Timer}]}/>
-      {!isErrors && <ReportToggle value={view} onChange={setView} options={[{value:'radar',label:'Radar',Icon:Radar},{value:'tiles',label:i18n.language.startsWith('tr')?'Sayılar':'Numbers',Icon:ListOrdered}]}/>}
+      <ReportToggle accent={accent} value={unit} onChange={onUnitChange} options={[
+        {value:'perMatch',label:tr?'Maç Başı':'Per Match',Icon:Clock3},
+        {value:'per90',label:tr?'90 Dakika':'Per 90',Icon:Timer},
+        {value:'total',label:tr?'Toplam':'Total',Icon:ListOrdered},
+      ]}/>
+      {!isErrors && !competition && <ReportToggle value={view} onChange={setView} options={[{value:'radar',label:'Radar',Icon:Radar},{value:'tiles',label:tr?'Sayılar':'Numbers',Icon:ListOrdered}]}/>}
     </View>
-    {isErrors ? <ErrorsDisciplineTiles points={points} hideTitle expandable={false} accent={DANGER} framed /> : view==='radar' ? <View style={styles.radarFrame}>
-      <View style={styles.radarAreaHeader}><View style={{flexDirection:'row',alignItems:'center',gap:7}}><Radar size={16} color={ACCENT}/><Text style={styles.radarAreaTitle}>{i18n.language.startsWith('tr')?'Performans Profili':'Performance Profile'}</Text></View><Text style={styles.radarUnit}>{unit==='per90'?'90′':i18n.language.startsWith('tr')?'Maç Başı':'Per Match'}</Text></View>
+    {supportsPercentiles && <ReportPercentileScopeSwitch competitions={percentiles?.competitions || []} scope={scope} onChange={onScopeChange}/>}
+    {competition ? <ReportPercentileTiles competition={competition} groupKey={group.titleKey} role={role} onRoleChange={onRoleChange}
+      unit={unit} minimumMinutes={percentiles?.minimumMinutes} metricLimit={reportPercentileLimit(plan)}
+      lockedContent={<LockedInsightCard
+        title={tr ? 'Daha fazla persentil' : 'More percentiles'}
+        message={plan === 'No Ads Monthly'
+          ? (tr ? 'Pro ile her kategoride sınırsız metrik persentiline erişin.' : 'Get unlimited metric percentiles in every category with Pro.')
+          : (tr ? 'Plus ile her kategoride 3 metrik persentili, Pro ile sınırsız erişim.' : 'Get 3 metric percentiles per category with Plus, or unlimited access with Pro.')}
+        buttonLabel={t('managePlan', 'Manage Plan')} onOpenPlans={onOpenPlans}
+      />}/> : isErrors ? <ErrorsDisciplineTiles points={points} hideTitle expandable={false} accent={DANGER} framed /> : view==='radar' ? <View style={styles.radarFrame}>
+      <View style={styles.radarAreaHeader}><View style={{flexDirection:'row',alignItems:'center',gap:7}}><Radar size={16} color={ACCENT}/><Text style={styles.radarAreaTitle}>{tr?'Performans Profili':'Performance Profile'}</Text></View><Text style={styles.radarUnit}>{unit==='per90'?'90′':unit==='total'?(tr?'Toplam':'Total'):tr?'Maç Başı':'Per Match'}</Text></View>
       <SpiderChart hideTitle title={t(group.titleKey,group.fallbackTitle)} points={points} Icon={group.Icon} chartSize={Math.max(0,width-26)} /></View> : points.map(p=><View key={p.label} style={styles.metricTile}><Text style={{color:TEXT,flex:1,fontWeight:'600'}}>{String(t(`metric.${p.label}`,{defaultValue:p.label}))}</Text><Text style={{color:ACCENT,fontWeight:'800',fontSize:17}}>{Number(p.value).toLocaleString(i18n.language,{maximumFractionDigits:2})}{p.label.includes('%')?'%':''}</Text></View>)}
   </View>;
 }
@@ -567,6 +589,13 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
   const [page, setPage] = useState(0);
   const { t, i18n } = useTranslation();
   const [report,setReport]=useState(initialReport);
+  const [percentileScope, setPercentileScope] = useState('annual');
+  const [percentileRole, setPercentileRole] = useState('');
+  const [metricUnits, setMetricUnits] = useState<Record<string, EnterpriseMetricUnit>>({});
+  useEffect(() => {
+    if (!visible) return;
+    setPercentileScope('annual'); setPercentileRole(''); setMetricUnits({});
+  }, [visible, initialReport.favorite_player_id, initialReport.language]);
   const [retryToken,setRetryToken]=useState(0);
   const reloadReportRef=useRef(reloadReport),loadReportSectionRef=useRef(loadReportSection),onReportUpdateRef=useRef(onReportUpdate);
   reloadReportRef.current=reloadReport;loadReportSectionRef.current=loadReportSection;onReportUpdateRef.current=onReportUpdate;
@@ -784,13 +813,18 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
 
     spiderGroups.forEach((g, idx) => {
       const title = t(g.titleKey, g.fallbackTitle);
-      const node = <ReportMetricPage group={g} name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} report={report} />;
+      const hasCompetition = g.titleKey in REPORT_PERCENTILE_METRICS
+        && !!reportPercentileCompetition(report.content_json?.domestic_percentiles, percentileScope);
+      const node = <ReportMetricPage group={g} name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} report={report}
+        plan={plan} onOpenPlans={openPlanManagement} scope={percentileScope} onScopeChange={setPercentileScope} role={percentileRole} onRoleChange={setPercentileRole}
+        unit={metricUnits[g.titleKey] || (hasCompetition ? 'per90' : 'perMatch')}
+        onUnitChange={unit => setMetricUnits(current => ({...current, [g.titleKey]: unit}))}/>;
 
       out.push({ key: `metrics-${idx}`, title, node, Icon: g.Icon });
     });
 
     return out;
-  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar, hidePlayerActions, themed]);
+  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar, hidePlayerActions, themed, percentileScope, percentileRole, metricUnits]);
 
   const activeNarrativeSection = pages[page]?.key === 'strengths' ? 'strengths' : pages[page]?.key === 'weaknesses' ? 'weaknesses' : pages[page]?.key === 'conclusion' ? 'role_usage' : null;
   useEffect(()=>{

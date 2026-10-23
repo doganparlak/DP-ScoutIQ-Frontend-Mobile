@@ -1,5 +1,5 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { Target,X } from "lucide-react-native";
+import { Target,UserRound,X } from "lucide-react-native";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -104,7 +104,7 @@ export function DailyScoutChallengeModal({
 
   const completed = challenge?.attempt.status === "completed";
   const skipped = challenge?.attempt.status === "skipped";
-  const needsNickname = completed && challenge?.attempt.needsNickname;
+  const needsNickname = !!challenge?.attempt.needsNickname;
 
   const handleSkip = async () => {
     try {
@@ -132,7 +132,7 @@ export function DailyScoutChallengeModal({
   };
 
   const handleAnswer = async (choiceId: string) => {
-    if (!challenge || completed || submittingId || loading) return;
+    if (!challenge || completed || submittingId || loading || savingNickname || needsNickname) return;
 
     try {
       setSubmittingId(choiceId);
@@ -143,6 +143,10 @@ export function DailyScoutChallengeModal({
       setChallenge(next);
       onUpdated?.();
     } catch (err: any) {
+      if (String(err?.message || err).includes('NICKNAME_REQUIRED')) {
+        setChallenge(current => current ? {...current, attempt: {...current.attempt, needsNickname: true}} : current);
+        return;
+      }
       Alert.alert(
         t("dailyScoutErrorTitle", "Challenge failed"),
         String(err?.message || err).includes('DAILY_CHALLENGE_EXPIRED')
@@ -157,7 +161,7 @@ export function DailyScoutChallengeModal({
 
   const handleNickname = async () => {
     const trimmed = nickname.trim();
-    if (!trimmed) return;
+    if (savingNickname || trimmed.length < 2) return;
 
     try {
       setSavingNickname(true);
@@ -227,6 +231,54 @@ export function DailyScoutChallengeModal({
           }
         >
           {header}
+          {needsNickname && (
+            <View style={styles.nicknameBoxInline}>
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}><UserRound size={19} color={ACCENT}/><Text style={styles.nicknameTitle}>
+                {t(
+                  "dailyScoutNicknameTitle",
+                  "Choose Your Nickname",
+                )}
+                  </Text></View>
+                  <Text style={styles.nicknameText}>
+                    {t(
+                      "dailyScoutNicknameBody",
+                      "Choose once. Use the same name in Player Discovery League and Score Prediction League.",
+                    )}
+                  </Text>
+                  <Text style={styles.nicknameText}>{t("dailyScoutNicknameRequired", "Choose your nickname before submitting a prediction.")}</Text>
+                  <TextInput
+                    accessibilityLabel={t("dailyScoutNicknamePlaceholder", "Nickname")}
+                    autoCapitalize="none"
+                    value={nickname}
+                    onChangeText={setNickname}
+                    maxLength={24}
+                    placeholder={t(
+                      "dailyScoutNicknamePlaceholder",
+                      "Nickname",
+                    )}
+                    placeholderTextColor={MUTED}
+                    style={styles.nicknameInput}
+                  />
+                  <Pressable
+                    disabled={savingNickname || nickname.trim().length < 2}
+                    onPress={handleNickname}
+                    style={({ pressed }) => [
+                      styles.primaryButton,
+                      (savingNickname || nickname.trim().length < 2) &&
+                        styles.disabledButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {savingNickname ? (
+                      <ActivityIndicator size="small" color={TEXT} />
+                    ) : (
+                      <Text style={styles.primaryButtonText}>
+                        {t("dailyScoutSaveNickname", "Save nickname")}
+                      </Text>
+                    )}
+                  </Pressable>
+                </View>
+              )}
           <View
             testID="daily-scout-question-frame"
             style={embedded ? styles.questionFrame : undefined}
@@ -289,52 +341,6 @@ export function DailyScoutChallengeModal({
                       score: challenge.attempt.score ?? 0,
                     })}
                   </Text>
-
-                  {needsNickname && (
-                    <View style={styles.nicknameBoxInline}>
-                      <Text style={styles.nicknameTitle}>
-                        {t(
-                          "dailyScoutNicknameTitle",
-                          "Choose your scoreboard name",
-                        )}
-                      </Text>
-                      <Text style={styles.nicknameText}>
-                        {t(
-                          "dailyScoutNicknameBody",
-                          "Set it once for this week so your score can appear on the board.",
-                        )}
-                      </Text>
-                      <TextInput
-                        value={nickname}
-                        onChangeText={setNickname}
-                        maxLength={24}
-                        placeholder={t(
-                          "dailyScoutNicknamePlaceholder",
-                          "Nickname",
-                        )}
-                        placeholderTextColor={MUTED}
-                        style={styles.nicknameInput}
-                      />
-                      <Pressable
-                        disabled={savingNickname || nickname.trim().length < 2}
-                        onPress={handleNickname}
-                        style={({ pressed }) => [
-                          styles.primaryButton,
-                          (savingNickname || nickname.trim().length < 2) &&
-                            styles.disabledButton,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        {savingNickname ? (
-                          <ActivityIndicator size="small" color={TEXT} />
-                        ) : (
-                          <Text style={styles.primaryButtonText}>
-                            {t("dailyScoutSaveNickname", "Save nickname")}
-                          </Text>
-                        )}
-                      </Pressable>
-                    </View>
-                  )}
                 </View>
               )}
 
@@ -363,7 +369,8 @@ export function DailyScoutChallengeModal({
                   >
                     <Pressable
                       accessibilityRole="button"
-                      disabled={completed || !!submittingId || loading}
+                      disabled={completed || !!submittingId || loading || savingNickname || needsNickname}
+                      accessibilityState={{disabled: completed || !!submittingId || loading || savingNickname || needsNickname}}
                       onPress={() => handleAnswer(choice.id)}
                       style={[
                         styles.optionHeader,
@@ -578,11 +585,11 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   resultText: { color: MUTED, lineHeight: 19, fontWeight: "600" },
   scoreText: { color: ACCENT, fontWeight: "900" },
   nicknameBoxInline: {
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: LINE,
-    paddingTop: 10,
-    gap: 8,
+    borderWidth: 1,
+    borderColor: LINE,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
   },
   nicknameTitle: { color: TEXT, fontWeight: "900", fontSize: 15 },
   nicknameText: { color: MUTED, lineHeight: 18 },
