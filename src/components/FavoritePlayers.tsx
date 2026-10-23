@@ -54,6 +54,8 @@ import ScoutingReport from './ScoutingReport';
 import { TutorialHint,type ProfileTutorialStep } from './Tutorial';
 
 type PlayerRow = PlayerContract & {
+  reportStats?: PlayerData['stats'];
+  matchCount?: number;
   sportmonksId?: number;
   teamId?: number;
   leagueId?: number;
@@ -257,6 +259,8 @@ export default function FavoritePlayers({
 
       const mapped: PlayerRow[] = favs.map((f: FavoritePlayer) => ({
         id: f.id,
+        reportStats: f.reportStats,
+        matchCount: f.matchCount,
         playerId: f.playerId,
         sportmonksId: f.sportmonksId,
         teamId: f.teamId,
@@ -290,6 +294,7 @@ export default function FavoritePlayers({
     meta: {
       ...normalizePlayerContract(p),
       sportmonksId: p.sportmonksId,
+      matchCount: p.matchCount,
       teamId: p.teamId,
       leagueId: p.leagueId,
       imageUrl: p.imageUrl,
@@ -304,7 +309,7 @@ export default function FavoritePlayers({
       height: p.height,
       weight: p.weight,
     },
-    stats: [],
+    stats: p.reportStats || [],
   });
 
   useFocusEffect(

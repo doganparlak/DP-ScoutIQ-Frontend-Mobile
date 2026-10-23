@@ -87,7 +87,7 @@ export type PlayerMeta = PlayerContract & {
   team?: string;
   league?: string;
 };
-export type PlayerData = { entityType?: 'player' | 'league' | 'season'; name: string; meta?: PlayerMeta; stats: PlayerStat[] };
+export type PlayerData = { reportSourceStats?: PlayerStat[]; entityType?: 'player' | 'league' | 'season'; name: string; meta?: PlayerMeta; stats: PlayerStat[] };
 
 
 export type ChatData = { players: PlayerData[] };

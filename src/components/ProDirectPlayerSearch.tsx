@@ -74,7 +74,7 @@ export default function ProDirectPlayerSearch({onGuidePageChange, trial=false, m
       const response = await proWorkspaceRequest<{row: {id: number; content: Record<string, unknown>}; stats: {metric: string; value: number}[]; insights: Record<string, string>; categories: ProInspection['categories']}>('inspect', {playerId: Number(entry.id), sessionId, requestId: pending.current.id, strategy, discoveryContext:entry.discoveryContext});
       if (!mounted.current) return;
       const normalized = normalizeProPlayer(response.row);
-      const value = {entry: {...normalized, discoveryContext:entry.discoveryContext, player: {...normalized.player, stats: response.stats}}, sourceStats: normalized.player.stats, matchCount: Number(response.row.content.match_count) || undefined, insights: response.insights, categories: response.categories};
+      const value = {entry: {...normalized, discoveryContext:entry.discoveryContext, player: {...normalized.player, reportSourceStats: normalized.player.stats, stats: response.stats}}, sourceStats: normalized.player.stats, matchCount: Number(response.row.content.match_count) || undefined, insights: response.insights, categories: response.categories};
       cache.current.set(key, value); pending.current = null; setInspection(value); callbacks.current.onCreditsChanged();
     } catch (err) {
       if (mounted.current) {if (String(err).includes('CHAT_TRIAL_EXHAUSTED')) callbacks.current.onAccessRequired(); else setError(tr ? 'Profil açılamadı. Yeniden dene.' : 'Could not open this profile. Please retry.');}

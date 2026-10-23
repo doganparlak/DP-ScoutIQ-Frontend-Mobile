@@ -327,6 +327,9 @@ function normalizeLeagueName(value: unknown): string | undefined {
 
 
 export type FavoritePlayer = PlayerContract & {
+  performanceMetadata?: Record<string, unknown>;
+  reportStats?: PlayerData['stats'];
+  matchCount?: number;
   sportmonksId?: number;
   teamId?: number;
   leagueId?: number;
@@ -801,11 +804,16 @@ export async function setDailyScoutNickname(nickname: string): Promise<{ nicknam
 
 export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
   const favorites = await request<FavoritePlayer[]>('/me/favorites');
-  return (favorites || []).map((favorite) => ({
-    ...favorite,
-    ...normalizePlayerContract(favorite),
-    league: normalizeLeagueName(favorite.league),
-  }));
+  return (favorites || []).map((favorite) => {
+    const performance = normalizePlayerPoolContent(favorite.performanceMetadata, favorite.playerId || favorite.id);
+    return {
+      ...favorite,
+      ...normalizePlayerContract(favorite),
+      league: normalizeLeagueName(favorite.league),
+      reportStats: performance?.stats || [],
+      matchCount: performance?.meta?.matchCount,
+    };
+  });
 }
 
 type AddFavoriteIn = {

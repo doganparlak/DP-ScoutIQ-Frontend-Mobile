@@ -1,6 +1,7 @@
+import { canGeneratePlayerReport } from '@/utils/reportEligibility';
 import { useOptionalMatchup } from '@/context/MatchupContext';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { getThemed_PLAYER_ACTION_TONES as __getThemed_PLAYER_ACTION_TONES,PLAYER_CARD_PROFILE_GAP,playerActionLayout } from '@/utils/playerCardActions';
+import { getThemed_PLAYER_ACTION_TONES as __getThemed_PLAYER_ACTION_TONES,PLAYER_CARD_PROFILE_GAP } from '@/utils/playerCardActions';
 import ActionSpinner from './ActionSpinner';
 import FindSimilarPlayerButton from './FindSimilarPlayerButton';
 
@@ -8,7 +9,7 @@ import FindSimilarPlayerButton from './FindSimilarPlayerButton';
 import { formatPlayerContractDate } from '@/utils/playerContract';
 import { ArrowLeftRight,CalendarDays,Check,FileText,MapPin,Plus,Shield,ShieldCheck,Target,Trophy,UserRound } from 'lucide-react-native';
 import * as React from 'react';
-import { Image,StyleSheet,Text,TouchableOpacity,useWindowDimensions,View } from 'react-native';
+import { Image,StyleSheet,Text,TouchableOpacity,View } from 'react-native';
 
 import { rolePickerCode } from '@/services/api';
 import type { PlayerData } from '@/types';
@@ -148,11 +149,10 @@ export default function PlayerCard({
   const {ACCENT, styles, FRAME_HEADING, FRAME_TITLE, PLAYER_ACTION_TONES, MUTED, CARD, themeColor} = themed;
 
   const { t, i18n } = useTranslation();
-  const {width,fontScale}=useWindowDimensions();
-  const [actionWidth,setActionWidth]=React.useState(Math.max(160,width-64));
-  const count=1+Number(!!onAddFavorite)+Number(!!onGenerateReport)+Number(proActions ? !!onCheckFit : !!onMatchup);
-  const actionLayout=playerActionLayout(actionWidth,fontScale,count);
-  const actionCell={flexBasis:actionLayout.basis,flexGrow:1,flexShrink:0};
+  const showReport = !!onGenerateReport && canGeneratePlayerReport(player);
+  // Let the row distribute its actual width equally, including when Report
+  // appears after annual stats load. Fixed measured bases can overflow here.
+  const actionCell={flexBasis:0,flexGrow:1,flexShrink:1,minWidth:0};
   const matchup = useOptionalMatchup();
   const matchupFull = !!matchup && matchup.rows.slice(0, matchup.mode).every(Boolean);
   const [matchBusy, setMatchBusy] = React.useState(false);
@@ -162,7 +162,7 @@ export default function PlayerCard({
   const [contractLogoFailed, setContractLogoFailed] = React.useState(false);
   const actionLock = React.useRef(false);
   const runAction = async (kind: 'report' | 'match') => {
-    if (actionLock.current) return;
+    if (actionLock.current || (kind === 'report' && !showReport)) return;
     actionLock.current = true;
     const setBusy = kind === 'report' ? setReportBusy : setMatchBusy;
     setBusy(true);
@@ -238,12 +238,12 @@ export default function PlayerCard({
   ].filter((value): value is { label: string; value: string } => !!value);
 
   const headerActions = ((heading || (player && !hideActions)) && <View style={styles.headerActions}>{heading && <View style={[FRAME_HEADING, { flexShrink: 1 }]}><UserRound size={20} color={cardAccent} /><Text style={[styles.heading, FRAME_TITLE]}>{heading}</Text></View>}
-      {player && !hideActions && <View onLayout={event=>{const measured=event.nativeEvent.layout.width;if(measured>0&&Math.abs(measured-actionWidth)>1)setActionWidth(measured);}} style={styles.actions}>
+      {player && !hideActions && <View style={styles.actions}>
         {onAddFavorite && <TouchableOpacity accessibilityRole="button" accessibilityLabel={isAdded ? t('addedToFavorites', 'Added to favorites') : t('addToFavorites', 'Add to favorites')} accessibilityState={{ disabled, busy: isAdding && !isAdded }} disabled={disabled} onPress={handleAdd} style={[styles.action, actionCell, { borderColor: cardAccent,backgroundColor:themeColor('rgba(22,163,74,.10)', 'surface') }, addFavoriteDisabled && styles.disabled]}>
           {isAdded ? <Check size={17} color={cardAccent} /> : isAdding ? <ActionSpinner size={17} color={cardAccent} /> : <Plus size={17} color={cardAccent} />}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText, { color: cardAccent }]}>{isAdded ? t('playerCardSaved', 'Saved') : t('playerCardPortfolio', 'Portfolio')}</Text>
         </TouchableOpacity>}
-        {onGenerateReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, proActions && {borderColor: PLAYER_ACTION_TONES.similar, backgroundColor:themeColor('rgba(45,212,191,.08)', 'surface')}, reportButtonDisabled && styles.disabled]}>
+        {showReport && <TouchableOpacity accessibilityRole="button" accessibilityLabel={reportLoading ? t('generatingReport', 'Generating report') : reportState === 'ready' ? t('openReport', 'Open report') : t('generateReport', 'Generate report')} accessibilityState={{ disabled: reportButtonDisabled, busy: reportLoading }} disabled={reportButtonDisabled} onPress={() => { void runAction('report'); }} style={[styles.action, actionCell, styles.reportAction, proActions && {borderColor: PLAYER_ACTION_TONES.similar, backgroundColor:themeColor('rgba(45,212,191,.08)', 'surface')}, reportButtonDisabled && styles.disabled]}>
           {reportLoading ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.report} /> : <FileText size={17} color={proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report} />}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report}]}>{t('playerCardReport', 'Report')}</Text>
         </TouchableOpacity>}
