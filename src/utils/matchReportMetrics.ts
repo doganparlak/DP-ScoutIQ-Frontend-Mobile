@@ -97,7 +97,7 @@ const MATCH_METRIC_LABELS_TR: Record<string, string> = {
     Assists: "Asistler",
     "Backward Passes": "Geri Paslar",
     "Passes In Final Third": "Son Üçüncü Bölge Pasları",
-    "Successful Crosses Percentage": "Başarılı Ortalar (%)",
+    "Successful Crosses Percentage": "İsabetli Ortalar (%)",
     Corners: "Kornerler",
     "Free Kicks": "Serbest Vuruşlar",
     "Goal Kicks": "Kale Vuruşları",
@@ -132,14 +132,14 @@ const MATCH_METRIC_LABELS_TR: Record<string, string> = {
     "Yellow Cards": "Sarı Kartlar",
     Yellowcards: "Sarı Kartlar",
     "Aerials Lost": "Kaybedilen Hava Topları",
-    Dispossessed: "Top Kaybı",
+    Dispossessed: "Baskı ile Top Kayıpları",
     "Dribbled Past": "Yenen Çalımlar",
     "Duels Lost": "Kaybedilen İkili Mücadeleler",
     "Error Lead To Goal": "Gole Yol Açan Hata",
     "Error Lead To Shot": "Şuta Yol Açan Hata",
     "Goals Conceded": "Yenen Goller",
     "Goalkeeper Goals Conceded": "Yenen Goller",
-    "Possession Lost": "Kaybedilen Toplar",
+    "Possession Lost": "Top Kayıpları",
     "Expected Goals (xG)": "Gol Beklentisi (xG)",
     "Expected Goals on Target (xGoT)": "İsabetli Şut Gol Beklentisi (xGoT)",
     "Expected Goals Penalties (pxG)": "Penaltı Gol Beklentisi (pxG)",
@@ -196,6 +196,7 @@ const MATCH_METRIC_CANONICAL_ALIASES: Record<string, string> = {
   "Aerials Won Percentage": "Aerials Won (%)",
   "Duels Won Percentage": "Duels Won (%)",
   "Successful Crosses Percentage": "Accurate Crosses (%)",
+  "Successful Crosses (%)": "Accurate Crosses (%)",
 };
 
 const MATCH_REPORT_SECTION_LABELS_TR: Record<string, string> = {

@@ -2226,7 +2226,7 @@ export const resources = {
         'Big Chances Missed': 'Kaçırılan Net Pozisyonlar',
         'Aerials Lost': 'Kaybedilen Hava Topları',
         'Aeriels Lost': 'Kaybedilen Hava Topları',
-        'Dispossessed': 'Baskı ile Top Kaybı',
+        'Dispossessed': 'Baskı ile Top Kayıpları',
         'Dribbled Past': 'Dripling ile Geçilme',
         'Turn Over': 'Top Kaybı',
         'Possession Lost': 'Topun Hakimiyetini Kaybetme',

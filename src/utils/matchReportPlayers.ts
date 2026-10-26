@@ -1,3 +1,4 @@
+import { normalizeCrossingMetrics } from "./crossingMetrics";
 import type { MatchReportLineup, MatchReportEvent } from '@/services/matchPool';
 export const playerGroups = [
   ['contribution_impact', 'Katkı ve Etki', 'Contribution & Impact'], ['goalkeeping', 'Kalecilik', 'Goalkeeping'],
@@ -28,5 +29,5 @@ export function setPieceTarget(name: string) {
   return 'contribution_impact';
 }
 export function playerSections(player: MatchReportLineup) {
-  return playerGroups.map(([key, tr, en]) => ({ key, tr, en, metrics: [...(player.categories?.[key] || []), ...(player.categories?.set_pieces || []).filter(m => setPieceTarget(m.name) === key)] })).filter(g => g.metrics.length);
+  return playerGroups.map(([key, tr, en]) => ({ key, tr, en, metrics: normalizeCrossingMetrics([...(player.categories?.[key] || []), ...(player.categories?.set_pieces || []).filter(m => setPieceTarget(m.name) === key)]) })).filter(g => g.metrics.length);
 }
