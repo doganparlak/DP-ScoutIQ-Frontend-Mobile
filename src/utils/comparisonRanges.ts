@@ -209,6 +209,16 @@ Object.keys(RANGES).forEach((label) => {
 });
 CANON_BY_KEY[metricKey("yellow_red_cards")] = "Yellow & Red Cards";
 CANON_BY_KEY[metricKey("shots_blocked")] = "Blocked Shots";
+// Report payloads and scouting datasets use different names for these same rates.
+// Resolve them centrally so all charts and comparisons use the existing scales.
+const METRIC_ALIASES: Record<string, string> = {
+  "On Target Goal Conversion (%)": "On-Target to Goal Conversion (%)",
+  "Accurate Crosses (%)": "Successful Crosses (%)",
+  "Successful Crosses Percentage": "Successful Crosses (%)",
+};
+Object.entries(METRIC_ALIASES).forEach(([alias, canonical]) => {
+  CANON_BY_KEY[metricKey(alias)] = canonical;
+});
 
 function metricKey(value: string) {
   return value

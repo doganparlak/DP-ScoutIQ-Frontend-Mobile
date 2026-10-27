@@ -102,7 +102,10 @@ export const DEFENDING_METRICS = [
 function mkKey(s: string) {
   return s.replace(/\s+/g, ' ').trim().toLowerCase();
 }
-const ALIAS: Record<string, string> = {};
+const ALIAS: Record<string, string> = {
+  [mkKey('Accurate Crosses (%)')]: 'Successful Crosses (%)',
+  [mkKey('Successful Crosses Percentage')]: 'Successful Crosses (%)',
+};
 
 /** === Static ranges per canonical metric (min: 0, max: from your data) === */
 const RANGES: Record<string, { min: number; max: number }> = {
