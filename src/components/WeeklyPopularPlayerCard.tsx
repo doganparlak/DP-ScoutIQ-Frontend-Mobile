@@ -1,9 +1,10 @@
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import type { MainTabsParamList } from '@/types';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
 import {
-incrementMatchupMissingScoreAddCount,
 incrementPlayerPoolMissingScoreActionCount,
 incrementReportActionCount,
-shouldShowMatchupMissingScoreInterstitial,
 shouldShowPlayerPoolMissingScoreActionInterstitial,
 shouldShowReportActionInterstitial,
 } from '@/ads/adGating';
@@ -33,8 +34,9 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
   const {ACCENT, themeColor} = themed;
 
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabsParamList>>();
   const matchup = useMatchup();
+  const matchupAds=useWorkspaceActionAd();
   const tutorial = useTutorial();
   const [shownPlayer, setShownPlayer] = React.useState(player);
   const [busy, setBusy] = React.useState(false);
@@ -44,7 +46,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
   const [reportPayload, setReportPayload] = React.useState<PlayerIdentityPayload | null>(null);
   const [reportOpen, setReportOpen] = React.useState(false);
   const [plan, setPlan] = React.useState<Plan>('Free');
-  const full = matchup.rows.slice(0, matchup.mode).every(Boolean);
+  const full = matchup.rows.filter(Boolean).length >= 4;
   const alreadyAdded = matchup.rows.some(row => row?.id === id);
   const hasScores = typeof shownPlayer.meta?.potential === 'number' && typeof shownPlayer.meta?.form === 'number';
 
@@ -60,16 +62,14 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
     } finally { lock.current = false; setBusy(false); }
   }
 
-  async function gate(action: 'matchup' | 'portfolio' | 'report') {
+  async function gate(action: 'portfolio' | 'report') {
     const current = (await getMe()).plan;
     const normalized: Plan = current === 'No Ads Monthly' || current === 'Pro Monthly' || current === 'Pro Yearly' ? current : 'Free';
     setPlan(normalized);
     if (normalized !== 'Free' || tutorial.active || (action !== 'report' && hasScores)) return true;
     const due = action === 'report'
       ? shouldShowReportActionInterstitial(await incrementReportActionCount())
-      : action === 'matchup'
-        ? shouldShowMatchupMissingScoreInterstitial(await incrementMatchupMissingScoreAddCount())
-        : shouldShowPlayerPoolMissingScoreActionInterstitial(await incrementPlayerPoolMissingScoreActionCount());
+      : shouldShowPlayerPoolMissingScoreActionInterstitial(await incrementPlayerPoolMissingScoreActionCount());
     if (!due || await showInterstitialAndWaitSafely({ action: 'popular_player', isActive: () => navigation.isFocused() })) return true;
     setUpsell(true);
     // Player-pool score actions continue with the upsell fallback; reports wait.
@@ -85,6 +85,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
   }
 
   return <View>
+    {matchupAds.fallback}
     <PlayerCard player={shownPlayer} similarPlayerId={id} similarDisabled={busy} visualTheme={{ cardBackground: themeColor('#19221D'), accent: ACCENT }}
       addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || full || alreadyAdded}
       reportState={report?.status === 'ready' ? 'ready' : 'idle'}
@@ -100,8 +101,9 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
         if (!Number.isSafeInteger(stableId) || (stableId ?? 0) <= 0) {
           throw new Error(t('matchupMissingStableId', 'Player identity is unavailable. Please search for the player again.'));
         }
-        await gate('matchup');
-        matchup.add({ id, player: await ensureScores() });
+        let added=false;
+        await matchupAds.run('weeklyPopularMatchupAdd',()=>{matchup.add({id,player:shownPlayer});added=true;});
+        if(added && matchup.rows.filter(Boolean).length===3)navigation.navigate('Matchup');
       }); }}
       onGenerateReport={async () => { await perform(async () => {
         if (!await gate('report')) return;

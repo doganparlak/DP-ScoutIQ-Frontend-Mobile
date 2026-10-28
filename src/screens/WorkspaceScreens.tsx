@@ -45,7 +45,7 @@ export function PortfolioWorkspaceScreen() {
       </View>
       <View style={styles.grid}>
         {fields.map(([key, label]) => <View style={styles.field} key={key}><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} value={values[key] ?? ''} onChangeText={value => update(key, value)} placeholder={label} placeholderTextColor={MUTED} style={styles.input} /></View>)}
-        {(['age', 'form', 'potential'] as const).map(key => <View style={styles.field} key={key}><Text style={styles.label}>{t(key, key)}</Text><View style={styles.range}>{['min', 'max'].map(bound => <TextInput key={bound} accessibilityLabel={`${t(key)} ${bound}`} keyboardType="number-pad" value={values[`${key}${bound}`] ?? ''} onChangeText={value => update(`${key}${bound}`, value.replace(/\D/g, '').slice(0, 3))} placeholder={bound === 'min' ? 'Min' : 'Max'} placeholderTextColor={MUTED} style={[styles.input, { flex: 1 }]} />)}</View></View>)}
+        {(['age'] as const).map(key => <View style={styles.field} key={key}><Text style={styles.label}>{t(key, key)}</Text><View style={styles.range}>{['min', 'max'].map(bound => <TextInput key={bound} accessibilityLabel={`${t(key)} ${bound}`} keyboardType="number-pad" value={values[`${key}${bound}`] ?? ''} onChangeText={value => update(`${key}${bound}`, value.replace(/\D/g, '').slice(0, 3))} placeholder={bound === 'min' ? 'Min' : 'Max'} placeholderTextColor={MUTED} style={[styles.input, { flex: 1 }]} />)}</View></View>)}
       </View>
       <View style={styles.range}>
         <View style={{ flex: 1, minWidth: 0 }}><PortfolioRoleFilter value={roles} onChange={setRoles} /></View>

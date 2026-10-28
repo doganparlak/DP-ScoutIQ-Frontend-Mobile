@@ -2,7 +2,7 @@ import ConnectedAccounts from '@/components/ConnectedAccounts';
 import ScoutWiseBrandMark from '@/components/ScoutWiseBrandMark';
 import ThemeToggle from '@/components/ThemeToggle';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { CircleHelp,CreditCard,LogOut } from "lucide-react-native";
+import { CircleHelp,CreditCard,LogOut,Gem,ChevronRight } from "lucide-react-native";
 import React from "react";
 import {
 ActivityIndicator,
@@ -23,6 +23,9 @@ import { getMe,updateMe,type Profile,type UILang } from "../services/api";
 
 type Props = {
   plan: Plan;
+  profile: Profile | null;
+  profileLoading: boolean;
+  onOpenPro: () => void;
   onLogout: () => void;
   onOpenPlans: () => void;
   onOpenHelp: () => void;
@@ -31,13 +34,16 @@ type Props = {
 
 export default function Account({
   plan,
+  profile,
+  profileLoading,
+  onOpenPro,
   onLogout,
   onOpenPlans,
   onOpenHelp,
   navigationLocked = false,
 }: Props) {
   const themed = useThemedStyles(getModuleTheme);
-  const {styles, MUTED, ACCENT} = themed;
+  const {styles, MUTED, ACCENT, FEATURE_COLORS} = themed;
 
   const [email, setEmail] = React.useState<string>("—");
   const [savingLanguage, setSavingLanguage] = React.useState(false);
@@ -74,6 +80,16 @@ export default function Account({
           ? t("proYearly", "Pro Yearly")
           : t("free", "Free");
 
+  const activePro = !!profile && (profile.plan === 'Pro Monthly' || profile.plan === 'Pro Yearly') &&
+    !!profile.subscriptionEndAt && new Date(profile.subscriptionEndAt).getTime() > Date.now();
+  const needsCredits = !profileLoading && !!profile && !activePro && (profile.freeChatMessagesRemaining ?? 0) <= 0;
+  const creditActionDisabled = navigationLocked || profileLoading || !profile;
+  const proCredits = profileLoading ? '…' : !profile ? '—' : activePro
+    ? (lang === 'tr' ? 'Sınırsız' : 'Unlimited')
+    : `${Math.max(0, profile.freeChatMessagesRemaining ?? 0)} ${lang === 'tr' ? 'kredi' : 'credits'}`;
+
+  const creditText = needsCredits ? `${proCredits} · ${lang === 'tr' ? 'Planı Yükselt' : 'Upgrade Plan'}` : proCredits;
+
   return (
     <View style={styles.card} accessibilityLabel={t("accountTitle", "Account")}>
       <View style={styles.welcomeRow}>
@@ -101,8 +117,8 @@ export default function Account({
       </Text>
       <Text style={styles.intro}>
         {lang === "tr"
-          ? "Portföylerin, raporların ve analizlerin bir arada."
-          : "Your portfolios, reports and analyses, together."}
+          ? "Oyuncu, takım ve maç keşfet; analizlerine buradan başla."
+          : "Discover players, teams and matches. Start your analysis here."}
       </Text>
       <View style={styles.preferences} onLayout={({ nativeEvent }) => {
         const nextWidth = nativeEvent.layout.width;
@@ -159,6 +175,15 @@ export default function Account({
           <View style={styles.displayPreferences}><ThemeToggle compact={compactPreferences} /></View>
         </View>
       </View>
+      <Pressable onPress={needsCredits ? onOpenPlans : onOpenPro} disabled={creditActionDisabled} accessibilityRole="button"
+        accessibilityLabel={`ScoutWise Pro: ${creditText}`}
+        accessibilityState={{disabled:creditActionDisabled}}
+        style={({ pressed }) => [styles.creditRow, (pressed || creditActionDisabled) && { opacity: 0.6 }]}>
+        <Gem size={18} color={FEATURE_COLORS.pro} />
+        <Text style={styles.creditLabel}>ScoutWise <Text style={{ color: FEATURE_COLORS.pro }}>Pro</Text></Text>
+        <Text style={[styles.creditValue, { color: FEATURE_COLORS.pro }]}>{creditText}</Text>
+        <ChevronRight size={16} color={MUTED} />
+      </Pressable>
       <View style={styles.actions}>
         <Pressable
           onPress={onOpenPlans}
@@ -195,7 +220,7 @@ export default function Account({
 
 
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
-  const {PANEL, LINE, TEXT, MUTED, ACCENT, CARD, themeColor} = colors;
+  const {PANEL, LINE, TEXT, MUTED, ACCENT, CARD, FEATURE_COLORS, themeColor} = colors;
 
   const styles = StyleSheet.create({
   card: {
@@ -290,6 +315,9 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   planDot: { height: 6, width: 6, borderRadius: 3, backgroundColor: ACCENT },
   planText: { color: ACCENT, fontWeight: "700", fontSize: 12, flexShrink: 1 },
+  creditRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: LINE, minHeight: 44 },
+  creditLabel: { color: TEXT, fontSize: 13, fontWeight: '600', flex: 1 },
+  creditValue: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -316,5 +344,5 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   actionText: { color: TEXT, fontSize: 13, fontWeight: "700", flexShrink: 1 },
   logoutIcon: { padding: 8, borderRadius: 12, backgroundColor: CARD },
 });
-  return {PANEL, LINE, TEXT, MUTED, ACCENT, CARD, styles, themeColor};
+  return {PANEL, LINE, TEXT, MUTED, ACCENT, CARD, FEATURE_COLORS, styles, themeColor};
 });

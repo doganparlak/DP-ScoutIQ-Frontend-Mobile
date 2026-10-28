@@ -13,26 +13,37 @@ const ROLE_ROWS = [
   ['LW', 'RW', 'CF'],
 ] as const;
 
-export default function PortfolioRoleFilter({ value, onChange }: {
+export default function PortfolioRoleFilter({ value, onChange, open:controlledOpen, onOpenChange, onDone, description, minSelections=0, hideField=false }: {
   value: string[];
   onChange: (roles: string[]) => void;
+  open?:boolean;
+  onOpenChange?:(open:boolean)=>void;
+  onDone?:()=>void;
+  hideField?:boolean;
+  description?:string;
+  minSelections?:number;
 }) {
   const themed = useThemedStyles(getModuleTheme);
-  const {styles, ACCENT, MUTED, TEXT} = themed;
+  const {styles, ACCENT, MUTED, TEXT, DANGER} = themed;
 
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith('tr');
-  const [open, setOpen] = React.useState(false);
+  const [localOpen,setLocalOpen]=React.useState(false);
+  const open=controlledOpen??localOpen;
+  const [validationAttempted,setValidationAttempted]=React.useState(false);
+  React.useEffect(()=>{if(open)setValidationAttempted(false);},[open]);
+  const selectionInvalid=value.length<minSelections;
+  const setOpen=(value:boolean)=>{setLocalOpen(value);onOpenChange?.(value);};
   const label = tr ? 'Roller' : 'Roles';
   const selectedLabel = ROLE_ROWS.flat().filter(role => value.includes(role)).join(', ') || t('contractAll', 'All');
   const close = () => setOpen(false);
 
   return <View style={styles.field}>
-    <Text style={styles.label}>{label}</Text>
+    {!hideField && <><Text style={styles.label}>{label}</Text>
     <Pressable testID="portfolio-roles" accessibilityRole="button" accessibilityLabel={`${label}: ${selectedLabel}`} accessibilityState={{ expanded: open }} onPress={() => { Keyboard.dismiss(); setOpen(true); }} style={styles.input}>
       <Text numberOfLines={1} style={[styles.value, { flex: 1 }, value.length > 0 && { color: ACCENT }]}>{selectedLabel}</Text>
       <ChevronDown size={16} color={MUTED} />
-    </Pressable>
+    </Pressable></>}
     <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
       <SafeAreaView style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityRole="button" accessibilityLabel={t('close', 'Close')} />
@@ -41,6 +52,7 @@ export default function PortfolioRoleFilter({ value, onChange }: {
             <Text style={styles.title}>{label}</Text>
             <Pressable testID="portfolio-roles-close" onPress={close} accessibilityRole="button" accessibilityLabel={t('close', 'Close')} style={styles.close}><X size={22} color={TEXT} /></Pressable>
           </View>
+          {!!description && <Text style={{color:MUTED,fontSize:12,lineHeight:18}}>{description}</Text>}
           <ScrollView contentContainerStyle={styles.grid} bounces={false}>
             {ROLE_ROWS.map((row, index) => <View key={index} style={styles.row}>
               {row.map(role => <Pressable key={role} testID={`portfolio-role-${role}`} accessibilityRole="checkbox" accessibilityLabel={role} accessibilityState={{ checked: value.includes(role) }} onPress={() => onChange(value.includes(role) ? value.filter(item => item !== role) : [...value, role])} style={({ pressed }) => [styles.role, value.includes(role) && styles.selected, pressed && { opacity: 0.75 }]}>
@@ -48,9 +60,10 @@ export default function PortfolioRoleFilter({ value, onChange }: {
               </Pressable>)}
             </View>)}
           </ScrollView>
+          {validationAttempted && selectionInvalid && <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={{color:DANGER,fontSize:12,lineHeight:18}}>{tr?'En az bir rol seçmelisin.':'Select at least one role.'}</Text>}
           <View style={styles.row}>
             <Pressable testID="portfolio-roles-clear" onPress={() => onChange([])} accessibilityRole="button" style={styles.action}><Text style={styles.value}>{tr ? 'Seçimi Temizle' : 'Clear Selection'}</Text></Pressable>
-            <Pressable testID="portfolio-roles-done" onPress={close} accessibilityRole="button" style={[styles.action, styles.selected]}><Text style={[styles.value, { color: ACCENT }]}>{tr ? 'Tamam' : 'Done'}</Text></Pressable>
+            <Pressable testID="portfolio-roles-done" onPress={()=>{if(selectionInvalid){setValidationAttempted(true);return;}close();onDone?.();}} accessibilityRole="button" style={[styles.action, styles.selected]}><Text style={[styles.value, { color: ACCENT }]}>{tr ? 'Tamam' : 'Done'}</Text></Pressable>
           </View>
         </View>
       </SafeAreaView>
@@ -60,7 +73,7 @@ export default function PortfolioRoleFilter({ value, onChange }: {
 
 
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
-  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
+  const {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, DANGER, themeColor} = colors;
 
   const styles = StyleSheet.create({
   field: { gap: 6 }, label: { color: MUTED, fontSize: 12 },
@@ -76,5 +89,5 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   selected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.12)', 'surface') },
   action: { flex: 1, minHeight: 44, padding: 10, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: LINE },
 });
-  return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, styles, themeColor};
+  return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, DANGER, styles, themeColor};
 });

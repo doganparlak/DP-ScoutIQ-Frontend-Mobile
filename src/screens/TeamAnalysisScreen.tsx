@@ -1,3 +1,5 @@
+import { readAnalysisTeam,writeAnalysisTeam } from '@/services/teamAnalysisCache';
+import { getTeamCard,getTeamSelectorOptions } from '@/services/teamPool';
 import { ContractDateFilter } from '@/components/ContractFilters';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import TeamAnalysisReportModal from "@/components/TeamAnalysisReportModal";
@@ -21,12 +23,12 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useFocusEffect,useNavigation,useRoute } from "@react-navigation/native";
 import {
 BarChart3,
-BookMarked,
 CalendarCheck2,
 Check,
 FileText,
 ListFilter,
 RotateCcw,
+Shield,
 ShieldCheck,
 Trash2,
 X,
@@ -93,11 +95,14 @@ export default function TeamAnalysisScreen() {
     route = useRoute<any>();
   const {team: sessionTeam,setTeam: setSessionTeam} = useTeamAnalysisSession();
   const incomingTeam = route.params?.team as Team | undefined;
-  const team = incomingTeam ?? sessionTeam;
+  const team = sessionTeam;
+  const sessionTeamRef=useRef(sessionTeam);sessionTeamRef.current=sessionTeam;
+  const cacheOwner=useRef<number|null>(null);
+  const handledTeam=useRef<Team|undefined>(undefined);
+  const [teamLoading,setTeamLoading]=useState(true);
+  const [teamError,setTeamError]=useState(false);
+  const [teamRetry,setTeamRetry]=useState(0);
   const pageScroll = useRef<ScrollView>(null);
-  useEffect(() => {
-    if (incomingTeam) setSessionTeam(incomingTeam);
-  }, [incomingTeam, setSessionTeam]);
   const { height } = useWindowDimensions();
   const reportRequest = useRef(0);
   const reportKey = useRef("");
@@ -109,12 +114,33 @@ export default function TeamAnalysisScreen() {
   const [reportMatches, setReportMatches] = useState<PlayedMatch[]>([]);
   useFocusEffect(useCallback(()=>{
     let active=true;
-    getMe().then(profile=>{
-      if(!active)return;
-      setPlan(profile.plan==='No Ads Monthly'||profile.plan==='Pro Monthly'||profile.plan==='Pro Yearly'?profile.plan:'Free');
-    }).catch(()=>{if(active)setPlan('Free');});
+    setTeamLoading(true);setTeamError(false);
+    void(async()=>{
+      try{
+        const profile=await getMe();
+        if(!active)return;
+        setPlan(profile.plan==='No Ads Monthly'||profile.plan==='Pro Monthly'||profile.plan==='Pro Yearly'?profile.plan:'Free');
+        const sameOwner=cacheOwner.current===profile.id;
+        if(!sameOwner)setSessionTeam(undefined);
+        cacheOwner.current=profile.id;
+        const incoming=incomingTeam!==handledTeam.current?incomingTeam:undefined;
+        let selected=incoming ?? (sameOwner?sessionTeamRef.current:undefined) ?? await readAnalysisTeam(profile.id);
+        if(!active)return;
+        if(!selected){
+          const options=await getTeamSelectorOptions();
+          const barcelona=options.teams.find(option=>normalizeSearchText(option.name).replace(/^fc\s+/,'')==='barcelona');
+          if(!barcelona)throw new Error('Default team unavailable');
+          selected=await getTeamCard(barcelona.id);
+        }
+        if(!active)return;
+        if(incoming)handledTeam.current=incoming;
+        setSessionTeam(selected);
+        void writeAnalysisTeam(profile.id,selected);
+      }catch{if(active)setTeamError(true);}
+      finally{if(active)setTeamLoading(false);}
+    })();
     return()=>{active=false;};
-  },[]));
+  },[incomingTeam,setSessionTeam,teamRetry]));
   const [matches, setMatches] = useState<PlayedMatch[]>([]),
     [ids, setIds] = useState<number[]>([]),
     [filters, setFilters] = useState<PlayedFilters>(EMPTY_PLAYED_FILTERS),
@@ -236,19 +262,19 @@ export default function TeamAnalysisScreen() {
       contentContainerStyle={s.page}
     >
       {ads.fallback}
-      <Frame title={team ? (tr ? "Takım Kartı" : "Team Card") : (tr ? "Takım Analiz Merkezi" : "Team Analysis Center")} Icon={ShieldCheck}>
-        {team ? (
+      <Frame title={team ? (tr ? "Takım Kartı" : "Team Card") : (tr ? "Takım Analiz Merkezi" : "Team Analysis Center")} Icon={ShieldCheck} action={<WorkspaceSourceActions header sources={[{label:tr?'Takım Havuzu':'Team Pool',Icon:Shield,onPress:()=>nav.navigate('TeamPool')}]}/> }>
+        {teamLoading && !team ? <ActivityIndicator color={ACCENT} style={{padding:20}}/> : teamError && !team ? <View style={{gap:12}}><Text style={{color:DANGER}}>{tr?'Takım yüklenemedi.':'Could not load team.'}</Text><Pressable onPress={()=>setTeamRetry(value=>value+1)}><Text style={{color:ACCENT}}>{tr?'Tekrar Dene':'Retry'}</Text></Pressable></View> : team ? (
           <TeamProfileCard team={team} tr={tr} />
         ) : (
           <View style={{gap: 16}}>
             <Text style={{color: MUTED, fontSize: 14, lineHeight: 21}}>
               {tr
-                ? 'Takım Havuzu veya Takım Portföyü’nden bir takım seç ve kartındaki “Takımı Analiz Et” butonuyla buraya ekle. Ardından maçlarını seçerek takımın performansını incele.'
-                : 'Choose a team from Team Pool or Team Portfolio and use Analyze Team on its card to add it here. Then select matches to explore the team’s performance.'}
+                ? 'Takım Havuzu veya Takım Portföyü’nden bir takım seç ve kartındaki “Analiz” butonuyla buraya ekle. Ardından maçlarını seçerek takımın performansını incele.'
+                : 'Choose a team from Team Pool or Team Portfolio and use Analyze on its card to add it here. Then select matches to explore the team’s performance.'}
             </Text>
             <WorkspaceSourceActions compact sources={[
-              {label: tr ? 'Takım Havuzu' : 'Team Pool', Icon: ShieldCheck, onPress: () => nav.navigate('TeamPool')},
-              {label: tr ? 'Takım Portföyü' : 'Team Portfolio', Icon: BookMarked, onPress: () => nav.navigate('TeamPortfolio')},
+              {label: tr ? 'Takım Havuzu' : 'Team Pool', Icon: Shield, onPress: () => nav.navigate('TeamPool')},
+              {label: tr ? 'Takım Portföyü' : 'Team Portfolio', Icon: ShieldCheck, onPress: () => nav.navigate('TeamPortfolio')},
             ]}/>
           </View>
         )}

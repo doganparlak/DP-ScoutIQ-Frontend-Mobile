@@ -1,3 +1,4 @@
+import { isInterstitialCoolingDown, markInterstitialShown } from './interstitialCooldown';
 import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 import { AppState, InteractionManager, Keyboard, Platform } from 'react-native';
 import { logAdLifecycle } from './logging';
@@ -74,7 +75,7 @@ export function prepareInterstitial(action = 'next_action') {
   // Never reload a cached ad or start a second load. Failures retry only at a future eligible action.
   void startLoad(action);
 }
-export type InterstitialResult = 'shown' | 'unavailable' | 'busy' | 'cancelled';
+export type InterstitialResult = 'shown' | 'cooldown' | 'unavailable' | 'busy' | 'cancelled';
 type ShowOptions = { action?: string; isActive?: () => boolean; presentationOwner?: symbol };
 
 export async function showInterstitial(options: ShowOptions = {}): Promise<InterstitialResult> {
@@ -85,6 +86,7 @@ export async function showInterstitial(options: ShowOptions = {}): Promise<Inter
   const owner = borrowed ? options.presentationOwner! : acquireAdPresentation();
   if (!owner) { logAdLifecycle('interstitial', 'show_skipped', { action, reason: 'busy' }); return 'busy'; }
   try {
+    if(await isInterstitialCoolingDown()){logAdLifecycle('interstitial','show_skipped',{action,reason:'global_cooldown'});return 'cooldown';}
     if (!await initializeAdvertising()) return active() ? 'unavailable' : 'cancelled';
     if (!active()) return 'cancelled';
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -107,6 +109,7 @@ export async function showInterstitial(options: ShowOptions = {}): Promise<Inter
       const subs: (() => void)[] = [];
       const finish = (result: InterstitialResult) => {
         if (finished) return;
+        if(opened){markInterstitialShown();result='shown';}
         finished = true; clearTimeout(timer); clearTimeout(delay);
         interaction.cancel(); subs.forEach(unsubscribe => unsubscribe()); appState.remove();
         // A cancelled pre-presentation attempt can still be reused.
@@ -141,7 +144,7 @@ export async function showInterstitial(options: ShowOptions = {}): Promise<Inter
         if (state !== 'active' && !showCalled) finish('cancelled');
       });
       subs.push(item.ad.addAdEventListener(AdEventType.OPENED, () => {
-        opened = true; clearTimeout(timer); logAdLifecycle('interstitial', 'opened', { action });
+        opened = true; markInterstitialShown(); clearTimeout(timer); logAdLifecycle('interstitial', 'opened', { action });
       }));
       subs.push(item.ad.addAdEventListener(AdEventType.CLOSED, () => {
         logAdLifecycle('interstitial', 'closed', { action }); finish(opened ? 'shown' : 'unavailable');
@@ -155,9 +158,9 @@ export async function showInterstitial(options: ShowOptions = {}): Promise<Inter
   } finally { if (!borrowed) releaseAdPresentation(owner); }
 }
 
-// Preserve legacy access rules. Cancellation is distinct from a failed ad: no upsell on navigation or competing presentations.
+// Cooldown permits the action without an ad or fallback. Navigation and competing presentations cancel it.
 export async function showInterstitialAndWaitSafely(options: ShowOptions = {}): Promise<boolean> {
   const result = await showInterstitial(options);
   if (result === 'busy' || result === 'cancelled' || AppState.currentState !== 'active' || options.isActive?.() === false) throw new AdFlowCancelledError();
-  return result === 'shown';
+  return result === 'shown' || result === 'cooldown';
 }

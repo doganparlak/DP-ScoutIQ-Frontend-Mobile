@@ -1,3 +1,4 @@
+import { sportmonksTeamImage } from '@/utils/sportmonksImages';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useIsFocused } from '@react-navigation/native';
 import { LockKeyhole } from 'lucide-react-native';
@@ -77,8 +78,8 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
     return () => {alive = false; clearTimeout(timer);};
   }, [leagueId, seasonId, scope, period, retry, focused, active]);
   const teams = data?.season.team_metrics || {};
-  const rows: LeagueStanding[] = official ? officialRows : Object.entries(teams).map(([id, team]) => ({teamId: Number(id), teamName: team.teamName, teamImageUrl: officialRows.find(row => String(row.teamId) === id)?.teamImageUrl || null,
-    position: null, played: team.matches, won: null, drawn: null, lost: null, goalsFor: null, goalsAgainst: null, goalDifference: null, points: null, form: null, standingRule: null}));
+  const rows: LeagueStanding[] = official ? officialRows : Object.entries(teams).map(([id, team]) => ({teamId: Number(id), teamName: team.teamName, teamImageUrl: officialRows.find(row => String(row.teamId) === id)?.teamImageUrl || sportmonksTeamImage(id) || null,
+    position: null, played: team.matches, won: team.results?.won??null, drawn: team.results?.drawn??null, lost: team.results?.lost??null, goalsFor: team.results?.goalsFor??null, goalsAgainst: team.results?.goalsAgainst??null, goalDifference: team.results?.goalDifference??null, points: null, form: null, standingRule: null}));
   const playing = rows.filter(row => (row.played || 0) > 0);
   const metrics = orderLeagueMetrics((data?.season.metric_catalog || []).filter(metric => metric.locked || (playing.length > 0 && (official ? playing.every(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null) : playing.some(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null)))), tr);
   const metric = metrics.find(item => item.key === metricKey && !item.locked);
@@ -115,7 +116,7 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
     </View>
     {!metric && <View style={shared.row}><Text style={[shared.text, {flex: 1}]}>{tr ? 'Takımların en iyi oyuncularını göster' : 'Show teams’ top players'}</Text><Switch accessibilityLabel={showBiweekly && canBiweekly ? (tr ? 'İki haftanın ve sezonun oyuncularını göster' : 'Show two-week and season players') : (tr ? 'Sezonun oyuncularını göster' : 'Show season players')} value={playersEnabled} onValueChange={setPlayersEnabled} trackColor={{false: MUTED, true: ACCENT}} /></View>}
     <View style={[shared.row, {justifyContent: 'flex-start', flexWrap: 'wrap'}]}>{official && !rules.length && <Text style={shared.hint}>{tr ? 'Bu tablo için özel sıralama kuralı bulunmuyor.' : 'No position rules are available for this table.'}</Text>}{rules.map(rule => <Text key={rule.label} style={[styles.rule, {color: rule.color, borderColor: rule.color}]}>{rule.label}</Text>)}</View>
-    <AdaptiveLeagueStandingsTable phaseScoped={!!scope && scope !== 'overall'} official={official} rows={ordered} teams={teams} metric={metric} perMatch={usePerMatch} tr={tr} playerView={playerView} showSeason={playerView} showBiweekly={playerView && showBiweekly && canBiweekly} seasonPlayers={seasonPlayers} biweeklyPlayers={biweeklyPlayers} seasonPending={seasonPending} biweeklyPending={biweeklyPending} unavailable={unavailable} onPlayer={setWinner} />
+    <AdaptiveLeagueStandingsTable summaryStats={scope==='overall' && !official} phaseScoped={!!scope && scope !== 'overall'} official={official} rows={ordered} teams={teams} metric={metric} perMatch={usePerMatch} tr={tr} playerView={playerView} showSeason={playerView} showBiweekly={playerView && showBiweekly && canBiweekly} seasonPlayers={seasonPlayers} biweeklyPlayers={biweeklyPlayers} seasonPending={seasonPending} biweeklyPending={biweeklyPending} unavailable={unavailable} onPlayer={setWinner} />
     {!official && !rows.length && !busy && <Status text={tr ? 'Bu aşamada henüz tamamlanan maç yok.' : 'No completed matches in this phase yet.'} />}
     <LeaguePerformanceUpgradeModal visible={focused && upgrade !== null} required={upgrade?.required || 'plus'} feature={upgrade?.feature || 'biweekly'} metricLabel={upgrade?.metricLabel} tr={tr} onClose={() => setUpgrade(null)} />
     {winner && <LeaguePlayerCardModal key={winner.playerId} winner={winner} onClose={() => setWinner(null)} />}

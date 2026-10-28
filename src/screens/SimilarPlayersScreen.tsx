@@ -1,11 +1,13 @@
+import { readSimilarReference,writeSimilarReference } from '@/services/similarReferenceCache';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { ContractDateFilter,ContractStatusFilter } from '@/components/ContractFilters';
 import { Action,Badge,SelectField,Selector,Status } from '@/components/LeaguePerformanceControls';
 import LeaguePlayerCardModal from '@/components/LeaguePlayerCardModal';
+import PlayerCard from '@/components/PlayerCard';
 import SimilarPlayersUpgradeModal from '@/components/SimilarPlayersUpgradeModal';
 import { TutorialPageGuide } from '@/components/Tutorial';
 import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
-import { getMe,getPlayerPoolOptions,type PlayerPoolFilterOptions } from '@/services/api';
+import { getMe,getPlayerPoolOptions,searchPlayerPool,type PlayerPoolFilterOptions } from '@/services/api';
 import { emptySimilarFilters,findSimilarPlayers,getSimilarEligibility,nextSimilarCount,similarFiltersValid,similarMoreAction,similarResultLimit,type SimilarFilters,type SimilarMatch,type SimilarReference } from '@/services/similarPlayers';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { portfolioViewportHeight } from '@/utils/portfolioLayout';
@@ -31,15 +33,44 @@ export default function SimilarPlayersScreen(){
   const route=useRoute<any>(),nav=useNavigation<any>(),ads=useWorkspaceActionAd();
   const resultScroll=React.useRef<ScrollView>(null),revealNewRows=React.useRef(false);
   const scroll=React.useRef<ScrollView>(null),mounted=React.useRef(true),epoch=React.useRef(0),searchLock=React.useRef(false);
-  const [reference,setReference]=React.useState<SimilarReference|null>(route.params?.reference??null),[eligibility,setEligibility]=React.useState<'idle'|'checking'|'eligible'|'insufficient'|'error'>('idle');
+  const [reference,setReference]=React.useState<SimilarReference|null>(null),[eligibility,setEligibility]=React.useState<'idle'|'checking'|'eligible'|'insufficient'|'error'>('idle');
   const [filters,setFilters]=React.useState<SimilarFilters>(emptySimilarFilters),[minAge,setMinAge]=React.useState(''),[maxAge,setMaxAge]=React.useState('');
   const [options,setOptions]=React.useState<PlayerPoolFilterOptions|null>(null),[optionsError,setOptionsError]=React.useState(false),[optionsRetry,setOptionsRetry]=React.useState(0),[selector,setSelector]=React.useState<'nationality'|'league'|null>(null);
   const [results,setResults]=React.useState<SimilarMatch[]|null>(null),[visibleCount,setVisibleCount]=React.useState(3),[limit,setLimit]=React.useState(3),[loading,setLoading]=React.useState(false),[error,setError]=React.useState(''),[searchedKey,setSearchedKey]=React.useState(''),[card,setCard]=React.useState<SimilarReference|null>(null);
+  const [referenceLoading,setReferenceLoading]=React.useState(true);
+  const referenceOwner=React.useRef<number|null>(null);
+  const referenceRef=React.useRef(reference);referenceRef.current=reference;
+  const handledReference=React.useRef<SimilarReference|undefined>(undefined);
   const [upgrade,setUpgrade]=React.useState<'plus'|'pro'|'done'|null>(null);
   React.useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;epoch.current++;};},[]);
   useFocusEffect(React.useCallback(()=>{let active=true;getMe().then(me=>{if(active){const cap=similarResultLimit(me.plan);setLimit(cap);setResults(rows=>rows?rows.slice(0,cap):null);setVisibleCount(count=>Math.min(count,cap));}}).catch(()=>{});return()=>{active=false;epoch.current++;setCard(null);setUpgrade(null);};},[]));
   React.useEffect(()=>{if(!reference)return;let active=true;setOptionsError(false);getPlayerPoolOptions().then(value=>{if(active)setOptions(value);}).catch(()=>{if(active)setOptionsError(true);});return()=>{active=false;};},[optionsRetry,!!reference]);
-  React.useEffect(()=>{if(route.params?.reference){setReference(route.params.reference);setResults(null);setError('');setSearchedKey('');setVisibleCount(3);setFilters(emptySimilarFilters());setMinAge('');setMaxAge('');}},[route.params?.reference?.id,route.params?.visitKey]);
+  useFocusEffect(React.useCallback(()=>{
+    let active=true;
+    setReferenceLoading(true);
+    void(async()=>{
+      try{
+        const me=await getMe();
+        if(!active)return;
+        const sameOwner=referenceOwner.current===me.id;
+        if(!sameOwner){setReference(null);setResults(null);setFilters(emptySimilarFilters());setMinAge('');setMaxAge('');setCard(null);epoch.current++;}
+        referenceOwner.current=me.id;
+        const incoming=route.params?.reference!==handledReference.current?route.params?.reference as SimilarReference|undefined:undefined;
+        let selected=incoming ?? (sameOwner?referenceRef.current:undefined) ?? await readSimilarReference(me.id);
+        if(!active)return;
+        if(!selected){
+          const candidates=await searchPlayerPool({name:'Cristiano Ronaldo',limit:10});
+          if(!active)return;
+          selected=candidates.find(row=>row.player.name.trim().toLowerCase()==='cristiano ronaldo')??null;
+          if(!selected)throw new Error('Default reference unavailable');
+        }
+        if(incoming){handledReference.current=incoming;epoch.current++;setResults(null);setError('');setSearchedKey('');setVisibleCount(3);setFilters(emptySimilarFilters());setMinAge('');setMaxAge('');}
+        setReference(selected);void writeSimilarReference(me.id,selected);
+      }catch{if(active)setError(tr?'Referans oyuncu yüklenemedi.':'Could not load reference player.');}
+      finally{if(active)setReferenceLoading(false);}
+    })();
+    return()=>{active=false;};
+  },[route.params?.reference,route.params?.visitKey]));
   React.useEffect(()=>{if(!reference||!focused)return;let alive=true;setEligibility('checking');getSimilarEligibility(reference.id).then(value=>{if(alive)setEligibility(value.eligible?'eligible':'insufficient');}).catch(()=>{if(alive)setEligibility('error');});return()=>{alive=false;};},[reference?.id,focused,optionsRetry]);
   const criteria:SimilarFilters={...filters,minAge:minAge.trim()?Number(minAge):undefined,maxAge:maxAge.trim()?Number(maxAge):undefined};
   const criteriaValid=similarFiltersValid(criteria)&&(!minAge||/^\d+$/.test(minAge))&&(!maxAge||/^\d+$/.test(maxAge));
@@ -56,13 +87,13 @@ export default function SimilarPlayersScreen(){
   function toggleOption(value:string){if(!selector)return;setFilters(current=>{const values=current[selector];if(!values.includes(value)&&values.length>=50){Alert.alert(tr?'Seçim sınırı':'Selection limit',tr?'En fazla 50 seçenek seçebilirsin.':'Select up to 50 options.');return current;}return {...current,[selector]:value?(values.includes(value)?values.filter(v=>v!==value):[...values,value]):[]};});}
   const shown=(results||[]).slice(0,Math.min(visibleCount,limit));
   return <ScrollView ref={scroll} style={{flex:1,backgroundColor:BG}} contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
-    {!reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><View style={{gap:16}}><Text style={s.caption}>{tr?'Oyuncu Havuzu, Oyuncu Portföyü veya ScoutWise Pro’dan bir oyuncu seç. Kartındaki “Benzeri” butonuyla alternatif profilleri keşfet.':'Choose a player from Player Pool, Player Portfolio or ScoutWise Pro. Use Similar on their card to explore alternative profiles.'}</Text><WorkspaceSourceActions sources={[
+    {referenceLoading && !reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><ActivityIndicator color={ACCENT} style={{padding:24}}/></Frame>:!reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><View style={{gap:16}}><Text style={s.caption}>{tr?'Oyuncu Havuzu, Oyuncu Portföyü veya ScoutWise Pro’dan bir oyuncu seç. Kartındaki “Benzeri” butonuyla alternatif profilleri keşfet.':'Choose a player from Player Pool, Player Portfolio or ScoutWise Pro. Use Similar on their card to explore alternative profiles.'}</Text><WorkspaceSourceActions sources={[
         {label:tr?'Oyuncu\nHavuzu':'Player\nPool',Icon:UserRound,onPress:()=>nav.navigate('Strategy')},
         {label:tr?'Oyuncu\nPortföyü':'Player\nPortfolio',Icon:BookMarked,onPress:()=>nav.navigate('Portfolio'),secondary:true},
         {label:'ScoutWise Pro',Icon:Gem,onPress:()=>nav.navigate('Chat',{screen:'ProHome'}),color:FEATURE_COLORS.pro,secondary:true},
       ]}/></View></Frame>:<>
-    <Frame title={tr?'Oyuncu Kartı':'Player Card'} Icon={UserRound}>
-      <LeaguePlayerCardModal key={reference.id} initialEntry={reference} inline actionsDisabled={loading||ads.busy} onClose={()=>{}}/>
+    <Frame title={tr?'Oyuncu Kartı':'Player Card'} Icon={UserRound} action={<WorkspaceSourceActions header sources={[{label:tr?'Oyuncu Havuzu':'Player Pool',Icon:UserRound,onPress:()=>nav.navigate('Strategy')}]} />}>
+      <LeaguePlayerCardModal key={reference.id} initialEntry={reference} inline actionsDisabled={loading||ads.busy} renderPlayerCard={props=><PlayerCard {...props} hideSimilar/>} onClose={()=>{}}/>
       {eligibility==='checking'&&<ActivityIndicator color={ACCENT} style={{paddingTop:12}}/>}
       {eligibility==='insufficient'&&<View style={{gap:12,marginTop:14}}><Status text={tr?'Bu oyuncu için güvenilir benzerlik analizi yapmaya yetecek veri bulunmuyor. Oyuncu Havuzu’ndaki başka bir kartın Benzeri butonuyla devam et.':'There is not enough data for reliable similarity analysis. Continue with Similar on another card in Player Pool.'}/><Action label={tr?'Oyuncu Havuzu’na Git':'Go to Player Pool'} onPress={()=>nav.navigate('Strategy')}/></View>}
       {eligibility==='error'&&<Action label={tr?'Veri kontrolünü tekrar dene':'Retry data check'} onPress={()=>setOptionsRetry(value=>value+1)}/>}

@@ -38,7 +38,6 @@ const items = [
   { route: 'Weekly', label: 'tabWeeklySearches', fallback: 'Weekly Searches', Icon: Search, group: 'interactionCenter', groupFallback: 'Interaction Center' },
   { route: 'ScorePrediction', label: 'scorePredictionTitle', fallback: 'Score Prediction League', Icon: Goal, group: '', groupFallback: '' },
   { route: 'DailyScout', label: 'dailyScoutChallengeTitle', fallback: 'Player Discovery League', Icon: Target, group: '', groupFallback: '' },
-  { route: 'LeaguePerformance', label: 'leaguePerformanceWorkspace', fallback: 'League Performance', Icon: Table2, group: 'organizationCenter', groupFallback: 'Organization Center' },
   { route: 'Strategy', label: 'tabPlayerPool', fallback: 'Player Pool', Icon: UserRound, group: 'dataCenter', groupFallback: 'Data Center' },
   { route: 'TeamPool', label: 'teamPoolWorkspace', fallback: 'Team Pool', Icon: Shield, group: '', groupFallback: '' },
   { route: 'LeaguePool', label: 'leaguePoolWorkspace', fallback: 'League Pool', Icon: Trophy, group: '', groupFallback: '' },
@@ -50,6 +49,7 @@ const items = [
   { route: 'Matchup', label: 'matchupWorkspace', fallback: 'Matchup Center', Icon: GitCompareArrows, group: 'analysisCenter', groupFallback: 'Analysis Center' },
   { route: 'SimilarPlayers', label: 'similarPlayersWorkspace', fallback: 'Similar Player Center', Icon: UsersRound, group: '', groupFallback: '' },
   { route: 'TeamAnalysis', label: 'teamAnalysisWorkspace', fallback: 'Team Analysis Center', Icon: BarChart3, group: '', groupFallback: '' },
+  { route: 'LeaguePerformance', label: 'leaguePerformanceWorkspace', fallback: 'League Analysis Center', Icon: Table2, group: '', groupFallback: '' },
   { route: 'ManagePlan', label: 'managePlan', fallback: 'Manage Plan', Icon: CreditCard, group: 'settingsGroup', groupFallback: 'Settings' },
   { route: 'HelpCenter', label: 'helpCenter', fallback: 'Help Center', Icon: CircleHelp, group: '', groupFallback: '' },
 ] as const;

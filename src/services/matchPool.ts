@@ -342,3 +342,12 @@ export type SavedPreMatchReport = {
 export const openSavedPreMatchReport = (id:number,tr:boolean) => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report?language=${tr?'tr':'en'}&lazy=true`, {});
 export const pollSavedPreMatchReport = (id:number,tr:boolean) => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report?language=${tr?'tr':'en'}&lazy=true`);
 export const ensureSavedPreMatchSection = (id:number,tr:boolean,section:'players'|'momentum'|'team_analysis') => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report/sections/${section}?language=${tr?'tr':'en'}`,{});
+
+export type TeamFixtureOptions = {
+  leagues: { id: number; name: string; country: string | null }[];
+  teams: { id: number; name: string; leagueId: number }[];
+};
+export const getTeamFixtureOptions = (leagueId?: number) =>
+  matchPoolRequest<TeamFixtureOptions>('/match-pool/team-options', { leagueId });
+export const searchTeamFixtures = (leagueId: number, teamId: number) =>
+  matchPoolRequest<{ fixtures: MatchFixture[] }>('/match-pool/team-search', { leagueId, teamId });

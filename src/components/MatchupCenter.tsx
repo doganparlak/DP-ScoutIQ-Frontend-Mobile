@@ -51,6 +51,8 @@ type Props = {
   onLaunchMatchup: () => void;
   launchDisabled?: boolean;
   launchLoading?: boolean;
+  launchNotice?: string;
+  sourceLabels?: Record<string, string>;
   onRemoveRow1: () => void;
   onRemoveRow2: () => void;
   onRemoveRow3?: () => void;
@@ -99,16 +101,6 @@ function rolePreviewLabels(row: SearchResultRow) {
 
 const matchupNameLabel = shortPlayer;
 
-function isValidScore(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0;
-}
-
-
-function formatScore(value: number) {
-  const rounded = Math.round(value);
-  return Number.isInteger(value) ? String(rounded) : String(rounded);
-}
-
 export default function MatchupCenter({
   row1,
   row2,
@@ -121,6 +113,8 @@ export default function MatchupCenter({
   onLaunchMatchup,
   launchDisabled = false,
   launchLoading = false,
+  launchNotice,
+  sourceLabels,
   onRemoveRow1,
   onRemoveRow2,
   onRemoveRow3,
@@ -132,7 +126,7 @@ export default function MatchupCenter({
   worldCupMode = false,
 }: Props) {
   const themed = useThemedStyles(getModuleTheme);
-  const {styles, DANGER_DARK, DANGER, scoreColor, ACCENT, FRAME_HEADING, MUTED, themeColor} = themed;
+  const {styles, DANGER_DARK, DANGER, ACCENT, FRAME_HEADING, MUTED, themeColor} = themed;
 
   const { t, i18n } = useTranslation();
   const launchEnabled = !tutorialActive || tutorialStep === 'launchMatchup';
@@ -174,15 +168,6 @@ export default function MatchupCenter({
     const roles = rolePreviewLabels(row);
     const entityAccent = row.player.entityType === 'league' ? themeColor('#38BDF8') : row.player.entityType === 'season' ? themeColor('#C084FC') : undefined;
     const entityStyle = entityAccent ? { borderColor: entityAccent, backgroundColor: `${entityAccent}1A` } : undefined;
-    const fullPotentialLabel = i18n.language?.startsWith('tr') ? 'POTANSİYEL' : t('potential', 'Potential');
-    const scores = [
-      isValidScore(row.player.meta?.potential)
-        ? { label: fullPotentialLabel, value: row.player.meta.potential }
-        : null,
-      isValidScore(row.player.meta?.form)
-        ? { label: t('form', 'Form'), value: row.player.meta.form }
-        : null,
-    ].filter(Boolean) as Array<{ label: string; value: number }>;
 
     return (
       <View style={[styles.slotWrap, styles.slotCard, theme && { borderColor: theme.line, backgroundColor: themeColor('rgba(22, 163, 74, 0.06)', 'surface') }, entityStyle]}>
@@ -251,37 +236,21 @@ export default function MatchupCenter({
           )}
         </Pressable>
         </View>
+        {(!row.player.entityType || row.player.entityType === 'player') && !worldCupMode && (
+          <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: themeColor('rgba(16,185,129,.3)', 'border') }}>
+            <Text style={{ color: themeColor('#10B981', 'text'), fontSize: 11, fontWeight: '700' }}>
+              {sourceLabels?.[row.id] || (i18n.language.startsWith('tr') ? 'Tüm veriler · Son 1 yıl' : 'All data · Last 1 year')}
+            </Text>
+          </View>
+        )}
         {row.player.entityType === 'season' && <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: themeColor('rgba(192,132,252,.3)', 'border') }}><Text style={{ color: themeColor('#C084FC', 'text'), fontSize: 11, fontWeight: '700' }}>{i18n.language.startsWith('tr') ? 'Sezon Verileri' : 'Season Data'} · {shortSeason(row.player.meta?.seasonName || '')} · {row.player.meta?.league}</Text></View>}
         {row.player.entityType === 'league' && <View style={{ padding: 8, borderTopWidth: 1, borderColor: themeColor('#38BDF84D', 'border'), gap: 4 }}>
-          <Text style={{ color: themeColor('#38BDF8', 'text'), fontSize: 11 }}>{i18n.language.startsWith('tr') ? 'Lig ortalaması' : 'League average'} · {row.player.meta?.playerCount ?? 0} {i18n.language.startsWith('tr') ? 'oyuncu' : 'players'}</Text>
+          <Text style={{ color: themeColor('#38BDF8', 'text'), fontSize: 11 }}>{i18n.language.startsWith('tr') ? 'Lig ortalaması' : 'League average'} · {row.player.meta?.playerCount ?? 0} {i18n.language.startsWith('tr') ? 'oyuncu' : 'players'} · {i18n.language.startsWith('tr') ? 'Son 1 yıl' : 'Last 1 year'}</Text>
         </View>}
-        {scores.length ? (
-          <View style={[styles.slotScoreStrip, theme && { borderTopColor: theme.line }]}>
-            {scores.map((score) => (
-              <View key={score.label} style={[styles.slotScoreCard, theme && { backgroundColor: theme.card, borderColor: theme.line }]}>
-                <View style={styles.slotScoreTopLine}>
-                  <Text numberOfLines={1} style={[styles.slotScoreLabel, theme && { color: theme.muted }]}>
-                    {score.label}
-                  </Text>
-                  <Text style={[styles.slotScoreValue, { color: scoreColor(score.value) }]}>
-                    {formatScore(score.value)}
-                  </Text>
-                </View>
-                <View style={styles.slotScoreTrack}>
-                  <View
-                    style={[
-                      styles.slotScoreFill,
-                      { width: `${Math.max(0, Math.min(100, Math.round(score.value)))}%`, backgroundColor: scoreColor(score.value) },
-                    ]}
-                  />
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
+
       </View>
     );
-  }, [t, theme, tutorialActive, worldCupMode, themed]);
+  }, [t, i18n.language, theme, tutorialActive, worldCupMode, themed, sourceLabels]);
 
   return (
     <>
@@ -317,6 +286,44 @@ export default function MatchupCenter({
             })}
           </View>}
         </View>
+
+        <TutorialHint
+          visible={!hideLaunchButton && tutorialStep === 'launchMatchup'}
+          title={t('tutorialLaunchMatchupTitle', 'Launch the matchup')}
+          body={t(
+            'tutorialLaunchMatchupBody',
+            'Both players are ready. Launch the comparison.',
+          )}
+          onSkipAll={onTutorialSkipAll}
+          targetLabel={t('tutorialPressLaunchMatchup', 'Press Launch Matchup')}
+          arrow="down"
+        />
+
+        {!hideLaunchButton && !!launchNotice && <Text style={{color:theme?.muted??MUTED,fontSize:12,lineHeight:18,marginBottom:10,textAlign:'center'}}>{launchNotice.split(/(PLUS|PRO)/g).map((part, index) => part === 'PLUS' || part === 'PRO'
+          ? <Text key={index} style={{ color: themeColor(part === 'PRO' ? '#4ADE80' : '#38BDF8', 'text'), fontWeight: '900' }}>{part}</Text>
+          : part)}</Text>}
+
+        {!hideLaunchButton && <Pressable
+          onPress={onLaunchMatchup}
+          disabled={!launchEnabled || launchDisabled || launchLoading}
+          style={({ pressed }) => [
+            styles.launchButton,
+            { marginTop: 0, marginBottom: 14 },
+            theme && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
+            (!launchEnabled || launchDisabled || launchLoading) && styles.launchButtonMuted,
+            pressed && styles.pressed,
+          ]}
+          accessibilityLabel={t('launchMatchup', 'Launch Matchup')}
+        >
+          {launchLoading ? (
+            <ActivityIndicator size="small" color={theme?.accent ?? ACCENT} />
+          ) : (
+            <Radar size={17} color={launchDisabled ? MUTED : (theme?.accent ?? ACCENT)} strokeWidth={2.2} />
+          )}
+          <Text style={[styles.launchButtonText, theme && { color: theme.accent }, launchDisabled && styles.launchButtonTextMuted]}>
+            {launchMatchupLabelUpper}
+          </Text>
+        </Pressable>}
 
         <View style={styles.table}>
           <View style={[styles.tableTopBorder, theme && { backgroundColor: theme.line }]} />
@@ -355,79 +362,28 @@ export default function MatchupCenter({
             <View style={styles.slotRowGap} />
           </View>
 
-          {renderSlot('1', row1, onRemoveRow1)}
-          <View style={styles.slotRowGap} />
-
-          <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
-            <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
-            <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}>
-              <Text style={[styles.vsText, theme && { color: theme.accent }]}>
-                {t('matchupVs', 'VS').toLocaleUpperCase(i18n.language?.startsWith('tr') ? 'tr-TR' : undefined)}
-              </Text>
-            </View>
-            <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
-          </View>
-
-          <View style={styles.slotRowGap} />
-          {renderSlot('2', row2, onRemoveRow2)}
-
-          {matchupMode >= 3 ? (
-            <>
-              <View style={styles.slotRowGap} />
-              <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
-                <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
-                <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}>
-                  <Text style={[styles.vsText, theme && { color: theme.accent }]}>
-                    {t('matchupVs', 'VS').toLocaleUpperCase(i18n.language?.startsWith('tr') ? 'tr-TR' : undefined)}
-                  </Text>
+          {[
+            {row:row1,remove:onRemoveRow1},{row:row2,remove:onRemoveRow2},
+            {row:row3,remove:onRemoveRow3},{row:row4,remove:onRemoveRow4},
+          ].filter(slot=>!!slot.row).map((slot,index)=><React.Fragment key={slot.row!.id}>
+            {index>0 && <>
+              <View style={styles.slotRowGap}/>
+              <View style={[styles.vsBand,theme && {borderColor:theme.line}]}>
+                <View style={[styles.vsLine,theme && {backgroundColor:theme.line}]}/>
+                <View style={[styles.vsBadge,theme && {backgroundColor:theme.card,borderColor:theme.accent2}]}>
+                  <Text style={[styles.vsText,theme && {color:theme.accent}]}>{t('matchupVs','VS').toLocaleUpperCase(i18n.language?.startsWith('tr')?'tr-TR':undefined)}</Text>
                 </View>
-                <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
+                <View style={[styles.vsLine,theme && {backgroundColor:theme.line}]}/>
               </View>
-              <View style={styles.slotRowGap} />
-              {renderSlot('3', row3 ?? null, onRemoveRow3 ?? (() => undefined))}
-            </>
-          ) : null}
-          {matchupMode === 4 && <><View style={styles.slotRowGap} />
-            <View style={[styles.vsBand, theme && { borderColor: theme.line }]}>
-              <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
-              <View style={[styles.vsBadge, theme && { backgroundColor: theme.card, borderColor: theme.accent2 }]}><Text style={[styles.vsText, theme && { color: theme.accent }]}>VS</Text></View>
-              <View style={[styles.vsLine, theme && { backgroundColor: theme.line }]} />
-            </View><View style={styles.slotRowGap} />{renderSlot("4", row4, onRemoveRow4 ?? (() => undefined))}</>}
+              <View style={styles.slotRowGap}/>
+            </>}
+            {renderSlot(String(index+1),slot.row,slot.remove??(()=>undefined))}
+          </React.Fragment>)}
+
           <View style={[styles.tableBottomBorder, theme && { backgroundColor: theme.line }]} />
         </View>
 
-        <TutorialHint
-          visible={!hideLaunchButton && tutorialStep === 'launchMatchup'}
-          title={t('tutorialLaunchMatchupTitle', 'Launch the matchup')}
-          body={t(
-            'tutorialLaunchMatchupBody',
-            'Both players are ready. Launch the comparison.',
-          )}
-          onSkipAll={onTutorialSkipAll}
-          targetLabel={t('tutorialPressLaunchMatchup', 'Press Launch Matchup')}
-          arrow="down"
-        />
 
-        {!hideLaunchButton && <Pressable
-          onPress={onLaunchMatchup}
-          disabled={!launchEnabled || launchDisabled || launchLoading}
-          style={({ pressed }) => [
-            styles.launchButton,
-            theme && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
-            (!launchEnabled || launchDisabled || launchLoading) && styles.launchButtonMuted,
-            pressed && styles.pressed,
-          ]}
-          accessibilityLabel={t('launchMatchup', 'Launch Matchup')}
-        >
-          {launchLoading ? (
-            <ActivityIndicator size="small" color={theme?.accent ?? ACCENT} />
-          ) : (
-            <Radar size={17} color={launchDisabled ? MUTED : (theme?.accent ?? ACCENT)} strokeWidth={2.2} />
-          )}
-          <Text style={[styles.launchButtonText, theme && { color: theme.accent }, launchDisabled && styles.launchButtonTextMuted]}>
-            {launchMatchupLabelUpper}
-          </Text>
-        </Pressable>}
       </View>
     </>
   );
@@ -436,12 +392,6 @@ export default function MatchupCenter({
 
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
-
-  function scoreColor(value: number) {
-  if (value < 50) return DANGER;
-  if (value < 70) return themeColor('#F59E0B');
-  return ACCENT;
-}
 
   const styles = StyleSheet.create({
   panel: {
@@ -519,54 +469,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   slotWrap: {
     width: '100%',
   },
-  slotScoreStrip: {
-    borderTopWidth: 1,
-    borderTopColor: LINE,
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  slotScoreCard: {
-    flex: 1,
-    minWidth: 0,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: LINE,
-    backgroundColor: themeColor('rgba(255,255,255,0.025)', 'surface'),
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-    gap: 6,
-  },
-  slotScoreTopLine: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  slotScoreLabel: {
-    flex: 1,
-    minWidth: 0,
-    color: MUTED,
-    fontSize: 9.5,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  slotScoreValue: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  slotScoreTrack: {
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: themeColor('#272a2a', 'surface'),
-    overflow: 'hidden',
-  },
-  slotScoreFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
+
   hsepThick: { height: 2, backgroundColor: LINE },
   cell: { minWidth: 0, paddingVertical: 10, justifyContent: 'center' },
   thText: { color: TEXT, fontSize: 12, lineHeight: 15, fontWeight: '800' },
@@ -704,5 +607,5 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     opacity: 0.9,
   },
 });
-  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, scoreColor, styles, themeColor};
+  return {FRAME_TITLE, FRAME_STRIPE, FRAME_HEADING, ACCENT, CARD, DANGER, DANGER_DARK, LINE, MUTED, PANEL, TEXT, styles, themeColor};
 });

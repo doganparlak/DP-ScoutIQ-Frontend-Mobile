@@ -17,6 +17,7 @@ import type { SearchResultRow } from "./CandidatePlayers";
 
 
 type Props = {
+  hideModeSwitch?: boolean;
   rows: (SearchResultRow | null)[];
   mode: 2 | 3 | 4;
   onMode: (mode: 2 | 3 | 4) => void;
@@ -24,8 +25,10 @@ type Props = {
   onCustom: (value: boolean) => void;
   sources: Record<string, string[]>;
   onSources: (value: Record<string, string[]>) => void;
+  onSourceOptions?: (value: Record<string, MatchupSource[]>) => void;
 };
 export default function MatchupWorkspaceControls({
+  hideModeSwitch = false,
   rows,
   mode,
   onMode,
@@ -33,6 +36,7 @@ export default function MatchupWorkspaceControls({
   onCustom,
   sources,
   onSources,
+  onSourceOptions,
 }: Props) {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, FRAME_HEADING, ACCENT, FRAME_TITLE, MUTED, TEXT, DANGER} = themed;
@@ -64,7 +68,11 @@ export default function MatchupWorkspaceControls({
       ),
     )
       .then((entries) => {
-        if (active) setOptions(Object.fromEntries(entries));
+        if (active) {
+          const next = Object.fromEntries(entries);
+          setOptions(next);
+          onSourceOptions?.(next);
+        }
       })
       .catch((e) => {
         if (active) setError(String(e.message || e));
@@ -75,7 +83,7 @@ export default function MatchupWorkspaceControls({
     return () => {
       active = false;
     };
-  }, [ids, open, retry]);
+  }, [ids, open, retry, onSourceOptions]);
   const update = (id: string, selected: string[]) =>
     onSources({ ...sources, [id]: selected });
   return (
@@ -97,6 +105,7 @@ export default function MatchupWorkspaceControls({
             {tr ? "Veri Kaynaklarını Ayarla" : "Configure Data Sources"}
           </Text>
         </Pressable>
+        {!hideModeSwitch && (
         <View style={styles.switchRow}>
           {([2, 3, 4] as const).map((value) => (
             <Pressable
@@ -115,6 +124,7 @@ export default function MatchupWorkspaceControls({
             </Pressable>
           ))}
         </View>
+        )}
         <View style={styles.switchRow}>
           {[false, true].map((value) => (
             <Pressable

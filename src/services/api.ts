@@ -329,6 +329,9 @@ function normalizeLeagueName(value: unknown): string | undefined {
 export type FavoritePlayer = PlayerContract & {
   performanceMetadata?: Record<string, unknown>;
   reportStats?: PlayerData['stats'];
+  positionCounts?: Record<string, number>;
+  positionCountTotal?: number;
+  positionNamesSeen?: string[];
   matchCount?: number;
   sportmonksId?: number;
   teamId?: number;
@@ -371,6 +374,7 @@ export type PlayerPoolSearchInput = {
 };
 
 export type PlayerPoolFilterOptions = {
+  teamsByLeague?: Record<string, string[]>;
   teams: string[];
   leagues: string[];
   nationalities: string[];
@@ -812,6 +816,9 @@ export async function getFavoritePlayers(): Promise<FavoritePlayer[]> {
       league: normalizeLeagueName(favorite.league),
       reportStats: performance?.stats || [],
       matchCount: performance?.meta?.matchCount,
+      positionCounts: performance?.meta?.positionCounts,
+      positionCountTotal: performance?.meta?.positionCountTotal,
+      positionNamesSeen: performance?.meta?.positionNamesSeen,
     };
   });
 }

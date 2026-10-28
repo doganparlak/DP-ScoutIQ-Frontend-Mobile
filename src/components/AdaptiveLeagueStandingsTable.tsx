@@ -1,13 +1,13 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import React from 'react';
-import { Pressable,ScrollView,StyleSheet,Text,useWindowDimensions,View } from 'react-native';
+import { Animated,Pressable,ScrollView,StyleSheet,Text,useWindowDimensions,View } from 'react-native';
 
 import type { LeagueBestPlayer,LeagueMetric,LeagueStanding,TeamSeasonMetrics } from '@/services/leaguePerformance';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
 import { getThemed_styles as __getThemed_shared,getThemed_standingRuleMeta as __getThemed_standingRuleMeta,Badge } from './LeaguePerformanceControls';
 
 type Props = {
-  official?: boolean; phaseScoped?: boolean; rows: LeagueStanding[]; teams: Record<string, TeamSeasonMetrics>; metric?: LeagueMetric;
+  summaryStats?: boolean; official?: boolean; phaseScoped?: boolean; rows: LeagueStanding[]; teams: Record<string, TeamSeasonMetrics>; metric?: LeagueMetric;
   playerView: boolean; perMatch: boolean; tr: boolean; showSeason: boolean; showBiweekly: boolean;
   seasonPlayers: Record<string, LeagueBestPlayer>; biweeklyPlayers: Record<string, LeagueBestPlayer>;
   seasonPending: boolean; biweeklyPending: boolean; unavailable: boolean;
@@ -23,26 +23,32 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
   const scale = Math.max(1, fontScale);
   const wide = width >= 620 * scale;
   const pinnedWidth = Math.min(width * (wide ? .24 : .32), 190 * scale);
-  const rankWidth = Math.min(26 * scale, pinnedWidth * .24);
+  const showRank = props.official !== false || !!props.metric;
+  const rankWidth = showRank ? Math.min(26 * scale, pinnedWidth * .24) : 0;
   const teamCell = {flex: 1, paddingRight: 6};
   const teamTextAlign = wide ? 'left' as const : 'center' as const;
   const availableWidth = width - pinnedWidth;
-  const statWidth = props.metric ? Math.max(48 * scale, availableWidth * .3) : Math.max(30 * scale, availableWidth / 6);
+  const playerColumns = Number(props.showBiweekly) + Number(props.showSeason);
+  const phaseOnlyPlayed = props.official === false && !props.summaryStats && !props.metric && playerColumns === 0;
+  const statWidth = phaseOnlyPlayed ? availableWidth : props.metric ? Math.max(48 * scale, availableWidth * .3) : Math.max(30 * scale, availableWidth / 6);
   const metricWidth = Math.max(100 * scale, availableWidth - statWidth);
-  const playerWidth = Math.max(96 * scale, (width - pinnedWidth) / (Number(props.showBiweekly) + Number(props.showSeason) || 1));
+  const playerWidth = Math.max(96 * scale, (availableWidth - (props.official === false ? statWidth : 0)) / (playerColumns || 1));
   const headerHeight = (props.playerView ? 56 : 44) * scale;
   const rowHeight = (props.showSeason || props.showBiweekly ? 132 : 80) * scale;
   const scrollRef = React.useRef<ScrollView>(null);
-  React.useEffect(() => {scrollRef.current?.scrollTo({x: 0, animated: false});}, [wide, props.metric?.key, props.playerView]);
-  const columns: Array<{key: 'played' | 'won' | 'drawn' | 'lost' | 'goalDifference' | 'points'; label: string}> = [
-    {key: 'played', label: props.tr ? 'O' : 'P'},
+  const horizontalOffset = React.useRef(new Animated.Value(0)).current;
+  const tableHeight = Math.min((56 + 4 * 132) * scale, headerHeight + props.rows.length * rowHeight);
+  React.useEffect(() => {scrollRef.current?.scrollTo({x: 0, animated: false});horizontalOffset.setValue(0);}, [wide, props.metric?.key, props.playerView]);
+  const columns: Array<{key: 'played' | 'won' | 'drawn' | 'lost' | 'goalDifference' | 'goalsFor' | 'goalsAgainst' | 'points'; label: string}> = [
+    {key: 'played', label: phaseOnlyPlayed ? (props.tr ? 'OYNANAN MAÇ' : 'MATCHES PLAYED') : (props.tr ? 'O' : 'P')},
     {key: 'won', label: props.tr ? 'G' : 'W'},
     {key: 'drawn', label: props.tr ? 'B' : 'D'},
     {key: 'lost', label: props.tr ? 'M' : 'L'},
+    ...(props.summaryStats ? [{key:'goalsFor' as const,label:props.tr?'AG':'GF'},{key:'goalsAgainst' as const,label:props.tr?'YG':'GA'}] : []),
     {key: 'goalDifference', label: props.tr ? 'AV' : 'GD'},
     {key: 'points', label: props.tr ? 'PUAN' : 'PTS'},
   ];
-  const visibleColumns = props.official === false ? columns.filter(column => column.key === 'played') : props.playerView ? [] : props.metric ? columns.filter(column => column.key === 'points') : columns;
+  const visibleColumns = props.summaryStats ? (props.playerView || props.metric ? columns.filter(column=>column.key==='played') : columns.filter(column=>column.key!=='points')) : props.official === false ? columns.filter(column => column.key === 'played') : props.playerView ? [] : props.metric ? columns.filter(column => column.key === 'points') : columns;
   const number = (n: number | null | undefined) => n == null ? '—' : n.toLocaleString(props.tr ? 'tr-TR' : 'en-GB', {maximumFractionDigits: 2});
   const extraWidth = (props.metric ? metricWidth : 0) + (props.showBiweekly ? playerWidth : 0) + (props.showSeason ? playerWidth : 0);
   const scrolls = statWidth * visibleColumns.length + extraWidth > width - pinnedWidth + 1;
@@ -50,25 +56,35 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
   return <View style={{gap: 8}}>
     {scrolls && <Text style={shared.hint}>{props.tr ? 'Diğer sütunlar için yatay kaydırın →' : 'Swipe for more columns →'}</Text>}
     <View onLayout={event => setMeasuredWidth(event.nativeEvent.layout.width)} style={styles.table}>
-      <View style={{width: pinnedWidth, backgroundColor: PANEL, borderRightWidth: 1, borderRightColor: LINE}}>
-        <View style={[styles.row, styles.header, {height: headerHeight}]}><Text style={[styles.heading, {width: rankWidth, paddingHorizontal: 2}]} accessibilityLabel={props.official === false ? (props.tr ? 'İstatistik sırası' : 'Statistical position') : (props.tr ? 'Resmî sıra' : 'Official position')}>#</Text><View style={teamCell}><Text style={[styles.heading, {textAlign: teamTextAlign, paddingHorizontal: 0}]}>{props.tr ? 'TAKIM' : 'TEAM'}</Text></View></View>
-        {props.rows.map(row => {
-          const rule = standingRuleMeta(row.standingRule, props.tr);
-          return <View key={`${row.position}:${row.teamId}`} style={[styles.row, {height: rowHeight}]}>
-            {rule && <View style={[styles.ruleStripe, {backgroundColor: rule.color}]} />}
-            <Text style={[styles.value, {width: rankWidth, color: rule?.color || TEXT}]}>{row.position ?? '—'}</Text>
-            <View style={[teamCell, {paddingVertical: 10, gap: 6}]}><View style={{gap: 5, alignItems: wide ? 'flex-start' : 'center'}}><Badge url={row.teamImageUrl} size={wide ? 24 : 20} /><Text numberOfLines={2} style={[shared.text, {fontSize: wide ? 12 : 10, lineHeight: wide ? 16 : 14, textAlign: teamTextAlign}]}>{row.teamName}</Text></View>{rule && wide && <Text numberOfLines={2} style={{color: rule.color, fontSize: 9, lineHeight: 12, paddingLeft: 2}}>{rule.label}</Text>}</View>
-          </View>;
-        })}
-      </View>
-      <ScrollView ref={scrollRef} horizontal style={{flex: 1}} showsHorizontalScrollIndicator={scrolls} nestedScrollEnabled bounces={false}>
-        <View>
-          <View style={[styles.row, styles.header, {height: headerHeight}]}>
+        <View style={[styles.row,styles.header,{height:headerHeight,width}]}>
+          <View style={{width:pinnedWidth,borderRightWidth:1,borderRightColor:LINE}}>
+        <View style={[styles.row, styles.header, {height: headerHeight}]}>{showRank && <Text style={[styles.heading, {width: rankWidth, paddingHorizontal: 2}]} accessibilityLabel={props.official === false ? (props.tr ? 'İstatistik sırası' : 'Statistical position') : (props.tr ? 'Resmî sıra' : 'Official position')}>#</Text>}<View style={teamCell}><Text style={[styles.heading, {textAlign: teamTextAlign, paddingHorizontal: 0}]}>{props.tr ? 'TAKIM' : 'TEAM'}</Text></View></View>
+          </View>
+          <View style={{width:availableWidth,height:headerHeight,overflow:'hidden'}}>
+          <Animated.View style={[styles.row, styles.header, {height:headerHeight,width:statWidth * visibleColumns.length + extraWidth,transform:[{translateX:Animated.multiply(horizontalOffset,-1)}]}]}>
             {visibleColumns.map(column => <Text key={column.key} style={[styles.heading, cell, column.key === 'points' && styles.points]}>{column.label}</Text>)}
             {props.metric && <Text numberOfLines={3} style={[styles.heading, {width: metricWidth, color: themeColor('#7DD3FC', 'text')}]}>{matchMetricLabel(props.metric.label, props.tr ? 'tr' : 'en').toLocaleUpperCase(props.tr ? 'tr-TR' : 'en-GB')}{props.perMatch && props.metric.aggregation === 'total' ? (props.tr ? ' / MAÇ' : ' / MATCH') : ''}</Text>}
             {props.showBiweekly && <Text style={[styles.heading, {width: playerWidth}]}>{props.tr ? 'İKİ HAFTANIN OYUNCUSU' : 'TWO-WEEK TOP PLAYER'}</Text>}
             {props.showSeason && <Text style={[styles.heading, {width: playerWidth}]}>{props.phaseScoped ? (props.tr ? 'AŞAMANIN OYUNCUSU' : 'PHASE TOP PLAYER') : (props.tr ? 'SEZONUN OYUNCUSU' : 'PLAYER OF THE SEASON')}</Text>}
+          </Animated.View>
           </View>
+        </View>
+      <ScrollView nestedScrollEnabled bounces={false} showsVerticalScrollIndicator={headerHeight + props.rows.length * rowHeight > tableHeight} style={{height:tableHeight-headerHeight}}>
+        <View style={{flexDirection:'row'}}>
+          <View style={{width:pinnedWidth,backgroundColor:PANEL,borderRightWidth:1,borderRightColor:LINE}}>
+
+        {props.rows.map(row => {
+          const rule = standingRuleMeta(row.standingRule, props.tr);
+          return <View key={`${row.position}:${row.teamId}`} style={[styles.row, {height: rowHeight}]}>
+            {rule && <View style={[styles.ruleStripe, {backgroundColor: rule.color}]} />}
+            {showRank && <Text style={[styles.value, {width: rankWidth, color: rule?.color || TEXT}]}>{row.position ?? '—'}</Text>}
+            <View style={[teamCell, {paddingVertical: 10, gap: 6}]}><View style={{gap: 5, alignItems: wide ? 'flex-start' : 'center'}}><Badge url={row.teamImageUrl} size={wide ? 24 : 20} /><Text numberOfLines={2} style={[shared.text, {fontSize: wide ? 12 : 10, lineHeight: wide ? 16 : 14, textAlign: teamTextAlign}]}>{row.teamName}</Text></View>{rule && wide && <Text numberOfLines={2} style={{color: rule.color, fontSize: 9, lineHeight: 12, paddingLeft: 2}}>{rule.label}</Text>}</View>
+          </View>;
+        })}
+          </View>
+          <Animated.ScrollView ref={scrollRef} horizontal style={{flex:1}} showsHorizontalScrollIndicator={false} nestedScrollEnabled bounces={false} scrollEventThrottle={16} onScroll={Animated.event([{nativeEvent:{contentOffset:{x:horizontalOffset}}}],{useNativeDriver:true})}>
+            <View style={{minWidth:availableWidth}}>
+
           {props.rows.map(row => {
             const team = props.teams[String(row.teamId)];
             const item = props.metric && team?.metrics[props.metric.key];
@@ -79,6 +95,8 @@ export default function AdaptiveLeagueStandingsTable(props: Props) {
               {props.showSeason && <View style={[styles.extra, {width: playerWidth}]}><TeamPlayer player={props.seasonPlayers[String(row.teamId)]} pending={props.seasonPending} unavailable={props.unavailable} tr={props.tr} onPlayer={props.onPlayer} /></View>}
             </View>;
           })}
+            </View>
+          </Animated.ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -104,7 +122,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const standingRuleMeta = __getThemed_standingRuleMeta(colors);
   const shared = __getThemed_shared(colors);
   const styles = StyleSheet.create({
-  table: {flexDirection: 'row', borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden'},
+  table: {borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden'},
   row: {flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: LINE},
   header: {backgroundColor: CARD},
   heading: {color: MUTED, fontSize: 10, fontWeight: '800', textAlign: 'center', paddingHorizontal: 3},

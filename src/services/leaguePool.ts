@@ -1,8 +1,11 @@
+import { isPlayerScore } from './leaguePlayerActions';
 import { canonicalizeLeagueMetricLabel } from "@/utils/leagueMetricLabels";
 import {
   leaguePoolRequest,
   getMatchupComparison,
   getMatchupSourcePlayer,
+  revealPlayerPoolPotential,
+  revealPlayerPoolForm,
   type MatchupComparisonResponse,
 } from "./api";
 import type { SearchResultRow } from "@/components/CandidatePlayers";
@@ -14,7 +17,7 @@ export type LeagueFilters = {
   countries: string[];
   positions: string[];
 };
-export type LeagueOptions = LeagueFilters;
+export type LeagueOptions = LeagueFilters & {leagueChoices: {name:string;country:string}[]};
 export type RawLeague = { id: string; content: Record<string, any> };
 const numeric = (value: unknown) => {
   const n = Number(value);
@@ -53,7 +56,7 @@ export function normalizeLeague(
       name: String(c.league_name || ""),
       stats,
       meta: {
-        leagueId: numeric(c.league_id) || undefined,
+        leagueId: numeric(c.league_id) || (row.id.startsWith('league:') ? numeric(row.id.split(':')[1]) : 0) || undefined,
         nationality: String(c.country_name || c.league_country_name || ""),
         league: String(c.league_name || ""),
         roles,
@@ -92,6 +95,16 @@ export async function searchLeagues(filters: LeagueFilters) {
   });
   return rows.map((row) => normalizeLeague(row, filters));
 }
+async function completeMatchupScores(row:SearchResultRow,worldCupMode:boolean):Promise<SearchResultRow>{
+  if(row.player.entityType==='league' || row.player.entityType==='season')return row;
+  const meta=row.player.meta;
+  const [potential,form]=await Promise.all([
+    isPlayerScore(meta?.potential)?Promise.resolve(meta.potential):revealPlayerPoolPotential(row.id,worldCupMode).then(r=>Math.round(r.potential)),
+    isPlayerScore(meta?.form)?Promise.resolve(meta.form):revealPlayerPoolForm(row.id,worldCupMode).then(r=>Math.round(r.form)),
+  ]);
+  if(!isPlayerScore(potential)||!isPlayerScore(form))throw new Error('Player scores could not be loaded. Please try again.');
+  return {...row,player:{...row.player,meta:{...meta,potential,form}}};
+}
 export async function getSharedMatchupComparison(
   rows: SearchResultRow[],
   worldCupMode = false,
@@ -99,6 +112,12 @@ export async function getSharedMatchupComparison(
 ): Promise<MatchupComparisonResponse> {
   if (rows.length < 2 || rows.length > 4)
     throw new Error("Select 2–4 entries.");
+  const prepared=await Promise.all(rows.map(row=>completeMatchupScores(row,worldCupMode)));
+  const withScores=(row:SearchResultRow,original?:SearchResultRow)=>{
+    const source=original??prepared.find(item=>item.id===row.id);
+    if(!source || source.player.entityType==='league' || source.player.entityType==='season')return row;
+    return {...row,player:{...row.player,meta:{...row.player.meta,potential:source.player.meta?.potential,form:source.player.meta?.form}}};
+  };
   if (
     rows.every(
       (row) =>
@@ -106,7 +125,7 @@ export async function getSharedMatchupComparison(
         !sources[row.id]?.length,
     )
   ) {
-    return getMatchupComparison(
+    const result=await getMatchupComparison(
       rows[0].id,
       rows[1].id,
       worldCupMode,
@@ -114,6 +133,7 @@ export async function getSharedMatchupComparison(
       rows[3]?.id,
       rows.map(row => row.player.meta?.sportmonksId),
     );
+    return {...result,player1:withScores(result.player1,prepared[0]),player2:withScores(result.player2,prepared[1]),...(result.player3?{player3:withScores(result.player3,prepared[2])}:{}),...(result.player4?{player4:withScores(result.player4,prepared[3])}:{})};
   }
   const entries = await Promise.all(
     rows.map(async (row) => {
@@ -160,9 +180,9 @@ export async function getSharedMatchupComparison(
     }),
   );
   return {
-    player1: entries[0],
-    player2: entries[1],
-    ...(entries[2] ? { player3: entries[2] } : {}),
-    ...(entries[3] ? { player4: entries[3] } : {}),
+    player1: withScores(entries[0],prepared[0]),
+    player2: withScores(entries[1],prepared[1]),
+    ...(entries[2] ? { player3: withScores(entries[2],prepared[2]) } : {}),
+    ...(entries[3] ? { player4: withScores(entries[3],prepared[3]) } : {}),
   };
 }

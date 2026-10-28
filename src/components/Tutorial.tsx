@@ -156,13 +156,11 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     { page: 'playerPool', route: 'Strategy', title: t('tabPlayerPool', 'Player Pool'), Icon: UserRound, summary: t('tutorialPlayerPoolSearch'), details: [] },
     { page: 'playerPool', route: 'Strategy', title: t('playerCard', 'Player Card'), Icon: UserRound, summary: t('tutorialPlayerPoolCard'), details: [] },
     { page: 'playerPool', route: 'Strategy', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialPlayerPoolMatchup'), details: [] },
-    { page: 'teamPool', route: 'TeamPool', title: t('teamPoolWorkspace', 'Team Pool'), Icon: Shield, summary: t('tutorialTeamPoolSearch'), details: [] },
+    { page: 'teamPool', route: 'TeamPool', title: t('teamPoolWorkspace', 'Team Pool'), Icon: Shield, summary: t('tutorialTeamPoolSearch'), details: [t('helpGuideTeamPool4')] },
     { page: 'teamPool', route: 'TeamPool', title: t('teamCard', 'Team Card'), Icon: Shield, summary: t('tutorialTeamPoolAnalyze'), details: [] },
     { page: 'leaguePool', route: 'LeaguePool', title: t('leaguePoolWorkspace', 'League Pool'), Icon: Trophy, summary: t('tutorialLeaguePoolSearch'), details: [] },
     { page: 'leaguePool', route: 'LeaguePool', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialLeaguePoolMatchup'), details: [] },
-    { page: 'leaguePerformance', route: 'LeaguePerformance', title: t('leaguePerformanceGuideSearchTitle'), Icon: Search, summary: t('tutorialLeaguePerformanceSearch'), details: [] },
-    { page: 'leaguePerformance', route: 'LeaguePerformance', title: t('leaguePerformanceGuideStandingsTitle'), Icon: Table2, summary: t('tutorialLeaguePerformanceStandings'), details: [] },
-    { page: 'matchPool', route: 'MatchPool', title: t('matchPoolWorkspace', 'Match Pool'), Icon: CalendarSearch, summary: t('tutorialMatchPoolSearch'), details: [] },
+    { page: 'matchPool', route: 'MatchPool', title: t('matchPoolWorkspace', 'Match Pool'), Icon: CalendarSearch, summary: t('tutorialMatchPoolSearch'), details: [t('helpGuideMatchPool4')] },
     { page: 'matchPool', route: 'MatchPool', title: t('matchCard', 'Match Card'), Icon: CalendarSearch, summary: t('tutorialMatchPoolCard'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('seasonDataWorkspace', 'Season Data'), Icon: Database, summary: t('tutorialSeasonSearch'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('careerHistory', 'Career History'), Icon: Database, summary: t('tutorialSeasonHistory'), details: [] },
@@ -176,6 +174,8 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     { page: 'similarPlayers', route: 'SimilarPlayers', title: t('similarPlayersResultsTitle'), Icon: UsersRound, summary: t('tutorialSimilarPlayersResults'), details: [] },
     { page: 'teamAnalysis', route: 'TeamAnalysis', title: t('teamAnalysisWorkspace', 'Team Analysis Center'), Icon: BarChart3, summary: t('helpGuideTeamAnalysisSummary'), details: [t('helpGuideTeamAnalysis1'), t('helpGuideTeamAnalysis2')] },
     { page: 'teamAnalysis', route: 'TeamAnalysis', title: t('teamAnalysisWorkspace', 'Team Analysis Center'), Icon: BarChart3, summary: t('helpGuideTeamAnalysis3'), details: [] },
+    { page: 'leaguePerformance', route: 'LeaguePerformance', title: t('leaguePerformanceGuideSearchTitle'), Icon: Table2, summary: t('tutorialLeaguePerformanceSearch'), details: [] },
+    { page: 'leaguePerformance', route: 'LeaguePerformance', title: t('leaguePerformanceGuideStandingsTitle'), Icon: Table2, summary: t('tutorialLeaguePerformanceStandings'), details: [] },
   ], [t]);
 
   const current = guides[guideIndex] || guides[0];

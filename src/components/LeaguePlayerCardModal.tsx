@@ -1,3 +1,5 @@
+import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import { useNavigation } from '@react-navigation/native';
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
 import { isAdFlowCancelled } from '@/ads/presentation';
 import { useTutorial } from '@/components/Tutorial';
@@ -29,6 +31,8 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
   const upsellShowing = React.useRef(false);
   const mounted = React.useRef(true);
   const matchup = useMatchup();
+  const matchupAds=useWorkspaceActionAd();
+  const matchupNavigation=useNavigation<any>();
   const currentMatchup = React.useRef(matchup);
   currentMatchup.current = matchup;
   const [entry, setEntry] = React.useState<Entry | null>(null);
@@ -75,7 +79,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     setUpsellOpen(false);
     setTimeout(() => {upsellShowing.current = false; if (mounted.current) setCardVisible(true);}, 450);
   };
-  const full = matchup.rows.slice(0, matchup.mode).every(Boolean);
+  const full = matchup.rows.filter(Boolean).length >= 4;
   const alreadyAdded = !!entry && matchup.rows.some(row => row?.id === entry.id);
   async function ensureScores(forPortfolio = false): Promise<Entry> {
     if (!entry) throw new Error(tr ? 'Oyuncu kartı yüklenemedi.' : 'Player card unavailable.');
@@ -91,12 +95,13 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     return enriched;
   }
   async function run(kind: 'portfolio' | 'matchup' | 'report') {
+    const fillsLastSlot=kind==='matchup' && !proMode && currentMatchup.current.rows.filter(Boolean).length===3;
     if (locked.current || actionsDisabled || !entry) return false;
     if (kind === 'matchup') {
       const latest = currentMatchup.current;
       if (latest.rows.some(row => row?.id === entry.id)) {onMatchupAdded?.(); return true;}
-      if (latest.rows.slice(0, latest.mode).every(Boolean)) {
-        Alert.alert(tr ? 'Eşleşme alanı dolu' : 'Comparison is full', tr ? 'Eşleşme Merkezi’nde bir oyuncuyu kaldırıp tekrar dene.' : 'Remove a player in Matchup Center and try again.');
+      if (latest.rows.filter(Boolean).length >= 4) {
+        onClose();matchupNavigation.navigate('Matchup');
         return false;
       }
       const stableId = entry.player.meta?.sportmonksId;
@@ -108,6 +113,15 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     locked.current = true; setBusy(true);
     let success = false, openedReport = false;
     try {
+      if(kind==='matchup' && !proMode){
+        await matchupAds.run('leaguePlayerMatchupAdd',()=>{
+          const latest=currentMatchup.current;
+          if(latest.rows.filter(Boolean).length>=4 || latest.rows.some(row=>row?.id===entry.id))return false;
+          latest.add(entry);success=true;
+        },hideCardForPresentation);
+        if(success){onMatchupAdded?.();if(fillsLastSlot){onClose();matchupNavigation.navigate('Matchup');}}
+        return success;
+      }
       const profile = await getMe();
       const paid = profile.plan === 'No Ads Monthly' || profile.plan === 'Pro Monthly' || profile.plan === 'Pro Yearly';
       setPlan(paid ? profile.plan as Plan : 'Free');
@@ -124,7 +138,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
         success = true;
       } else if (kind === 'matchup') {
         const latest = currentMatchup.current;
-        if (!latest.rows.slice(0, latest.mode).every(Boolean) && !latest.rows.some(row => row?.id === enriched.id)) {
+        if (latest.rows.filter(Boolean).length < 4 && !latest.rows.some(row => row?.id === enriched.id)) {
           latest.add(enriched);
           success = true;
         }
@@ -153,13 +167,14 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
       locked.current = false; setBusy(false);
       if (mounted.current && !openedReport && !upsellShowing.current) setCardVisible(true);
     }
-    if (success && kind === 'matchup') onMatchupAdded?.();
+    if (success && kind === 'matchup') {onMatchupAdded?.();if(fillsLastSlot){onClose();matchupNavigation.navigate('Matchup');}}
     return success;
   }
-  const playerCard = entry ? <PlayerCard hideScores={proMode} proActions={proMode} onFindSimilar={onFindSimilar} onCheckFit={onCheckFit} player={entry.player} similarPlayerId={entry.id} similarDisabled={busy || actionsDisabled} beforeFindSimilar={async()=>{if(!inline){onClose();await new Promise<void>(resolve=>setTimeout(resolve,350));}}} titleAlign="left" addFavoriteDisabled={busy || actionsDisabled} onAddFavorite={() => run('portfolio')} onGenerateReport={async () => {await run('report');}} reportState={busy ? 'loading' : report?.status === 'ready' ? 'ready' : 'idle'} reportDisabled={busy || actionsDisabled} matchupDisabled={busy || actionsDisabled || full || alreadyAdded} onMatchup={async () => {await run('matchup');}} /> : null;
+  const playerCard = entry ? <PlayerCard onManageMatchup={()=>{onClose();matchupNavigation.navigate('Matchup');}} hideScores={proMode} proActions={proMode} onFindSimilar={onFindSimilar} onCheckFit={onCheckFit} player={entry.player} similarPlayerId={entry.id} similarDisabled={busy || actionsDisabled} beforeFindSimilar={async()=>{if(!inline){onClose();await new Promise<void>(resolve=>setTimeout(resolve,350));}}} titleAlign="left" addFavoriteDisabled={busy || actionsDisabled} onAddFavorite={() => run('portfolio')} onGenerateReport={async () => {await run('report');}} reportState={busy ? 'loading' : report?.status === 'ready' ? 'ready' : 'idle'} reportDisabled={busy || actionsDisabled} matchupDisabled={busy || actionsDisabled || full || alreadyAdded} onMatchup={async () => {await run('matchup');}} /> : null;
   const cardBody = (entry ? (renderPlayerCard ? renderPlayerCard(playerCard!.props) : playerCard) : <Status busy={!error} error={error} text={error ? (tr ? 'Bu oyuncu henüz oyuncu havuzunda mevcut değil veya kartı yüklenemedi.' : 'This player is not yet available in the player pool or the card could not be loaded.') : (tr ? 'Oyuncu kartı yükleniyor…' : 'Loading player card…')} />);
   const cardContent = inline ? <View style={{paddingBottom:8}}>{cardBody}</View> : <ScrollView contentContainerStyle={{paddingBottom:8}}>{cardBody}</ScrollView>;
   return <>
+    {matchupAds.fallback}
     {inline ? cardContent : <Modal transparent visible={focused && cardVisible && !reportOpen} animationType="fade" onRequestClose={close}>
       <View style={styles.backdrop}><View style={styles.panel} accessibilityViewIsModal>
         <View style={styles.heading}><UserRound size={20} color={ACCENT} /><Text style={[FRAME_TITLE, {flex: 1}]}>{t('playerCard', 'Player Card')}</Text><Pressable accessibilityRole="button" accessibilityLabel={t('closePlayerCard', 'Close player card')} onPress={close} hitSlop={10} style={{padding: 6}}><X size={22} color={DANGER} /></Pressable></View>

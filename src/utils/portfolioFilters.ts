@@ -20,7 +20,7 @@ export function matchesPortfolioFilters(player: PortfolioPlayer, filters: Portfo
     if (key === 'name') return playerNameMatchesSearch(actual, values[key] || '');
     return !values[key] || fold(actual ?? '').includes(fold(values[key]));
   })) return false;
-  for (const key of ['age', 'form', 'potential'] as const) {
+  for (const key of ['age'] as const) {
     const value = player[key];
     for (const bound of ['min', 'max'] as const) {
       const limit = values[`${key}${bound}`];

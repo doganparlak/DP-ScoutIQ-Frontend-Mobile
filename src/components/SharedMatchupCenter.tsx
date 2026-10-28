@@ -1,3 +1,5 @@
+import { comparisonSourceShortLabel } from '@/utils/comparisonSourceLabel';
+import { matchupUpgrade } from '@/utils/matchupAccess';
 import {
 incrementMatchupLaunchCount,
 shouldShowMatchupLaunchInterstitial,
@@ -9,13 +11,14 @@ import { useMatchup } from "@/context/MatchupContext";
 import {
 getMe,
 type MatchupComparisonResponse,
+type MatchupSource,
 type Plan,
 } from "@/services/api";
 import { getSharedMatchupComparison } from "@/services/leaguePool";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { preserveComparisonIdentity } from "@/utils/comparisonGroups";
 import { useFocusEffect,useNavigation } from "@react-navigation/native";
-import { ArrowUpRight,BadgeCheck,BookMarked,Database,Gem,Trophy,UserRound,UsersRound } from "lucide-react-native";
+import { ArrowUpRight,BadgeCheck,ClipboardList,Database,Gem,Trophy,UserRound,UsersRound } from "lucide-react-native";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Alert,Modal,Pressable,StyleSheet,Text,View } from "react-native";
@@ -40,8 +43,14 @@ export default function SharedMatchupCenter({
   const tutorial = useTutorial();
   const [custom, setCustom] = React.useState(false);
   const [sources, setSources] = React.useState<Record<string, string[]>>({});
+  const [sourceOptions, setSourceOptions] = React.useState<Record<string, MatchupSource[]>>({});
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
+  const sourceLabels = React.useMemo(() => Object.fromEntries(
+    Object.entries(sources).map(([id, selected]) => [id, selected.length
+      ? ([...new Set((sourceOptions[id] || []).filter(source => selected.includes(source.key)).map(comparisonSourceShortLabel))].join(' · ') || (tr ? 'Seçili veriler' : 'Selected data')) + (tr ? ' · Son 1 yıl' : ' · Last 1 year')
+      : (tr ? 'Tüm veriler · Son 1 yıl' : 'All data · Last 1 year')]),
+  ), [sources, sourceOptions, tr]);
   const navigation = useNavigation<any>();
   const shared = useMatchup();
   const [plan, setPlan] = React.useState<Plan | null>(null);
@@ -67,8 +76,6 @@ export default function SharedMatchupCenter({
             me.plan === "Pro Monthly" ||
             me.plan === "Pro Yearly";
           setPlan(paid ? (me.plan as Plan) : "Free");
-          if (!paid) shared.setMode(2);
-          if (me.plan === "No Ads Monthly" && shared.mode === 4) shared.setMode(3);
           if (me.plan !== "Pro Monthly" && me.plan !== "Pro Yearly") setCustom(false);
         })
         .catch(() => {
@@ -83,23 +90,28 @@ export default function SharedMatchupCenter({
       };
     }, [shared.mode, shared.setMode]),
   );
+  const slotIdentity=shared.rows.map(row=>row?.id??'').join('|');
   React.useEffect(() => {
     request.current++;
     setOpen(false);
     setData(null);
     setLoading(false);
-  }, [shared.rows, shared.mode, sources]);
+  }, [slotIdentity, shared.mode, sources]);
   const entries = shared.rows
-    .slice(0, shared.mode)
     .filter((row): row is SearchResultRow => !!row);
   const needsPlayers = entries.length < 2;
+  const planRequirement = plan ? matchupUpgrade(entries.length,plan) : null;
+  const launchNotice = planRequirement === 'four'
+    ? (tr ? '4’lü karşılaştırma için PRO gerekir.' : 'A 4-way comparison requires PRO.')
+    : planRequirement === 'three'
+      ? (tr ? '3’lü karşılaştırma için PLUS veya PRO gerekir.' : 'A 3-way comparison requires PLUS or PRO.')
+      : undefined;
   const playerSources = [
     { route: 'Strategy', label: tr ? 'Oyuncu\nHavuzu' : 'Player\nPool', Icon: UserRound },
     { route: 'LeaguePool', label: tr ? 'Lig\nHavuzu' : 'League\nPool', Icon: Trophy },
     { route: 'SeasonData', label: tr ? 'Sezon\nVerileri' : 'Season\nData', Icon: Database },
   ] as const;
   const resolvePlan = async () => {
-    if (plan) return plan;
     try {
       const me = await getMe();
       const next: Plan =
@@ -156,13 +168,15 @@ export default function SharedMatchupCenter({
     setCustom(true);
   };
   const launch = async () => {
-    if (entries.length !== shared.mode || loading) return;
+    if (entries.length < 2 || loading) return;
     if (!workspace) {
       navigation.navigate("Matchup");
       return;
     }
     const currentPlan = await resolvePlan();
     if (!currentPlan || launchLock.current) return;
+    const requiredUpgrade=matchupUpgrade(entries.length,currentPlan);
+    if(requiredUpgrade){setUpgrade(requiredUpgrade);return;}
     launchLock.current = true;
     const id = ++request.current;
     setLoading(true);
@@ -184,6 +198,12 @@ export default function SharedMatchupCenter({
       const next = await getSharedMatchupComparison(entries, false, sources);
       if (id === request.current) {
         setData(next);
+        const resultRows=[next.player1,next.player2,next.player3,next.player4];
+        shared.refresh(entries.map((entry,index)=>{
+          if(entry.player.entityType==='league'||entry.player.entityType==='season')return entry;
+          const meta=resultRows[index]?.player.meta;
+          return {...entry,player:{...entry.player,meta:{...entry.player.meta,potential:meta?.potential??entry.player.meta?.potential,form:meta?.form??entry.player.meta?.form}}};
+        }));
         if (tutorial.active && tutorial.stage === "playerPool")
           tutorial.setPlayerPoolStep("comparison");
       }
@@ -205,7 +225,7 @@ export default function SharedMatchupCenter({
       return fetched ?? null;
     return {
       ...fetched,
-      player: preserveComparisonIdentity(fetched.player, slot.player),
+      player: preserveComparisonIdentity(fetched.player, {...slot.player,meta:{...slot.player.meta,potential:fetched.player.meta?.potential??slot.player.meta?.potential,form:fetched.player.meta?.form??slot.player.meta?.form}}),
     };
   };
   return (
@@ -215,10 +235,12 @@ export default function SharedMatchupCenter({
           rows={shared.rows}
           mode={shared.mode}
           onMode={changeMode}
+          hideModeSwitch
           custom={custom}
           onCustom={(value) => void changeCustom(value)}
           sources={sources}
           onSources={setSources}
+          onSourceOptions={setSourceOptions}
         />
       )}
       {workspace && <TutorialPageGuide page="matchup" frame={0} onShow={tutorialOnShow} />}
@@ -231,13 +253,13 @@ export default function SharedMatchupCenter({
             <Text style={[FRAME_TITLE, { flex: 1 }]}>
               {entries.length === 0
                 ? (tr ? 'Karşılaştırmaya Başla' : 'Start Comparing')
-                : (tr ? 'Bir Oyuncu Daha Ekle' : 'Add Another Player')}
+                : (tr ? 'Bir Kayıt Daha Ekle' : 'Add Another Entry')}
             </Text>
           </View>
           <Text style={styles.body}>
-            {tr
-              ? 'Bir kaynaktan oyuncu seç ve kartındaki eşleşme butonuyla buraya ekle.'
-              : 'Choose a player from a source and add them here using the matchup button on their card.'}
+            {entries.length === 1
+              ? (tr ? 'Karşılaştırmak için bir kayıt daha ekle.' : 'Add one more entry to compare.')
+              : (tr ? 'Bir kaynaktan oyuncu seç ve kartındaki eşleşme butonuyla buraya ekle.' : 'Choose a player from a source and add them here using the matchup button on their card.')}
           </Text>
           <View style={styles.sourceActions}>
             {playerSources.map(({ route, label, Icon }) => (
@@ -259,40 +281,41 @@ export default function SharedMatchupCenter({
           <View style={styles.sourceActions}>
             <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Chat', { screen: 'ProHome' })}
               style={({ pressed }) => [styles.sourceAction, styles.secondaryAction, pressed && { opacity: 0.7 }]}>
-              <View style={styles.sourceActionTop}>
-                <View style={[styles.sourceIcon, { backgroundColor: `${FEATURE_COLORS.pro}14` }]}><Gem size={20} color={FEATURE_COLORS.pro} /></View>
-                <ArrowUpRight size={14} color={MUTED} />
-              </View>
-              <Text style={styles.sourceActionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>ScoutWise <Text style={{ color: FEATURE_COLORS.pro }}>Pro</Text></Text>
+              <View style={[styles.sourceIcon, { backgroundColor: `${FEATURE_COLORS.pro}14` }]}><Gem size={20} color={FEATURE_COLORS.pro} /></View>
+              <Text style={[styles.sourceActionText,styles.secondaryActionText]} numberOfLines={2} maxFontSizeMultiplier={1.5}>ScoutWise <Text style={{ color: FEATURE_COLORS.pro }}>Pro</Text></Text>
+              <ArrowUpRight size={14} color={MUTED}/>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Portfolio')}
               style={({ pressed }) => [styles.sourceAction, styles.secondaryAction, pressed && { opacity: 0.7 }]}>
-              <View style={styles.sourceActionTop}>
-                <View style={styles.sourceIcon}><BookMarked size={20} color={ACCENT} /></View>
-                <ArrowUpRight size={14} color={MUTED} />
-              </View>
-              <Text style={styles.sourceActionText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.5}>{tr ? 'Oyuncu Portföyü' : 'Player Portfolio'}</Text>
+              <View style={styles.sourceIcon}><ClipboardList size={20} color={ACCENT} /></View>
+              <Text style={[styles.sourceActionText,styles.secondaryActionText]} numberOfLines={2} maxFontSizeMultiplier={1.5}>{tr ? 'Oyuncu Portföyü' : 'Player Portfolio'}</Text>
+              <ArrowUpRight size={14} color={MUTED}/>
             </Pressable>
           </View>
         </View>
       )}
-      <MatchupCenter
+      {(!workspace || entries.length > 0) && <MatchupCenter
         row1={shared.rows[0]}
         row2={shared.rows[1]}
         row3={shared.rows[2]}
         row4={shared.rows[3]}
+        sourceLabels={sourceLabels}
         matchupMode={shared.mode}
-        hideModeSwitch={workspace}
+        hideModeSwitch
         hideLaunchButton={workspace && needsPlayers}
         onMatchupModeChange={changeMode}
         onLaunchMatchup={launch}
-        launchDisabled={entries.length !== shared.mode}
+        launchDisabled={entries.length < 2}
         launchLoading={loading}
+        launchNotice={launchNotice}
+        tutorialStep={tutorial.active && tutorial.stage==='playerPool' ? tutorial.playerPoolStep : null}
+        tutorialActive={tutorial.active && tutorial.stage==='playerPool'}
+        onTutorialSkipAll={()=>void tutorial.skipTutorial()}
         onRemoveRow1={() => shared.removeAt(0)}
         onRemoveRow2={() => shared.removeAt(1)}
         onRemoveRow3={() => shared.removeAt(2)}
         onRemoveRow4={() => shared.removeAt(3)}
-      />
+      />}
       <ComparisonModal
         customRadarMode={custom}
         visible={open}
@@ -391,7 +414,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   sourceActionTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   sourceIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: themeColor('rgba(22,163,74,0.10)', 'surface'), alignItems: 'center', justifyContent: 'center' },
   sourceActionText: { minHeight: 36, color: TEXT, fontSize: 12, lineHeight: 18, fontWeight: '700' },
-  secondaryAction: { borderColor: LINE, backgroundColor: CARD },
+  secondaryAction: { minHeight:64, flexDirection:'row',alignItems:'center',gap:8,borderColor:LINE,backgroundColor:CARD },
+  secondaryActionText:{flex:1,minWidth:0,minHeight:0,lineHeight:16},
   backdrop: {
     flex: 1,
     justifyContent: "center",

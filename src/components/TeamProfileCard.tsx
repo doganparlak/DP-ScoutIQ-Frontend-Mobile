@@ -8,6 +8,7 @@ Check,
 FileText,
 Globe2,
 MapPin,
+ListChecks,
 ShieldCheck,
 Trophy,
 UserCog,
@@ -19,6 +20,7 @@ export default function TeamProfileCard({
   team,
   tr,
   onAnalyze,
+  onFixtures,
   onSave,
   onOpenReport,
   saved = false,
@@ -28,6 +30,7 @@ export default function TeamProfileCard({
   team: Team;
   tr: boolean;
   onAnalyze?: () => void;
+  onFixtures?: () => void;
   onSave?: () => void;
   onOpenReport?: () => void;
   saved?: boolean; saving?: boolean; reportBusy?: boolean;
@@ -37,10 +40,11 @@ export default function TeamProfileCard({
 
   return (
     <>
-      {(onAnalyze || onSave || onOpenReport) && <View style={s.actions}>
-        {onSave && <Pressable accessibilityRole="button" disabled={saved || saving} accessibilityState={{disabled: saved || saving, busy: saving}} onPress={onSave} style={[s.button, (saved || saving) && {opacity: .65}]}>{saved ? <Check size={18} color={ACCENT} /> : <BookmarkPlus size={18} color={ACCENT} />}<Text style={s.actionText}>{saved ? (tr ? 'Kaydedildi' : 'Saved') : saving ? (tr ? 'Kaydediliyor…' : 'Saving…') : (tr ? 'Kaydet' : 'Save')}</Text></Pressable>}
-        {onOpenReport && <Pressable accessibilityRole="button" disabled={reportBusy} onPress={onOpenReport} style={[s.button, reportBusy && {opacity: .5}]}><FileText size={18} color={ACCENT} /><Text style={s.actionText}>{reportBusy ? (tr ? 'Rapor yükleniyor…' : 'Loading report…') : (tr ? 'Raporu Aç' : 'Open Report')}</Text></Pressable>}
-        {onAnalyze && <Pressable accessibilityRole="button" onPress={onAnalyze} style={s.button}><BarChart3 size={18} color={ACCENT} /><Text style={s.actionText}>{tr ? 'Takımı Analiz Et' : 'Analyze Team'}</Text></Pressable>}
+      {(onAnalyze || onSave || onOpenReport || onFixtures) && <View style={s.actions}>
+        {onSave && <Pressable accessibilityRole="button" disabled={saved || saving} accessibilityState={{disabled: saved || saving, busy: saving}} onPress={onSave} style={[s.button, {flex:1.2}, (saved || saving) && {opacity: .65}]}>{saved ? <Check size={18} color={ACCENT} /> : <BookmarkPlus size={18} color={ACCENT} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={s.actionText}>{saved ? (tr ? 'Kaydedildi' : 'Saved') : saving ? (tr ? 'Kaydediliyor…' : 'Saving…') : (tr ? 'Kaydet' : 'Save')}</Text></Pressable>}
+        {onFixtures && <Pressable accessibilityRole="button" onPress={onFixtures} style={s.button}><ListChecks size={18} color={ACCENT}/><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={s.actionText}>{tr ? 'Fikstür' : 'Fixtures'}</Text></Pressable>}
+        {onOpenReport && <Pressable accessibilityRole="button" disabled={reportBusy} onPress={onOpenReport} style={[s.button, reportBusy && {opacity: .5}]}><FileText size={18} color={ACCENT} /><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={s.actionText}>{reportBusy ? (tr ? 'Rapor yükleniyor…' : 'Loading report…') : (tr ? 'Raporu Aç' : 'Open Report')}</Text></Pressable>}
+        {onAnalyze && <Pressable accessibilityRole="button" onPress={onAnalyze} style={s.button}><BarChart3 size={18} color={ACCENT} /><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={s.actionText}>{tr ? 'Analiz' : 'Analyze'}</Text></Pressable>}
       </View>}
     <View style={s.card}>
       <View style={s.identity}>
@@ -126,7 +130,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     paddingHorizontal: 6,
     paddingVertical: 9,
     flexDirection: "row",
-    gap: 8,
+    gap: 5,
     alignItems: "center",
     justifyContent: "center",
   },

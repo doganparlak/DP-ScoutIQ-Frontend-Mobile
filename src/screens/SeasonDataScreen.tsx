@@ -1,8 +1,12 @@
+import { readSeasonSearch, writeSeasonSearch } from '@/services/seasonDataCache';
+import { recordRecentSearch } from '@/services/recentSearches';
+import { cleanImageUrl } from '@/utils/sportmonksImages';
+import SeasonMetricCategory from '@/components/SeasonMetricCategory';
+import { normalizeSearchText, optionMatchesSearch } from '@/utils/searchSuggestions';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import ComparisonUnitSwitch from "@/components/ComparisonUnitSwitch";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
-import SharedMatchupCenter from "@/components/SharedMatchupCenter";
 import { TutorialPageGuide } from "@/components/Tutorial";
 import { useMatchup } from "@/context/MatchupContext";
 import {
@@ -18,7 +22,6 @@ type SeasonPlayerRows,
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import type { MetricUnit } from "@/utils/comparisonGroups";
 import {
-convertSeasonMetric,
 filterSeasonRows,
 seasonMatchupRow,
 seasonMetricGroups,
@@ -48,6 +51,9 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
 ActivityIndicator,
+FlatList,
+Keyboard,
+Image,
 Alert,
 Modal,
 Pressable,
@@ -92,6 +98,16 @@ function Frame({
     </View>
   );
 }
+function PlayerHeading({ name, imageUrl }: {name:string;imageUrl?:string|null}) {
+  const {styles} = useThemedStyles(getModuleTheme);
+  const uri=cleanImageUrl(imageUrl);
+  const [failed,setFailed]=React.useState(false);
+  React.useEffect(()=>setFailed(false),[uri]);
+  return <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
+    {uri && !failed && <Image source={{uri}} accessibilityLabel={name} resizeMode="cover" onError={()=>setFailed(true)} style={{width:44,height:44,borderRadius:22}}/>}
+    <Text style={[styles.playerName,{flex:1}]}>{name}</Text>
+  </View>;
+}
 function Status({
   message,
   busy,
@@ -126,18 +142,21 @@ function Choice({
   value,
   options,
   onChange,
+  playerStyle = false,
 }: {
+  playerStyle?: boolean;
   label: string;
   value: string;
   options: string[];
   onChange: (value: string) => void;
 }) {
   const themed = useThemedStyles(getModuleTheme);
-  const {styles, MUTED, FRAME_HEADING, FRAME_TITLE, DANGER, ACCENT} = themed;
+  const {styles, MUTED, TEXT, LINE, FRAME_HEADING, FRAME_TITLE, DANGER, ACCENT} = themed;
 
   const [open, setOpen] = React.useState(false),
     [query, setQuery] = React.useState("");
   const insets = useSafeAreaInsets();
+  const {height} = useWindowDimensions();
   const { i18n } = useTranslation();
   const choose = (v: string) => {
     onChange(v);
@@ -150,12 +169,13 @@ function Choice({
         accessibilityRole="button"
         accessibilityLabel={label}
         onPress={() => {
+          Keyboard.dismiss();
           setQuery("");
           setOpen(true);
         }}
-        style={styles.inputRow}
+        style={[styles.inputRow,playerStyle && {borderRadius:12,paddingHorizontal:12}]}
       >
-        <Text numberOfLines={1} style={[styles.text, { flex: 1 }]}>
+        <Text numberOfLines={1} style={[styles.text, { flex: 1 },playerStyle && {fontSize:14,color:value?TEXT:MUTED}]}>
           {value || label}
         </Text>
         <ChevronDown size={16} color={MUTED} />
@@ -172,9 +192,9 @@ function Choice({
             { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 },
           ]}
         >
-          <View style={styles.modal}>
-            <View style={FRAME_HEADING}>
-              <Text style={[FRAME_TITLE, { flex: 1 }]}>{label}</Text>
+          <View style={[styles.modal,playerStyle && {borderColor:LINE,maxHeight:height*.8,gap:0}]} accessibilityViewIsModal>
+            <View style={[FRAME_HEADING,playerStyle && {marginBottom:12}]}>
+              <Text style={[FRAME_TITLE, { flex: 1 },playerStyle && {color:TEXT,fontSize:16,fontWeight:'800'}]}>{label}</Text>
               <Pressable
                 accessibilityLabel={
                   i18n.language.startsWith("tr") ? "Kapat" : "Close"
@@ -182,17 +202,22 @@ function Choice({
                 onPress={() => setOpen(false)}
                 hitSlop={12}
               >
-                <X color={DANGER} size={22} />
+                <X color={playerStyle?ACCENT:DANGER} size={22} />
               </Pressable>
             </View>
             <TextInput
-              autoFocus
+              autoFocus={!playerStyle}
               value={query}
               onChangeText={setQuery}
               placeholder={i18n.language.startsWith("tr") ? "Ara" : "Search"}
               placeholderTextColor={MUTED}
-              style={styles.input}
+              style={[styles.input,playerStyle && {borderRadius:12,marginVertical:12,fontSize:14,paddingHorizontal:12}]}
             />
+            {playerStyle ? <FlatList data={options.filter(v=>optionMatchesSearch(v,normalizeSearchText(query)))} keyExtractor={v=>v} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}
+              ListHeaderComponent={<Pressable style={[styles.input,{borderRadius:12,paddingHorizontal:12}]} onPress={()=>choose('')}><Text style={{color:ACCENT}}>{i18n.language.startsWith('tr')?'Seçimi temizle':'Clear selection'}</Text></Pressable>}
+              ListEmptyComponent={<Text style={[styles.muted,{padding:12}]}>{i18n.language.startsWith('tr')?'Sonuç bulunamadı.':'No results found.'}</Text>}
+              renderItem={({item})=><Pressable accessibilityRole="radio" accessibilityState={{selected:value===item}} style={[styles.input,{borderRadius:12,paddingHorizontal:12},value===item && {borderColor:ACCENT}]} onPress={()=>choose(item)}><Text style={{color:TEXT,fontWeight:'700'}}>{item}</Text></Pressable>}/>
+              : (
             <ScrollView keyboardShouldPersistTaps="handled">
               <Pressable style={styles.option} onPress={() => choose("")}>
                 <Text style={styles.green}>
@@ -214,6 +239,8 @@ function Choice({
                   </Pressable>
                 ))}
             </ScrollView>
+            )}
+
           </View>
         </View>
       </Modal>
@@ -305,6 +332,7 @@ export default function SeasonDataScreen() {
     [team, setTeam] = React.useState(""),
     [competition, setCompetition] = React.useState(""),
     [unit, setUnit] = React.useState<MetricUnit>("perMatch");
+  const cacheOwner = React.useRef<number | null>(null);
   const searchVersion = React.useRef(0),
     rowVersion = React.useRef(0);
   const [optionsError, setOptionsError] = React.useState("");
@@ -312,12 +340,39 @@ export default function SeasonDataScreen() {
     React.useCallback(() => {
       let active = true;
       getMe()
-        .then((me) => {
+        .then(async (me) => {
           if (!active) return;
           const nextPlan: Plan =
             me.plan === "No Ads Monthly" || me.plan === "Pro Monthly" || me.plan === "Pro Yearly"
               ? me.plan
               : "Free";
+          if (cacheOwner.current !== me.id) {
+            cacheOwner.current = null;
+            const version = ++searchVersion.current;
+            rowVersion.current++;
+            setQuery('');setCountry('');setCandidates([]);setCandidate(null);setData(null);setSelected(null);setAggregate(null);setSearched(false);
+            const cached = await readSeasonSearch(me.id);
+            if (!active || searchVersion.current !== version) return;
+            if (cached) {
+              cacheOwner.current = me.id;
+              setQuery(cached.query);setCountry(cached.country);setCandidates(cached.candidates);setCandidate(cached.candidate);setData(cached.data);setSelected(cached.selected);setSearched(true);
+            }else{
+              setRowsLoading(true);
+              try{
+                const candidates=await searchSeasonPlayers('Lionel Messi');
+                if(!active || searchVersion.current!==version)return;
+                const messi=candidates.find(player=>normalizeSearchText(player.displayName)==='lionel messi');
+                if(!messi)throw new Error('Default player unavailable');
+                const data=await getSeasonPlayerRows(messi.playerId);
+                if(!active || searchVersion.current!==version)return;
+                const selected=data.rows.find(row=>row.teamName===data.player.latestTeam && row.seasonName===data.player.latestSeason)??data.rows[0]??null;
+                cacheOwner.current=me.id;
+                setQuery('Lionel Messi');setCandidates(candidates);setCandidate(messi);setData(data);setSelected(selected);setSearched(true);
+                void writeSeasonSearch(me.id,{isDefault:true,query:'Lionel Messi',country:'',candidates,candidate:messi,data,selected});
+              }catch(error){if(active && searchVersion.current===version)setRowsError(errorText(error));}
+              finally{if(active && searchVersion.current===version)setRowsLoading(false);}
+            }
+          }
           setPlan(nextPlan);
           setPlanResolved(true);
           if (nextPlan !== "Free") setShowPlanNudge(false);
@@ -366,8 +421,16 @@ export default function SeasonDataScreen() {
     setSearching(true);
     try {
       await ads.run('seasonSearch', async () => {
+      const owner = (await getMe()).id;
       const result = await searchSeasonPlayers(query, country);
-      if (version === searchVersion.current) setCandidates(result);
+      if (version === searchVersion.current) {
+        cacheOwner.current = owner;
+        setCandidates(result);
+        setCandidate(null);setData(null);setSelected(null);setAggregate(null);
+        rowVersion.current++;
+        void writeSeasonSearch(owner, {query, country, candidates:result, candidate:null, data:null, selected:null})
+          .then(() => recordRecentSearch(owner, 'season'));
+      }
       });
     } catch (e) {
       if (version === searchVersion.current) setSearchError(errorText(e));
@@ -388,8 +451,14 @@ export default function SeasonDataScreen() {
     setTeam("");
     setCompetition("");
     try {
+      const owner = (await getMe()).id;
       const result = await getSeasonPlayerRows(candidate.playerId);
-      if (version === rowVersion.current) setData(result);
+      if (version === rowVersion.current) {
+        cacheOwner.current = owner;
+        setData(result);
+        void writeSeasonSearch(owner, {query, country, candidates, candidate, data:result, selected:null})
+          .then(() => recordRecentSearch(owner, 'season'));
+      }
     } catch (e) {
       if (version === rowVersion.current) setRowsError(errorText(e));
     } finally {
@@ -399,6 +468,7 @@ export default function SeasonDataScreen() {
   const selectCareerRow = async (row: SeasonDataRow) => {
     const willSelect = selected?.key !== row.key;
     setSelected(willSelect ? row : null);
+    if (cacheOwner.current !== null) void writeSeasonSearch(cacheOwner.current, {query, country, candidates, candidate, data, selected:willSelect ? row : null});
     setShowPlanNudge(false);
     if (!planResolved || plan !== "Free") return;
     const count = await incrementSeasonHistoryPlanNudgeCount();
@@ -431,9 +501,11 @@ export default function SeasonDataScreen() {
     aggregate.selectedRows.some((row) => row.key === selected.key)
       ? seasonMatchupRow(aggregate, selected, data?.player.imageUrl)
       : null;
+  const [matchupAdding,setMatchupAdding]=React.useState(false);
+  const matchupAddLock=React.useRef(false);
   const alreadyAdded =
     !!entry && matchup.rows.some((row) => row?.id === entry.id);
-  const full = matchup.rows.filter(Boolean).length >= matchup.mode;
+  const full = matchup.rows.filter(Boolean).length >= 4;
   const listHeight = Math.min(420, Math.max(180, height * 0.32));
   const [tableWidth, setTableWidth] = React.useState(Math.max(240, width - 68));
   const candidateWidths = [0.29, 0.13, 0.2, 0.38].map(
@@ -477,6 +549,8 @@ export default function SeasonDataScreen() {
         }
       >
         <View style={styles.stack}>
+          <View style={styles.filterRow}>
+            <View style={{flex:1,minWidth:0}}>
           <Text style={styles.label}>{tr ? "İsim" : "Name"}</Text>
           <TextInput
             testID="season-player-query"
@@ -485,20 +559,23 @@ export default function SeasonDataScreen() {
             maxLength={120}
             placeholder={
               tr
-                ? "Oyuncu adı veya geçmiş isimle ara"
-                : "Player name or historical alias"
+                ? "İsim ara"
+                : "Search name"
             }
             placeholderTextColor={MUTED}
-            style={styles.input}
+            style={[styles.input,{height:44,borderRadius:12,fontSize:14,paddingHorizontal:12}]}
             returnKeyType="search"
             onSubmitEditing={search}
           />
+            </View>
           <Choice
-            label={tr ? "Ülke" : "Country"}
+            playerStyle
+            label={tr ? "Uyruk" : "Nationality"}
             value={country}
             options={countries}
             onChange={setCountry}
           />
+          </View>
           {!!optionsError && (
             <Status
               message={optionsError}
@@ -631,7 +708,7 @@ export default function SeasonDataScreen() {
           />
         ) : (
           <View style={styles.stack}>
-            <Text style={styles.playerName}>{data.player.displayName}</Text>
+            <PlayerHeading name={data.player.displayName} imageUrl={data.player.imageUrl}/>
             <Text style={styles.muted}>
               {[data.player.latestTeam, data.player.nationality]
                 .filter(Boolean)
@@ -713,10 +790,40 @@ export default function SeasonDataScreen() {
       <TutorialPageGuide page="seasonData" frame={1} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
       <Frame
         title={
-          tr ? "Seçili Sezon İstatistikleri" : "Selected Season Statistics"
+          tr ? "Sezon İstatistikleri" : "Season Statistics"
         }
         Icon={ChartNoAxesCombined}
+        action={entry && !aggregateLoading && !aggregateError ? (
+            <Pressable
+              testID="season-add-matchup"
+              accessibilityRole="button"
+              disabled={matchupAdding || (!full && (alreadyAdded || ads.busy))}
+              onPress={async () => {
+                if(full){nav.navigate('Matchup');return;}
+                if (!entry || alreadyAdded || ads.busy || matchupAddLock.current) return;
+                matchupAddLock.current=true;setMatchupAdding(true);
+                try {
+                  let added=false;
+                  await ads.run('seasonMatchupAdd', () => { matchup.add(entry);added=true; });
+                  if(added && matchup.rows.filter(Boolean).length===3)nav.navigate('Matchup');
+                } catch (error) {
+                  Alert.alert(tr ? 'Ekleme hatası' : 'Could not add to matchup', String(error));
+                } finally {matchupAddLock.current=false;setMatchupAdding(false);}
+              }}
+              style={[
+                styles.button,
+                {flex:0,paddingHorizontal:10},
+                (matchupAdding || (!full && (alreadyAdded || ads.busy))) && { opacity: 0.45 },
+              ]}
+            >
+              {matchupAdding?<ActivityIndicator size="small" color={ACCENT}/>:<GitCompareArrows size={18} color={ACCENT} />}
+              <Text style={[styles.green,{fontSize:12}]} numberOfLines={1}>
+                {matchupAdding?(tr?'Ekleniyor…':'Adding…'):alreadyAdded && !full ? (tr?'Eklendi':'Added') : (tr?'Eşleşme':'Matchup')}
+              </Text>
+            </Pressable>
+        ) : undefined}
       >
+        {entry && (matchupAdding || alreadyAdded) && <Text accessibilityLiveRegion="polite" style={{color:ACCENT,fontSize:12,lineHeight:18,marginBottom:12}}>{matchupAdding?(tr?'Eşleşmeye ekleniyor…':'Adding to matchup…'):(tr?'Eşleşmeye eklendi.':'Added to matchup.')}</Text>}
         {!selected ? (
           <Status
             message={
@@ -742,7 +849,7 @@ export default function SeasonDataScreen() {
           />
         ) : aggregate && entry ? (
           <View style={styles.stack}>
-            <Text style={styles.playerName}>{aggregate.displayName}</Text>
+            <PlayerHeading name={aggregate.displayName} imageUrl={data?.player.imageUrl}/>
             <Text style={styles.text}>
               {[
                 selected.seasonName,
@@ -774,70 +881,8 @@ export default function SeasonDataScreen() {
               allowTotal
               tr={tr}
             />
-            <Pressable
-              testID="season-add-matchup"
-              accessibilityRole="button"
-              disabled={alreadyAdded || full || ads.busy}
-              onPress={async () => {
-                if (alreadyAdded || full || ads.busy) return;
-                try {
-                  await ads.run('seasonMatchupAdd', () => { matchup.add(entry); });
-                } catch (error) {
-                  Alert.alert(tr ? 'Ekleme hatası' : 'Could not add to matchup', String(error));
-                }
-              }}
-              style={[
-                styles.button,
-                (alreadyAdded || full || ads.busy) && { opacity: 0.45 },
-              ]}
-            >
-              <GitCompareArrows size={18} color={ACCENT} />
-              <Text style={styles.green}>
-                {alreadyAdded
-                  ? tr
-                    ? "Eklendi"
-                    : "Added"
-                  : full
-                    ? tr
-                      ? "Eşleşme alanları dolu"
-                      : "Comparison slots full"
-                    : tr
-                      ? "Eşleşme Merkezine Ekle"
-                      : "Add to Matchup Center"}
-              </Text>
-            </Pressable>
-            {groups.map((group) => (
-              <View key={group.key} style={styles.table}>
-                <Text
-                  style={[styles.category, group.lower && { color: DANGER }]}
-                >
-                  {tr ? group.tr : group.en}
-                </Text>
-                {group.rows.map(({ metric, value }) => {
-                  const v = convertSeasonMetric(metric, value, aggregate, unit);
-                  return (
-                    <View key={metric} style={styles.metricRow}>
-                      <Text style={[styles.text, { flex: 1 }]}>
-                        {String(t(`metric.${metric}`, metric))}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.text,
-                          { fontWeight: "800" },
-                          group.lower && { color: themeColor("#FCA5A5", 'text') },
-                        ]}
-                      >
-                        {metric.includes("(%)")
-                          ? `${v.toFixed(1)}%`
-                          : v.toLocaleString(tr ? "tr-TR" : "en-GB", {
-                              maximumFractionDigits: 2,
-                            })}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
+
+            {groups.map(group => <SeasonMetricCategory key={`${selected.key}:${group.key}`} group={group} aggregate={aggregate} player={entry.player} unit={unit}/>)}
             {!groups.length && (
               <Status
                 message={
@@ -857,8 +902,7 @@ export default function SeasonDataScreen() {
           onOpenPlans={() => nav.navigate("ManagePlan")}
         />
       ) : null}
-      <TutorialPageGuide page="seasonData" frame={2} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
-      <SharedMatchupCenter />
+        <TutorialPageGuide page="seasonData" frame={2} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
     </ScrollView>
   );
 }

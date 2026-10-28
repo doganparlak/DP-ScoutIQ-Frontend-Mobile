@@ -1,3 +1,5 @@
+import { hasPlayerMatchupEntry } from '@/utils/playerMatchupEntry';
+import { useNavigation } from '@react-navigation/native';
 import { canGeneratePlayerReport } from '@/utils/reportEligibility';
 import { useOptionalMatchup } from '@/context/MatchupContext';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
@@ -22,6 +24,7 @@ type Props = {
   actionsInside?: boolean;
   hideActions?: boolean;
   hideScores?: boolean;
+  hideSimilar?: boolean;
   proActions?: boolean;
   onCheckFit?: () => void;
   onFindSimilar?: () => void | Promise<void>;
@@ -29,6 +32,7 @@ type Props = {
   beforeFindSimilar?: () => void | Promise<void>;
   similarDisabled?: boolean;
   onMatchup?: () => void | Promise<void>;
+  onManageMatchup?: () => void | Promise<void>;
   matchupDisabled?: boolean;
   onAddFavorite?: (p: PlayerData) => void | Promise<boolean>;
   addFavoriteDisabled?: boolean;
@@ -128,6 +132,7 @@ export default function PlayerCard({
   actionsInside = false,
   hideActions = false,
   hideScores = false,
+  hideSimilar = false,
   proActions = false,
   onCheckFit,
   onFindSimilar,
@@ -135,6 +140,7 @@ export default function PlayerCard({
   beforeFindSimilar,
   similarDisabled = false,
   onMatchup,
+  onManageMatchup,
   matchupDisabled = false,
   onAddFavorite,
   addFavoriteDisabled = false,
@@ -153,8 +159,10 @@ export default function PlayerCard({
   // Let the row distribute its actual width equally, including when Report
   // appears after annual stats load. Fixed measured bases can overflow here.
   const actionCell={flexBasis:0,flexGrow:1,flexShrink:1,minWidth:0};
+  const navigation=useNavigation<any>();
   const matchup = useOptionalMatchup();
-  const matchupFull = !!matchup && matchup.rows.slice(0, matchup.mode).every(Boolean);
+  const matchupFull = !!matchup && matchup.rows.filter(Boolean).length >= 4;
+  const matchupAdded=!!matchup && hasPlayerMatchupEntry(player,matchup.rows,similarPlayerId);
   const [matchBusy, setMatchBusy] = React.useState(false);
   const [reportBusy, setReportBusy] = React.useState(false);
   const [portraitFailed, setPortraitFailed] = React.useState(false);
@@ -216,7 +224,7 @@ export default function PlayerCard({
 
   const disabled = !onAddFavorite || addFavoriteDisabled || isAdding || isAdded;
   const reportLoading = reportState === 'loading' || reportBusy;
-  const matchDisabled = matchupDisabled || matchupFull || matchBusy;
+  const matchDisabled = matchBusy || (!matchupFull && (matchupDisabled || matchupAdded));
   const reportButtonDisabled = !onGenerateReport || reportDisabled || reportLoading;
   const potentialInt = Math.round(isValidPotential(potential) ? potential : 0);
   const formInt = Math.round(isValidPotential(form) ? form : 0);
@@ -247,10 +255,14 @@ export default function PlayerCard({
           {reportLoading ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.report} /> : <FileText size={17} color={proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report} />}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:proActions ? PLAYER_ACTION_TONES.similar : PLAYER_ACTION_TONES.report}]}>{t('playerCardReport', 'Report')}</Text>
         </TouchableOpacity>}
-        {!proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:themeColor('rgba(45,212,191,.08)', 'surface')}]} accent={PLAYER_ACTION_TONES.similar}/>}
+        {!proActions && !hideSimilar && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.similar,backgroundColor:themeColor('rgba(45,212,191,.08)', 'surface')}]} accent={PLAYER_ACTION_TONES.similar}/>}
         {proActions && onCheckFit && <TouchableOpacity accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr') ? 'Uyum' : 'Fit'} disabled={similarDisabled || reportBusy || isAdding} onPress={onCheckFit} style={[styles.action, actionCell, styles.reportAction, {borderColor: PLAYER_ACTION_TONES.report}, (similarDisabled || reportBusy || isAdding) && styles.disabled]}><Target size={17} color={PLAYER_ACTION_TONES.report}/><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color: PLAYER_ACTION_TONES.report}]}>{i18n.language.startsWith('tr') ? 'Uyum' : 'Fit'}</Text></TouchableOpacity>}
-        {proActions && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:themeColor('rgba(180,163,211,.08)', 'surface')}]} accent={PLAYER_ACTION_TONES.matchup}/>}
-        {!proActions && onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { void runAction('match'); }} style={[styles.action, actionCell, styles.matchupAction, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.matchup}/> : <ArrowLeftRight size={17} color={matchupFull ? MUTED : PLAYER_ACTION_TONES.matchup} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.matchup}, matchupFull && {color:MUTED}]}>{matchupFull ? (i18n.language.startsWith('tr') ? 'Eşleşme Dolu' : 'Matchup Full') : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
+        {proActions && !hideSimilar && <FindSimilarPlayerButton onFindSimilar={onFindSimilar} player={player} rowId={similarPlayerId} beforeNavigate={beforeFindSimilar} disabled={similarDisabled || reportBusy || matchBusy || isAdding || reportState === 'loading'} style={[styles.action,actionCell,{borderColor:PLAYER_ACTION_TONES.matchup,backgroundColor:themeColor('rgba(180,163,211,.08)', 'surface')}]} accent={PLAYER_ACTION_TONES.matchup}/>}
+        {!proActions && onMatchup && <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: matchDisabled, busy: matchBusy }} disabled={matchDisabled} onPress={() => { if(matchupFull){if(onManageMatchup)void onManageMatchup();else navigation.navigate('Matchup');}else void runAction('match'); }} style={[styles.action, actionCell, styles.matchupAction, matchDisabled && styles.disabled]}>{matchBusy ? <ActionSpinner size={17} color={PLAYER_ACTION_TONES.matchup}/> : matchupAdded && !matchupFull ? <Check size={17} color={PLAYER_ACTION_TONES.matchup}/> : <ArrowLeftRight size={17} color={PLAYER_ACTION_TONES.matchup} />}<Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8} style={[styles.actionText,{color:PLAYER_ACTION_TONES.matchup}]}>{matchBusy ? t("matchupAdding","Adding…") : matchupAdded && !matchupFull ? t("matchupAddedShort","Added") : t("playerCardMatchup", "Matchup")}</Text></TouchableOpacity>}
+      </View>}
+      {!hideActions && !proActions && onMatchup && (matchBusy || matchupAdded) && <View accessibilityLiveRegion="polite" style={[styles.savedNotice,{flexBasis:'100%'}]}>
+        {matchBusy?<ActionSpinner size={14} color={PLAYER_ACTION_TONES.matchup}/>:<Check size={14} color={PLAYER_ACTION_TONES.matchup}/>}
+        <Text style={[styles.savedText,{color:PLAYER_ACTION_TONES.matchup}]}>{matchBusy?t('matchupAddingLong','Adding to matchup…'):t('matchupAddedLong','Added to matchup.')}</Text>
       </View>}
     </View>);
 

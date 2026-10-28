@@ -7,6 +7,15 @@ type Slot = SearchResultRow | null;
 type Mode = 2 | 3 | 4;
 type State = { mode: Mode; rows: Slot[] };
 const empty: State = { mode: 2, rows: [null, null, null, null] };
+function pack(rows: Slot[]): State {
+  const seen = new Set<string>();
+  const filled = rows.filter((row): row is SearchResultRow => {
+    if (!row || seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  }).slice(0,4);
+  return {mode:Math.max(2,filled.length) as Mode,rows:[...filled,...Array(4-filled.length).fill(null)]};
+}
 function useMatchupState() {
   const [state, setState] = React.useState<State>(empty);
   const [storageKey, setStorageKey] = React.useState<string | null>(null);
@@ -22,17 +31,6 @@ function useMatchupState() {
       if (raw && !edited.current) {
         try {
           const saved = JSON.parse(raw);
-          const paid =
-            me.plan === "No Ads Monthly" ||
-            me.plan === "Pro Monthly" ||
-            me.plan === "Pro Yearly";
-          const mode: Mode = !paid
-            ? 2
-            : saved.mode === 4
-              ? 4
-              : saved.mode === 3
-                ? 3
-                : 2;
           const seen = new Set<string>();
           const rows = (Array.isArray(saved.rows) ? saved.rows : [])
             .filter((row: Slot) => {
@@ -47,9 +45,9 @@ function useMatchupState() {
               seen.add(row.id);
               return true;
             })
-            .slice(0, mode);
+            .slice(0, 4);
           setState({
-            mode,
+            mode: Math.max(2, rows.length) as Mode,
             rows: [...rows, ...Array(4 - rows.length).fill(null)],
           });
         } catch {
@@ -70,27 +68,18 @@ function useMatchupState() {
       .then(() => AsyncStorage.setItem(storageKey, json))
       .catch(() => {});
   }, [state, storageKey]);
-  const setMode = React.useCallback((mode: Mode) => {
-    setState((previous) => {
-      if (mode === previous.mode) return previous;
-      edited.current = true;
-      const retained = previous.rows.filter(Boolean).slice(0, mode);
-      return {
-        mode,
-        rows: [...retained, ...Array(4 - retained.length).fill(null)],
-      };
-    });
-  }, []);
+  // Comparison size follows the filled slots; changing plan never removes entries.
+  const setMode = React.useCallback((_mode: Mode) => {}, []);
+  const clear = React.useCallback(()=>{edited.current=true;setState(empty);},[]);
   const setRow = React.useCallback(
     (index: number, value: React.SetStateAction<Slot>) => {
       edited.current = true;
       setState((previous) => {
         const next =
           typeof value === "function" ? value(previous.rows[index]) : value;
-        if (next && index >= previous.mode) return previous;
         const rows = [...previous.rows];
         rows[index] = next;
-        return { ...previous, rows };
+        return pack(rows);
       });
     },
     [],
@@ -115,20 +104,18 @@ function useMatchupState() {
     edited.current = true;
     setState((previous) => {
       if (previous.rows.some((item) => item?.id === row.id)) return previous;
-      const index = previous.rows
-        .slice(0, previous.mode)
-        .findIndex((item) => !item);
+      const index = previous.rows.findIndex((item) => !item);
       if (index < 0) return previous;
       const rows = [...previous.rows];
       rows[index] = row;
-      return { ...previous, rows };
+      return pack(rows);
     });
   }, []);
   const removeAt = React.useCallback((index: number) => {
     edited.current = true;
     setState(previous => {
       const retained = previous.rows.filter((row, slot) => slot !== index && row !== null);
-      return { ...previous, rows: [...retained, ...Array(4 - retained.length).fill(null)] };
+      return pack(retained);
     });
   }, []);
   const refresh = React.useCallback((rows: SearchResultRow[]) => {
@@ -144,6 +131,7 @@ function useMatchupState() {
   return {
     ...state,
     setMode,
+    clear,
     setRow1,
     setRow2,
     setRow3,

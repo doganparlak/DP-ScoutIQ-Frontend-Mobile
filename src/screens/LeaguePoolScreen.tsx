@@ -1,13 +1,14 @@
+import { recordRecentSearch } from '@/services/recentSearches';
+import { readLeagueSearch, writeLeagueSearch } from '@/services/leaguePoolCache';
+import PortfolioRoleFilter from '@/components/PortfolioRoleFilter';
+import { normalizeSearchText, optionMatchesSearch } from '@/utils/searchSuggestions';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
 import { TutorialPageGuide } from "@/components/Tutorial";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
-import { shortCountry } from "@/utils/seasonTableLabels";
 
 import type { SearchResultRow } from "@/components/CandidatePlayers";
-import SharedMatchupCenter from "@/components/SharedMatchupCenter";
 import { useMatchup } from "@/context/MatchupContext";
 import {
 getLeagueOptions,
@@ -18,11 +19,12 @@ type LeagueOptions,
 import { useFocusEffect,useNavigation } from "@react-navigation/native";
 import {
 ChevronDown,
+Check,
 GitCompareArrows,
-List,
 ListFilter,
 RotateCcw,
 Search,
+Table2,
 Trophy,
 X,
 } from "lucide-react-native";
@@ -30,6 +32,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
 ActivityIndicator,
+FlatList,
 Alert,
 Image,
 Keyboard,
@@ -50,28 +53,7 @@ shouldShowLeagueCardPlanNudge,
 import { getMe,type Plan } from "@/services/api";
 
 const EMPTY: LeagueFilters = { countries: [], leagues: [], positions: [] };
-const POSITION_ORDER = [
-  "GK",
-  "CB",
-  "LB",
-  "RB",
-  "CDM",
-  "CM",
-  "CAM",
-  "LM",
-  "RM",
-  "LW",
-  "RW",
-  "CF",
-];
-const fold = (value: string) =>
-  value
-    .replace(/ı/g, "i")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .trim();
-
+const DEFAULT_SEARCH: LeagueFilters = {countries:['England'],leagues:['Premier League'],positions:[]};
 export default function LeaguePoolScreen() {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, TEXT, MUTED, ACCENT, FRAME_STRIPE, DANGER, poolTableStyles} = themed;
@@ -83,24 +65,33 @@ export default function LeaguePoolScreen() {
   const { height } = useWindowDimensions();
   const shared = useMatchup();
   const [filters, setFilters] = React.useState<LeagueFilters>(EMPTY);
-  const [options, setOptions] = React.useState<LeagueOptions>(EMPTY);
+  const [options, setOptions] = React.useState<LeagueOptions>({...EMPTY,leagueChoices:[]});
   const [rows, setRows] = React.useState<SearchResultRow[]>([]);
   const [selectedId, setSelectedId] = React.useState("");
   const [plan, setPlan] = React.useState<Plan>("Free");
   const [planResolved, setPlanResolved] = React.useState(false);
   const [showPlanNudge, setShowPlanNudge] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [hasSearched, setHasSearched] = React.useState(false);
   const [optionsLoading, setOptionsLoading] = React.useState(false);
   const [error, setError] = React.useState("");
   const [optionsError, setOptionsError] = React.useState("");
   const [retry, setRetry] = React.useState(0);
   const [selector, setSelector] = React.useState<
-    "countries" | "leagues" | null
+    "leagues" | null
   >(null);
+  const [roleTarget,setRoleTarget]=React.useState<SearchResultRow|null>(null);
+  const [matchupRoles,setMatchupRoles]=React.useState<string[]>([]);
+  const [rolesOpen,setRolesOpen]=React.useState(false);
+  const [adding,setAdding]=React.useState(false);
+  const addLock=React.useRef(false);
+  const latestSharedRows=React.useRef(shared.rows);
+  latestSharedRows.current=shared.rows;
+  const [addNotice,setAddNotice]=React.useState<{leagueId:string;text:string;success?:boolean}|null>(null);
   const [query, setQuery] = React.useState("");
   const searchVersion = React.useRef(0);
   const scroll = React.useRef<ScrollView>(null);
-  const matchupY = React.useRef(0);
+  const cacheUser = React.useRef<number|null>(null);
   React.useEffect(() => {
     let active = true;
     setOptionsLoading(true);
@@ -144,9 +135,16 @@ export default function LeaguePoolScreen() {
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
+      let restoreVersion = searchVersion.current;
       getMe()
-        .then((me) => {
+        .then(async (me) => {
           if (!active) return;
+          const firstVisit=cacheUser.current!==me.id;
+          if(cacheUser.current!==null && cacheUser.current!==me.id){
+            searchVersion.current++;restoreVersion=searchVersion.current;
+            setRows([]);setSelectedId('');setFilters(EMPTY);
+          }
+          cacheUser.current=me.id;
           const nextPlan: Plan =
             me.plan === "No Ads Monthly" || me.plan === "Pro Monthly" || me.plan === "Pro Yearly"
               ? me.plan
@@ -154,6 +152,19 @@ export default function LeaguePoolScreen() {
           setPlan(nextPlan);
           setPlanResolved(true);
           if (nextPlan !== "Free") setShowPlanNudge(false);
+          const cached=await readLeagueSearch(me.id);
+          if(!active || searchVersion.current!==restoreVersion || cacheUser.current!==me.id)return;
+          const initialFilters={...(cached?.filters ?? DEFAULT_SEARCH),positions:[]};
+          if(cached && !cached.filters.positions.length){setRows([cached.row]);setSelectedId(cached.row.id);setHasSearched(true);}
+          if(firstVisit)setFilters(initialFilters);
+          try {
+            const result=await searchLeagues(initialFilters);
+            if(!active || searchVersion.current!==restoreVersion || cacheUser.current!==me.id)return;
+            if(result[0]){
+              setRows([result[0]]);setSelectedId(result[0].id);setHasSearched(true);
+              void writeLeagueSearch(me.id,{filters:initialFilters,row:result[0]});
+            }
+          } catch { /* Preserve the cached card when background refresh fails. */ }
         })
         .catch(() => {
           if (!active) return;
@@ -168,120 +179,90 @@ export default function LeaguePoolScreen() {
   const update = (key: keyof LeagueFilters, values: string[]) => {
     searchVersion.current++;
     setLoading(false);
+    setError('');
     setFilters((previous) => ({ ...previous, [key]: values }));
   };
   const clear = () => {
     searchVersion.current++;
     setLoading(false);
     setFilters(EMPTY);
-    setRows([]);
-    setSelectedId("");
-    setShowPlanNudge(false);
+
     setError("");
   };
-  const selectLeague = async (row: SearchResultRow) => {
-    setSelectedId(row.id);
-    setShowPlanNudge(false);
-    if (!planResolved || plan !== "Free") return;
-    const count = await incrementLeagueCardPlanNudgeCount();
-    setShowPlanNudge(shouldShowLeagueCardPlanNudge(count));
-  };
   const search = async () => {
-    if (loading) return;
+    if (loading || !filters.leagues.length) return;
     Keyboard.dismiss();
     const version = ++searchVersion.current;
     setLoading(true);
     setError("");
     try {
-      const result = await searchLeagues(filters);
+      const owner=cacheUser.current ?? (await getMe()).id;
+      if(version!==searchVersion.current)return;
+      cacheUser.current=owner;
+      const criteria={...filters,positions:[]};
+      const result = await searchLeagues(criteria);
       if (version !== searchVersion.current) return;
-      setRows(result);
-      shared.refresh(result);
-      setSelectedId((previous) =>
-        result.some((row) => row.id === previous)
-          ? previous
-          : result[0]?.id || "",
-      );
+      if(!result[0]){setError(tr?'Bu lig için oyuncu verisi bulunamadı.':'No player data found for this league.');return;}
+      setRows([result[0]]);setSelectedId(result[0].id);
+      void writeLeagueSearch(owner,{filters:criteria,row:result[0]}).then(() => recordRecentSearch(owner, 'league'));
+      setHasSearched(true);
+      setShowPlanNudge(false);
+      if (planResolved && plan === 'Free' && result.length) {
+        const count = await incrementLeagueCardPlanNudgeCount();
+        if (version !== searchVersion.current) return;
+        setShowPlanNudge(shouldShowLeagueCardPlanNudge(count));
+      }
+
     } catch (e: any) {
       if (version === searchVersion.current) {
         setError(String(e?.message || e));
-        setRows([]);
-        setSelectedId("");
+
       }
     } finally {
       if (version === searchVersion.current) setLoading(false);
     }
   };
+  async function addLeagueWithRoles(){
+    const target=roleTarget;
+    const version=searchVersion.current;
+    if(!target || !matchupRoles.length || addLock.current || ads.busy)return;
+    addLock.current=true;setAdding(true);setAddNotice(null);
+    const criteria:LeagueFilters={leagues:[target.player.name],countries:target.player.meta?.leagueFilters?.countries??[],positions:[...matchupRoles]};
+    try{
+      const result=await searchLeagues(criteria);
+      if(version!==searchVersion.current)return;
+      const entry=result[0];
+      if(!entry)throw new Error(tr?'Seçilen roller için oyuncu verisi bulunamadı.':'No player data found for the selected roles.');
+      if(latestSharedRows.current.some(row=>row?.id===entry.id)){
+        setAddNotice({leagueId:target.id,text:tr?'Bu rol seçimi zaten eşleşmede.':'This role selection is already in your matchup.'});return;
+      }
+      if(latestSharedRows.current.filter(Boolean).length>=4){nav.navigate('Matchup');return;}
+      // Let the native role modal finish closing before an interstitial can open.
+      await new Promise<void>(resolve=>setTimeout(resolve,350));
+      let didAdd=false,opensCenter=false;
+      await ads.run('leagueMatchupAdd',()=>{
+        if(version!==searchVersion.current || latestSharedRows.current.some(row=>row?.id===entry.id) || latestSharedRows.current.filter(Boolean).length>=4)return false;
+        opensCenter=latestSharedRows.current.filter(Boolean).length===3;
+        shared.add(entry);didAdd=true;
+      });
+      if(didAdd){
+        setAddNotice({leagueId:target.id,success:true,text:tr?'Eşleşmeye eklendi.':'Added to matchup.'});
+        if(opensCenter)nav.navigate('Matchup');
+      }else if(version===searchVersion.current){
+        setAddNotice({leagueId:target.id,text:tr?'Eklenmedi. Yeniden deneyebilirsin.':'Not added. Please try again.'});
+      }
+    }catch(error){if(version===searchVersion.current)setAddNotice({leagueId:target.id,text:error instanceof Error?error.message:String(error)});}
+    finally{addLock.current=false;setAdding(false);}
+  }
+  async function analyzeLeague(row:SearchResultRow){
+    const leagueId=row.player.meta?.leagueId || (row.id.startsWith('league:') ? Number(row.id.split(':')[1]) : 0);
+    if(!leagueId || ads.busy)return;
+    try{await ads.run('leaguePerformanceSearch',()=>{nav.navigate('LeaguePerformance',{leagueCard:row,league:{league_id:leagueId,league_name:row.player.name,country_name:row.player.meta?.nationality??null,image_url:row.player.meta?.imageUrl??null,team_count:row.player.meta?.teamCount??null},analysisRequest:Date.now()});});}
+    catch(error){Alert.alert(tr?'Analiz açılamadı':'Could not open analysis',String(error));}
+  }
   const selected = rows.find((row) => row.id === selectedId);
-  const positions = [
-    ...new Set(options.positions.map((role) => role.toUpperCase())),
-  ].sort(
-    (a, b) =>
-      (POSITION_ORDER.indexOf(a) < 0 ? 99 : POSITION_ORDER.indexOf(a)) -
-        (POSITION_ORDER.indexOf(b) < 0 ? 99 : POSITION_ORDER.indexOf(b)) ||
-      a.localeCompare(b),
-  );
-  const optionsShown = (selector ? options[selector] : []).filter((value) =>
-    fold(value).includes(fold(query)),
-  );
-  const label = (key: "countries" | "leagues") =>
-    key === "countries" ? (tr ? "Ülke" : "Country") : tr ? "Lig" : "League";
-  const choice = (key: "countries" | "leagues") => (
-    <View style={styles.field} key={key}>
-      <Text style={styles.label}>{label(key)}</Text>
-      <Pressable
-        testID={`league-filter-${key}`}
-        accessibilityRole="button"
-        accessibilityLabel={label(key)}
-        onPress={() => {
-          Keyboard.dismiss();
-          setQuery("");
-          setSelector(key);
-        }}
-        style={styles.input}
-      >
-        <Text
-          numberOfLines={1}
-          style={{ flex: 1, color: filters[key][0] ? TEXT : MUTED }}
-        >
-          {filters[key][0] ||
-            (tr ? `${label(key)} ara` : `Search ${label(key).toLowerCase()}`)}
-        </Text>
-        <ChevronDown size={16} color={MUTED} />
-      </Pressable>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 6, minHeight: 34 }}
-      >
-        {filters[key][0] ? (
-          <Pressable
-            onPress={() => update(key, [])}
-            accessibilityLabel={
-              tr ? `${label(key)} seçimini temizle` : `Clear ${label(key)}`
-            }
-            style={[styles.chip, styles.selected]}
-          >
-            <Text style={styles.chipText}>{filters[key][0]}</Text>
-            <X size={13} color={ACCENT} />
-          </Pressable>
-        ) : filters[key === "countries" ? "leagues" : "countries"].length >
-          0 ? (
-          options[key].map((value) => (
-            <Pressable
-              key={value}
-              onPress={() => update(key, [value])}
-              style={styles.chip}
-            >
-              <Text numberOfLines={1} style={styles.chipText}>
-                {value}
-              </Text>
-            </Pressable>
-          ))
-        ) : null}
-      </ScrollView>
-    </View>
-  );
+  const leagueLabel = filters.leagues[0] ? `${filters.countries[0] || '—'} | ${filters.leagues[0]}` : '';
+  const optionsShown = (options.leagueChoices ?? []).filter(option => optionMatchesSearch(`${option.country} ${option.name}`, normalizeSearchText(query)));
   return (
     <>
       {ads.fallback}
@@ -310,49 +291,12 @@ export default function LeaguePoolScreen() {
             </Pressable>
           </View>
           <View style={styles.fieldRow}>
-            {choice("countries")}
-            {choice("leagues")}
+            <View style={styles.field}>
+              <Text style={styles.label}>{tr?'Lig':'League'}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={tr?'Lig':'League'} disabled={optionsLoading} style={styles.input} onPress={()=>{setQuery('');setSelector('leagues');}}><Text numberOfLines={1} style={{flex:1,color:leagueLabel?TEXT:MUTED}}>{leagueLabel || (tr?'Lig seçin':'Select league')}</Text><ChevronDown size={16} color={MUTED}/></Pressable>
+            </View>
           </View>
-          <Text style={styles.label}>{tr ? "Rol" : "Role"}</Text>
-          {optionsLoading && <ActivityIndicator color={ACCENT} />}
-          <View style={styles.roles}>
-            {positions.map((role) => (
-              <Pressable
-                key={role}
-                testID={`league-role-${role}`}
-                accessibilityRole="checkbox"
-                accessibilityState={{
-                  checked: filters.positions.includes(role),
-                }}
-                onPress={() =>
-                  update(
-                    "positions",
-                    filters.positions.includes(role)
-                      ? filters.positions.filter((value) => value !== role)
-                      : [...filters.positions, role],
-                  )
-                }
-                style={[
-                  styles.role,
-                  filters.positions.includes(role) && styles.selected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.roleText,
-                    filters.positions.includes(role) && { color: ACCENT },
-                  ]}
-                >
-                  {role}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.hint}>
-            {tr
-              ? "Seçilen rollerden en az birinde %20 veya üzeri oynayan oyuncuların lig ortalamaları."
-              : "League averages for players with at least 20% of appearances in any selected role."}
-          </Text>
+          {optionsLoading && <ActivityIndicator color={ACCENT}/>}
           {!!optionsError && (
             <Pressable onPress={() => setRetry((value) => value + 1)}>
               <Text style={styles.error}>{optionsError}</Text>
@@ -365,11 +309,11 @@ export default function LeaguePoolScreen() {
           <Pressable
             testID="league-search"
             accessibilityRole="button"
-            disabled={loading || optionsLoading}
+            disabled={loading || optionsLoading || !filters.leagues.length}
             onPress={search}
             style={[
               styles.primary,
-              (loading || optionsLoading) && { opacity: 0.5 },
+              (loading || optionsLoading || !filters.leagues.length) && { opacity: 0.5 },
             ]}
           >
             {loading ? (
@@ -389,155 +333,22 @@ export default function LeaguePoolScreen() {
           </Pressable>
         </View>
         <TutorialPageGuide page="leaguePool" frame={0} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
-        <View style={styles.panel}>
-          <View style={[FRAME_STRIPE, { marginBottom: -4 }]} />
-          <View style={styles.heading}>
-            <List size={20} color={ACCENT} />
-            <Text style={styles.title}>
-              {tr ? "Eşleşen Ligler" : "Matching Leagues"}
-            </Text>
-            <Text style={styles.label}>
-              {rows.length} {tr ? "sonuç" : "results"}
-            </Text>
-          </View>
-          <View style={poolTableStyles.table}>
-            <View style={[styles.resultRow, styles.resultHeader]}>
-              {[
-                tr ? "Ülke" : "Ctry",
-                tr ? "Lig" : "Leag.",
-                tr ? "Rol" : "Role",
-                tr ? "Takım" : "Teams",
-                tr ? "Oyuncu" : "Players",
-              ].map((title, index) => (
-                <View
-                  key={title}
-                  style={[
-                    styles.resultHeaderCell,
-                    { flex: [0.65, 0.8, 1.8, 0.75, 1.05][index] },
-                    index > 0 && styles.resultHeaderSeparator,
-                  ]}
-                >
-                  <Text numberOfLines={1} style={styles.headerText}>{title}</Text>
-                </View>
-              ))}
-            </View>
-            <ScrollView
-              nestedScrollEnabled
-              style={{ maxHeight: Math.min(420, height * 0.42) }}
-            >
-              {loading ? (
-                <ActivityIndicator color={ACCENT} style={styles.empty} />
-              ) : rows.length ? (
-                rows.map((row) => (
-                  <Pressable
-                    key={row.id}
-                    testID={`league-result-${row.id}`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: row.id === selectedId }}
-                    accessibilityLabel={`${row.player.meta?.nationality}, ${row.player.name}`}
-                    onPress={() => void selectLeague(row)}
-                    style={[
-                      styles.resultRow,
-                      row.id === selectedId && poolTableStyles.selected,
-                    ]}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.cell, { flex: 0.65 }]}
-                    >
-                      {shortCountry(row.player.meta?.nationality || "")}
-                    </Text>
-                    <Text
-                      numberOfLines={3}
-                      style={[styles.cell, { flex: 0.8 }]}
-                    >
-                      {comparisonSourceShortLabel({
-                        competition: row.player.name,
-                        team: "",
-                      })}
-                    </Text>
-                    <View
-                      style={{
-                        flex: 1.8,
-                        minWidth: 0,
-                        gap: 4,
-                        paddingVertical: 10,
-                        paddingHorizontal: 3,
-                      }}
-                    >
-                      {Array.from(
-                        {
-                          length: Math.ceil(
-                            (row.player.meta?.positionNamesSeen?.length ?? 0) /
-                              3,
-                          ),
-                        },
-                        (_, index) => (
-                          <View
-                            key={index}
-                            style={{
-                              flexDirection: "row",
-                              justifyContent: "center",
-                              gap: 4,
-                            }}
-                          >
-                            {row.player.meta?.positionNamesSeen
-                              ?.slice(index * 3, index * 3 + 3)
-                              .map((role) => (
-                                <Text
-                                  key={role}
-                                  numberOfLines={1}
-                                  style={styles.resultRole}
-                                >
-                                  {role}
-                                </Text>
-                              ))}
-                          </View>
-                        ),
-                      )}
-                    </View>
-                    <Text style={[styles.cell, { flex: 0.75 }]}>
-                      {row.player.meta?.teamCount || 0}
-                    </Text>
-                    <Text style={[styles.cell, { flex: 1.05 }]}>
-                      {row.player.meta?.playerCount || 0}
-                    </Text>
-                  </Pressable>
-                ))
-              ) : (
-                <Text style={styles.empty}>
-                  {tr
-                    ? "Filtreleri seçip ligleri getirin."
-                    : "Choose filters to find league candidates."}
-                </Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-        <TutorialPageGuide page="leaguePool" frame={1} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+        {loading && <ActivityIndicator color={ACCENT}/>}
+        {!loading && !selected && filters.leagues.length > 0 && !error && <Text style={styles.empty}>{hasSearched ? (tr?'Bu lig için oyuncu verisi bulunamadı.':'No player data found for this league.') : (tr?'Lig kartını görmek için Ara’ya bas.':'Press Search to view the league card.')}</Text>}
         <LeagueCard
           row={selected}
           tr={tr}
-          added={
-            !!selected && shared.rows.some((row) => row?.id === selected.id)
-          }
-          full={shared.rows.slice(0, shared.mode).every(Boolean)}
-          busy={ads.busy}
-          onAdd={async () => {
-            if (!selected || ads.busy || shared.rows.some(row => row?.id === selected.id) || shared.rows.slice(0, shared.mode).every(Boolean)) return;
-            try {
-              await ads.run('leagueMatchupAdd', () => {
-                shared.add(selected);
-                requestAnimationFrame(() =>
-                  scroll.current?.scrollTo({
-                    y: Math.max(0, matchupY.current - 12),
-                    animated: true,
-                  }),
-                );
-              });
-            } catch (error) {
-              Alert.alert(tr ? 'Ekleme hatası' : 'Could not add to matchup', String(error));
-            }
+          added={false}
+          full={shared.rows.filter(Boolean).length >= 4}
+          busy={ads.busy || adding}
+          adding={adding}
+          feedback={addNotice?.leagueId===selected?.id?addNotice?.text:undefined}
+          feedbackSuccess={addNotice?.success??false}
+          onAnalyze={()=>{if(selected)void analyzeLeague(selected);}}
+          onAdd={()=>{
+            if(shared.rows.filter(Boolean).length>=4){nav.navigate('Matchup');return;}
+            if(!selected || adding || ads.busy)return;
+            setAddNotice(null);setRoleTarget(selected);setMatchupRoles([]);setRolesOpen(true);
           }}
           footer={
             showPlanNudge && plan === "Free" ? (
@@ -548,15 +359,11 @@ export default function LeaguePoolScreen() {
             ) : null
           }
         />
-        <View
-          onLayout={(event) => {
-            matchupY.current = event.nativeEvent.layout.y;
-          }}
-        >
-          <SharedMatchupCenter />
-        </View>
+        <TutorialPageGuide page="leaguePool" frame={1} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+
       </ScrollView>
-      <Modal
+      <PortfolioRoleFilter minSelections={1} description={tr?"Eşleşmeye eklemek istediğin oyuncu rollerini seç. En az bir rol seçmelisin.":"Choose the player roles to include in the matchup. Select at least one role."} hideField open={rolesOpen} onOpenChange={setRolesOpen} value={matchupRoles} onChange={setMatchupRoles} onDone={()=>void addLeagueWithRoles()}/>
+        <Modal
         visible={!!selector}
         transparent
         animationType="fade"
@@ -566,13 +373,7 @@ export default function LeaguePoolScreen() {
           <View style={styles.modal} accessibilityViewIsModal>
             <View style={styles.heading}>
               <Text style={styles.title}>
-                {selector === "countries"
-                  ? tr
-                    ? "Ülke Seç"
-                    : "Select Country"
-                  : tr
-                    ? "Lig Seç"
-                    : "Select League"}
+                {tr ? 'Lig' : 'League'}
               </Text>
               <Pressable
                 style={styles.iconButton}
@@ -592,39 +393,10 @@ export default function LeaguePoolScreen() {
               placeholderTextColor={MUTED}
               style={[styles.input, { color: TEXT }]}
             />
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ gap: 8 }}
-            >
-              {optionsShown.map((option) => (
-                <Pressable
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityState={{
-                    selected: !!selector && filters[selector][0] === option,
-                  }}
-                  onPress={() => {
-                    if (selector) update(selector, [option]);
-                    setSelector(null);
-                  }}
-                  style={[
-                    styles.option,
-                    selector &&
-                      filters[selector][0] === option &&
-                      styles.selected,
-                  ]}
-                >
-                  <Text style={{ color: TEXT, fontWeight: "700" }}>
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
-              {!optionsShown.length && (
-                <Text style={styles.empty}>
-                  {tr ? "Sonuç bulunamadı." : "No results found."}
-                </Text>
-              )}
-            </ScrollView>
+            <FlatList data={optionsShown} keyExtractor={v=>`${v.country}|${v.name}`} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}
+              ListEmptyComponent={<Text style={styles.empty}>{tr?'Sonuç bulunamadı.':'No results found.'}</Text>}
+              renderItem={({item})=><Pressable accessibilityRole="radio" accessibilityState={{selected:filters.leagues[0]===item.name && filters.countries[0]===item.country}} style={[styles.option,filters.leagues[0]===item.name && filters.countries[0]===item.country && styles.selected]} onPress={()=>{searchVersion.current++;setLoading(false);setFilters(current=>({...current,leagues:[item.name],countries:[item.country]}));setError('');setSelector(null);}}><Text style={{color:TEXT,fontWeight:'700'}}>{item.country} | {item.name}</Text></Pressable>}/>
+
           </View>
         </View>
       </Modal>
@@ -639,7 +411,14 @@ export function LeagueCard({
   full,
   busy = false,
   onAdd,
+  onAnalyze,
+  adding=false,
+  feedback,
+  feedbackSuccess=false,
   footer,
+  headerAction,
+  emptyContent,
+  hideActions=false,
 }: {
   row?: SearchResultRow;
   tr: boolean;
@@ -647,7 +426,14 @@ export function LeagueCard({
   full: boolean;
   busy?: boolean;
   onAdd: () => void;
+  onAnalyze: () => void;
+  adding?:boolean;
+  feedback?:string;
+  feedbackSuccess?:boolean;
   footer?: React.ReactNode;
+  headerAction?: React.ReactNode;
+  emptyContent?: React.ReactNode;
+  hideActions?: boolean;
 }) {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, FRAME_STRIPE, ACCENT} = themed;
@@ -665,17 +451,21 @@ export function LeagueCard({
       <View style={styles.heading}>
         <Trophy size={20} color={ACCENT} />
         <Text style={styles.title}>{tr ? "Lig Kartı" : "League Card"}</Text>
+        {headerAction}
+      </View>
+      {row && !hideActions && <View style={styles.cardActions}>
+        {row && <Pressable accessibilityRole="button" disabled={busy} onPress={onAnalyze} style={[styles.add,busy&&{opacity:.5}]}><Table2 size={18} color={ACCENT}/><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={styles.cardActionText}>{tr?'Analiz':'Analyze'}</Text></Pressable>}
         {row && (
           <Pressable
             testID="league-add-matchup"
-            disabled={added || full || busy}
+            disabled={!full && (added || busy)}
             accessibilityRole="button"
             onPress={onAdd}
-            style={[styles.add, (added || full || busy) && { opacity: 0.5 }]}
+            style={[styles.add, (!full && (added || busy)) && { opacity: 0.5 }]}
           >
-            <GitCompareArrows size={16} color={ACCENT} />
-            <Text style={styles.chipText}>
-              {added
+            {adding?<ActivityIndicator size="small" color={ACCENT}/>:<GitCompareArrows size={18} color={ACCENT} />}
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={styles.cardActionText}>
+              {adding ? (tr?'Ekleniyor…':'Adding…') : added && !full
                 ? tr
                   ? "Eşleşmede"
                   : "In matchup"
@@ -685,12 +475,14 @@ export function LeagueCard({
             </Text>
           </Pressable>
         )}
-      </View>
-      {!row ? (
+      </View>}
+      {adding && <Text accessibilityLiveRegion="polite" style={[styles.hint,{color:ACCENT,marginBottom:12}]}>{tr?'Eşleşmeye ekleniyor…':'Adding to matchup…'}</Text>}
+      {!adding && !!feedback && <View accessibilityLiveRegion="polite" style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:12}}>{feedbackSuccess && <Check size={16} color={ACCENT}/>}<Text style={[styles.hint,{color:ACCENT,flex:1}]}>{feedback}</Text></View>}
+      {!row ? (emptyContent ??
         <Text style={[styles.empty, { paddingVertical: 65 }]}>
           {tr
-            ? "Lig adaylarından bir lig seçin."
-            : "Select a league candidate."}
+            ? "Bir lig seçip Ara’ya bas."
+            : "Select a league and press Search."}
         </Text>
       ) : (
         <>
@@ -744,7 +536,7 @@ export function LeagueCard({
                   meta?.weight ? `${meta.weight} kg` : "",
                 ]
                   .filter(Boolean)
-                  .join(" · ") || "—",
+                  .join("\n") || "—",
               ],
             ].map(([label, value]) => (
               <View key={label} style={styles.tile}>
@@ -862,14 +654,21 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     borderColor: LINE,
   },
   empty: { padding: 24, textAlign: "center", color: MUTED, fontSize: 13 },
+  cardActions: {flexDirection:'row',gap:6,marginBottom:14},
+  cardActionText: {color:ACCENT,fontWeight:'800',fontSize:13,flexShrink:1,textAlign:'center'},
   add: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: themeColor('rgba(22,163,74,0.06)', 'surface'),
+    justifyContent: 'center',
     flexDirection: "row",
     gap: 5,
     alignItems: "center",
     borderWidth: 1,
     borderColor: ACCENT,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 9,
     minHeight: 44,
   },
   identity: { flexDirection: "row", gap: 14, alignItems: "center" },

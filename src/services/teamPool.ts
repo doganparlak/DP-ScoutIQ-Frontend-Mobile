@@ -1,4 +1,4 @@
-import { teamPoolRequest } from "./api";
+import { teamPoolRequest, matchPoolRequest } from "./api";
 export type Team = {
   id: string;
   name: string;
@@ -25,3 +25,7 @@ export const getTeamOptions = (filters: TeamFilters) =>
   });
 export const searchTeams = (filters: TeamFilters, limit = 50) =>
   teamPoolRequest<Team[]>("search", { ...filters, limit });
+
+export const getTeamCard = (teamId: number) => matchPoolRequest<Team>(`/team-pool/teams/${teamId}`);
+
+export const getTeamSelectorOptions = (leagueId?: number) => matchPoolRequest<import('./matchPool').TeamFixtureOptions>('/team-pool/selector-options', {leagueId});

@@ -5,10 +5,18 @@ import { Pressable,StyleSheet,Text,View } from 'react-native';
 
 type Source = {label: string; Icon: LucideIcon; onPress: () => void; color?: string; secondary?: boolean};
 
-export default function WorkspaceSourceActions({sources, compact = false}: {sources: Source[]; compact?: boolean}) {
+export default function WorkspaceSourceActions({sources, compact = false, header = false}: {sources: Source[]; compact?: boolean; header?: boolean}) {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, ACCENT} = themed;
 
+  if (header) return <View style={styles.headerRow}>{sources.map(({label,Icon,onPress,color=ACCENT})=>
+    <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+      style={({pressed})=>[styles.headerButton,pressed&&{opacity:.7}]}>
+      <Icon size={16} color={color}/>
+      <Text numberOfLines={1} style={[styles.headerLabel,{color}]}>{label}</Text>
+      <ArrowUpRight size={14} color={color}/>
+    </Pressable>
+  )}</View>;
   if (compact) return <View style={styles.compactRow}>{sources.map(({label, Icon, onPress, color = ACCENT}) =>
     <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
       style={({pressed}) => [styles.compactTile, sources.length > 1 && styles.compactPairTile, pressed && {opacity: 0.7}]}>
@@ -34,6 +42,9 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {ACCENT, CARD, LINE, TEXT, themeColor} = colors;
 
   const styles = StyleSheet.create({
+  headerRow: {flexDirection:'row',flexShrink:1,minWidth:0},
+  headerButton: {flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,minHeight:44,flexShrink:1,paddingHorizontal:10,paddingVertical:8,borderRadius:11,borderWidth:1,borderColor:themeColor('rgba(22,163,74,.28)','border'),backgroundColor:themeColor('rgba(22,163,74,.055)','surface')},
+  headerLabel: {fontSize:12,lineHeight:17,fontWeight:'700',flexShrink:1},
   compactRow: {flexDirection: 'row', alignItems: 'stretch', gap: 8},
   compactPairTile: {flex: 1, minWidth: 0},
   compactTile: {maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: themeColor('rgba(22,163,74,0.48)', 'border'), backgroundColor: themeColor('rgba(22,163,74,0.08)', 'surface')},

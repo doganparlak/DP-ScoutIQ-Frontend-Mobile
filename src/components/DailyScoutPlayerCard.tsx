@@ -22,8 +22,9 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
 
   const { t } = useTranslation();
   const matchup = useMatchup();
+  const matchupNavigation=useNavigation<any>();
   const ads = useWorkspaceActionAd();
-  const matchupFull = matchup.rows.slice(0, matchup.mode).every(Boolean);
+  const matchupFull = matchup.rows.filter(Boolean).length >= 4;
   const alreadyInMatchup = matchup.rows.some(row => row?.id === id);
   const navigation = useNavigation<BottomTabNavigationProp<MainTabsParamList>>();
   const [scores, setScores] = React.useState<{ potential?: number; form?: number }>({});
@@ -62,7 +63,7 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
     setScores(previous => ({ ...previous, [kind]: Math.round(value) }));
   });
   return <View style={{ gap: 12, padding: 8 }}>
-    <PlayerCard player={shownPlayer} similarPlayerId={id} similarDisabled={busy||ads.busy} beforeFindSimilar={async()=>{onNavigate?.();await new Promise<void>(resolve=>setTimeout(resolve,350));}} titleAlign="left" addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || ads.busy || alreadyInMatchup || matchupFull}
+    <PlayerCard onManageMatchup={()=>{onNavigate?.();matchupNavigation.navigate('Matchup');}} player={shownPlayer} similarPlayerId={id} similarDisabled={busy||ads.busy} beforeFindSimilar={async()=>{onNavigate?.();await new Promise<void>(resolve=>setTimeout(resolve,350));}} titleAlign="left" addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || ads.busy || alreadyInMatchup || matchupFull}
       onAddFavorite={async () => !!await perform(async () => {
         // Capture visibility before ensureScores automatically reveals missing values.
         const action = scores.potential !== undefined && scores.form !== undefined
@@ -79,9 +80,9 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
       onMatchup={async () => { await perform(async () => {
         if (alreadyInMatchup || matchupFull) return;
         await ads.run('dailyScoutMatchupAdd', async () => {
-          const enriched = await ensureScores();
-          matchup.add({id, player: enriched});
+          matchup.add({id,player:shownPlayer});
         });
+        if(matchup.rows.filter(Boolean).length===3){onNavigate?.();matchupNavigation.navigate('Matchup');}
       }); }}
       onGenerateReport={async () => { await perform(async () => {
         const currentPlan = (await getMe()).plan;

@@ -1,6 +1,7 @@
 import { leaguePerformanceRequest, getLeaguePerformancePlayer } from './api';
 export { getLeaguePerformancePlayer };
 export type LeagueFilters = { countries: string[]; leagues: string[] };
+export type LeaguePerformanceOptions = LeagueFilters & {leagueChoices: {id:number;name:string;country:string}[]};
 export type LeagueResult = { league_id: number; league_name: string; country_name: string | null; image_url: string | null; team_count: number | null };
 export type LeagueStanding = {
   position: number | null; teamId: number | null; teamName: string; teamImageUrl: string | null;
@@ -13,7 +14,7 @@ export type LeagueScope = 'qualifying' | 'league' | 'knockout' | 'overall';
 export type KnockoutMatch = {id: number; aggregateId: number | null; startingAt: string | null; stateId: number; placeholder: boolean; leg: string | null; home: {id: number | null; name: string | null; imageUrl: string | null}; away: {id: number | null; name: string | null; imageUrl: string | null}; homeScore: number | null; awayScore: number | null; homePenalties: number | null; awayPenalties: number | null};
 export type KnockoutRound = {id: number; label: string; matches: KnockoutMatch[]};
 export type LeagueStandings = { stageScoped?: boolean; qualifyingRounds?: KnockoutRound[]; knockoutRounds?: KnockoutRound[]; leagueId: number; seasonId: number; seasonName: string | null; tables: StandingTable[] };
-export const getLeaguePerformanceOptions = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueFilters>('/league-performance/options', filters);
+export const getLeaguePerformanceOptions = (filters: LeagueFilters) => leaguePerformanceRequest<LeaguePerformanceOptions>('/league-performance/options', filters);
 export const searchLeaguePerformance = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueResult[]>('/league-performance/search', {...filters, limit: 100});
 export const getLeagueStandings = (leagueId: number) => leaguePerformanceRequest<LeagueStandings>('/league-standings', {leagueId});
 export const getLeagueInsights = (leagueId: number, seasonId: number, periodStart = '', scope?: LeagueScope) => leaguePerformanceRequest<LeagueInsights>('/league-insights', {leagueId, seasonId, periodStart: periodStart || null, scope});
@@ -28,6 +29,7 @@ export type LeagueMetric = {
 };
 export type TeamSeasonMetrics = {
   teamName: string; matches: number;
+  results?: {won:number;drawn:number;lost:number;goalsFor:number;goalsAgainst:number;goalDifference:number}|null;
   metrics: Record<string, { value: number | null; perMatch: number | null; matchesCovered: number; aggregation: string }>;
 };
 type Summary = {

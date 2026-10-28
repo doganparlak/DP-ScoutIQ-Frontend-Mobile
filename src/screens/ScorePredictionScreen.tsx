@@ -256,7 +256,7 @@ export default function ScorePredictionScreen() {
           </View>
           <Text style={s.heroDescription}>{tr ? 'Skoru sen yaz. Haftanın zirvesine oyna.' : 'Make your score count. Compete for the top spot.'}</Text>
           <View style={s.identityRow}>
-            <View style={[s.row, { maxWidth: '100%', minWidth: 0 }]}><View style={[s.identityChip, { flexShrink: 1 }]}><UserRound size={15} color={ACCENT} /><Text style={s.identityText}>{data?.nickname || (tr ? 'Takma adını belirle' : 'Choose your nickname')}</Text></View><View style={[s.identityChip, { borderColor: tierLabelColor(viewerTier) }]}><Text style={[s.identityText, { color: tierLabelColor(viewerTier) }]}>{viewerTier.toUpperCase()}</Text></View></View>
+            <View style={[s.row, { maxWidth: '100%', minWidth: 0 }]}><View style={[s.identityChip, { flexShrink: 1 }]}><UserRound size={15} color={ACCENT} /><Text style={s.identityText}>{data?.nickname || (tr ? 'Takma adını belirle' : 'Choose your nickname')}</Text></View><View style={[s.identityChip, { borderColor: tierLabelColor(viewerTier) }]}><Text style={[s.identityText, { color: tierLabelColor(viewerTier) }]}>{viewerTier==='free'?(tr?'ÜCRETSİZ':'FREE'):viewerTier.toUpperCase()}</Text></View></View>
             {round && <View style={s.identityChip}><CalendarDays size={15} color={MUTED} /><Text style={s.caption}>{weekLabel(round.weekStart, tr)} {tr ? 'Haftası' : 'Week'}</Text></View>}
           </View>
           <PredictionHonorsBadge wins={data?.championships ?? 0} secondPlaces={data?.secondPlaces ?? 0} thirdPlaces={data?.thirdPlaces ?? 0} />
@@ -318,7 +318,7 @@ export default function ScorePredictionScreen() {
             </View>)
           ) : !data?.leaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Henüz gönderilmiş tahmin yok.' : 'No predictions have been submitted yet.'}</Text></View> : data.leaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank, row.tier !== 'free' && { borderColor: tierColor(row.tier), backgroundColor: themeColor(row.tier === 'pro' ? 'rgba(22,163,74,.08)' : 'rgba(56,189,248,.08)', 'surface') }]}>
             <View style={s.rankNumber}>{row.rank <= 3 ? <Trophy size={18} color={row.rank === 1 ? themeColor('#FBBF24', 'text') : row.rank === 2 ? themeColor('#CBD5E1', 'text') : themeColor('#D6A779', 'text')} /> : null}<Text style={s.rank}>{row.rank}</Text></View>
-            <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><Text style={[s.caption, { color: tierLabelColor(row.tier) }]}>{row.tier.toUpperCase()}</Text></View>
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><Text style={[s.caption, { color: tierLabelColor(row.tier) }]}>{row.tier==='free'?(tr?'ÜCRETSİZ':'FREE'):row.tier.toUpperCase()}</Text></View>
             <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '48%', flexShrink: 1 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', columnGap: 6, rowGap: 2 }}>
                 {row.bonusPoints > 0 && <Text style={[s.caption, { color: tierColor(row.tier), fontSize: 11 }]}>{number(row.basePoints)} + {number(row.bonusPoints)}</Text>}

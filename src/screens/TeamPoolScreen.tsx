@@ -1,11 +1,11 @@
+import { recordRecentSearch } from '@/services/recentSearches';
+import { readLastTeam, writeLastTeam } from '@/services/teamPoolCache';
+import { type TeamFixtureOptions } from '@/services/matchPool';
+import { getTeamCard, getTeamSelectorOptions } from '@/services/teamPool';
+import { normalizeSearchText, optionMatchesSearch } from '@/utils/searchSuggestions';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
-import {
-CANDIDATE_TABLE_VISIBLE_ROWS,
-ROW_HEIGHT,
-} from "@/components/CandidatePlayers";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import TeamProfileCard from "@/components/TeamProfileCard";
-import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
 import { TutorialPageGuide } from "@/components/Tutorial";
 import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
 import { getFavoriteTeams,saveFavoriteTeam } from '@/services/teamPortfolio';
@@ -13,7 +13,6 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { useFocusEffect,useNavigation } from "@react-navigation/native";
 import {
 ChevronDown,
-ListChecks,
 ListFilter,
 RotateCcw,
 Search,
@@ -24,8 +23,8 @@ import React,{ useEffect,useRef,useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 ActivityIndicator,
+FlatList,
 Alert,
-Keyboard,
 Modal,
 Pressable,
 ScrollView,
@@ -42,22 +41,8 @@ shouldShowTeamCardPlanNudge,
 } from "@/ads/adGating";
 import { getMe,type Plan } from "@/services/api";
 import {
-getTeamOptions,
-searchTeams,
 Team,
-TeamFilters,
-TeamOptions,
 } from "@/services/teamPool";
-import { comparisonSourceShortLabel } from "@/utils/comparisonSourceLabel";
-import { shortCountry,shortPlayer } from "@/utils/seasonTableLabels";
-const EMPTY: TeamFilters = { team: "", country: "", league: "" };
-const fold = (s: string) =>
-  s
-    .replace(/ı/g, "i")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .trim();
 function Frame({
   title,
   icon: Icon,
@@ -93,12 +78,11 @@ export default function TeamPoolScreen() {
   const nav = useNavigation<any>();
   const ads = useWorkspaceActionAd();
   const { height, width } = useWindowDimensions();
-  const [filters, setFilters] = useState(EMPTY),
-    [options, setOptions] = useState<TeamOptions>({
-      countries: [],
-      leagues: [],
-      teams: [],
-    });
+  const [options, setOptions] = useState<TeamFixtureOptions>({leagues:[],teams:[]});
+  const [leagueId, setLeagueId] = useState<number>();
+  const [teamId, setTeamId] = useState<number>();
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
   const [savedTeams, setSavedTeams] = useState<Set<string>>(new Set());
   const [savingTeam, setSavingTeam] = useState('');
   const saveLock = useRef(false);
@@ -120,23 +104,29 @@ export default function TeamPoolScreen() {
     [selectedId, setSelectedId] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
-  const [selector, setSelector] = useState<"country" | "league" | null>(null),
-    [query, setQuery] = useState(""),
-    [retry, setRetry] = useState(0),
-    [focused, setFocused] = useState(false);
+  const [selector, setSelector] = useState<'team' | 'league' | null>(null);
+  const [query, setQuery] = useState('');
+  const [retry, setRetry] = useState(0);
   const [plan, setPlan] = useState<Plan>("Free");
   const [planResolved, setPlanResolved] = useState(false);
   const [showPlanNudge, setShowPlanNudge] = useState(false);
-  const teamAnchor = useRef<View>(null);
   const pageScroll = useRef<ScrollView>(null);
   const version = useRef(0);
+  const userId = useRef<number | null>(null);
   const selected = rows.find((r) => r.id === selectedId) || rows[0];
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
+      let restoreVersion = version.current;
       getMe()
-        .then((me) => {
+        .then(async (me) => {
           if (!active) return;
+          if (userId.current !== null && userId.current !== me.id) {
+            version.current++;
+            setRows([]);setSelectedId('');setTeamId(undefined);setLeagueId(undefined);
+            restoreVersion = version.current;
+          }
+          userId.current = me.id;
           const nextPlan: Plan =
             me.plan === "No Ads Monthly" || me.plan === "Pro Monthly" || me.plan === "Pro Yearly"
               ? me.plan
@@ -144,6 +134,27 @@ export default function TeamPoolScreen() {
           setPlan(nextPlan);
           setPlanResolved(true);
           if (nextPlan !== "Free") setShowPlanNudge(false);
+          const cached = await readLastTeam(me.id);
+          if (!active || version.current !== restoreVersion || userId.current !== me.id) return;
+          if (!cached) {
+            try {
+              const available = await getTeamSelectorOptions();
+              const madrid = available.teams.find(team => normalizeSearchText(team.name) === 'real madrid');
+              if (!active || version.current !== restoreVersion || userId.current !== me.id || !madrid) return;
+              const initial = await getTeamCard(madrid.id);
+              if (!active || version.current !== restoreVersion || userId.current !== me.id) return;
+              setRows([initial]);setSelectedId(initial.id);
+              void writeLastTeam(me.id, initial);
+            } catch { /* Keep team search usable if the default card cannot load. */ }
+            return;
+          }
+          setRows([cached]);setSelectedId(cached.id);
+          try {
+            const fresh = await getTeamCard(Number(cached.id));
+            if (!active || version.current !== restoreVersion || userId.current !== me.id) return;
+            setRows([fresh]);setSelectedId(fresh.id);
+            void writeLastTeam(me.id, fresh);
+          } catch { /* Keep the last successful card when refresh is unavailable. */ }
         })
         .catch(() => {
           if (!active) return;
@@ -156,106 +167,42 @@ export default function TeamPoolScreen() {
     }, []),
   );
   useEffect(() => {
-    let active = true;
-    getTeamOptions(filters)
-      .then((value) => {
-        if (!active) return;
-        setOptions(value);
-        setError("");
-        setFilters((current) => ({
-          ...current,
-          country:
-            current.country && !value.countries.includes(current.country)
-              ? ""
-              : current.country,
-          league:
-            current.league && !value.leagues.includes(current.league)
-              ? ""
-              : current.league,
-          team:
-            current.team && !value.teams.includes(current.team)
-              ? ""
-              : current.team,
-        }));
-      })
-      .catch(
-        () =>
-          active &&
-          setError(
-            tr
-              ? "Filtreler yüklenemedi. Yeniden deneyin."
-              : "Could not load filters. Retry.",
-          ),
-      );
-    return () => {
-      active = false;
-    };
-  }, [filters.country, filters.league, retry]);
-  useEffect(
-    () => () => {
-      version.current++;
-    },
-    [],
-  );
-  const update = (key: keyof TeamFilters, value: string) =>
-    setFilters((f) => ({ ...f, [key]: value }));
-  const search = async () => {
-    const token = ++version.current;
-    setLoading(true);
-    setError("");
-    setFocused(false);
+    let active=true;
+    setOptionsLoading(true);setOptionsError('');
+    getTeamSelectorOptions(leagueId).then(value=>{if(active)setOptions(value);})
+      .catch(()=>{if(active)setOptionsError(tr?'Filtreler yüklenemedi. Yeniden deneyin.':'Could not load filters. Retry.');})
+      .finally(()=>{if(active)setOptionsLoading(false);});
+    return ()=>{active=false;};
+  },[leagueId,retry]);
+  useEffect(()=>()=>{version.current++;},[]);
+  function clearCard() {
+    version.current++;setLoading(false);setError('');
+  }
+  function clear() {
+    clearCard();setTeamId(undefined);setLeagueId(undefined);setOptions(v=>({...v,teams:[]}));setRetry(v=>v+1);
+  }
+  async function loadTeam(id:number) {
+    const request=++version.current;
+    setTeamId(id);setError('');setLoading(true);
     try {
-      const result = await searchTeams(filters);
-      if (token !== version.current) return;
-      setRows(result);
-      setSelectedId((id) =>
-        result.some((r) => r.id === id) ? id : result[0]?.id || "",
-      );
-    } catch (e) {
-      if (token !== version.current) return;
-      setRows([]);
-      setSelectedId("");
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      if (token === version.current) setLoading(false);
-    }
-  };
-  const clear = () => {
-    version.current++;
-    setLoading(false);
-    setFilters(EMPTY);
-    setRows([]);
-    setSelectedId("");
-    setError("");
-    setShowPlanNudge(false);
-    setRetry((n) => n + 1);
-  };
-  const selectTeam = async (team: Team) => {
-    setSelectedId(team.id);
-    setShowPlanNudge(false);
-    if (!planResolved || plan !== "Free") return;
-    const count = await incrementTeamCardPlanNudgeCount();
-    setShowPlanNudge(shouldShowTeamCardPlanNudge(count));
-  };
-  const suggestions = filters.team
-    ? options.teams
-        .filter((t) => fold(t).includes(fold(filters.team)))
-        .slice(0, 6)
-    : [];
-  const labels = tr
-    ? ["Takım Adı", "Ülke", "Lig", "Teknik D."]
-    : ["Team Name", "Country", "League", "Coach"];
-  const resultsHeight =
-    rows.length === 0
-      ? ROW_HEIGHT * 3
-      : ROW_HEIGHT * (Math.min(rows.length, CANDIDATE_TABLE_VISIBLE_ROWS) + 1) +
-        2;
-  const flexes = [2, 0.9, 0.8, 1.3];
+      const owner = userId.current ?? (await getMe()).id;
+      if(request!==version.current)return;
+      userId.current = owner;
+      const team=await getTeamCard(id);
+      if(request!==version.current)return;
+      setRows([team]);setSelectedId(team.id);setShowPlanNudge(false);
+      void writeLastTeam(owner, team).then(() => recordRecentSearch(owner, 'team'));
+      if(planResolved && plan==='Free') {
+        const count=await incrementTeamCardPlanNudgeCount();
+        if(request===version.current)setShowPlanNudge(shouldShowTeamCardPlanNudge(count));
+      }
+    } catch(e) {if(request===version.current)setError(e instanceof Error?e.message:String(e));}
+    finally {if(request===version.current)setLoading(false);}
+  }
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
         ref={pageScroll}
-        onScrollBeginDrag={() => setFocused(false)}
         style={{ flex: 1, backgroundColor: BG }}
         contentContainerStyle={s.page}
         keyboardShouldPersistTaps="handled"
@@ -273,176 +220,24 @@ export default function TeamPoolScreen() {
             </Pressable>
           }
         >
-          <View style={{ position: "relative" }}>
-            <View ref={teamAnchor} collapsable={false}>
-              <Text style={s.label}>{tr ? "Takım" : "Team"}</Text>
-              <TextInput
-                style={s.input}
-                value={filters.team}
-                onChangeText={(v) => update("team", v)}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                placeholder={tr ? "Takım ara" : "Search team"}
-                placeholderTextColor={MUTED}
-                returnKeyType="search"
-                onSubmitEditing={search}
-              />
-            </View>
-            <View style={s.twoCol}>
-              {(["country", "league"] as const).map((key) => (
-                <View key={key} style={{ flex: 1, minWidth: 0, gap: 7 }}>
-                  <Text style={[s.label,{marginBottom:0}]}>
-                    {key === "country"
-                      ? tr
-                        ? "Ülke"
-                        : "Country"
-                      : tr
-                        ? "Lig"
-                        : "League"}
-                  </Text>
-                  <Pressable
-                    style={[s.input, s.selectInput]}
-                    accessibilityRole="button"
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setQuery("");
-                      setSelector(key);
-                      setFocused(false);
-                    }}
-                  >
-                    <Text numberOfLines={1} style={{flex:1,color:filters[key]?TEXT:MUTED}}>
-                      {filters[key] || (tr ? (key === 'country' ? 'Ülke ara' : 'Lig ara') : (key === 'country' ? 'Search country' : 'Search league'))}
-                    </Text>
-                    <ChevronDown size={16} color={MUTED}/>
-                  </Pressable>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ gap: 6, minHeight: 34 }}
-                  >
-                    {filters[key] ? (
-                      <Pressable style={[s.chip,s.filterSelected]} accessibilityRole="button" accessibilityLabel={tr ? (key === 'country' ? 'Ülke seçimini temizle' : 'Lig seçimini temizle') : (key === 'country' ? 'Clear Country' : 'Clear League')} onPress={() => update(key, "")}>
-                        <Text style={s.chipText}>{filters[key]}</Text>
-                        <X size={13} color={ACCENT} />
-                      </Pressable>
-                    ) : (
-                      (key === "country"
-                        ? filters.league
-                          ? options.countries
-                          : []
-                        : filters.country
-                          ? options.leagues
-                          : []
-                      ).map((v: string) => (
-                        <Pressable
-                          key={v}
-                          style={s.chip}
-                          onPress={() => update(key, v)}
-                        >
-                          <Text numberOfLines={1} style={s.chipText}>{v}</Text>
-                        </Pressable>
-                      ))
-                    )}
-                  </ScrollView>
-                </View>
-              ))}
-            </View>
-            <Pressable disabled={loading} style={s.button} onPress={search}>
-              {loading ? (
-                <ActivityIndicator color={ACCENT} />
-              ) : (
-                <Search size={18} color={ACCENT} />
-              )}
-              <Text style={s.green}>
-                {loading
-                  ? tr
-                    ? "Aranıyor"
-                    : "Searching"
-                  : tr
-                    ? "Ara"
-                    : "Search"}
-              </Text>
-            </Pressable>
-            {!!error && (
-              <Pressable onPress={() => setRetry((n) => n + 1)}>
-                <Text style={{ color: DANGER, marginTop: 12 }}>{error}</Text>
-              </Pressable>
-            )}
+          <View style={s.twoCol}>
+            {(['team','league'] as const).map(key=>{
+              const label=key==='team'?(tr?'Takım':'Team'):(tr?'Lig':'League');
+              const league=options.leagues.find(l=>l.id===leagueId);
+              const value=key==='team'?options.teams.find(t=>t.id===teamId)?.name:(league?`${league.country || '—'} | ${league.name}`:'');
+              return <View key={key} style={{flex:1,minWidth:0}}><Text style={s.label}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:optionsLoading}} disabled={optionsLoading} style={[s.input,s.selectInput,{opacity:optionsLoading?.5:1}]} onPress={()=>{setQuery('');setSelector(key);}}><Text numberOfLines={1} style={{flex:1,color:value?TEXT:MUTED}}>{value || (key==='team'?(tr?'Takım seçin':'Select team'):(tr?'Tüm ligler':'All leagues'))}</Text><ChevronDown size={16} color={MUTED}/></Pressable></View>;
+            })}
           </View>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr ? 'Takım Ara' : 'Search Team'} accessibilityState={{disabled:!teamId || loading || optionsLoading,busy:loading}} disabled={!teamId || loading || optionsLoading} style={[s.button,{opacity:!teamId || loading || optionsLoading ? .5 : 1}]} onPress={()=>{if(teamId)void loadTeam(teamId);}}>
+            {loading ? <ActivityIndicator color={ACCENT}/> : <Search size={18} color={ACCENT}/>}
+            <Text style={s.green}>{loading ? (tr?'Aranıyor':'Searching') : (tr?'Takım Ara':'Search Team')}</Text>
+          </Pressable>
+          {!!error && <Pressable onPress={()=>{if(teamId)void loadTeam(teamId);}}><Text style={{color:DANGER,marginTop:12}}>{error}</Text><Text style={s.green}>{tr?'Yeniden dene':'Retry'}</Text></Pressable>}
+          {optionsLoading && <ActivityIndicator color={ACCENT}/>}
+          {!!optionsError && <Pressable onPress={()=>setRetry(v=>v+1)}><Text style={{color:DANGER}}>{optionsError}</Text></Pressable>}
         </Frame>
         <TutorialPageGuide page="teamPool" frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
-        <Frame
-          title={tr ? "Eşleşen Takımlar" : "Matching Teams"}
-          icon={ListChecks}
-        >
-          <View style={[s.table, { marginTop: 10 }]}>
-            <View style={[s.row, poolTableStyles.header]}>
-              {labels.map((label, i) => (
-                <View
-                  key={label}
-                  style={[
-                    s.headerCell,
-                    { flex: flexes[i] },
-                    i > 0 && s.headerSeparator,
-                  ]}
-                >
-                  <Text
-                    numberOfLines={1}
-                    style={s.tableHeader}
-                  >
-                    {label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <View style={{ height: resultsHeight }}>
-              {loading ? (
-                <ActivityIndicator style={{ flex: 1 }} color={ACCENT} />
-              ) : rows.length ? (
-                <ScrollView nestedScrollEnabled>
-                  {rows.map((team) => (
-                    <Pressable
-                      key={team.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${team.name}, ${team.country}, ${team.league}, ${team.coachName}`}
-                      accessibilityState={{
-                        selected: team.id === selected?.id,
-                      }}
-                      onPress={() => void selectTeam(team)}
-                      style={[s.row, team.id === selected?.id && s.active]}
-                    >
-                      {[
-                        team.name,
-                        shortCountry(team.country),
-                        comparisonSourceShortLabel({
-                          competition: team.league,
-                          team: "",
-                        }),
-                        shortPlayer(team.coachName) || "—",
-                      ].map((v, i) => (
-                        <Text
-                          key={i}
-                          numberOfLines={i === 0 ? undefined : 2}
-                          style={[s.cell, { flex: flexes[i] }]}
-                        >
-                          {v}
-                        </Text>
-                      ))}
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              ) : (
-                <Text style={s.empty}>
-                  {tr
-                    ? "Takımları görmek için arama filtrelerini kullanın."
-                    : "Use the search filters to find teams."}
-                </Text>
-              )}
-            </View>
-          </View>
-        </Frame>
-        <TutorialPageGuide page="teamPool" frame={1} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+        <TutorialPageGuide page="teamPool" frame={1} onShow={y=>pageScroll.current?.scrollTo({y:Math.max(0,y-12),animated:true})}/>
         <Frame title={tr ? "Takım Kartı" : "Team Card"} icon={ShieldCheck}>
           {selected ? (
             <>
@@ -452,6 +247,7 @@ export default function TeamPoolScreen() {
                 onSave={() => void saveTeam(selected)}
                 saved={savedTeams.has(selected.id)}
                 saving={savingTeam === selected.id}
+                onFixtures={() => nav.navigate("MatchPool", {fixtureTeam:selected,fixtureRequest:Date.now()})}
                 onAnalyze={() => nav.navigate("TeamAnalysis", { team: selected })}
               />
               {showPlanNudge && plan === "Free" ? (
@@ -461,89 +257,21 @@ export default function TeamPoolScreen() {
                 />
               ) : null}
             </>
-          ) : (
+          ) : loading ? <ActivityIndicator color={ACCENT} style={{padding:24}}/> : (
             <Text style={s.empty}>
               {tr
-                ? "Takım kartını görüntülemek için bir takım seçin."
-                : "Select a team to view its card."}
+                ? "Bir takım seçip Takım Ara düğmesine basın."
+                : "Select a team and press Search Team to view its card."}
             </Text>
           )}
         </Frame>
-        <Modal
-          visible={selector !== null}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setSelector(null)}
-        >
-          <View style={s.backdrop}>
-            <View style={[s.modal, { maxHeight: height * 0.8 }]}>
-              <View style={s.identity}>
-                <Text style={[FRAME_TITLE, { flex: 1 }]}>
-                  {selector === "country"
-                    ? tr
-                      ? "Ülke Seç"
-                      : "Select Country"
-                    : tr
-                      ? "Lig Seç"
-                      : "Select League"}
-                </Text>
-                <Pressable hitSlop={12} onPress={() => setSelector(null)}>
-                  <X size={22} color={DANGER} />
-                </Pressable>
-              </View>
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder={tr ? "Ara" : "Search"}
-                placeholderTextColor={MUTED}
-                style={[s.input, { marginVertical: 12 }]}
-              />
-              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}>
-                {(selector === "country" ? options.countries : options.leagues)
-                  .filter((v) => fold(v).includes(fold(query)))
-                  .map((v) => (
-                    <Pressable
-                      key={v}
-                      accessibilityRole="radio"
-                      accessibilityState={{selected:!!selector && filters[selector]===v}}
-                      style={[
-                        s.option,
-                        selector && filters[selector] === v ? s.filterSelected : null,
-                      ]}
-                      onPress={() => {
-                        if (selector) update(selector, v);
-                        setSelector(null);
-                      }}
-                    >
-                      <Text style={[s.text,{fontWeight:"700"}]}>{v}</Text>
-                    </Pressable>
-                  ))}
-                {!(
-                  selector === "country" ? options.countries : options.leagues
-                ).some((v) => fold(v).includes(fold(query))) && (
-                  <Text style={s.empty}>
-                    {tr ? "Sonuç bulunamadı." : "No results found."}
-                  </Text>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
+        {selector && <Modal visible transparent animationType="fade" onRequestClose={()=>setSelector(null)}><View style={s.backdrop}><View style={[s.modal,{maxHeight:height*.8}]}>
+          <View style={s.identity}><Text style={[FRAME_TITLE,{flex:1}]}>{selector==='team'?(tr?'Takım':'Team'):(tr?'Lig':'League')}</Text><Pressable hitSlop={12} onPress={()=>setSelector(null)}><X size={22} color={DANGER}/></Pressable></View>
+          <TextInput value={query} onChangeText={setQuery} placeholder={tr?'Ara':'Search'} placeholderTextColor={MUTED} style={[s.input,{marginVertical:12}]}/>
+          <FlatList data={(selector==='league'?options.leagues.map(l=>({id:l.id,name:`${l.country || '—'} | ${l.name}`})):options.teams).filter(v=>optionMatchesSearch(v.name,normalizeSearchText(query)))} keyExtractor={v=>String(v.id)} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}} ListHeaderComponent={selector==='league'?<Pressable style={s.option} onPress={()=>{setLeagueId(undefined);setSelector(null);}}><Text style={s.green}>{tr?'Tüm ligler':'All leagues'}</Text></Pressable>:null} ListEmptyComponent={<Text style={s.empty}>{tr?'Sonuç bulunamadı.':'No results found.'}</Text>} renderItem={({item})=><Pressable accessibilityRole="radio" accessibilityState={{selected:item.id===(selector==='team'?teamId:leagueId)}} style={[s.option,item.id===(selector==='team'?teamId:leagueId)&&s.filterSelected]} onPress={()=>{if(selector==='league'){clearCard();setTeamId(undefined);setLeagueId(item.id);setOptions(v=>({...v,teams:[]}));}else {clearCard();setTeamId(item.id);}setSelector(null);}}><Text style={[s.text,{fontWeight:'700'}]}>{item.name}</Text></Pressable>}/>
+        </View></View></Modal>}
       </ScrollView>
       {ads.fallback}
-      <TeamSuggestionsOverlay
-        anchor={teamAnchor}
-        visible={
-          focused &&
-          suggestions.length > 0 &&
-          !suggestions.some((t) => fold(t) === fold(filters.team))
-        }
-        options={suggestions}
-        onSelect={(name) => {
-          update("team", name);
-          setFocused(false);
-        }}
-      />
     </View>
   );
 }

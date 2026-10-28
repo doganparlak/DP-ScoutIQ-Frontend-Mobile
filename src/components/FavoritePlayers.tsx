@@ -1,3 +1,4 @@
+import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
 import { isAdFlowCancelled } from '@/ads/presentation';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { useMatchup } from '@/context/MatchupContext';
@@ -6,7 +7,7 @@ import { portfolioViewportHeight } from '@/utils/portfolioLayout';
 import { playerNameMatchesSearch } from '@/utils/searchSuggestions';
 
 import { useFocusEffect,useNavigation } from '@react-navigation/native';
-import { Network,Shirt,UserRound,UserX,X } from 'lucide-react-native';
+import { Database,Gem,Network,Shirt,UserRound,UserX,X } from 'lucide-react-native';
 import React,{ useEffect,useMemo,useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -55,6 +56,9 @@ import { TutorialHint,type ProfileTutorialStep } from './Tutorial';
 
 type PlayerRow = PlayerContract & {
   reportStats?: PlayerData['stats'];
+  positionCounts?: Record<string, number>;
+  positionCountTotal?: number;
+  positionNamesSeen?: string[];
   matchCount?: number;
   sportmonksId?: number;
   teamId?: number;
@@ -88,11 +92,9 @@ const COL = {
   team: 0.85,
   age: 0.6,
   roles: 0.7,
-  form: 0.7,
-  pot: 0.7,
 } as const;
 
-type SortKey = 'name' | 'nationality' | 'team' | 'age' | 'roles' | 'form' | 'potential';
+type SortKey = 'name' | 'nationality' | 'team' | 'age' | 'roles';
 type SortDir = 'asc' | 'desc';
 
 function hasAbbreviation(token: string) {
@@ -203,7 +205,7 @@ export default function FavoritePlayers({
 
   const sharedMatchup = useMatchup();
   const matchupAds = useWorkspaceActionAd();
-  const matchupFull = sharedMatchup.rows.slice(0, sharedMatchup.mode).every(Boolean);
+  const matchupFull = sharedMatchup.rows.filter(Boolean).length >= 4;
   const [proUpsellOpen, setProUpsellOpen] = useState(false);
   const [proUpsellSource, setProUpsellSource] = useState<'report' | 'lineup' | null>(null);
   const [lineupOpen, setLineupOpen] = useState(false);
@@ -225,8 +227,8 @@ export default function FavoritePlayers({
   const [maxForm, setMaxForm] = useState<string>('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
-  const [sortKey, setSortKey] = useState<SortKey>('potential');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const [scoutOpen, setScoutOpen] = useState(false);
   const [scoutPlayer, setScoutPlayer] = useState<PlayerData | null>(null);
@@ -261,6 +263,9 @@ export default function FavoritePlayers({
         id: f.id,
         reportStats: f.reportStats,
         matchCount: f.matchCount,
+        positionCounts: f.positionCounts,
+        positionCountTotal: f.positionCountTotal,
+        positionNamesSeen: f.positionNamesSeen,
         playerId: f.playerId,
         sportmonksId: f.sportmonksId,
         teamId: f.teamId,
@@ -301,6 +306,9 @@ export default function FavoritePlayers({
       nationality: p.nationality,
       age: p.age,
       roles: p.rolesShort,
+      positionCounts: p.positionCounts,
+      positionCountTotal: p.positionCountTotal,
+      positionNamesSeen: p.positionNamesSeen,
       potential: p.potential,
       form: p.form,
       gender: p.gender,
@@ -392,10 +400,6 @@ export default function FavoritePlayers({
           return compareWithMissingLast(a.team, b.team, dir, (av, bv) => av.localeCompare(bv));
         case 'age':
           return compareWithMissingLast(a.age, b.age, dir, (av, bv) => av - bv);
-        case 'potential':
-          return compareWithMissingLast(a.potential, b.potential, dir, (av, bv) => av - bv);
-        case 'form':
-          return compareWithMissingLast(a.form, b.form, dir, (av, bv) => av - bv);
         case 'roles': {
           const ar = a.rolesShort[0] ?? '';
           const br = b.rolesShort[0] ?? '';
@@ -929,8 +933,7 @@ export default function FavoritePlayers({
                 <View key={visibleRole} style={styles.rolePill}>
                   <Text
                     numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.72}
+                    maxFontSizeMultiplier={1.3}
                     style={styles.rolePillText}
                   >
                     {visibleRole}
@@ -941,54 +944,6 @@ export default function FavoritePlayers({
               );
             })()}
           </View>
-        )}
-
-        <View style={styles.vsep} />
-
-        {isHeader ? (
-          <Pressable
-            onPress={() => cycleSort('form')}
-            disabled={tutorialLocked}
-            style={({ pressed }) => [
-              styles.cell,
-              { flex: COL.form },
-              pressed && pressedStyle,
-              sortKey === 'form' && styles.activeHeaderCell,
-            ]}
-          >
-            <Text style={[styles.thText, { textAlign: 'center' }]}>
-              {t('tblForm', 'Form')}
-              {chevron('form')}
-            </Text>
-          </Pressable>
-        ) : (
-          <Text style={[styles.td, styles.cell, { flex: COL.form, textAlign: 'center' }]}>
-            {(item as PlayerRow).form ?? '—'}
-          </Text>
-        )}
-
-        <View style={styles.vsep} />
-
-        {isHeader ? (
-          <Pressable
-            onPress={() => cycleSort('potential')}
-            disabled={tutorialLocked}
-            style={({ pressed }) => [
-              styles.cell,
-              { flex: COL.pot },
-              pressed && pressedStyle,
-              sortKey === 'potential' && styles.activeHeaderCell,
-            ]}
-          >
-            <Text style={[styles.thText, { textAlign: 'center' }]}>
-              {t('tblPot', 'Pot.')}
-              {chevron('potential')}
-            </Text>
-          </Pressable>
-        ) : (
-          <Text style={[styles.td, styles.cell, { flex: COL.pot, textAlign: 'center' }]}>
-            {(item as PlayerRow).potential ?? '—'}
-          </Text>
         )}
 
         <View style={styles.vsep} />
@@ -1287,7 +1242,14 @@ export default function FavoritePlayers({
         />
       </View>
 
-      <View style={styles.table}>
+      {!loading && !loadError && rows.length === 0 ? <View style={{gap:16,marginTop:10}}>
+        <Text style={{color:MUTED,fontSize:14,lineHeight:21}}>{t('portfolioEmptyDiscover', 'Discover players and add the ones you want to follow to your portfolio.')}</Text>
+        <WorkspaceSourceActions sources={[
+          {label:t('tabPlayerPool','Player Pool'),Icon:UserRound,onPress:()=>navigation.navigate('Strategy')},
+          {label:t('seasonDataWorkspace','Season Data').replace(/\s+/, '\n'),Icon:Database,onPress:()=>navigation.navigate('SeasonData')},
+          {label:'ScoutWise Pro',Icon:Gem,onPress:()=>navigation.navigate('Chat',{screen:'ProHome'})},
+        ]}/>
+      </View> : <View style={styles.table}>
         <View style={styles.tableTopBorder} />
 
         {loadError ? <View style={{ padding: 16, gap: 12 }}><Text style={{ color: MUTED }}>{t('favoritesError', 'Favorites error')}</Text><Pressable accessibilityRole="button" onPress={fetchFavorites}><Text style={{ color: ACCENT }}>{t('portfolioRetry', 'Retry')}</Text></Pressable></View> : loading ? (
@@ -1317,7 +1279,7 @@ export default function FavoritePlayers({
         )}
 
         <View style={styles.tableBottomBorder} />
-      </View>
+      </View>}
 
       {previewPlayer && (
         <Modal transparent visible animationType="fade" onRequestClose={() => setPreviewPlayer(null)}>
@@ -1336,7 +1298,7 @@ export default function FavoritePlayers({
               </Pressable>
               </View>
               <ScrollView contentContainerStyle={{ paddingBottom: 8 }}>
-              <PlayerCard player={previewPlayer} titleAlign="left" similarPlayerId={previewRow?.playerId || undefined} similarDisabled={tutorialLocked || matchupAds.busy}
+              <PlayerCard onManageMatchup={()=>{setPreviewPlayer(null);navigation.navigate('Matchup');}} player={previewPlayer} titleAlign="left" similarPlayerId={previewRow?.playerId || undefined} similarDisabled={tutorialLocked || matchupAds.busy}
                 beforeFindSimilar={async()=>{setPreviewPlayer(null);await new Promise<void>(resolve=>setTimeout(resolve,350));}}
                 reportState={previewRow && (processingReports.has(previewRow.id) || queuedReportPlayer?.id === previewRow.id) ? 'loading' : 'idle'}
                 onGenerateReport={async () => { if (previewRow) await handleReportPress(previewRow); }}
@@ -1348,6 +1310,7 @@ export default function FavoritePlayers({
                   const entry = {id: previewRow.playerId, player: {...previewPlayer, meta: {...previewPlayer.meta, sportmonksId: previewRow.sportmonksId}}};
                   try {
                     await matchupAds.run('portfolioPlayerMatchupAdd', () => { sharedMatchup.add(entry); });
+                    if(sharedMatchup.rows.filter(Boolean).length===3){setPreviewPlayer(null);navigation.navigate('Matchup');}
                   } catch (error) {
                     Alert.alert(t('matchupWorkspace'), String(error));
                   }
@@ -1563,7 +1526,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     minWidth: 30,
     maxWidth: 46,
     flexShrink: 1,
-    height: 22,
+    minHeight: 26,
+    paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: themeColor('rgba(36, 245, 166, 0.22)', 'border'),
@@ -1575,9 +1539,11 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   rolePillText: {
     minWidth: 0,
     color: ACCENT,
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
-    lineHeight: 13,
+    lineHeight: 15,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   roleDash: {
     color: MUTED,

@@ -1,18 +1,23 @@
+import React from 'react';
+import { normalizeSearchText, optionMatchesSearch } from '@/utils/searchSuggestions';
 import { PLAYER_ROLE_GRID_ORDER } from '@/services/api';
 import { Selector } from './LeaguePerformanceControls';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 
-import { CalendarX2,ChevronDown,ListFilter,Search } from 'lucide-react-native';
+import { ChevronDown,ListFilter,Search,X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import {
 Pressable,
+Modal,
+FlatList,
+Keyboard,
+useWindowDimensions,
 StyleSheet,
 Text,
 TextInput,
 View,
 } from 'react-native';
 
-import { ContractDateFilter,ContractStatusFilter,type ContractStatus } from '@/components/ContractFilters';
 import { TutorialHint } from '@/components/Tutorial';
 
 
@@ -28,27 +33,21 @@ type PlayerPoolComponentTheme = {
 type Props = {
   name: string;
   setName: (value: string) => void;
-  contractStatus: ContractStatus;
-  setContractStatus: (value: ContractStatus) => void;
-  loanEndDate: string;
-  setLoanEndDate: (value: string) => void;
-  contractEndDate: string;
-  setContractEndDate: (value: string) => void;
   nationality: string;
   setNationality: (value: string) => void;
   selectedNationality: string | null;
   setSelectedNationality: (value: string | null) => void;
-  nationalitySuggestions: string[];
+  nationalityOptions: string[];
   league: string;
   setLeague: (value: string) => void;
   selectedLeague: string | null;
   setSelectedLeague: (value: string | null) => void;
-  leagueSuggestions: string[];
+  leagueOptions: string[];
   team: string;
   setTeam: (value: string) => void;
   selectedTeam: string | null;
   setSelectedTeam: (value: string | null) => void;
-  teamSuggestions: string[];
+  teamOptions: string[];
   position: string;
   setPosition: (value: string) => void;
   positionOpen: boolean;
@@ -59,10 +58,6 @@ type Props = {
   setMinAge: (value: string) => void;
   maxAge: string;
   setMaxAge: (value: string) => void;
-  minHeight: string;
-  setMinHeight: (value: string) => void;
-  maxHeight: string;
-  setMaxHeight: (value: string) => void;
   clearFilters: () => void;
   onSearch: () => void;
   tutorialStep?: 'filters' | 'search' | null;
@@ -76,22 +71,21 @@ type Props = {
 export default function SearchFilters({
   name,
   setName,
-  contractStatus, setContractStatus, loanEndDate, setLoanEndDate, contractEndDate, setContractEndDate,
   nationality,
   setNationality,
   selectedNationality,
   setSelectedNationality,
-  nationalitySuggestions,
+  nationalityOptions,
   league,
   setLeague,
   selectedLeague,
   setSelectedLeague,
-  leagueSuggestions,
+  leagueOptions,
   team,
   setTeam,
   selectedTeam,
   setSelectedTeam,
-  teamSuggestions,
+  teamOptions,
   position,
   setPosition,
   positionOpen,
@@ -101,10 +95,6 @@ export default function SearchFilters({
   setMinAge,
   maxAge,
   setMaxAge,
-  minHeight,
-  setMinHeight,
-  maxHeight,
-  setMaxHeight,
   clearFilters,
   onSearch,
   tutorialStep = null,
@@ -118,6 +108,9 @@ export default function SearchFilters({
   const {styles, ACCENT, FRAME_HEADING, MUTED, TEXT} = themed;
 
   const { t, i18n } = useTranslation();
+  const [selector,setSelector] = React.useState<'nationality'|'league'|'team'|null>(null);
+  const [query,setQuery] = React.useState('');
+  const {height} = useWindowDimensions();
   const controlsLocked = tutorialActive;
   const searchEnabled = !tutorialActive || tutorialStep === 'search';
   const inputStyle = theme
@@ -132,7 +125,7 @@ export default function SearchFilters({
       <View style={[styles.worldCupTopStripe, { backgroundColor: theme?.accent ?? ACCENT }]} />
       <View style={[FRAME_HEADING, { marginBottom: 10 }]}><ListFilter size={20} color={theme?.accent ?? ACCENT} /><Text style={[styles.sectionTitle, theme && { color: theme.accent }]}>
         {t('playerPoolFilters', 'Player search filters')}
-      </Text>{!worldCupMode && <Pressable accessibilityRole="button" accessibilityLabel={i18n.language.startsWith('tr')?'Tarihleri temizle':'Clear dates'} disabled={controlsLocked || (!contractEndDate && !loanEndDate)} hitSlop={8} style={{marginLeft:'auto',opacity:(controlsLocked||(!contractEndDate&&!loanEndDate)) ? 0.4 : 1}} onPress={()=>{setContractEndDate('');setLoanEndDate('');}}><CalendarX2 size={20} color={theme?.accent ?? ACCENT}/></Pressable>}</View>
+      </Text></View>
 
       <View style={styles.tutorialGap}>
         <TutorialHint
@@ -161,132 +154,11 @@ export default function SearchFilters({
           />
         </View>
 
-        <View style={styles.filterCol}>
-          <ContractStatusFilter value={contractStatus} disabled={controlsLocked} onChange={(value) => {
-            setContractStatus(value);
-            if (value === 'permanent') setLoanEndDate('');
-          }} />
-        </View>
-
-        {!worldCupMode ? (
-          <>
-            <View style={styles.filterCol}>
-              <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltNationality', 'Country')}</Text>
-              <TextInput
-                value={nationality}
-                editable={!controlsLocked}
-                onChangeText={(value) => {
-                  if (controlsLocked) return;
-                  setNationality(value);
-                  setSelectedNationality(
-                    selectedNationality && selectedNationality === value ? selectedNationality : null,
-                  );
-                }}
-                placeholder={t('phSearchNationality', 'Search nationality')}
-                placeholderTextColor={theme?.muted ?? MUTED}
-                style={inputStyle}
-              />
-              {nationalitySuggestions.length > 0 &&
-              nationality.trim().toLowerCase() !== selectedNationality?.trim().toLowerCase() ? (
-                <View style={styles.suggestions}>
-                  {nationalitySuggestions.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => {
-                        if (controlsLocked) return;
-                        setNationality(item);
-                        setSelectedNationality(item);
-                      }}
-                      style={({ pressed }) => [
-                        styles.suggestionChip,
-                        theme && { backgroundColor: theme.card, borderColor: theme.line },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={[styles.suggestionText, theme && { color: theme.muted }]}>{item}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.filterCol}>
-              <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltLeague', 'League')}</Text>
-              <TextInput
-                value={league}
-                editable={!controlsLocked}
-                onChangeText={(value) => {
-                  if (controlsLocked) return;
-                  setLeague(value);
-                  setSelectedLeague(selectedLeague && selectedLeague === value ? selectedLeague : null);
-                }}
-                placeholder={t('phSearchLeague', 'Search league')}
-                placeholderTextColor={theme?.muted ?? MUTED}
-                style={inputStyle}
-              />
-              {leagueSuggestions.length > 0 &&
-              league.trim().toLowerCase() !== selectedLeague?.trim().toLowerCase() ? (
-                <View style={styles.suggestions}>
-                  {leagueSuggestions.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => {
-                        if (controlsLocked) return;
-                        setLeague(item);
-                        setSelectedLeague(item);
-                      }}
-                      style={({ pressed }) => [
-                        styles.suggestionChip,
-                        theme && { backgroundColor: theme.card, borderColor: theme.line },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={[styles.suggestionText, theme && { color: theme.muted }]}>{item}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          </>
-        ) : null}
-
-        <View style={styles.filterCol}>
-          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltTeam', 'Team')}</Text>
-          <TextInput
-            value={team}
-            editable={!controlsLocked}
-            onChangeText={(value) => {
-              if (controlsLocked) return;
-              setTeam(value);
-              setSelectedTeam(selectedTeam && selectedTeam === value ? selectedTeam : null);
-            }}
-            placeholder={t('phSearchTeam', 'Search team')}
-            placeholderTextColor={theme?.muted ?? MUTED}
-            style={inputStyle}
-          />
-          {teamSuggestions.length > 0 &&
-          team.trim().toLowerCase() !== selectedTeam?.trim().toLowerCase() ? (
-            <View style={styles.suggestions}>
-              {teamSuggestions.map((item) => (
-                <Pressable
-                  key={item}
-                  onPress={() => {
-                    if (controlsLocked) return;
-                    setTeam(item);
-                    setSelectedTeam(item);
-                  }}
-                  style={({ pressed }) => [
-                    styles.suggestionChip,
-                    theme && { backgroundColor: theme.card, borderColor: theme.line },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.suggestionText, theme && { color: theme.muted }]}>{item}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
+        {(['nationality','league','team'] as const).filter(key=>!worldCupMode || key==='team').map(key=>{
+          const label=key==='nationality'?t('fltNationality','Nationality'):key==='league'?t('fltLeague','League'):t('fltTeam','Team');
+          const value=key==='nationality'?nationality:key==='league'?league:team;
+          return <View key={key} style={styles.filterCol}><Text style={[styles.filterLabel,theme&&{color:theme.muted}]}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:controlsLocked}} disabled={controlsLocked} style={[inputStyle,styles.dropdownInput]} onPress={()=>{Keyboard.dismiss();setQuery('');setSelector(key);}}><Text numberOfLines={1} style={{flex:1,color:value?TEXT:(theme?.muted??MUTED),fontSize:14}}>{value || (i18n.language.startsWith('tr')?'Seçin':'Select')}</Text><ChevronDown size={16} color={theme?.muted??MUTED}/></Pressable></View>;
+        })}
 
         <View style={styles.filterCol}>
           <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('tblRoles', 'Role')}</Text>
@@ -326,52 +198,17 @@ export default function SearchFilters({
           </View>
         </View>
 
-        <View style={styles.filterCol}>
-          <Text style={[styles.filterLabel, theme && { color: theme.muted }]}>{t('fltHeight', 'Height (min / max)')}</Text>
-          <View style={styles.rangeRow}>
-            <TextInput
-              value={minHeight}
-              editable={!controlsLocked}
-              onChangeText={(value) => setMinHeight(value.replace(/[^\d.]/g, ''))}
-              keyboardType="numeric"
-              placeholder={t('phMin', 'Min')}
-              placeholderTextColor={theme?.muted ?? MUTED}
-              style={rangeInputStyle}
-            />
-            <TextInput
-              value={maxHeight}
-              editable={!controlsLocked}
-              onChangeText={(value) => setMaxHeight(value.replace(/[^\d.]/g, ''))}
-              keyboardType="numeric"
-              placeholder={t('phMax', 'Max')}
-              placeholderTextColor={theme?.muted ?? MUTED}
-              style={rangeInputStyle}
-            />
-          </View>
-        </View>
-        <View style={styles.filterCol}>
-          <ContractDateFilter
-            testID="loan-end-date"
-            label={t('contractLoanEnd', 'Loan end date')}
-            value={loanEndDate}
-            onChange={(value) => {
-              setLoanEndDate(value);
-              if (value && contractStatus !== 'loan') setContractStatus('loan');
-            }}
-            disabled={controlsLocked || contractStatus === 'permanent'}
-          />
-        </View>
-        <View style={styles.filterCol}>
-          <ContractDateFilter testID="contract-end-date" label={t('contractPermanentEnd', 'Contract end date')} value={contractEndDate} onChange={setContractEndDate} disabled={controlsLocked} />
-        </View>
       </View>
 
       <View style={styles.actionsRow}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{disabled:controlsLocked}}
           onPress={clearFilters}
           disabled={controlsLocked}
           style={({ pressed }) => [
             styles.secondaryButton,
+            controlsLocked && styles.disabledButton,
             theme && { backgroundColor: theme.card, borderColor: theme.line },
             pressed && styles.pressed,
           ]}
@@ -382,6 +219,8 @@ export default function SearchFilters({
         </Pressable>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{disabled:!searchEnabled}}
           onPress={onSearch}
           disabled={!searchEnabled}
           style={({ pressed }) => [
@@ -413,13 +252,22 @@ export default function SearchFilters({
         arrow="up"
       />
 
+      {selector && <Modal visible transparent animationType="fade" onRequestClose={()=>setSelector(null)}><View style={styles.modalBackdrop}><View style={[styles.modalCard,{maxHeight:height*.8},theme&&{backgroundColor:theme.panel,borderColor:theme.line}]} accessibilityViewIsModal>
+        <View style={styles.modalHeader}><Text style={styles.modalTitle}>{selector==='nationality'?t('fltNationality','Nationality'):selector==='league'?t('fltLeague','League'):t('fltTeam','Team')}</Text><Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel={t('close','Close')} onPress={()=>setSelector(null)}><X size={22} color={theme?.accent??ACCENT}/></Pressable></View>
+        <TextInput value={query} onChangeText={setQuery} placeholder={i18n.language.startsWith('tr')?'Ara':'Search'} placeholderTextColor={theme?.muted??MUTED} style={[inputStyle,{marginVertical:12}]}/>
+        <FlatList data={(selector==='nationality'?nationalityOptions:selector==='league'?leagueOptions:teamOptions).filter(v=>optionMatchesSearch(v,normalizeSearchText(query)))} keyExtractor={v=>v} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}
+          ListHeaderComponent={<Pressable style={inputStyle} onPress={()=>{if(selector==='nationality'){setNationality('');setSelectedNationality(null);}else if(selector==='league'){setLeague('');setSelectedLeague(null);}else{setTeam('');setSelectedTeam(null);}setSelector(null);}}><Text style={{color:theme?.accent??ACCENT}}>{i18n.language.startsWith('tr')?'Seçimi temizle':'Clear selection'}</Text></Pressable>}
+          ListEmptyComponent={<Text style={{color:theme?.muted??MUTED,padding:12}}>{i18n.language.startsWith('tr')?'Sonuç bulunamadı.':'No results found.'}</Text>}
+          renderItem={({item})=>{const selected=item===(selector==='nationality'?selectedNationality:selector==='league'?selectedLeague:selectedTeam);return <Pressable accessibilityRole="radio" accessibilityState={{selected}} style={[inputStyle,selected&&{borderColor:theme?.accent??ACCENT}]} onPress={()=>{if(selector==='nationality'){setNationality(item);setSelectedNationality(item);}else if(selector==='league'){setLeague(item);setSelectedLeague(item);}else{setTeam(item);setSelectedTeam(item);}setSelector(null);}}><Text style={{color:theme?.accent??TEXT,fontWeight:'700'}}>{item}</Text></Pressable>;}}/>
+      </View></View></Modal>}
+
       {positionOpen && <Selector
         columns={3}
         title={t('tblRoles', 'Role')}
         tr={i18n.language.startsWith('tr')}
         selected={position}
         options={[
-          {key: '', label: t('clearFilters', 'Clear filters')},
+          {key: '', label: i18n.language.startsWith('tr') ? 'Seçimi temizle' : 'Clear selection'},
           ...PLAYER_ROLE_GRID_ORDER.map(role => ({key: role, label: role})),
         ]}
         onSelect={role => {setPosition(role);setPositionOpen(false);}}
@@ -461,6 +309,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     fontSize: 12,
   },
   input: {
+    height: 44,
     color: TEXT,
     backgroundColor: CARD,
     borderColor: LINE,
@@ -511,9 +360,10 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   secondaryButton: {
     flex: 1,
+    minHeight: 48,
+    paddingVertical: 12,
     minWidth: 0,
     paddingHorizontal: 8,
-    minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: LINE,
@@ -530,9 +380,10 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   primaryButton: {
     flex: 1,
+    minHeight: 48,
+    paddingVertical: 12,
     minWidth: 0,
     paddingHorizontal: 8,
-    minHeight: 46,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: ACCENT,
@@ -547,9 +398,10 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   },
   primaryButtonText: {
     color: ACCENT,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   pressed: {
     opacity: 0.92,
@@ -566,7 +418,6 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     borderWidth: 1,
     borderColor: LINE,
     padding: 16,
-    maxHeight: '70%',
   },
   modalHeader: {
     flexDirection: 'row',

@@ -80,6 +80,9 @@ export default function MyProfileScreen() {
       >
         <Account
           plan={plan}
+          profile={profile}
+          profileLoading={profileLoading}
+          onOpenPro={() => rootNav.getParent()?.navigate("Chat", { screen: "ProHome" })}
           onLogout={handleLogout}
           onOpenPlans={() => rootNav.getParent()?.navigate("ManagePlan")}
           onOpenHelp={() => rootNav.getParent()?.navigate("HelpCenter")}
@@ -88,7 +91,7 @@ export default function MyProfileScreen() {
         <View style={styles.tutorialGuide}>
           <TutorialPageGuide page="panel" onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         </View>
-        <ProfileSummary profile={profile} profileLoading={profileLoading} />
+        <ProfileSummary />
         <AdPrivacyOptions />
       </ScrollView>
 
@@ -110,7 +113,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
 
   const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
-  tutorialGuide: { marginHorizontal: 16, marginTop: 14 },
+  tutorialGuide: { marginHorizontal: 16 },
 });
   return {BG, styles, themeColor};
 });

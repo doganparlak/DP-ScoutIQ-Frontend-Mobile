@@ -1,10 +1,11 @@
+import { isInterstitialCoolingDown } from './interstitialCooldown';
 import React from 'react';
 import { AppState } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getMe } from '@/services/api';
 import { useTutorial } from '@/components/Tutorial';
 import { PlusProUpsellScreen } from './PlusProUpsellScreen';
-import { incrementWorkspaceActionAndShouldShowAd, type WorkspaceAdAction } from './adGating';
+import { incrementWorkspaceActionAndShouldShowAd, isMatchupAddAction, shouldShowNextMatchupAddAd, type WorkspaceAdAction } from './adGating';
 import { showInterstitial } from './interstitial';
 import { acquireAdPresentation, releaseAdPresentation, isAdPresentationBusy, isAdFlowCancelled } from './presentation';
 import { logAdLifecycle } from './logging';
@@ -32,12 +33,13 @@ export function useWorkspaceActionAd() {
     // Wait for native modal dismissal before presenting the requested report.
     setTimeout(() => resume?.(focused.current && navigation.isFocused()), 450);
   }
-  async function run(action: WorkspaceAdAction, perform: () => void | Promise<void>) {
+  async function run(action: WorkspaceAdAction, perform: () => void | boolean | Promise<void | boolean>, beforeAd?:()=>Promise<void>) {
     if (lock.current || isAdPresentationBusy() || !focused.current || AppState.currentState !== 'active') return;
     lock.current = true; setBusy(true);
     const version = epoch.current;
     const active = () => focused.current && epoch.current === version && navigation.isFocused() && AppState.currentState === 'active';
     let lease: symbol | null = null;
+    let commitMatchupAdd=false;
     try {
       if (!tutorial.active) {
         const profile = await getMe();
@@ -47,7 +49,11 @@ export function useWorkspaceActionAd() {
           lease = acquireAdPresentation();
           if (!lease) return;
           owner.current = lease;
-          if (await incrementWorkspaceActionAndShouldShowAd(action, lease)) {
+          commitMatchupAdd=isMatchupAddAction(action);
+          const due=commitMatchupAdd ? await shouldShowNextMatchupAddAd(lease) : await incrementWorkspaceActionAndShouldShowAd(action,lease);
+          if (due) {
+            if(!await isInterstitialCoolingDown())await beforeAd?.();
+            if(!active())return;
             const result = await showInterstitial({ action, presentationOwner: lease, isActive: active });
             if (!active() || result === 'busy' || result === 'cancelled') return;
             if (result === 'unavailable') {
@@ -60,9 +66,12 @@ export function useWorkspaceActionAd() {
           }
         }
       }
-      // Native presentation has finished; a slow report/search request must not lock other screens.
-      if (lease) { releaseAdPresentation(lease); lease = null; owner.current = undefined; }
-      if (active()) await perform();
+      // Keep the shared add counter reserved through its mutation; release other flows before slow requests.
+      if (lease && !commitMatchupAdd) { releaseAdPresentation(lease); lease = null; owner.current = undefined; }
+      if (active()) {
+        const performed=await perform();
+        if(commitMatchupAdd && performed!==false)await incrementWorkspaceActionAndShouldShowAd(action,lease??undefined);
+      }
     } catch (error) {
       if (!isAdFlowCancelled(error)) throw error;
     } finally {

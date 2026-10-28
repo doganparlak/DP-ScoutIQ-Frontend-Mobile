@@ -33,7 +33,7 @@ export default function PlanDiscoveryNudge({
       pro: <Text style={styles.valueText}>{t('plusProThreeOrFourPlayers', '3 or 4 players')}</Text>,
     },
     { label: t('planFeatures_CustomComparison', 'Customizable comparison'), plus: unavailable(), pro: available() },
-    { label: t('plusProChatAccess', 'ScoutWise chat'), plus: unavailable(), pro: available() },
+    { label: t('plusProChatAccess', 'ScoutWise Pro'), plus: unavailable(), pro: available() },
   ];
 
   return (
@@ -127,7 +127,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     justifyContent: 'center',
     borderRadius: 11,
     borderWidth: 1,
-    backgroundColor: themeColor('rgba(8, 18, 13, 0.72)', 'surface'),
+    backgroundColor: colors.mode === 'light' ? '#F4FAF6' : themeColor('rgba(8, 18, 13, 0.72)', 'surface'),
     paddingHorizontal: 11,
     paddingVertical: 6,
   },
@@ -138,7 +138,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     letterSpacing: 0.7,
     textTransform: 'uppercase',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
+    textShadowRadius: colors.mode === 'light' ? 0 : 8,
   },
   close: {
     width: 26,

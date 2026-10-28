@@ -1,22 +1,28 @@
-import { ContractDateFilter } from '@/components/ContractFilters';
+import { recordRecentSearch } from '@/services/recentSearches';
+import type { MainTabsParamList } from '@/types';
+import type { RouteProp } from '@react-navigation/native';
+import { readFixtureSearch, writeFixtureSearch, type CachedFixtureSearch } from '@/services/matchPoolCache';
+import { getTeamFixtureOptions, searchTeamFixtures, type TeamFixtureOptions } from '@/services/matchPool';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
+import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
 import MatchPortfolioTable from "@/components/MatchPortfolioTable";
 import MatchReportActions from "@/components/MatchReportActions";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
 import { TutorialPageGuide } from "@/components/Tutorial";
 import { deleteSavedMatch,getMe,type Plan } from "@/services/api";
-import { FavoriteMatch,filterSavedMatches } from "@/services/matchPool";
+import { FavoriteMatch } from "@/services/matchPool";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import {
 normalizeSearchText as fold,
 optionMatchesSearch,
 } from "@/utils/searchSuggestions";
-import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import { useFocusEffect,useNavigation,useRoute } from "@react-navigation/native";
 import {
 BadgeInfo,
 BookMarked,
-CalendarX2,
+CalendarSearch,
+Goal,
 ChevronDown,
 ListChecks,
 ListFilter,
@@ -56,7 +62,6 @@ fixtureDate,
 MatchFilters,
 MatchFixture,
 MatchOptions,
-matchOptions,
 matchSaveType,
 matchScore,
 MatchSide,
@@ -129,6 +134,7 @@ export default function MatchPoolScreen({
   const tr = i18n.language.startsWith("tr");
   const ads = useWorkspaceActionAd();
   const nav = useNavigation<any>();
+  const route = useRoute<RouteProp<MainTabsParamList, 'MatchPool'>>();
   const { height } = useWindowDimensions();
   const [filters, setFilters] = useState<MatchFilters>(EMPTY_MATCH_FILTERS),
     [options, setOptions] = useState<MatchOptions>({
@@ -136,6 +142,59 @@ export default function MatchPoolScreen({
       leagues: [],
       teams: [],
     });
+  const [retry, setRetry] = useState(0);
+  const [teamOptions, setTeamOptions] = useState<TeamFixtureOptions>({leagues: [], teams: []});
+  const [leagueId, setLeagueId] = useState<number>();
+  const [teamId, setTeamId] = useState<number>();
+  const [searchedTeamName, setSearchedTeamName] = useState('');
+  const [teamSelector, setTeamSelector] = useState<'league' | 'team' | null>(null);
+  const [teamQuery, setTeamQuery] = useState('');
+  const [portfolioLeague, setPortfolioLeague] = useState('');
+  const [portfolioTeamId, setPortfolioTeamId] = useState<number>();
+  const [teamOptionsLoading, setTeamOptionsLoading] = useState(false);
+  useEffect(() => {
+    if (portfolio) return;
+    let active = true;
+    setTeamOptionsLoading(true);
+    setOptionsError('');
+    getTeamFixtureOptions(leagueId).then(value => {
+      if (active) setTeamOptions(value);
+    }).catch(() => {
+      if (active) setOptionsError(tr ? 'Filtreler yüklenemedi. Yeniden deneyin.' : 'Could not load filters. Retry.');
+    }).finally(() => { if (active) setTeamOptionsLoading(false); });
+    return () => { active = false; };
+  }, [leagueId, portfolio, retry]);
+  function clearTeamResults() {
+    version.current++;
+    setLoading(false);
+    setError('');
+  }
+  async function searchTeam(target?: {id:number;name:string;leagueId:number}) {
+    const team = target ?? teamOptions.teams.find(t => t.id === teamId);
+    const searchedId = target?.id ?? teamId;
+    const seasonLeagueId = target?.leagueId ?? leagueId ?? team?.leagueId;
+    if (!seasonLeagueId || !searchedId || !team || (!target && (teamOptionsLoading || loading))) return;
+    const request = ++version.current;
+    setLoading(true);
+    setError('');
+    try {
+      const owner = cacheUser.current ?? (await getMe()).id;
+      if (request !== version.current) return;
+      cacheUser.current = owner;
+      const result = await searchTeamFixtures(seasonLeagueId, searchedId);
+      if (request !== version.current) return;
+      setRows(result.fixtures);
+      setSearchedTeamName(team.name);
+      const upcoming = result.fixtures.find(f => new Date(f.startingAt.replace(' ', 'T') + (/Z$|[+-]\d\d:\d\d$/.test(f.startingAt) ? '' : 'Z')).getTime() >= Date.now());
+      const matchId = upcoming?.fixtureId ?? result.fixtures[result.fixtures.length - 1]?.fixtureId ?? null;
+      setSelectedId(matchId);
+      const cached: CachedFixtureSearch = {teamId:searchedId, leagueId:seasonLeagueId, filterLeagueId:target?undefined:leagueId, teamName:team.name, fixtures:result.fixtures, selectedId:matchId};
+      lastSearch.current = cached;
+      void writeFixtureSearch(owner, cached).then(() => recordRecentSearch(owner, 'fixtures'));
+    } catch (e) {
+      if (request === version.current) setError(e instanceof Error ? e.message : String(e));
+    } finally { if (request === version.current) setLoading(false); }
+  }
   const [rows, setRows] = useState<MatchFixture[]>([]),
     [selectedId, setSelectedId] = useState<number | null>(null),
     [loading, setLoading] = useState(false),
@@ -145,8 +204,7 @@ export default function MatchPoolScreen({
     [saved, setSaved] = useState<string[]>([]),
     [saveError, setSaveError] = useState("");
   const [selector, setSelector] = useState<"country" | "league" | null>(null),
-    [query, setQuery] = useState(""),
-    [retry, setRetry] = useState(0);
+    [query, setQuery] = useState("");
   const [teamFocus, setTeamFocus] = useState<"homeTeam" | "awayTeam" | null>(
     null,
   );
@@ -171,6 +229,8 @@ export default function MatchPoolScreen({
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const favoritesVersion = useRef(0);
+  const cacheUser = useRef<number | null>(null);
+  const lastSearch = useRef<CachedFixtureSearch | null>(null);
   const version = useRef(0),
     alive = useRef(true);
   useEffect(() => {
@@ -180,33 +240,6 @@ export default function MatchPoolScreen({
       version.current++;
     };
   }, []);
-  useEffect(() => {
-    let active = true;
-    setOptionsError("");
-    matchOptions(filters)
-      .then((value) => {
-        if (!active) return;
-        setOptions(value);
-        setFilters((f) => ({
-          ...f,
-          country:
-            f.country && !value.countries.includes(f.country) ? "" : f.country,
-          league: f.league && !value.leagues.includes(f.league) ? "" : f.league,
-        }));
-      })
-      .catch(
-        () =>
-          active &&
-          setOptionsError(
-            tr
-              ? "Filtreler yüklenemedi. Yeniden deneyin."
-              : "Could not load filters. Retry.",
-          ),
-      );
-    return () => {
-      active = false;
-    };
-  }, [filters.country, filters.league, retry]);
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
@@ -233,9 +266,17 @@ export default function MatchPoolScreen({
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
+      let restoreVersion = version.current;
       getMe()
-        .then((me) => {
+        .then(async (me) => {
           if (!active) return;
+          if (!portfolio) {
+            if (cacheUser.current !== null && cacheUser.current !== me.id) {
+              version.current++;restoreVersion=version.current;
+              lastSearch.current=null;setRows([]);setSelectedId(null);setSearchedTeamName('');setTeamId(undefined);setLeagueId(undefined);
+            }
+            cacheUser.current=me.id;
+          }
           const nextPlan: Plan =
             me.plan === "No Ads Monthly" || me.plan === "Pro Monthly" || me.plan === "Pro Yearly"
               ? me.plan
@@ -243,6 +284,42 @@ export default function MatchPoolScreen({
           setPlan(nextPlan);
           setPlanResolved(true);
           if (nextPlan !== "Free") setShowPlanNudge(false);
+          if (portfolio) return;
+          let defaultFetched=false;
+          let cached = lastSearch.current ?? await readFixtureSearch(me.id);
+          if (!active || version.current !== restoreVersion || cacheUser.current !== me.id) return;
+          if(!cached){
+            setLoading(true);
+            try{
+              const available=await getTeamFixtureOptions();
+              if(!active || version.current!==restoreVersion || cacheUser.current!==me.id)return;
+              const psg=available.teams.find(team=>fold(team.name).replace(/-/g,' ')==='paris saint germain');
+              if(!psg)throw new Error('Default team unavailable');
+              const result=await searchTeamFixtures(psg.leagueId,psg.id);
+              if(!active || version.current!==restoreVersion || cacheUser.current!==me.id)return;
+              const upcoming=result.fixtures.find(f=>new Date(f.startingAt.replace(' ','T')+(/Z$|[+-]\d\d:\d\d$/.test(f.startingAt)?'':'Z')).getTime()>=Date.now());
+              cached={isDefault:true,teamId:psg.id,leagueId:psg.leagueId,teamName:psg.name,fixtures:result.fixtures,selectedId:upcoming?.fixtureId??result.fixtures[result.fixtures.length-1]?.fixtureId??null};
+              setTeamOptions(available);defaultFetched=true;
+              void writeFixtureSearch(me.id,cached);
+            }catch(reason){if(active && version.current===restoreVersion)setError(reason instanceof Error?reason.message:String(reason));return;}
+            finally{if(active && version.current===restoreVersion)setLoading(false);}
+          }
+          if (!lastSearch.current) {
+            lastSearch.current=cached;
+            setRows(cached.fixtures);setSelectedId(cached.selectedId);setSearchedTeamName(cached.teamName);
+            setTeamId(cached.teamId);setLeagueId(cached.filterLeagueId);
+          }
+          if(defaultFetched)return;
+          try {
+            const fresh=await searchTeamFixtures(cached.leagueId,cached.teamId);
+            if (!active || version.current !== restoreVersion || cacheUser.current !== me.id) return;
+            const selection=lastSearch.current?.selectedId ?? null;
+            const matchId=fresh.fixtures.some(f=>f.fixtureId===selection)?selection:fresh.fixtures[0]?.fixtureId??null;
+            const updated={...cached,fixtures:fresh.fixtures,selectedId:matchId};
+            lastSearch.current=updated;
+            setRows(fresh.fixtures);setSelectedId(matchId);
+            void writeFixtureSearch(me.id,updated);
+          } catch { /* Keep cached fixtures if background refresh is unavailable. */ }
         })
         .catch(() => {
           if (!active) return;
@@ -254,6 +331,26 @@ export default function MatchPoolScreen({
       };
     }, []),
   );
+  useEffect(() => {
+    const target = route.params?.fixtureTeam;
+    if (portfolio || !target) return;
+    let active = true;
+    const request = ++version.current;
+    setLoading(true);setError('');
+    void (async () => {
+      try {
+        const available = await getTeamFixtureOptions();
+        if (!active || version.current !== request) return;
+        const team = available.teams.find(t => t.id === Number(target.id));
+        if (!team) throw new Error('This team is unavailable for fixture search.');
+        setTeamOptions(available);setTeamId(team.id);setLeagueId(undefined);
+        await searchTeam(team);
+      } catch (e) {
+        if (active && version.current === request) {setError(e instanceof Error?e.message:String(e));setLoading(false);}
+      }
+    })();
+    return () => {active=false;};
+  }, [route.params?.fixtureRequest, portfolio]);
   const portfolioFixtures = React.useMemo(
     () =>
       Array.from(
@@ -263,8 +360,14 @@ export default function MatchPoolScreen({
       ),
     [favorites],
   );
+  const portfolioLeagues = Array.from(new Map(portfolioFixtures.map(f=>[
+    JSON.stringify([f.country.name,f.league.name]), {key:JSON.stringify([f.country.name,f.league.name]),name:`${f.country.name || '—'} | ${f.league.name}`},
+  ])).values()).sort((a,b)=>a.name.localeCompare(b.name));
+  const leagueFixtures = portfolioFixtures.filter(f=>!portfolioLeague || JSON.stringify([f.country.name,f.league.name])===portfolioLeague);
+  const portfolioTeams = Array.from(new Map(leagueFixtures.flatMap(f=>[f.homeTeam,f.awayTeam]).map(team=>[team.id,{key:String(team.id),name:team.name}])).values()).sort((a,b)=>a.name.localeCompare(b.name));
+  const portfolioChoices = (teamSelector==='league'?portfolioLeagues:portfolioTeams).filter(item=>optionMatchesSearch(item.name,fold(teamQuery)));
   const visibleRows = portfolio
-    ? filterSavedMatches(portfolioFixtures, filters)
+    ? leagueFixtures.filter(f=>!portfolioTeamId || f.homeTeam.id===portfolioTeamId || f.awayTeam.id===portfolioTeamId)
     : rows;
   const remove = (fixture: MatchFixture) =>
     Alert.alert(
@@ -365,6 +468,10 @@ export default function MatchPoolScreen({
   };
   const selectMatch = async (fixture: MatchFixture) => {
     setSelectedId(fixture.fixtureId);
+    if (!portfolio && lastSearch.current && cacheUser.current !== null) {
+      lastSearch.current={...lastSearch.current,selectedId:fixture.fixtureId};
+      void writeFixtureSearch(cacheUser.current,lastSearch.current);
+    }
     setSaveError("");
     setShowPlanNudge(false);
     if (!planResolved || plan !== "Free") return;
@@ -491,7 +598,7 @@ export default function MatchPoolScreen({
       )}
     </Frame>
   );
-  const widths = [1.65, 0.6, 0.7, 1.15, 0.6];
+  const widths = [1.65, 1.3, 1.15, 0.6];
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
@@ -501,147 +608,39 @@ export default function MatchPoolScreen({
         contentContainerStyle={s.page}
         keyboardShouldPersistTaps="handled"
       >
-        <Frame
-          title={
-            portfolio
-              ? tr
-                ? "Maç Filtreleri"
-                : "Match Filters"
-              : tr
-                ? "Fikstür Arama Filtreleri"
-                : "Fixture Search Filters"
-          }
-          Icon={ListFilter}
-          action={
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 20 }}
-            >
-              <Pressable
-                hitSlop={8}
-                accessibilityLabel={tr ? "Tarihleri temizle" : "Clear dates"}
-                disabled={!filters.startDate && !filters.endDate}
-                style={
-                  !filters.startDate && !filters.endDate
-                    ? s.disabled
-                    : undefined
-                }
-                onPress={() => {
-                  setFilters((f) => ({ ...f, startDate: "", endDate: "" }));
-                  setError("");
-                }}
-              >
-                <CalendarX2 size={20} color={ACCENT} />
-              </Pressable>
-              <Pressable
-                hitSlop={12}
-                accessibilityLabel={tr ? "Filtreleri temizle" : "Clear filters"}
-                onPress={reset}
-              >
-                <RotateCcw size={20} color={DANGER} />
-              </Pressable>
-            </View>
-          }
-        >
-          <View style={{ position: "relative" }}>
-            <View style={s.fields}>
-              {(["country", "league"] as const).map((key) => (
-                <View key={key} style={s.field}>
-                  <Text style={s.label}>{labels[key]}</Text>
-                  <Pressable
-                    style={s.inputRow}
-                    accessibilityRole="button"
-                    accessibilityLabel={labels[key]}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setTeamFocus(null);
-                      setQuery("");
-                      setSelector(key);
-                    }}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={[s.text, { flex: 1, padding: 10, color: filters[key] ? TEXT : MUTED }]}
-                    >
-                      {filters[key] || (tr ? `${labels[key]} ara` : `Search ${labels[key].toLowerCase()}`)}
-                    </Text>
-                    <ChevronDown
-                      size={16}
-                      color={MUTED}
-                      style={{ marginRight: 10 }}
-                    />
-                  </Pressable>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:6,minHeight:34,paddingTop:7}}>
-                    {filters[key] ? <Pressable style={[s.chip,s.filterSelected]} accessibilityRole="button" accessibilityLabel={tr ? `${labels[key]} seçimini temizle` : `Clear ${labels[key]}`} onPress={() => update(key, '')}>
-                      <Text numberOfLines={1} style={s.chipText}>{filters[key]}</Text>
-                      <X size={13} color={ACCENT}/>
-                    </Pressable> : (key === 'country' ? (filters.league ? options.countries : []) : (filters.country ? options.leagues : [])).map(value => <Pressable key={value} style={s.chip} onPress={() => update(key,value)}>
-                      <Text numberOfLines={1} style={s.chipText}>{value}</Text>
-                    </Pressable>)}
-                  </ScrollView>
-                </View>
-              ))}
-            </View>
-            <View style={s.fields}>
-              {(["homeTeam", "awayTeam"] as const).map((key) => (
-                <View
-                  key={key}
-                  style={s.field}
-                  ref={key === "homeTeam" ? homeAnchor : awayAnchor}
-                  collapsable={false}
-                >
-                  <Text style={s.label}>{labels[key]}</Text>
-                  <TextInput
-                    value={filters[key]}
-                    onChangeText={(v) => {
-                      update(key, v);
-                      setTeamFocus(key);
-                    }}
-                    onFocus={() => setTeamFocus(key)}
-                    onBlur={() => setTeamFocus(null)}
-                    placeholder={tr ? "Takım ara" : "Search team"}
-                    placeholderTextColor={MUTED}
-                    style={[s.inputRow, s.inputText, { flex: undefined }]}
-                  />
-                </View>
-              ))}
-            </View>
-            <View style={s.fields}>
-              {(["startDate", "endDate"] as const).map((key) => (
-                <View key={key} style={s.field}>
-                  <ContractDateFilter label={labels[key]} testID={`match-${key}`} value={filters[key]} onChange={value => {setTeamFocus(null);update(key,value);}} hint={null} maximumDate={new Date(new Date().getFullYear()+1,11,31,12)}/>
-                </View>
-              ))}
-            </View>
-            {!portfolio && (
-              <Pressable
-                disabled={loading}
-                style={[s.button, loading && s.disabled]}
-                onPress={() => search()}
-              >
-                {loading ? (
-                  <ActivityIndicator color={ACCENT} />
-                ) : (
-                  <Search size={18} color={ACCENT} />
-                )}
-                <Text style={s.green}>
-                  {loading
-                    ? tr
-                      ? "Aranıyor"
-                      : "Searching"
-                    : tr
-                      ? "Ara"
-                      : "Search"}
-                </Text>
-              </Pressable>
-            )}
-            {!!optionsError && (
-              <Pressable onPress={() => setRetry((n) => n + 1)}>
-                <Text style={s.error}>{optionsError}</Text>
-              </Pressable>
-            )}
-            {!!error && <Text style={s.error}>{error}</Text>}
+        {!portfolio ? <Frame title={tr ? 'Takım Fikstür Filtreleri' : 'Team Fixture Filters'} Icon={ListFilter}
+          action={<Pressable accessibilityLabel={tr ? 'Filtreleri temizle' : 'Clear filters'} hitSlop={12} onPress={() => {setLeagueId(undefined);setTeamId(undefined);setRetry(v=>v+1);clearTeamResults();}}><RotateCcw size={20} color={DANGER}/></Pressable>}>
+          <View style={s.fields}>
+            {(['team', 'league'] as const).map(key => {
+              const label = key === 'league' ? (tr ? 'Lig' : 'League') : (tr ? 'Takım' : 'Team');
+              const league = teamOptions.leagues.find(l => l.id === leagueId);
+              const value = key === 'league' ? (league ? `${league.country || '—'} | ${league.name}` : '') : teamOptions.teams.find(t => t.id === teamId)?.name;
+              const disabled = teamOptionsLoading;
+              return <View key={key} style={s.field}><Text style={s.label}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled}} disabled={disabled} style={[s.inputRow,disabled && s.disabled]} onPress={()=>{setTeamQuery('');setTeamSelector(key);}}><Text numberOfLines={1} style={[s.text,{flex:1,padding:10,color:value?TEXT:MUTED}]}>{value || (key === 'league' ? (tr ? 'Tüm ligler' : 'All leagues') : (tr ? 'Takım seçin' : 'Select team'))}</Text><ChevronDown size={16} color={MUTED} style={{marginRight:10}}/></Pressable></View>;
+            })}
           </View>
+          <Text style={[s.text,{color:MUTED,marginVertical:10}]}>{tr ? 'Tüm organizasyonlardaki maçlar.' : 'Fixtures across all competitions.'}</Text>
+          <Pressable accessibilityRole="button" accessibilityState={{disabled:!teamId || loading || teamOptionsLoading}} disabled={!teamId || loading || teamOptionsLoading} style={[s.button,(!teamId || loading || teamOptionsLoading) && s.disabled]} onPress={()=>void searchTeam()}>{loading ? <ActivityIndicator color={ACCENT}/> : <Search size={18} color={ACCENT}/>}<Text style={s.green}>{loading ? (tr?'Aranıyor':'Searching') : (tr?'Fikstürü göster':'Show fixtures')}</Text></Pressable>
+          {teamOptionsLoading && <ActivityIndicator color={ACCENT}/>}
+          {!!optionsError && <Pressable onPress={()=>setRetry(v=>v+1)}><Text style={s.error}>{optionsError}</Text></Pressable>}
+          {!!error && <Text style={s.error}>{error}</Text>}
+        </Frame> : (
+        <Frame title={tr?'Maç Filtreleri':'Match Filters'} Icon={ListFilter}
+          action={<Pressable accessibilityRole="button" accessibilityLabel={tr?'Filtreleri temizle':'Clear filters'} hitSlop={12} onPress={()=>{setPortfolioLeague('');setPortfolioTeamId(undefined);}}><RotateCcw size={20} color={DANGER}/></Pressable>}>
+          <View style={s.fields}>
+            {(['team','league'] as const).map(key=>{
+              const label=key==='team'?(tr?'Takım':'Team'):(tr?'Lig':'League');
+              const value=key==='team'?portfolioTeams.find(team=>Number(team.key)===portfolioTeamId)?.name:portfolioLeagues.find(league=>league.key===portfolioLeague)?.name;
+              return <View key={key} style={s.field}><Text style={s.label}>{label}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={portfolioLoading} accessibilityState={{disabled:portfolioLoading}} style={[s.inputRow,portfolioLoading&&s.disabled]} onPress={()=>{setTeamQuery('');setTeamSelector(key);}}>
+                  <Text numberOfLines={1} style={[s.text,{flex:1,padding:10,color:value?TEXT:MUTED}]}>{value || (key==='team'?(tr?'Takım seçin':'Select team'):(tr?'Tüm ligler':'All leagues'))}</Text><ChevronDown size={16} color={MUTED} style={{marginRight:10}}/>
+                </Pressable>
+              </View>;
+            })}
+          </View>
+          {!!error && <Pressable onPress={()=>setRetry(n=>n+1)}><Text style={s.error}>{error}</Text><Text style={s.green}>{tr?'Tekrar Dene':'Retry'}</Text></Pressable>}
         </Frame>
+        )}
         <TutorialPageGuide page={portfolio ? "matchPortfolio" : "matchPool"} frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         <Frame
           title={
@@ -650,14 +649,19 @@ export default function MatchPoolScreen({
                 ? "Maç Portföyü"
                 : "Match Portfolio"
               : tr
-                ? "Eşleşen Maçlar"
-                : "Matching Fixtures"
+                ? (searchedTeamName ? `${searchedTeamName} Fikstürü` : "Takım Fikstürü")
+                : (searchedTeamName ? `${searchedTeamName} Fixtures` : "Team Fixtures")
           }
           Icon={ListChecks}
           headingGap={portfolio ? 10 : 16}
         >
-          {portfolio ? (
-            <MatchPortfolioTable
+          {portfolio ? (!portfolioLoading && !portfolioFixtures.length && !error ? <View style={{gap:16}}>
+            <Text style={{color:MUTED,fontSize:14,lineHeight:21}}>{tr?'Maçları keşfet, takip etmek istediklerini portföyüne ekle.':'Discover matches and add the ones you want to follow to your portfolio.'}</Text>
+            <WorkspaceSourceActions compact sources={[
+              {label:tr?'Maç Havuzu':'Match Pool',Icon:CalendarSearch,onPress:()=>nav.navigate('MatchPool')},
+              {label:tr?'Skor Tahmin Ligi':'Score Prediction League',Icon:Goal,onPress:()=>nav.navigate('ScorePrediction')},
+            ]}/>
+          </View> : <MatchPortfolioTable
               rows={visibleRows}
               selectedId={selected?.fixtureId}
               tr={tr}
@@ -674,8 +678,8 @@ export default function MatchPoolScreen({
               <View style={table.table}>
                 <View style={[table.row, table.header]}>
                   {(tr
-                    ? ["Maç Adı", "Ülke", "Lig", "Zaman", "Skor"]
-                    : ["Match Name", "Ctry", "League", "Time", "Score"]
+                    ? ["Maç Adı", "Lig", "Zaman", "Skor"]
+                    : ["Match Name", "League", "Time", "Score"]
                   ).map((label, i) => (
                     <View
                       key={label}
@@ -714,11 +718,10 @@ export default function MatchPoolScreen({
                       >
                         {[
                           `${shortTeam(f.homeTeam.name)} – ${shortTeam(f.awayTeam.name)}`,
-                          shortCountry(f.country.name),
-                          comparisonSourceShortLabel({
+                          `${shortCountry(f.country.name)}|${comparisonSourceShortLabel({
                             competition: f.league.name,
                             team: "",
-                          }),
+                          })}`,
                           fixtureDate(f.startingAt, tr),
                           matchScore(f),
                         ].map((v, i) => (
@@ -735,7 +738,7 @@ export default function MatchPoolScreen({
                     <Text style={s.empty}>
                       {tr
                         ? "Filtrelerle arama yaparak maçları listeleyin."
-                        : "Search with filters to list matches."}
+                        : "Select a team and press Search to view its fixtures."}
                     </Text>
                   )}
                 </ScrollView>
@@ -745,6 +748,21 @@ export default function MatchPoolScreen({
         </Frame>
         {!portfolio && <TutorialPageGuide page="matchPool" frame={1} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />}
         {!portfolio && matchCard}
+        {portfolio && teamSelector && <Modal visible transparent animationType="fade" onRequestClose={()=>setTeamSelector(null)}>
+          <View style={s.backdrop}><View style={[s.modal,{maxHeight:height*.8}]}>
+            <View style={s.cardHeading}><Text style={[FRAME_TITLE,{flex:1}]}>{teamSelector==='team'?(tr?'Takım':'Team'):(tr?'Lig':'League')}</Text><Pressable accessibilityRole="button" accessibilityLabel={tr?'Kapat':'Close'} hitSlop={12} onPress={()=>setTeamSelector(null)}><X size={22} color={DANGER}/></Pressable></View>
+            <TextInput value={teamQuery} onChangeText={setTeamQuery} placeholder={tr?'Ara':'Search'} accessibilityLabel={tr?'Seçenek ara':'Search options'} placeholderTextColor={MUTED} style={[s.inputRow,s.inputText,{marginVertical:12,flex:undefined}]}/>
+            <FlatList data={portfolioChoices} keyExtractor={item=>item.key} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}
+              ListHeaderComponent={<Pressable style={s.option} onPress={()=>{if(teamSelector==='league'){setPortfolioLeague('');setPortfolioTeamId(undefined);}else setPortfolioTeamId(undefined);setTeamSelector(null);}}><Text style={s.green}>{teamSelector==='league'?(tr?'Tüm ligler':'All leagues'):(tr?'Tüm takımlar':'All teams')}</Text></Pressable>}
+              ListEmptyComponent={<Text style={s.empty}>{tr?'Sonuç bulunamadı.':'No results found.'}</Text>}
+              renderItem={({item})=>{const active=item.key===(teamSelector==='league'?portfolioLeague:String(portfolioTeamId));return <Pressable accessibilityRole="radio" accessibilityState={{selected:active}} style={[s.option,active&&s.filterSelected]} onPress={()=>{if(teamSelector==='league'){setPortfolioLeague(item.key);setPortfolioTeamId(undefined);}else setPortfolioTeamId(Number(item.key));setTeamSelector(null);}}><Text style={s.text}>{item.name}</Text></Pressable>;}}/>
+          </View></View>
+        </Modal>}
+        {!portfolio && teamSelector && <Modal visible transparent animationType="fade" onRequestClose={()=>setTeamSelector(null)}><View style={s.backdrop}><View style={[s.modal,{maxHeight:height*.8}]}>
+          <View style={s.cardHeading}><Text style={[FRAME_TITLE,{flex:1}]}>{teamSelector === 'league' ? (tr?'Lig':'League') : (tr?'Takım':'Team')}</Text><Pressable hitSlop={12} onPress={()=>setTeamSelector(null)}><X size={22} color={DANGER}/></Pressable></View>
+          <TextInput value={teamQuery} onChangeText={setTeamQuery} placeholder={tr?'Ara':'Search'} placeholderTextColor={MUTED} style={[s.inputRow,{padding:12,color:TEXT,marginVertical:12}]}/>
+          <FlatList data={(teamSelector === 'league' ? teamOptions.leagues.map(l=>({id:l.id,name:`${l.country || '—'} | ${l.name}`})) : teamOptions.teams).filter(v=>optionMatchesSearch(v.name,fold(teamQuery)))} keyExtractor={v=>String(v.id)} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}} ListHeaderComponent={teamSelector === 'league' ? <Pressable style={s.option} onPress={()=>{setLeagueId(undefined);clearTeamResults();setTeamSelector(null);}}><Text style={s.green}>{tr?'Tüm ligler':'All leagues'}</Text></Pressable> : null} ListEmptyComponent={<Text style={s.empty}>{tr?'Sonuç bulunamadı.':'No results found.'}</Text>} renderItem={({item})=><Pressable accessibilityRole="radio" accessibilityState={{selected:item.id === (teamSelector==='league'?leagueId:teamId)}} style={[s.option,item.id === (teamSelector==='league'?leagueId:teamId) && s.filterSelected]} onPress={()=>{clearTeamResults();if(teamSelector==='league'){setLeagueId(item.id);setTeamId(undefined);}else {const team=teamOptions.teams.find(t=>t.id===item.id);if(team){setTeamId(team.id);}}setTeamSelector(null);}}><Text style={s.text}>{item.name}</Text></Pressable>}/>
+        </View></View></Modal>}
         {selector !== null && (
           <Modal
             visible

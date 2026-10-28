@@ -147,6 +147,9 @@ const WORKSPACE_AD_ACTIONS = {
   similarPlayersSearch: { key: 'ads.similarPlayers.searchActionCount.v1', frequency: 'ads_similar_search_every' },
   saveTeam: { key: 'ads.team.saveActionCount.v1', frequency: 'ads_save_team_every' },
   saveMatch: { key: 'ads.match.saveActionCount.v1', frequency: 'ads_save_match_every' },
+  playerPoolMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
+  weeklyPopularMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
+  leaguePlayerMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   portfolioPlayerMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   dailyScoutMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   dailyScoutHiddenScorePortfolioAdd: { key: 'ads.dailyScout.hiddenScorePortfolioAddCount.v1', frequency: 'ads_daily_hidden_portfolio_every' },
@@ -163,4 +166,14 @@ export async function incrementWorkspaceActionAndShouldShowAd(action: WorkspaceA
   const { key, frequency } = WORKSPACE_AD_ACTIONS[action];
   const count = await incrementStoredCount(key, frequency, owner);
   return count % getAdFrequency(frequency) === 0;
+}
+
+export function isMatchupAddAction(action:WorkspaceAdAction){return WORKSPACE_AD_ACTIONS[action].key===MATCHUP_ADD_KEY;}
+export async function shouldShowNextMatchupAddAd(owner?:symbol){
+  assertAdActionAvailable(owner);
+  await pendingCounts.get(MATCHUP_ADD_KEY);
+  const raw=await AsyncStorage.getItem(MATCHUP_ADD_KEY);
+  const value=raw?parseInt(raw,10):0;
+  const count=Number.isFinite(value)?value:0;
+  return (count+1)%getAdFrequency('ads_matchup_add_every')===0;
 }
