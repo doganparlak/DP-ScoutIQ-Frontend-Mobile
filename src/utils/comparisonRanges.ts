@@ -1,3 +1,4 @@
+import { canonicalizeMatchMetricLabel } from "./matchReportMetrics";
 // Ported from ScoutWise web enterprise-spider-ranges.ts. Keep metric math in sync.
 
 export type EnterpriseSpiderPoint = {
@@ -232,7 +233,8 @@ function metricKey(value: string) {
 }
 
 export function canonicalizeEnterpriseMetricLabel(raw: string) {
-  return CANON_BY_KEY[metricKey(raw || "")] || (raw || "").trim();
+  const canonical = canonicalizeMatchMetricLabel(raw);
+  return CANON_BY_KEY[metricKey(canonical)] || canonical;
 }
 
 function toFiniteNumber(

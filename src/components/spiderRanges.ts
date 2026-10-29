@@ -1,3 +1,4 @@
+import { canonicalizeEnterpriseMetricLabel } from "../utils/comparisonRanges";
 // src/components/spiderRanges.ts
 import type { SpiderPoint } from './SpiderChart';
 
@@ -193,7 +194,8 @@ Object.keys(RANGES).forEach((label) => {
 
 /** Resolve any raw label to a canonical label we know in RANGES */
 export function canonicalizeLabel(raw: string): string {
-  const norm = mkKey(raw || '');
+  const canonical = canonicalizeEnterpriseMetricLabel(raw);
+  const norm = mkKey(canonical);
   // First, alias map (handles %-variants, pluralization etc.)
   const aliasHit = ALIAS[norm];
   if (aliasHit) return aliasHit;
@@ -201,7 +203,7 @@ export function canonicalizeLabel(raw: string): string {
   const direct = CANON_BY_KEY[norm];
   if (direct) return direct;
   // Fallback: return the raw (so unknown metrics can still pass through with default range)
-  return (raw || '').trim();
+  return canonical;
 }
 
 /** === Public: convert raw stats into SpiderPoints for a given category list === */

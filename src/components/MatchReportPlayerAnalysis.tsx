@@ -51,7 +51,7 @@ export function Metrics({ player, tr, accent, onClose, unit = 'perMatch' }: { pl
         <Polygon points={radar.map((p, i) => { const pos = coordinate(i, 138 * p.normalized!); return `${pos.x},${pos.y}`; }).join(' ')} fill={accent} fillOpacity={.2} stroke={accent} strokeWidth={2.8} />
         {radar.map((p, i) => { const pos = coordinate(i, 138 * p.normalized!); return <Circle key={`${p.name}-${i}`} cx={pos.x} cy={pos.y} r={3} fill={themeColor('#A7F3D0')} stroke={accent} strokeWidth={1.5}/>; })}
       </Svg></View>}
-      {points.map((p, i) => <View key={`${p.name}-${i}`} style={s.tile}><View style={s.metricRow}><Text style={[s.body, { flex: 1 }]}>{label(p.name)}</Text><Text style={[s.title, { color: accent }]}>{format(p.value)}</Text></View><View style={s.track}><View style={{ height: 6, borderRadius: 3, backgroundColor: accent, width: `${p.normalized == null ? 0 : Math.max(3, p.normalized * 100)}%` }} /></View></View>)}
+      {points.map((p, i) => <View key={`${p.name}-${i}`} style={s.tile}><View style={s.metricRow}><Text style={[s.body, { flex: 1 }]}>{label(p.name)}</Text><Text style={[s.title, { color: accent }]}>{format(p.value)}</Text></View>{p.normalized != null && <View style={s.track}><View style={{ height: 6, borderRadius: 3, backgroundColor: accent, width: `${Math.max(3, p.normalized * 100)}%` }} /></View>}</View>)}
       {!points.length && <Text style={s.empty}>{tr ? 'Oyuncu metriği bulunmuyor.' : 'No player metrics available.'}</Text>}
     </ScrollView>
   </View></View></Modal>;

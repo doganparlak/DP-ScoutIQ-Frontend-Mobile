@@ -4,7 +4,7 @@ import { Pressable,StyleSheet,Text,View } from 'react-native';
 
 import type { MatchReportLineup,PostMatchCardData } from '@/services/matchPool';
 import type { Team } from '@/services/teamPool';
-import { matchMetricLabel } from '@/utils/matchReportMetrics';
+import { matchMetricLabel, normalizeMatchMetrics } from '@/utils/matchReportMetrics';
 import { numeric,setPieceTarget } from '@/utils/matchReportPlayers';
 import { MatchReportSelector,Metrics } from './MatchReportPlayerAnalysis';
 import ReportPlayerPortrait from './ReportPlayerPortrait';
@@ -31,7 +31,7 @@ export function aggregatePlayerData(reports:PostMatchCardData[],teamId:string){
   const sources:Record<string,NonNullable<MatchReportLineup['expected_metrics']>>={};
   for(const [key,rows] of Object.entries(row.categories||{})){if(key==='set_pieces'){for(const m of rows){const target=setPieceTarget(m.name);(sources[target]??=[]).push(m);}}else (sources[key]??=[]).push(...rows);}
   for(const m of row.expected_metrics||[]){const target=setPieceTarget(m.name);(sources[target]??=[]).push(m);}
-  for(const [group,metrics] of Object.entries(sources))for(const metric of metrics){
+  for(const [group,metrics] of Object.entries(sources))for(const metric of normalizeMatchMetrics(metrics)){
    if(group==='contribution_impact'&&/^Shooting Performance(?: \(SP\))?$/i.test(metric.name))continue;
    const value=numeric(metric.value);if(value==null)continue;
    const map=p.stats[group]??=new Map(),entry=map.get(metric.name)||{sum:0,weighted:0,weight:0,average:/%|percentage|rating|performance|captain/i.test(metric.name)};

@@ -189,6 +189,19 @@ const MATCH_METRIC_LABELS_EN: Record<string, string> = {
 
 // Aliases emitted by different SportMonks/report payloads resolve to one label.
 const MATCH_METRIC_CANONICAL_ALIASES: Record<string, string> = {
+  "Expected Goals (xG)": "Expected Goals",
+  "Expected Goals on Target (xGoT)": "Expected Goals On Target",
+  "Expected Goals On Target (xGoT)": "Expected Goals On Target",
+  "Expected Assists (xA)": "Expected Assists",
+  "Shooting Performance (SP)": "Shooting Performance",
+  "On-Target to Goal Conversion (%)": "On Target Goal Conversion (%)",
+  "On-Target Shot Quality (%)": "On Target Shot Quality (%)",
+  "Successful Passes Percentage": "Accurate Passes (%)",
+  "Accurate Passes Percentage": "Accurate Passes (%)",
+  "Successful Dribbles Percentage": "Dribble Accuracy (%)",
+  "Tacles Won Percentage": "Tackles Won (%)",
+  "Tackles Won Percentage": "Tackles Won (%)",
+  "Successful Long Passes Percentage": "Long Balls Won (%)",
   "Shots Blocked": "Blocked Shots",
   Yellowcards: "Yellow Cards",
   "Goalkeeper Goals Conceded": "Goals Conceded",
@@ -267,4 +280,17 @@ export function matchMetricLabel(label: string, locale: "en" | "tr") {
     );
   }
   return MATCH_METRIC_LABELS_EN[canonical] || canonical;
+}
+
+// Provider aliases represent the same measurement, so never add their values.
+export function normalizeMatchMetrics<T extends { name: string; value?: unknown }>(metrics: T[]): T[] {
+  const chosen = new Map<string, T>();
+  for (const metric of metrics) {
+    const name = canonicalizeMatchMetricLabel(metric.name);
+    const raw = metric.value == null ? "" : String(metric.value).trim().replace(/%$/, "").trim();
+    if (!name || !raw || !Number.isFinite(Number(raw))) continue;
+    const previous = chosen.get(name);
+    if (!previous || (metric.name.trim() === name && previous.name.trim() !== name)) chosen.set(name, metric);
+  }
+  return [...chosen].map(([name, metric]) => ({ ...metric, name }));
 }
