@@ -351,3 +351,21 @@ export const getTeamFixtureOptions = (leagueId?: number) =>
   matchPoolRequest<TeamFixtureOptions>('/match-pool/team-options', { leagueId });
 export const searchTeamFixtures = (leagueId: number, teamId: number) =>
   matchPoolRequest<{ fixtures: MatchFixture[] }>('/match-pool/team-search', { leagueId, teamId });
+
+export type MatchForecast = {
+  fixtureId: number; modelVersion: number; modelId?: number; startingAt?: string; asOf: string; generatedAt: string;
+  scope: string; regulationMinutes: number; trainingMatches: number; validationMatches: number;
+  usesTeamStats: boolean; features: string[]; trainingCompetitions?: {leagueId: number; name: string; seasonName: string}[];
+  home: {id: number; name: string; imageUrl?: string; matches: number; projectedGoals: number};
+  away: {id: number; name: string; imageUrl?: string; matches: number; projectedGoals: number};
+  outcomes: {home: number; draw: number; away: number};
+  bothTeamsScore: number; cleanSheet: {home: number; away: number}; over25: number;
+  topScores: {home: number; away: number; probability: number}[];
+  grid: {home: number; away: number; probability: number}[]; gridRemainder: number;
+  goalDistribution: {home: number[]; away: number[]};
+  halfScenarios?: {moreGoalsHalf: {first: number; equal: number; second: number}; firstHalfBothTeamsScore: number} | null;
+};
+export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersion' | 'startingAt' | 'regulationMinutes' | 'home' | 'away' | 'outcomes' | 'topScores' | 'grid' | 'gridRemainder'>;
+export type MatchForecastPlus = Pick<MatchForecast, keyof MatchForecastPreview | 'goalDistribution' | 'bothTeamsScore' | 'cleanSheet' | 'over25' | 'halfScenarios'>;
+export type MatchForecastResponse = {status: 'processing' | 'ready' | 'unavailable' | 'failed'; reason?: string; accessTier?: 'free' | 'paid' | 'plus' | 'pro'; forecast?: MatchForecast | MatchForecastPlus | MatchForecastPreview};
+export const getMatchForecast = (id: number, retry = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast${retry ? '?retry=true' : ''}`);

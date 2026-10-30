@@ -43,9 +43,14 @@ function Team({ team }: { team: MatchFixture['homeTeam'] }) {
   </View>;
 }
 
+function ScoutWiseBadge({ tr }: { tr: boolean }) {
+  const {s} = useThemedStyles(getModuleTheme);
+  return <View style={s.scoutWiseBadge}><Text style={s.scoutWiseBadgeText}>{tr ? 'MAÇ ÖNÜ RAPORU' : 'PRE-MATCH REPORT'}</Text></View>;
+}
+
 export default function ScorePredictionScreen() {
   const themed = useThemedStyles(getModuleTheme);
-  const {s, ACCENT, MUTED, FRAME_STRIPE, FEATURE_COLORS, FRAME_HEADING, FRAME_TITLE, TEXT, tierLabelColor, tierColor, themeColor} = themed;
+  const {s, ACCENT, SCOUTWISE, MUTED, FRAME_STRIPE, FEATURE_COLORS, FRAME_HEADING, FRAME_TITLE, TEXT, tierLabelColor, tierColor, themeColor} = themed;
 
   const { i18n, t } = useTranslation(), tr = i18n.language.startsWith('tr'), nav = useNavigation<any>();
   const { height, width } = useWindowDimensions();
@@ -191,7 +196,7 @@ export default function ScorePredictionScreen() {
   }
   function openPlans() { nav.navigate('ManagePlan'); }
   function matchActions(fixture: PredictionFixture) {
-    return <MatchReportActions fixture={fixture} favorites={data?.favorites ?? []} tr={tr} onOpenPlans={openPlans} strictPhase topSpacing={width < 380 ? 8 : 10} />;
+    return <MatchReportActions fixture={fixture} favorites={data?.favorites ?? []} tr={tr} onOpenPlans={openPlans} strictPhase scoutWisePredicted={fixture.scoutWisePredicted} topSpacing={width < 380 ? 8 : 10} />;
   }
   function predictionForm(fixture: PredictionFixture) {
     const id = String(fixture.fixtureId), saved = entry?.picks[id];
@@ -307,22 +312,22 @@ export default function ScorePredictionScreen() {
         {rankingTab === 'allTime' && <View style={[s.rankingSwitch, { marginTop: 12 }]}>{(['total', 'average'] as const).map(sort => <Pressable key={sort} accessibilityRole='tab' accessibilityState={{ selected: allTimeSort === sort }} onPress={() => setAllTimeSort(sort)} style={[s.rankingSwitchButton, allTimeSort === sort && s.rankingSwitchSelected]}><Text style={[s.actionText, { color: allTimeSort === sort ? ACCENT : MUTED }]}>{sort === 'total' ? (tr ? 'Toplam Puan' : 'Total Points') : (tr ? 'Haftalık Ortalama' : 'Weekly Average')}</Text></Pressable>)}</View>}
         <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={s.rankContent}>
           {rankingTab === 'allTime' ? (
-            allTimeLoading ? <ActivityIndicator color={ACCENT} style={{ padding: 24 }} /> : allTimeError ? <View style={s.emptyRank}><Text style={s.error}>{tr ? 'Sıralama yüklenemedi.' : 'Could not load rankings.'}</Text><Pressable accessibilityRole='button' style={s.primary} onPress={() => setAllTimeRetry(value => value + 1)}><Text style={s.actionText}>{tr ? 'Yeniden Dene' : 'Retry'}</Text></Pressable></View> : !allTimeLeaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Kesinleşmiş derece henüz yok.' : 'No finalized podium finishes yet.'}</Text></View> : allTimeLeaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank]}>
+            allTimeLoading ? <ActivityIndicator color={ACCENT} style={{ padding: 24 }} /> : allTimeError ? <View style={s.emptyRank}><Text style={s.error}>{tr ? 'Sıralama yüklenemedi.' : 'Could not load rankings.'}</Text><Pressable accessibilityRole='button' style={s.primary} onPress={() => setAllTimeRetry(value => value + 1)}><Text style={s.actionText}>{tr ? 'Yeniden Dene' : 'Retry'}</Text></Pressable></View> : !allTimeLeaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Kesinleşmiş derece henüz yok.' : 'No finalized podium finishes yet.'}</Text></View> : allTimeLeaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank, row.isScoutWise && s.scoutWiseRank]}>
               <View style={s.rankNumber}>{row.rank <= 3 && <Trophy size={18} color={row.rank === 1 ? themeColor('#CDB57A', 'text') : row.rank === 2 ? themeColor('#B5C0CD', 'text') : themeColor('#C09578', 'text')} />}<Text style={s.rank}>{row.rank}</Text></View>
-              <View style={{ flex: 1, minWidth: 0, gap: 8 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><View style={[s.row, { flexWrap: 'wrap', gap: 6 }]}>{[
+              <View style={{ flex: 1, minWidth: 0, gap: 8 }}><Text style={[s.rankName, row.isScoutWise && { color: SCOUTWISE, fontWeight: '900' }]}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text>{row.isScoutWise && <ScoutWiseBadge tr={tr} />}<View style={[s.row, { flexWrap: 'wrap', gap: 6 }]}>{[
                 { count: row.championships, label: tr ? 'Birincilik' : 'First Place', color: themeColor('#CDB57A', 'text') },
                 { count: row.secondPlaces, label: tr ? 'İkincilik' : 'Second Place', color: themeColor('#B5C0CD', 'text') },
                 { count: row.thirdPlaces, label: tr ? 'Üçüncülük' : 'Third Place', color: themeColor('#C09578', 'text') },
               ].map(award => <View key={award.label} style={s.placementCount} accessibilityLabel={`${award.label}: ${award.count}`}><Trophy size={12} color={award.color} /><Text style={[s.caption, { color: award.color }]}>{award.count}</Text></View>)}</View></View>
-              <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '45%', flexShrink: 1 }}><View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', gap: 6 }}><Text style={s.caption}>{row.weeksParticipated} {tr ? 'Hafta' : 'Weeks'}</Text><Text style={[s.rankPoints, { color: TEXT }]} numberOfLines={1}>{allTimeSort === 'average' ? averageNumber(row.averagePoints, tr) : number(row.totalPoints)}</Text></View><Text style={s.caption}>{allTimeSort === 'average' ? (tr ? 'puan/hafta' : 'pts/week') : (tr ? 'puan' : 'pts')}</Text></View>
+              <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '45%', flexShrink: 1 }}><View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', gap: 6 }}><Text style={s.caption}>{row.weeksParticipated} {tr ? 'Hafta' : 'Weeks'}</Text><Text style={[s.rankPoints, { color: row.isScoutWise ? SCOUTWISE : TEXT }]} numberOfLines={1}>{allTimeSort === 'average' ? averageNumber(row.averagePoints, tr) : number(row.totalPoints)}</Text></View><Text style={s.caption}>{allTimeSort === 'average' ? (tr ? 'puan/hafta' : 'pts/week') : (tr ? 'puan' : 'pts')}</Text></View>
             </View>)
-          ) : !data?.leaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Henüz gönderilmiş tahmin yok.' : 'No predictions have been submitted yet.'}</Text></View> : data.leaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank, row.tier !== 'free' && { borderColor: tierColor(row.tier), backgroundColor: themeColor(row.tier === 'pro' ? 'rgba(22,163,74,.08)' : 'rgba(56,189,248,.08)', 'surface') }]}>
+          ) : !data?.leaderboard.length ? <View style={s.emptyRank}><Trophy size={34} color={MUTED} /><Text style={s.emptyText}>{tr ? 'Henüz gönderilmiş tahmin yok.' : 'No predictions have been submitted yet.'}</Text></View> : data.leaderboard.map(row => <View key={row.rank} style={[s.rankRow, row.isYou && s.ownRank, row.tier !== 'free' && { borderColor: tierColor(row.tier), backgroundColor: themeColor(row.tier === 'pro' ? 'rgba(22,163,74,.08)' : 'rgba(56,189,248,.08)', 'surface') }, row.isScoutWise && s.scoutWiseRank]}>
             <View style={s.rankNumber}>{row.rank <= 3 ? <Trophy size={18} color={row.rank === 1 ? themeColor('#FBBF24', 'text') : row.rank === 2 ? themeColor('#CBD5E1', 'text') : themeColor('#D6A779', 'text')} /> : null}<Text style={s.rank}>{row.rank}</Text></View>
-            <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={s.rankName}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text><Text style={[s.caption, { color: tierLabelColor(row.tier) }]}>{row.tier==='free'?(tr?'ÜCRETSİZ':'FREE'):row.tier.toUpperCase()}</Text></View>
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}><Text style={[s.rankName, row.isScoutWise && { color: SCOUTWISE, fontWeight: '900' }]}>{row.nickname}{row.isYou ? (tr ? ' · Sen' : ' · You') : ''}</Text>{row.isScoutWise ? <ScoutWiseBadge tr={tr} /> : <Text style={[s.caption, { color: tierLabelColor(row.tier) }]}>{row.tier==='free'?(tr?'ÜCRETSİZ':'FREE'):row.tier.toUpperCase()}</Text>}</View>
             <View style={{ alignItems: 'flex-end', gap: 3, maxWidth: '48%', flexShrink: 1 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', columnGap: 6, rowGap: 2 }}>
                 {row.bonusPoints > 0 && <Text style={[s.caption, { color: tierColor(row.tier), fontSize: 11 }]}>{number(row.basePoints)} + {number(row.bonusPoints)}</Text>}
-                <Text style={[s.rankPoints, { color: tierColor(row.tier) }]} numberOfLines={1}>{number(row.totalPoints)}</Text>
+                <Text style={[s.rankPoints, { color: row.isScoutWise ? SCOUTWISE : tierColor(row.tier) }]} numberOfLines={1}>{number(row.totalPoints)}</Text>
               </View>
               <Text style={s.caption}>{tr ? 'puan' : 'pts'}</Text>
             </View>
@@ -339,6 +344,7 @@ export default function ScorePredictionScreen() {
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, themeColor} = colors;
 
+  const SCOUTWISE = themeColor('#A78BFA', 'text');
   const tierColor = (tier: string) => tier === 'pro' ? ACCENT : tier === 'plus' ? themeColor('#38BDF8') : TEXT;
 
   const tierLabelColor = (tier: string) => tier === 'free' ? themeColor('#94A3B8') : tierColor(tier);
@@ -371,7 +377,10 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   rankingSwitchButton: { flex: 1, minWidth: 0, minHeight: 42, justifyContent: 'center', alignItems: 'center', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
   rankingSwitchSelected: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') },
   placementCount: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 3, paddingHorizontal: 6, borderRadius: 7, backgroundColor: themeColor('rgba(255,255,255,.03)', 'surface') },
+  scoutWiseRank: { borderColor: SCOUTWISE, borderLeftWidth: 3, backgroundColor: themeColor('rgba(167,139,250,.10)', 'surface') },
+  scoutWiseBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: themeColor('rgba(167,139,250,.14)', 'surface') },
+  scoutWiseBadgeText: { color: SCOUTWISE, fontSize: 10, fontWeight: '800', letterSpacing: .5 },
   rankContent: { padding: 14, gap: 8 }, rankRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 12, backgroundColor: CARD }, ownRank: { borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface') }, rankNumber: { minWidth: 28, alignItems: 'center', gap: 4 }, rank: { color: MUTED, fontSize: 12, fontWeight: '800' }, rankName: { color: TEXT, fontSize: 13, fontWeight: '700' }, rankPoints: { color: ACCENT, fontSize: 21, fontWeight: '900', fontVariant: ['tabular-nums'] }, emptyRank: { alignItems: 'center', paddingVertical: 30, gap: 16 }, scoreSummary: { flexDirection: 'row', gap: 8 }, summaryCell: { flex: 1, minWidth: 0, gap: 5, alignItems: 'center' }, summaryValue: { color: TEXT, fontSize: 18, fontWeight: '900' },
 });
-  return {ACCENT, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, tierColor, tierLabelColor, s, themeColor};
+  return {ACCENT, SCOUTWISE, BG, CARD, DANGER, FEATURE_COLORS, FRAME_HEADING, FRAME_STRIPE, FRAME_TITLE, LINE, MUTED, PANEL, TEXT, tierColor, tierLabelColor, s, themeColor};
 });

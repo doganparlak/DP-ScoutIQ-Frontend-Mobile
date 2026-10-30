@@ -3,7 +3,7 @@ import { LockKeyhole } from 'lucide-react-native';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
 
 
-type LockedDetailKind='attack'|'defense'|'strengths'|'weaknesses'|'standout'|'momentum'|'teamRisks'|'thirdTeamAnalysis'|'secondStandout';
+type LockedDetailKind='attack'|'defense'|'strengths'|'weaknesses'|'standout'|'momentum'|'teamRisks'|'thirdTeamAnalysis'|'secondStandout'|'matchForecast';
 export default function TeamReportLockedDetail({tr,accent,onOpenPlans,kind}:{tr:boolean;accent?:string;onOpenPlans:()=>void;kind:LockedDetailKind}){
   const themed = useThemedStyles(getModuleTheme);
   const {ACCENT, s} = themed;
@@ -13,6 +13,7 @@ export default function TeamReportLockedDetail({tr,accent,onOpenPlans,kind}:{tr:
   attack:{tr:'Detaylı Takım Planı',en:'Detailed Team Plan'},defense:{tr:'Detaylı Takım Planı',en:'Detailed Team Plan'},strengths:{tr:'Detaylı Değerlendirme',en:'Detailed Assessment'},weaknesses:{tr:'Detaylı Değerlendirme',en:'Detailed Assessment'},
   standout:{tr:'Oyuncu Açıklamaları',en:'Player Explanations'},momentum:{tr:'Maç Okuması',en:'Match Outlook'},teamRisks:{tr:'Zayıf Yönler & Riskler',en:'Weaknesses & Risks'},
   thirdTeamAnalysis:{tr:'3. Takım Analizi',en:'Third Team Analysis'},secondStandout:{tr:'2. Öne Çıkan Oyuncu',en:'Second Standout Player'},
+  matchForecast:{tr:'Detaylı Maç Öngörüsü',en:'Detailed Match Forecast'},
  };
  const title=titles[kind][tr?'tr':'en'];
  const messages:Record<LockedDetailKind,{tr:string;en:string}>={
@@ -25,11 +26,12 @@ export default function TeamReportLockedDetail({tr,accent,onOpenPlans,kind}:{tr:
   teamRisks:{tr:"Takımın zayıf yönlerini ve risklerini görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the team weaknesses and risks.'},
   thirdTeamAnalysis:{tr:"Üçüncü takım analizini görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the third team analysis.'},
   secondStandout:{tr:"İkinci öne çıkan oyuncuyu görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the second standout player.'},
+  matchForecast:{tr:"Gol dağılımı ve gol senaryoları için PLUS veya PRO'ya geç.",en:'Switch to PLUS or PRO to unlock goal distribution and goal scenarios.'},
  };
  const message=messages[kind][tr?'tr':'en'];
  return <View style={[s.card,{borderColor:`${accent}55`,backgroundColor:`${accent}0A`}]}>
   <View style={s.heading}><View style={[s.icon,{borderColor:`${accent}66`,backgroundColor:`${accent}18`}]}><LockKeyhole size={16} color={accent} strokeWidth={2.3}/></View><Text style={[s.title,{color:accent}]}>{title}</Text></View>
-  <Text style={s.message}>{message}</Text>
+  <Text style={s.message}>{message.split(/\b(PLUS|PRO)\b/gi).map((part,index)=>part.toUpperCase()==='PLUS'?<Text key={index} style={s.plus}>PLUS</Text>:part.toUpperCase()==='PRO'?<Text key={index} style={s.pro}>PRO</Text>:part)}</Text>
   <Pressable accessibilityRole="button" onPress={onOpenPlans} style={({pressed})=>[s.button,{borderColor:accent,backgroundColor:`${accent}18`},pressed&&{opacity:.8}]}><Text style={[s.buttonText,{color:accent}]}>{tr?'Plan Yönetimi':'Manage Plan'}</Text></Pressable>
  </View>;
 }
@@ -38,6 +40,6 @@ export default function TeamReportLockedDetail({tr,accent,onOpenPlans,kind}:{tr:
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {ACCENT, MUTED, themeColor} = colors;
 
-  const s=StyleSheet.create({card:{gap:9,padding:12,borderRadius:14,borderWidth:1,borderStyle:'dashed'},heading:{flexDirection:'row',alignItems:'center',gap:8},icon:{width:30,height:30,borderRadius:15,borderWidth:1,alignItems:'center',justifyContent:'center'},title:{flex:1,fontSize:13,fontWeight:'900'},message:{color:MUTED,fontSize:12,lineHeight:18,fontWeight:'600'},button:{minHeight:39,borderRadius:11,borderWidth:1,alignItems:'center',justifyContent:'center',paddingHorizontal:12},buttonText:{fontSize:11,fontWeight:'900',textTransform:'uppercase'}});
+  const s=StyleSheet.create({card:{gap:9,padding:12,borderRadius:14,borderWidth:1,borderStyle:'dashed'},heading:{flexDirection:'row',alignItems:'center',gap:8},icon:{width:30,height:30,borderRadius:15,borderWidth:1,alignItems:'center',justifyContent:'center'},title:{flex:1,fontSize:13,fontWeight:'900'},message:{color:MUTED,fontSize:12,lineHeight:18,fontWeight:'600'},plus:{color:themeColor('#38BDF8','text'),fontWeight:'900'},pro:{color:ACCENT,fontWeight:'900'},button:{minHeight:39,borderRadius:11,borderWidth:1,alignItems:'center',justifyContent:'center',paddingHorizontal:12},buttonText:{fontSize:11,fontWeight:'900',textTransform:'uppercase'}});
   return {ACCENT, MUTED, s, themeColor};
 });

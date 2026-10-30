@@ -27,6 +27,7 @@ export default function MatchReportActions({
   phaseOnly = false,
   strictPhase = false,
   topSpacing = 12,
+  scoutWisePredicted = false,
 }: {
   fixture: MatchFixture;
   favorites: FavoriteMatch[];
@@ -35,9 +36,10 @@ export default function MatchReportActions({
   phaseOnly?: boolean;
   strictPhase?: boolean;
   topSpacing?: number;
+  scoutWisePredicted?: boolean;
 }) {
   const themed = useThemedStyles(getModuleTheme);
-  const {s, ACCENT, MUTED} = themed;
+  const {s, ACCENT, MUTED, SCOUTWISE} = themed;
 
   const ads = useWorkspaceActionAd();
   const [preMatchOpen, setPreMatchOpen] = useState(false);
@@ -45,7 +47,7 @@ export default function MatchReportActions({
   const phase = matchSaveType(fixture);
   const types = phaseOnly ? (phase ? [phase] : []) : ["pre_match", "post_match"] as const;
   return (
-    <View style={[s.row, { marginTop: topSpacing }]}>
+    <View style={[s.row, { marginTop: topSpacing }, scoutWisePredicted && { alignItems: 'stretch' }]}>
       {ads.fallback}
       {types.map((type) => {
         const saved = favorites.find(
@@ -54,6 +56,7 @@ export default function MatchReportActions({
         );
         const action = matchReportAction(fixture, type, saved);
         const enabled = (!strictPhase || phase === type) && (action === "generate" || action === "view" || action === "processing");
+        const showForecast = scoutWisePredicted && type === 'pre_match' && phase === 'pre_match' && enabled;
         const title =
           type === "pre_match"
             ? tr
@@ -72,7 +75,7 @@ export default function MatchReportActions({
               busy: action === "processing",
             }}
             disabled={!enabled || ads.busy}
-            style={[s.button, !enabled && { opacity: 0.4 }]}
+            style={[s.button, showForecast && s.forecastButton, !enabled && { opacity: 0.4 }]}
             onPress={async () => {
               try {
                 await ads.run(type === 'pre_match' ? 'preMatchReport' : 'postMatchReport', () => {
@@ -84,17 +87,15 @@ export default function MatchReportActions({
               }
             }}
           >
-            {action === "processing" ? (
-              <ActivityIndicator size="small" color={ACCENT} />
-            ) : (
-              <FileText size={16} color={enabled ? ACCENT : MUTED} />
-            )}
-            <Text
-              numberOfLines={1}
-              style={[s.label, { color: enabled ? ACCENT : MUTED }]}
-            >
-              {title}
-            </Text>
+            <View style={s.buttonTitle}>
+              {action === "processing" ? (
+                <ActivityIndicator size="small" color={showForecast ? SCOUTWISE : ACCENT} />
+              ) : (
+                <FileText size={16} color={showForecast ? SCOUTWISE : enabled ? ACCENT : MUTED} />
+              )}
+              <Text numberOfLines={1} style={[s.label, { color: showForecast ? SCOUTWISE : enabled ? ACCENT : MUTED }]}>{title}</Text>
+            </View>
+            {showForecast && <Text style={s.forecastHint}>{tr ? 'ScoutWise’ın tahminini gör' : 'See ScoutWise’s prediction'}</Text>}
           </Pressable>
         );
       })}
@@ -108,6 +109,7 @@ export default function MatchReportActions({
 const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const {ACCENT, MUTED, themeColor} = colors;
 
+  const SCOUTWISE = themeColor('#A78BFA', 'text');
   const s = StyleSheet.create({
   row: { flexDirection: "row", gap: 12, alignItems: "center" },
   button: {
@@ -124,7 +126,10 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     paddingHorizontal: 8,
     paddingVertical: 11,
   },
+  buttonTitle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, maxWidth: '100%' },
+  forecastButton: { flexDirection: 'column', gap: 5, borderColor: SCOUTWISE, backgroundColor: themeColor('rgba(167,139,250,.08)', 'surface') },
+  forecastHint: { color: SCOUTWISE, fontSize: 10, lineHeight: 14, fontWeight: '600', textAlign: 'center' },
   label: { flexShrink: 1, textAlign: "center", fontSize: 10.5, fontWeight: "800" },
 });
-  return {ACCENT, MUTED, s, themeColor};
+  return {ACCENT, MUTED, SCOUTWISE, s, themeColor};
 });
