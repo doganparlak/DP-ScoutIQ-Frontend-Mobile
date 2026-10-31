@@ -1,7 +1,7 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import {
 ArrowDown,ArrowLeft,ArrowRight,ArrowUp,BarChart3,BookMarked,BookOpenCheck,
-CalendarSearch,ClipboardList,ClipboardPenLine,Compass,Database,
+CalendarSearch,ChartNoAxesCombined,ClipboardList,ClipboardPenLine,Compass,Database,
 GitCompareArrows,
 Goal,
 LayoutDashboard,MessageSquareText,Search,Shield,ShieldCheck,
@@ -132,6 +132,8 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     { page: 'panel', route: 'Profile', title: t('tabProfile', 'Panel'), Icon: LayoutDashboard, summary: t('helpGuidePanelSummary'), details: [t('helpGuidePanel1'), t('helpGuidePanel2')] },
     { page: 'proChat', route: 'Chat', nestedRoute: 'ProHome', title: t('tabScoutWisePro', 'ScoutWise Pro'), Icon: MessageSquareText, summary: t('tutorialProChatSummary'), details: [] },
     { page: 'proWelcome', route: 'Chat', nestedRoute: 'ProHome', title: t('proWelcomeGuideTitle'), Icon: MessageSquareText, summary: t('proWelcomeGuideStep1'), details: [] },
+    { page: 'proForecast', route: 'Chat', nestedRoute: 'ProMatchForecast', title: t('proForecastGuideTitle'), Icon: ChartNoAxesCombined, summary: t('proForecastGuideStep1'), details: [] },
+    { page: 'proForecast', route: 'Chat', nestedRoute: 'ProMatchForecast', title: t('proForecastGuideTitle'), Icon: ChartNoAxesCombined, summary: t('proForecastGuideStep2'), details: [] },
     { page: 'proDirect', route: 'Chat', nestedRoute: 'ProHome', title: t('proDirectGuideTitle'), Icon: Search, summary: t('proDirectGuideStep1'), details: [] },
     { page: 'proDirect', route: 'Chat', nestedRoute: 'ProHome', title: t('proDirectGuideTitle'), Icon: Search, summary: t('proDirectGuideStep2'), details: [] },
     { page: 'proDiscovery', route: 'Chat', nestedRoute: 'ProHome', title: t('proDiscoveryGuideTitle'), Icon: Compass, summary: t('proDiscoveryGuideStep1'), details: [] },
@@ -337,7 +339,7 @@ export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3, e
       </View>
       <Pressable accessibilityLabel={t('tutorialClose', 'Close guide')} onPress={guide.finish} hitSlop={6} style={({ pressed }) => [styles.guideCloseButton, pressed && styles.pressed]}><X size={16} color={themeColor("#F87171", 'text')} /></Pressable>
     </View>
-    <Text numberOfLines={summaryLines} style={styles.guideSummary}>{guide.current.summary}</Text>
+    <Text numberOfLines={summaryLines} style={styles.guideSummary}>{guide.current.summary.split(/\b(PLUS|PRO)\b/g).map((part,index)=><Text key={index} style={part==='PRO'?{color:ACCENT,fontWeight:'800'}:part==='PLUS'?{color:themeColor('#38BDF8','text'),fontWeight:'800'}:undefined}>{part}</Text>)}</Text>
     <View style={styles.guideActions}>
       <Pressable disabled={guide.frameIndex === 0} onPress={guide.previous} accessibilityLabel={t('tutorialPrevious', 'Previous')} style={({ pressed }) => [styles.guideBack, guide.frameIndex === 0 && styles.guideDisabled, pressed && styles.pressed]}><ArrowLeft size={16} color={TEXT} /></Pressable>
       <Pressable onPress={guide.next} style={({ pressed }) => [styles.guidePrimary, pressed && styles.pressed]}><Text style={styles.guidePrimaryText}>{guide.frameIndex === guide.frameTotal - 1 ? t('tutorialDone', 'Done') : t('tutorialNext', 'Next')}</Text><ArrowRight size={16} color={themeColor("#07110B", 'onAccent')} /></Pressable>

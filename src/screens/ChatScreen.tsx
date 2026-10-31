@@ -127,7 +127,7 @@ export default function ChatScreen() {
     return () => { active = false; };
   }, [navigation, tutorial.active]));
   const [menuOpen,setMenuOpen]=useState(true);
-  const [activeMode,setActiveMode]=useState<ProWorkspaceMode|null>(null);
+  const [activeMode,setActiveMode]=useState<Exclude<ProWorkspaceMode,'forecast'>|null>(null);
   const [workspaceReady,setWorkspaceReady]=useState(false);
   const [proChildGuidePage,setProChildGuidePage]=useState('proDirect');
   const [resetting,setResetting]=useState(false);
@@ -540,6 +540,7 @@ export default function ChatScreen() {
         setProfile(currentProfile);
       }
       if (!tutorial.active && !currentProfile?.consent) { setMenuOpen(true); return; }
+      if (mode==='forecast') {Keyboard.dismiss();navigation.navigate('ProMatchForecast');return;}
       directOpened.current = sessionId;
       setActiveMode(mode);resumeWorkspace();
     } catch {

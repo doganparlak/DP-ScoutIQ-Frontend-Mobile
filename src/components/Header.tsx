@@ -35,7 +35,7 @@ export default function Header({
     return (
       <View style={[styles.compactWrap, { backgroundColor }]}>
         <Text style={[styles.compactSubtitle, { color: accentColor }]}>
-          {subtitle ?? t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
+          {subtitle ?? t('tagline', 'Player Analysis, Discovery & Match Forecasts')}
         </Text>
       </View>
     );
@@ -65,7 +65,7 @@ export default function Header({
 
       {/* Subtitle (localized) */}
       <Text style={[styles.subtitle, { color: accentColor }]}>
-        {subtitle ?? t('tagline', 'AI-Powered Scouting & Recruitment Intelligence')}
+        {subtitle ?? t('tagline', 'Player Analysis, Discovery & Match Forecasts')}
       </Text>
     </View>
   );

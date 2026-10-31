@@ -34,6 +34,7 @@ export type MainTabsParamList = {
 
 export type ScoutWiseProStackParamList = {
   ProHome: undefined;
+  ProMatchForecast: undefined;
   LegacyStrategy: undefined;
   ProPlans: undefined;
 };

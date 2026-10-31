@@ -79,7 +79,7 @@ export default function MainSidebar({ state, navigation, resolveChatAccess }: Pr
   const nestedRoute = nestedState?.routes?.[nestedState.index ?? 0]?.name;
   const tutorialPage = ({
     Profile: nestedRoute && nestedRoute !== 'MyProfile' ? null : 'panel',
-    Chat: nestedRoute==='LegacyStrategy'?'proStrategy':nestedRoute==='ProPlans'?null:(tutorial.proGuidePage||'proWelcome'),
+    Chat: nestedRoute==='LegacyStrategy'?'proStrategy':nestedRoute==='ProMatchForecast'?'proForecast':nestedRoute==='ProPlans'?null:(tutorial.proGuidePage||'proWelcome'),
     Weekly: 'weekly',
     DailyScout: 'daily',
     ScorePrediction: 'scorePrediction',

@@ -3,6 +3,7 @@ import { ChevronDown,RefreshCcw,Shirt,Users,X } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+Image,
 Modal,
 Pressable,
 ScrollView,
@@ -18,6 +19,7 @@ import { TutorialHint } from './Tutorial';
 export type LineUpPlayer = {
   id: string;
   name: string;
+  imageUrl?: string;
   age?: number;
   team?: string;
   rolesShort?: string[];
@@ -134,6 +136,15 @@ function playerSubtitle(player: LineUpPlayer) {
 function formatFormValue(form?: number) {
   if (typeof form !== 'number' || !Number.isFinite(form)) return '-';
   return Number.isInteger(form) ? String(form) : form.toFixed(1);
+}
+
+function LineUpPortrait({ player, iconSize, color }: { player?: LineUpPlayer; iconSize: number; color: string }) {
+  const {styles} = useThemedStyles(getModuleTheme);
+  const [failed, setFailed] = React.useState(false);
+  React.useEffect(() => setFailed(false), [player?.id, player?.imageUrl]);
+  return player?.imageUrl && !failed
+    ? <Image source={{uri: player.imageUrl}} accessibilityLabel={player.name} resizeMode="cover" style={styles.playerPortrait} onError={() => setFailed(true)} />
+    : <Shirt size={iconSize} color={color} strokeWidth={2.3} />;
 }
 
 export default function LineUp({
@@ -417,7 +428,7 @@ export default function LineUp({
                             compactRow && styles.slotIconCompact,
                           ]}
                         >
-                          <Shirt size={compactRow ? 15 : 18} color={player ? ON_ACCENT : ACCENT} strokeWidth={2.3} />
+                          <LineUpPortrait player={player} iconSize={compactRow ? 15 : 18} color={player ? ON_ACCENT : ACCENT} />
                         </View>
                         <Text
                           numberOfLines={1}
@@ -484,7 +495,7 @@ export default function LineUp({
                           ]}
                         >
                           <View style={styles.playerOptionIcon}>
-                            <Shirt size={16} color={selected ? TEXT : ACCENT} strokeWidth={2.3} />
+                            <LineUpPortrait player={player} iconSize={16} color={selected ? TEXT : ACCENT} />
                           </View>
                           <View style={styles.playerOptionMain}>
                             <Text numberOfLines={1} style={styles.playerOptionName}>{player.name}</Text>
@@ -898,6 +909,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
     paddingHorizontal: 2,
   },
   slotPressed: { opacity: 0.84, transform: [{ scale: 0.98 }] },
+  playerPortrait: { width: '100%', height: '100%', borderRadius: 999 },
   slotIcon: {
     width: 26,
     height: 26,

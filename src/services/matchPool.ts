@@ -368,4 +368,4 @@ export type MatchForecast = {
 export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersion' | 'startingAt' | 'regulationMinutes' | 'home' | 'away' | 'outcomes' | 'topScores' | 'grid' | 'gridRemainder'>;
 export type MatchForecastPlus = Pick<MatchForecast, keyof MatchForecastPreview | 'goalDistribution' | 'bothTeamsScore' | 'cleanSheet' | 'over25' | 'halfScenarios'>;
 export type MatchForecastResponse = {status: 'processing' | 'ready' | 'unavailable' | 'failed'; reason?: string; accessTier?: 'free' | 'paid' | 'plus' | 'pro'; forecast?: MatchForecast | MatchForecastPlus | MatchForecastPreview};
-export const getMatchForecast = (id: number, retry = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast${retry ? '?retry=true' : ''}`);
+export const getMatchForecast = (id: number, retry = false, review = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast?retry=${retry}&review=${review}`);

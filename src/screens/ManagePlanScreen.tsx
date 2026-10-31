@@ -682,6 +682,7 @@ export default function ManagePlan() {
 
             {[
               t('proBenefitUnlimited', "Unlimited access to ScoutWise Pro"),
+              t('proBenefitMatchForecast', "Direct access to Match Forecast"),
               t('proBenefitFit', "Team, league and team strategy fit analysis"),
               t('proBenefitSimilar', "Discover alternative profiles with detailed similar-player analysis"),
               t('proBenefitLeaguePerformance', "League performance analysis with advanced metrics"),

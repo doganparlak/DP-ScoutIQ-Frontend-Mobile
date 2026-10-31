@@ -1,6 +1,7 @@
 import { TutorialProvider } from '@/components/Tutorial';
 import { TeamAnalysisProvider } from '@/context/TeamAnalysisContext';
 import ChatScreen from '@/screens/ChatScreen';
+import ProMatchForecastScreen from '@/screens/ProMatchForecastScreen';
 import DailyScoutScreen from '@/screens/DailyScoutScreen';
 import HelpCenter from '@/screens/HelpCenterScreen';
 import ManagePlanScreen from '@/screens/ManagePlanScreen';
@@ -54,6 +55,7 @@ function ScoutWiseProStackScreen() {
   return (
     <ScoutWiseProStack.Navigator screenOptions={{ headerShown: false }}>
       <ScoutWiseProStack.Screen name="ProHome" component={ChatScreen} />
+      <ScoutWiseProStack.Screen name="ProMatchForecast" component={ProMatchForecastScreen} />
       <ScoutWiseProStack.Screen name="LegacyStrategy" component={StrategyScreen} />
       <ScoutWiseProStack.Screen name="ProPlans" component={ScoutWiseProScreen} />
     </ScoutWiseProStack.Navigator>
