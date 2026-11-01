@@ -65,12 +65,8 @@ export default function DailyScoutPlayerCard({ id, player, onNavigate }: { id: s
   return <View style={{ gap: 12, padding: 8 }}>
     <PlayerCard onManageMatchup={()=>{onNavigate?.();matchupNavigation.navigate('Matchup');}} player={shownPlayer} similarPlayerId={id} similarDisabled={busy||ads.busy} beforeFindSimilar={async()=>{onNavigate?.();await new Promise<void>(resolve=>setTimeout(resolve,350));}} titleAlign="left" addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || ads.busy || alreadyInMatchup || matchupFull}
       onAddFavorite={async () => !!await perform(async () => {
-        // Capture visibility before ensureScores automatically reveals missing values.
-        const action = scores.potential !== undefined && scores.form !== undefined
-          ? 'dailyScoutRevealedScorePortfolioAdd'
-          : 'dailyScoutHiddenScorePortfolioAdd';
         let saved = false;
-        await ads.run(action, async () => {
+        await ads.run('savePlayer', async () => {
           const enriched = await ensureScores();
           await addFavoritePlayer({ playerId: id, name: enriched.name, ...enriched.meta, roles: enriched.meta?.roles ?? [] });
           saved = true;

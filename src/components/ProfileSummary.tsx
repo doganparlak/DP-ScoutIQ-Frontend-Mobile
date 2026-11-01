@@ -57,7 +57,7 @@ export default function ProfileSummary() {
   const recentTypes = {
     player: { route: 'Strategy', label: tr ? 'Oyuncu Havuzu' : 'Player Pool', Icon: UserRound },
     team: { route: 'TeamPool', label: tr ? 'Takım Havuzu' : 'Team Pool', Icon: Shield },
-    fixtures: { route: 'MatchPool', label: tr ? 'Maç Havuzu' : 'Match Pool', Icon: CalendarSearch },
+    fixtures: { route: 'MatchPool', label: tr ? 'Maç Merkezi' : 'Match Center', Icon: CalendarSearch },
     league: { route: 'LeaguePool', label: tr ? 'Lig Havuzu' : 'League Pool', Icon: Trophy },
     season: { route: 'SeasonData', label: tr ? 'Sezon Verileri' : 'Season Data', Icon: Database },
   } as const;
@@ -78,7 +78,7 @@ export default function ProfileSummary() {
           </View>
         ) : recent.length ? recent.slice(0, 1).map(({ kind, title, imageUrl, searchedAt }) => {
           const { route, label, Icon } = recentTypes[kind];
-          return <Pressable key={kind} accessibilityRole="button" onPress={() => navigation.navigate(route)}
+          return <Pressable key={kind} accessibilityRole="button" onPress={() => kind==='fixtures'?navigation.navigate('MatchPool',{view:'team',viewRequest:Date.now()}):navigation.navigate(route)}
             accessibilityLabel={`${label}: ${title}. ${tr ? 'Devam et' : 'Continue'}`}
             style={({ pressed }) => [s.recentRow, pressed && s.pressed]}>
             <RecentImage key={`${kind}:${title}:${imageUrl}`} uri={imageUrl} Icon={Icon} color={ACCENT} />

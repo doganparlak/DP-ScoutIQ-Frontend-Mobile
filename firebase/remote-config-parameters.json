@@ -14,7 +14,7 @@
     },
     "ads_matchup_add_every": {
       "defaultValue": {
-        "value": "4"
+        "value": "3"
       },
       "valueType": "NUMBER"
     },
@@ -42,27 +42,15 @@
       },
       "valueType": "NUMBER"
     },
-    "ads_daily_hidden_portfolio_every": {
+    "ads_season_search_every": {
       "defaultValue": {
         "value": "3"
       },
       "valueType": "NUMBER"
     },
-    "ads_daily_revealed_portfolio_every": {
-      "defaultValue": {
-        "value": "4"
-      },
-      "valueType": "NUMBER"
-    },
-    "ads_season_search_every": {
-      "defaultValue": {
-        "value": "4"
-      },
-      "valueType": "NUMBER"
-    },
     "ads_league_search_every": {
       "defaultValue": {
-        "value": "4"
+        "value": "3"
       },
       "valueType": "NUMBER"
     },
@@ -75,10 +63,17 @@
     },
     "ads_similar_search_every": {
       "defaultValue": {
-        "value": "4"
+        "value": "3"
       },
       "valueType": "NUMBER",
-      "description": "Free users: interstitial every fourth explicit similar-player search."
+      "description": "Free users: interstitial every third explicit similar-player search."
+    },
+    "ads_save_player_every": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "valueType": "NUMBER",
+      "description": "Free users: shared interstitial counter every third successful player portfolio save, across all sources and score visibility states."
     }
   }
 }

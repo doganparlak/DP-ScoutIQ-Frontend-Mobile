@@ -1,5 +1,5 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { BadgeCheck,Check,Minus,X } from 'lucide-react-native';
+import { BadgeCheck,Check,X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Pressable,StyleSheet,Text,View,type StyleProp,type ViewStyle } from 'react-native';
 
@@ -23,17 +23,20 @@ export default function PlanDiscoveryNudge({
   const { t } = useTranslation();
   const accent = worldCupMode ? WORLD_CUP_COLORS.lavender : ACCENT;
   const available = () => <Check size={14} color={themeColor("#4ADE80", 'text')} strokeWidth={3} />;
-  const unavailable = () => <Minus size={14} color={themeColor("#68736C", 'text')} strokeWidth={2.5} />;
   const rows = [
     { label: t('planFeatures_NoAdsMonthly', 'Ad-free'), plus: available(), pro: available() },
     { label: t('planFeatures_DetailedReports', 'Detailed reports'), plus: available(), pro: available() },
     {
       label: t('plusProComparisonPlayers', 'Player comparison'),
-      plus: <Text style={styles.valueText}>{t('plusProThreePlayers', '3 players')}</Text>,
-      pro: <Text style={styles.valueText}>{t('plusProThreeOrFourPlayers', '3 or 4 players')}</Text>,
+      plus: <Text style={styles.valueText}>{t('plusProExtended', 'Extended')}</Text>,
+      pro: <Text style={styles.valueText}>{t('plusProDetailed', 'Detailed')}</Text>,
     },
-    { label: t('planFeatures_CustomComparison', 'Customizable comparison'), plus: unavailable(), pro: available() },
-    { label: t('plusProChatAccess', 'ScoutWise Pro'), plus: unavailable(), pro: available() },
+    {
+      label: t('plusProLeagueAnalysis', 'League analysis'),
+      plus: <Text style={styles.valueText}>{t('plusProExtended', 'Extended')}</Text>,
+      pro: <Text style={styles.valueText}>{t('plusProDetailed', 'Detailed')}</Text>,
+    },
+    { label: t('plusProChatAccess', 'ScoutWise Pro'), plus: <Text style={styles.valueText}>{t('plusProLimited', 'Limited')}</Text>, pro: available() },
   ];
 
   return (

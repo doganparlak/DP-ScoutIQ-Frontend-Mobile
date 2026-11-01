@@ -160,10 +160,11 @@ export default function SpiderChart({ title, points, Icon, chartSize, hideTitle 
     cleaned = spread.map((p, i) => ({ ...p, x: i + 1 }));
   }
 
-  // If fewer than 3 valid metrics, show list fallback instead of radar
+  // Sparse categories use framed metric tiles instead of a radar.
   if (cleaned.length < MIN_RADAR_METRICS) {
       return (
         <SpiderBarsFallback
+          hideTitle={hideTitle}
           title={title}
           points={points}
           Icon={AutoIcon}

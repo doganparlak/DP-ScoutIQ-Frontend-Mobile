@@ -17,6 +17,7 @@ const MATCH_CARD_PLAN_NUDGE_KEY = 'ads.matchPool.matchCardPlanNudgeCount.v1';
 const SEASON_HISTORY_PLAN_NUDGE_KEY = 'ads.seasonData.careerHistoryPlanNudgeCount.v1';
 const PORTFOLIO_LINEUP_KEY = 'ads.portfolio.lineupLaunchCount.v1';
 // Player, team-analysis, pre-match, and post-match reports share this counter.
+const PLAYER_SAVE_KEY = 'ads.shared.playerPortfolioSaveCount.v1';
 const REPORT_ACTION_KEY = 'ads.shared.reportActionCount.v1';
 
 function shouldShowEveryThird(count: number) {
@@ -145,6 +146,7 @@ const WORKSPACE_AD_ACTIONS = {
   preMatchReport: { key: REPORT_ACTION_KEY, frequency: 'ads_report_every' },
   postMatchReport: { key: REPORT_ACTION_KEY, frequency: 'ads_report_every' },
   similarPlayersSearch: { key: 'ads.similarPlayers.searchActionCount.v1', frequency: 'ads_similar_search_every' },
+  savePlayer: { key: PLAYER_SAVE_KEY, frequency: 'ads_save_player_every' },
   saveTeam: { key: 'ads.team.saveActionCount.v1', frequency: 'ads_save_team_every' },
   saveMatch: { key: 'ads.match.saveActionCount.v1', frequency: 'ads_save_match_every' },
   playerPoolMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
@@ -152,8 +154,6 @@ const WORKSPACE_AD_ACTIONS = {
   leaguePlayerMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   portfolioPlayerMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   dailyScoutMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
-  dailyScoutHiddenScorePortfolioAdd: { key: 'ads.dailyScout.hiddenScorePortfolioAddCount.v1', frequency: 'ads_daily_hidden_portfolio_every' },
-  dailyScoutRevealedScorePortfolioAdd: { key: 'ads.dailyScout.revealedScorePortfolioAddCount.v1', frequency: 'ads_daily_revealed_portfolio_every' },
   leagueMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   seasonMatchupAdd: { key: MATCHUP_ADD_KEY, frequency: 'ads_matchup_add_every' },
   leaguePerformanceSearch: { key: 'ads.leaguePerformance.searchActionCount.v1', frequency: 'ads_league_search_every' },
@@ -176,4 +176,15 @@ export async function shouldShowNextMatchupAddAd(owner?:symbol){
   const value=raw?parseInt(raw,10):0;
   const count=Number.isFinite(value)?value:0;
   return (count+1)%getAdFrequency('ads_matchup_add_every')===0;
+}
+
+// Reserve the shared counter through successful additions, including slow saves.
+export function countsSuccessfulAction(action:WorkspaceAdAction){return isMatchupAddAction(action)||action==='savePlayer';}
+export async function shouldShowNextWorkspaceActionAd(action:WorkspaceAdAction,owner?:symbol){
+  assertAdActionAvailable(owner);
+  const {key,frequency}=WORKSPACE_AD_ACTIONS[action];
+  await pendingCounts.get(key);
+  const raw=await AsyncStorage.getItem(key);
+  const value=raw?parseInt(raw,10):0;
+  return ((Number.isFinite(value)?value:0)+1)%getAdFrequency(frequency)===0;
 }

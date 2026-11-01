@@ -73,7 +73,7 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentatio
     },
     {
       label: 'ScoutWise Pro',
-      plus: available(t('plusProLimitedUsage', 'Limited usage')),
+      plus: available(t('plusProLimited', 'Limited')),
       pro: available(t('plusProUnlimitedUsage', 'Unlimited')),
     },
     {
@@ -82,19 +82,14 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentatio
       pro: available(t('plusProComprehensive', 'Comprehensive')),
     },
     {
-      label: t('plusProLeagueAnalysis', 'League performance analysis'),
+      label: t('plusProLeagueAnalysis', 'League analysis'),
       plus: available(t('plusProExtended', 'Extended')),
-      pro: available(t('plusProComprehensive', 'Comprehensive')),
+      pro: available(t('plusProDetailed', 'Detailed')),
     },
     {
       label: t('plusProComparisonPlayers', 'Player comparison'),
-      plus: available(t('plusProThreePlayers', '3 players')),
-      pro: available(t('plusProThreeOrFourPlayers', '3 or 4 players')),
-    },
-    {
-      label: t('planFeatures_CustomComparison', 'Customizable comparison'),
-      plus: unavailable,
-      pro: available(),
+      plus: available(t('plusProExtended', 'Extended')),
+      pro: available(t('plusProDetailed', 'Detailed')),
     },
   ];
 

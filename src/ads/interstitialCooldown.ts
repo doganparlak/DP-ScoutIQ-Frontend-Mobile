@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 const KEY='ads.interstitial.lastShownAt.v1';
-const COOLDOWN_MS=60_000;
+const COOLDOWN_MS=30_000;
 let lastShownAt=0;
 let restored:Promise<void>|undefined;
 let writes:Promise<void>=Promise.resolve();

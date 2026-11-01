@@ -32,10 +32,12 @@ export type MatchFixture = {
   name: string;
   startingAt: string;
   country: { name: string };
-  league: { name: string };
+  league: { id?: number; name: string; imageUrl?: string | null };
   homeTeam: MatchSide;
   awayTeam: MatchSide;
   state: { code: string; name: string };
+  minute?: number | null;
+  forecastAvailable?: boolean;
   resultInfo?: string | null;
 };
 export type FavoriteMatch = {
@@ -111,6 +113,17 @@ export const savedMatches = () =>
   matchPoolRequest<FavoriteMatch[]>("/favorite-matches");
 export const saveMatch = (fixtureId: number) =>
   matchPoolRequest<FavoriteMatch>("/favorite-matches", { fixtureId });
+export function isLiveMatch(f:MatchFixture):boolean {
+  const code=(f.state.code||'').trim().toUpperCase().replace(/ /g,'_');
+  const name=(f.state.name||'').trim().toLowerCase();
+  return ['LIVE','HT','1ST','2ND','ET','PEN_LIVE','BREAK','INT','SUSP','INPLAY_1ST_HALF','INPLAY_2ND_HALF','INPLAY_ET'].includes(code)
+    || ['live','in progress','half time','half-time','extra time','penalty shootout'].some(value=>name.includes(value));
+}
+// Saving a fixture and opening its reports have separate status rules.
+export function matchPortfolioSaveType(f:MatchFixture):'pre_match'|'post_match'|null {
+  return matchSaveType(f) ?? (isLiveMatch(f)?'post_match':null);
+}
+
 export function matchSaveType(
   f: MatchFixture,
 ): "pre_match" | "post_match" | null {
@@ -129,23 +142,7 @@ export function matchSaveType(
     ].some((v) => name.includes(v))
   )
     return "post_match";
-  if (
-    [
-      "LIVE",
-      "HT",
-      "1ST",
-      "2ND",
-      "ET",
-      "PEN_LIVE",
-      "BREAK",
-      "INT",
-      "SUSP",
-    ].includes(code) ||
-    ["live", "in progress", "half time", "extra time", "penalty shootout"].some(
-      (v) => name.includes(v),
-    )
-  )
-    return null;
+  if (isLiveMatch(f)) return null;
   if (
     ["NS", "TBA", "POSTP", "DELAYED"].includes(code) ||
     [
@@ -165,12 +162,9 @@ export const matchScore = (f: MatchFixture) =>
     : `${f.homeTeam.score} – ${f.awayTeam.score}`;
 
 export function matchStateLabel(f: MatchFixture, tr: boolean) {
-  const raw = (f.state.name || f.state.code || "—").trim();
-  if (!tr) return raw;
-  const normalized = raw.toLowerCase();
-  if (normalized === "not started" || normalized === "ns") return "Başlamadı";
-  if (normalized === "full time" || normalized === "ft") return "Tamamlandı";
-  return raw;
+  const code=f.state.code.trim().toUpperCase();
+  const labels:Record<string,[string,string]>={NS:['Başlamadı','Not started'],TBA:['Saat belirsiz','Time TBA'],FT:['Tamamlandı','Finished'],AET:['Uzatma sonu','After extra time'],PEN:['Penaltı sonu','After penalties'],FT_PEN:['Penaltı sonu','After penalties'],HT:['Devre arası','Half-time'],'1ST':['İlk yarı','First half'],'2ND':['İkinci yarı','Second half'],ET:['Uzatma','Extra time'],BREAK:['Ara','Break'],LIVE:['Canlı','Live'],PEN_LIVE:['Penaltılar','Penalties'],POST:['Ertelendi','Postponed'],POSTP:['Ertelendi','Postponed'],DELAYED:['Gecikmeli','Delayed'],CANC:['İptal','Cancelled'],CANCL:['İptal','Cancelled'],ABAN:['Yarıda kaldı','Abandoned'],INT:['Duraklatıldı','Interrupted'],SUSP:['Durduruldu','Suspended'],WO:['Hükmen','Walkover'],AWARDED:['Hükmen','Awarded']};
+  return labels[code]?.[tr?0:1] || f.state.name || f.state.code || '—';
 }
 export function dateValidation(filters: MatchFilters, tr: boolean) {
   if (!filters.startDate || !filters.endDate) return "";
@@ -369,3 +363,12 @@ export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersi
 export type MatchForecastPlus = Pick<MatchForecast, keyof MatchForecastPreview | 'goalDistribution' | 'bothTeamsScore' | 'cleanSheet' | 'over25' | 'halfScenarios'>;
 export type MatchForecastResponse = {status: 'processing' | 'ready' | 'unavailable' | 'failed'; reason?: string; accessTier?: 'free' | 'paid' | 'plus' | 'pro'; forecast?: MatchForecast | MatchForecastPlus | MatchForecastPreview};
 export const getMatchForecast = (id: number, retry = false, review = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast?retry=${retry}&review=${review}`);
+
+export type DailyFixtures = {date:string;fixtures:MatchFixture[];refreshAfter:number|null;stale:boolean};
+export const getDailyFixtures = (day:string,timezone:string) => matchPoolRequest<DailyFixtures>(`/match-pool/daily?day=${encodeURIComponent(day)}&timezone=${encodeURIComponent(timezone)}`);
+
+export type MatchCalendarBounds = {minDate:string;maxDate:string};
+export const getMatchCalendarBounds = (timezone:string) => matchPoolRequest<MatchCalendarBounds>(`/match-pool/calendar?timezone=${encodeURIComponent(timezone)}`);
+
+export const getMatchWatchlist = () => matchPoolRequest<{fixtureIds:number[]}>('/match-pool/watchlist');
+export const setMatchWatchlist = (fixtureId:number,starred:boolean) => matchPoolRequest<{fixtureId:number;starred:boolean}>('/match-pool/watchlist',{fixtureId,starred});

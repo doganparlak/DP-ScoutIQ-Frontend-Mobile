@@ -10,6 +10,7 @@ type ListMetric = { label: string; value: number; y: number };
 
 type Props = {
   title: string;
+  hideTitle?: boolean;
   points: SpiderPoint[];
   Icon?: React.ComponentType<{ size?: number; color?: string }>;
   headerColor?: string;
@@ -54,6 +55,7 @@ function buildListMetrics(points: SpiderPoint[]): ListMetric[] {
 
 export default function SpiderBarsFallback({
   title,
+  hideTitle = false,
   points,
   Icon,
   headerColor,
@@ -74,26 +76,26 @@ export default function SpiderBarsFallback({
   const shown = collapsed && canToggle ? listMetrics.slice(0, collapsedCount) : listMetrics;
 
   return (
-    <View style={{ backgroundColor: CARD, borderRadius: 16, padding: 12, gap: 8 }}>
+    <View style={{width:'100%',alignSelf:'stretch',minWidth:0,backgroundColor:CARD,borderRadius:16,padding:12,gap:10}}>
       {/* header bubble with icon + title */}
-      <View style={styles.headerRow}>
+      {!hideTitle && <View style={styles.headerRow}>
         <View style={[styles.titleFrame, { backgroundColor: headerColor }]}>
           {Icon ? <Icon size={18} color={themeColor("white", 'text')} /> : null}
           <Text style={styles.title}>{title}</Text>
         </View>
-      </View>
+      </View>}
 
       {shown.map((p) => {
         const labelTr = t(`metric.${p.label}`, { defaultValue: p.label }) as string;
 
         return (
-          <View key={p.label} style={{ marginTop: 8 }}>
+          <View key={p.label} style={{width:'100%',alignSelf:'stretch',minWidth:0,padding:14,borderWidth:1,borderColor:`${headerColor}55`,borderRadius:16,backgroundColor:`${headerColor}08`,gap:8}}>
             {/* Row: label + value */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
-              <Text style={{ color: MUTED, fontSize: 13, fontWeight: '600', flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems:'baseline', justifyContent: 'space-between', gap: 10 }}>
+              <Text style={{ color: MUTED, fontSize: 13, fontWeight: '600', flex: 1, minWidth:0 }}>
                 {labelTr}
               </Text>
-              <Text style={{ color: TEXT, fontSize: 14, fontWeight: '800' }}>
+              <Text style={{ color: headerColor, fontSize: 17, fontWeight: '800', fontVariant:['tabular-nums'], flexShrink:0 }}>
                 {formatValue(p.value, p.label)}
               </Text>
             </View>
@@ -101,7 +103,6 @@ export default function SpiderBarsFallback({
             {/* Bar */}
             <View
               style={{
-                marginTop: 8,
                 height: 7,
                 borderRadius: 999,
                 backgroundColor: themeColor('#272a2a', 'surface'),
@@ -118,7 +119,7 @@ export default function SpiderBarsFallback({
             </View>
 
             {/* Hint */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: MUTED, fontSize: 11 }}>
                 {t('low', { defaultValue: 'Low' })}
               </Text>

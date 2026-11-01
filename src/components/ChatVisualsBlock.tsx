@@ -1,3 +1,4 @@
+import {useWorkspaceActionAd} from '@/ads/useWorkspaceActionAd';
 import PlayerCard from '@/components/PlayerCard';
 import SpiderChart from '@/components/SpiderChart';
 import { addFavoritePlayer,rolePickerCode } from '@/services/api';
@@ -215,9 +216,11 @@ export function ChatPitchMap({ player, pro = false }: { player: PlayerData; pro?
 }
 
 function PlayerCardBlock({ players }: Props) {
+  const ads=useWorkspaceActionAd();
   const { t } = useTranslation();
   return (
     <View style={{ paddingHorizontal: 12, marginBottom: 12, gap: 10 }}>
+      {ads.fallback}
       {players.map((p) => (
         <PlayerCard
           key={p.name}
@@ -225,27 +228,31 @@ function PlayerCardBlock({ players }: Props) {
           actionsInside
           onAddFavorite={async (player) => {
             try {
-              await addFavoritePlayer({
-                ...player.meta,
-                name: player.name,
-                nationality: player.meta?.nationality,
-                age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
-                potential:
-                  typeof player.meta?.potential === 'number'
-                    ? Math.round(player.meta.potential)
-                    : undefined,
-                form:
-                  typeof player.meta?.form === 'number'
-                    ? Math.round(player.meta.form)
-                    : undefined,
-                gender: player.meta?.gender,
-                height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
-                weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
-                team: player.meta?.team,
-                league: player.meta?.league,
-                roles: player.meta?.roles ?? [],
+              let saved=false;
+              await ads.run('savePlayer',async()=>{
+                await addFavoritePlayer({
+                  ...player.meta,
+                  name: player.name,
+                  nationality: player.meta?.nationality,
+                  age: typeof player.meta?.age === 'number' ? player.meta.age : undefined,
+                  potential:
+                    typeof player.meta?.potential === 'number'
+                      ? Math.round(player.meta.potential)
+                      : undefined,
+                  form:
+                    typeof player.meta?.form === 'number'
+                      ? Math.round(player.meta.form)
+                      : undefined,
+                  gender: player.meta?.gender,
+                  height: typeof player.meta?.height === 'number' ? player.meta.height : undefined,
+                  weight: typeof player.meta?.weight === 'number' ? player.meta.weight : undefined,
+                  team: player.meta?.team,
+                  league: player.meta?.league,
+                  roles: player.meta?.roles ?? [],
+                });
+                saved=true;
               });
-              return true;
+              return saved;
             } catch (e: any) {
               Alert.alert(t('addFavoriteFailed', 'Add failed'), String(e?.message || e));
               return false;

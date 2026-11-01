@@ -1,3 +1,4 @@
+import { PLAYER_ROLE_GRID_ORDER } from '@/services/api';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { ChevronDown,X } from 'lucide-react-native';
 import React from 'react';
@@ -6,12 +7,9 @@ import { Keyboard,Modal,Pressable,ScrollView,StyleSheet,Text,View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-const ROLE_ROWS = [
-  ['GK', 'LB', 'RB'],
-  ['CB', 'LM', 'RM'],
-  ['CDM', 'CM', 'CAM'],
-  ['LW', 'RW', 'CF'],
-] as const;
+const ROLE_ROWS = Array.from({ length: PLAYER_ROLE_GRID_ORDER.length / 3 }, (_, row) =>
+  PLAYER_ROLE_GRID_ORDER.slice(row * 3, row * 3 + 3),
+);
 
 export default function PortfolioRoleFilter({ value, onChange, open:controlledOpen, onOpenChange, onDone, description, minSelections=0, hideField=false }: {
   value: string[];

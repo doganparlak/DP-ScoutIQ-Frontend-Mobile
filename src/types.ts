@@ -20,7 +20,7 @@ export type MainTabsParamList = {
   SimilarPlayers: {reference?: import('./services/similarPlayers').SimilarReference; visitKey?: number} | undefined;
   LeaguePool: undefined;
   LeaguePerformance: {leagueCard?:import('./components/CandidatePlayers').SearchResultRow;league?:import('./services/leaguePerformance').LeagueResult;analysisRequest?:number}|undefined;
-  MatchPool: { fixtureTeam?: import('./services/teamPool').Team; fixtureRequest?: number } | undefined;
+  MatchPool: { view?:'daily'|'team'; viewRequest?:number; fixtureTeam?: import('./services/teamPool').Team; fixtureRequest?: number } | undefined;
   SeasonData: undefined;
   Portfolio: undefined;
   Matchup: undefined;

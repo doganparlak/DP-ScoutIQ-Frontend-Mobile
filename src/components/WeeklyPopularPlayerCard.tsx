@@ -3,9 +3,7 @@ import type { MainTabsParamList } from '@/types';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
 import {
-incrementPlayerPoolMissingScoreActionCount,
 incrementReportActionCount,
-shouldShowPlayerPoolMissingScoreActionInterstitial,
 shouldShowReportActionInterstitial,
 } from '@/ads/adGating';
 import { showInterstitialAndWaitSafely } from '@/ads/interstitial';
@@ -48,7 +46,6 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
   const [plan, setPlan] = React.useState<Plan>('Free');
   const full = matchup.rows.filter(Boolean).length >= 4;
   const alreadyAdded = matchup.rows.some(row => row?.id === id);
-  const hasScores = typeof shownPlayer.meta?.potential === 'number' && typeof shownPlayer.meta?.form === 'number';
 
   async function perform(action: () => Promise<boolean | void>) {
     if (lock.current) return false;
@@ -62,18 +59,15 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
     } finally { lock.current = false; setBusy(false); }
   }
 
-  async function gate(action: 'portfolio' | 'report') {
+  async function gateReport() {
     const current = (await getMe()).plan;
     const normalized: Plan = current === 'No Ads Monthly' || current === 'Pro Monthly' || current === 'Pro Yearly' ? current : 'Free';
     setPlan(normalized);
-    if (normalized !== 'Free' || tutorial.active || (action !== 'report' && hasScores)) return true;
-    const due = action === 'report'
-      ? shouldShowReportActionInterstitial(await incrementReportActionCount())
-      : shouldShowPlayerPoolMissingScoreActionInterstitial(await incrementPlayerPoolMissingScoreActionCount());
+    if (normalized !== 'Free' || tutorial.active) return true;
+    const due = shouldShowReportActionInterstitial(await incrementReportActionCount());
     if (!due || await showInterstitialAndWaitSafely({ action: 'popular_player', isActive: () => navigation.isFocused() })) return true;
     setUpsell(true);
-    // Player-pool score actions continue with the upsell fallback; reports wait.
-    return action !== 'report';
+    return false;
   }
 
   async function ensureScores() {
@@ -90,10 +84,13 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
       addFavoriteDisabled={busy} reportDisabled={busy} matchupDisabled={busy || full || alreadyAdded}
       reportState={report?.status === 'ready' ? 'ready' : 'idle'}
       onAddFavorite={async () => !!await perform(async () => {
-        await gate('portfolio');
-        const enriched = await ensureScores();
-        await addFavoritePlayer({ ...enriched.meta, playerId: id, name: enriched.name, roles: enriched.meta?.roles ?? [] });
-        return true;
+        let saved=false;
+        await matchupAds.run('savePlayer',async()=>{
+          const enriched = await ensureScores();
+          await addFavoritePlayer({ ...enriched.meta, playerId: id, name: enriched.name, roles: enriched.meta?.roles ?? [] });
+          saved=true;
+        });
+        return saved;
       })}
       onMatchup={async () => { await perform(async () => {
         if (full || alreadyAdded) return;
@@ -106,7 +103,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
         if(added && matchup.rows.filter(Boolean).length===3)navigation.navigate('Matchup');
       }); }}
       onGenerateReport={async () => { await perform(async () => {
-        if (!await gate('report')) return;
+        if (!await gateReport()) return;
         const enriched = await ensureScores();
         const payload = { ...enriched.meta, playerId: id, name: enriched.name };
         setReportPayload(payload);

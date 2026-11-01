@@ -976,35 +976,39 @@ export default function PlayerPoolScreen() {
   }, []);
 
   const addSelectedPlayerToPortfolio = React.useCallback(async (player: PlayerData) => {
-    const enriched = await ensureSelectedPlayerScores('playerCard');
-    const playerToSave = enriched?.player ?? player;
+    let saved=false;
+    await matchupAds.run('savePlayer',async()=>{
+      const enriched = await ensureSelectedPlayerScores('playerCard',{skipGate:true});
+      const playerToSave = enriched?.player ?? player;
 
-    await addFavoritePlayer({
-      playerId: selectedPlayerId ?? undefined,
-      sportmonksId: playerToSave.meta?.sportmonksId,
-      name: playerToSave.name,
-      nationality: playerToSave.meta?.nationality,
-      age: typeof playerToSave.meta?.age === 'number' ? playerToSave.meta.age : undefined,
-      potential:
-        typeof playerToSave.meta?.potential === 'number'
-          ? Math.round(playerToSave.meta.potential)
-          : undefined,
-      form:
-        typeof playerToSave.meta?.form === 'number'
-          ? Math.round(playerToSave.meta.form)
-          : undefined,
-      gender: playerToSave.meta?.gender,
-      height: typeof playerToSave.meta?.height === 'number' ? playerToSave.meta.height : undefined,
-      weight: typeof playerToSave.meta?.weight === 'number' ? playerToSave.meta.weight : undefined,
-      team: playerToSave.meta?.team,
-      league: playerToSave.meta?.league,
-      worldCupMode,
-      formRevealed: worldCupMode ? true : undefined,
-      roles: playerToSave.meta?.roles ?? [],
+      await addFavoritePlayer({
+        playerId: selectedPlayerId ?? undefined,
+        sportmonksId: playerToSave.meta?.sportmonksId,
+        name: playerToSave.name,
+        nationality: playerToSave.meta?.nationality,
+        age: typeof playerToSave.meta?.age === 'number' ? playerToSave.meta.age : undefined,
+        potential:
+          typeof playerToSave.meta?.potential === 'number'
+            ? Math.round(playerToSave.meta.potential)
+            : undefined,
+        form:
+          typeof playerToSave.meta?.form === 'number'
+            ? Math.round(playerToSave.meta.form)
+            : undefined,
+        gender: playerToSave.meta?.gender,
+        height: typeof playerToSave.meta?.height === 'number' ? playerToSave.meta.height : undefined,
+        weight: typeof playerToSave.meta?.weight === 'number' ? playerToSave.meta.weight : undefined,
+        team: playerToSave.meta?.team,
+        league: playerToSave.meta?.league,
+        worldCupMode,
+        formRevealed: worldCupMode ? true : undefined,
+        roles: playerToSave.meta?.roles ?? [],
+      });
+
+      saved=true;
     });
-
-    return true;
-  }, [ensureSelectedPlayerScores, selectedPlayerId, worldCupMode]);
+    return saved;
+  }, [ensureSelectedPlayerScores, selectedPlayerId, worldCupMode, matchupAds.run]);
 
   const generateReportFromPlayerCard = React.useCallback(async (player: PlayerData) => {
     if (!selectedPlayerId || reportLoadingPlayerId) return;

@@ -113,6 +113,15 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
     locked.current = true; setBusy(true);
     let success = false, openedReport = false;
     try {
+      if(kind==='portfolio'){
+        await matchupAds.run('savePlayer',async()=>{
+          const enriched=await ensureScores(true);
+          const player=enriched.player,meta=player.meta||{};
+          await addFavoritePlayer({playerId:enriched.id,sportmonksId:meta.sportmonksId,name:player.name,nationality:meta.nationality,age:meta.age,potential:meta.potential,form:meta.form,gender:meta.gender,height:meta.height,weight:meta.weight,team:meta.team,league:meta.league,roles:meta.roles||[]});
+          success=true;
+        },hideCardForPresentation);
+        return success;
+      }
       if(kind==='matchup' && !proMode){
         await matchupAds.run('leaguePlayerMatchupAdd',()=>{
           const latest=currentMatchup.current;
@@ -131,12 +140,9 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
         await gateLeaguePlayerAction(kind, missingScores, paid, tutorial.active, showUpsell, hideCardForPresentation, () => mounted.current && focusedRef.current);
         if (mounted.current && !upsellShowing.current) setCardVisible(true);
       }
-      const enriched = await ensureScores(kind === 'portfolio');
+      const enriched = await ensureScores();
       const player = enriched.player, meta = player.meta || {};
-      if (kind === 'portfolio') {
-        await addFavoritePlayer({playerId: enriched.id, sportmonksId: meta.sportmonksId, name: player.name, nationality: meta.nationality, age: meta.age, potential: meta.potential, form: meta.form, gender: meta.gender, height: meta.height, weight: meta.weight, team: meta.team, league: meta.league, roles: meta.roles || []});
-        success = true;
-      } else if (kind === 'matchup') {
+      if (kind === 'matchup') {
         const latest = currentMatchup.current;
         if (latest.rows.filter(Boolean).length < 4 && !latest.rows.some(row => row?.id === enriched.id)) {
           latest.add(enriched);

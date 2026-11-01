@@ -60,6 +60,8 @@ type TutorialContextValue = {
   activationKey: number;
   activePage: string | null;
   activeFrame: number;
+  matchGuidePage: string;
+  setMatchGuidePage: React.Dispatch<React.SetStateAction<string>>;
   proGuidePage: string | null;
   setProGuidePage: React.Dispatch<React.SetStateAction<string | null>>;
   setPlayerPoolStep: (step: PlayerPoolTutorialStep) => void;
@@ -101,6 +103,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const {styles, themeColor} = themed;
 
   const [active, setActive] = React.useState(false);
+  const [matchGuidePage,setMatchGuidePage]=React.useState('matchDaily');
   const [proGuidePage,setProGuidePage]=React.useState<string|null>(null);
   const [postTutorialReady] = React.useState(false);
   const [stage, setStage] = React.useState<TutorialStage>('done');
@@ -162,8 +165,10 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     { page: 'teamPool', route: 'TeamPool', title: t('teamCard', 'Team Card'), Icon: Shield, summary: t('tutorialTeamPoolAnalyze'), details: [] },
     { page: 'leaguePool', route: 'LeaguePool', title: t('leaguePoolWorkspace', 'League Pool'), Icon: Trophy, summary: t('tutorialLeaguePoolSearch'), details: [] },
     { page: 'leaguePool', route: 'LeaguePool', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialLeaguePoolMatchup'), details: [] },
-    { page: 'matchPool', route: 'MatchPool', title: t('matchPoolWorkspace', 'Match Pool'), Icon: CalendarSearch, summary: t('tutorialMatchPoolSearch'), details: [t('helpGuideMatchPool4')] },
-    { page: 'matchPool', route: 'MatchPool', title: t('matchCard', 'Match Card'), Icon: CalendarSearch, summary: t('tutorialMatchPoolCard'), details: [] },
+    { page: 'matchDaily', route: 'MatchPool', title: t('matchDailyGuideTitle'), Icon: CalendarSearch, summary: t('tutorialMatchDailyBrowse'), details: [] },
+    { page: 'matchDaily', route: 'MatchPool', title: t('matchDailyGuideTitle'), Icon: CalendarSearch, summary: t('tutorialMatchDailyActions'), details: [] },
+    { page: 'matchTeam', route: 'MatchPool', title: t('matchTeamGuideTitle'), Icon: CalendarSearch, summary: t('tutorialMatchPoolSearch'), details: [] },
+    { page: 'matchTeam', route: 'MatchPool', title: t('matchCard', 'Match Card'), Icon: CalendarSearch, summary: t('tutorialMatchPoolCard'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('seasonDataWorkspace', 'Season Data'), Icon: Database, summary: t('tutorialSeasonSearch'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('careerHistory', 'Career History'), Icon: Database, summary: t('tutorialSeasonHistory'), details: [] },
     { page: 'seasonData', route: 'SeasonData', title: t('matchupWorkspace', 'Matchup Center'), Icon: GitCompareArrows, summary: t('tutorialSeasonMatchup'), details: [] },
@@ -212,7 +217,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = React.useMemo<TutorialContextValue>(() => ({
-    proGuidePage, setProGuidePage, active, activePage: active ? current.page : null, activeFrame: frameIndex, stage, postTutorialReady, playerPoolStep, profileStep, scoutWiseStep, activationKey,
+    matchGuidePage, setMatchGuidePage, proGuidePage, setProGuidePage, active, activePage: active ? current.page : null, activeFrame: frameIndex, stage, postTutorialReady, playerPoolStep, profileStep, scoutWiseStep, activationKey,
     setPlayerPoolStep, setProfileStep, setScoutWiseStep,
     moveToProfile: () => setStage('done'),
     moveToScoutWise: () => setStage('done'),
@@ -221,7 +226,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     activateTutorial,
     completeTutorial: async () => closeTutorial(),
     skipTutorial: async () => closeTutorial(),
-  }), [proGuidePage, activateTutorial, activationKey, active, closeTutorial, current.page, frameIndex, openPageTutorial, playerPoolStep, postTutorialReady, profileStep, scoutWiseStep, stage]);
+  }), [matchGuidePage, proGuidePage, activateTutorial, activationKey, active, closeTutorial, current.page, frameIndex, openPageTutorial, playerPoolStep, postTutorialReady, profileStep, scoutWiseStep, stage]);
 
   const embeddedGuide = React.useMemo<EmbeddedGuideValue>(() => ({
     active, current, frameIndex, frameTotal: frameIndices.length, previous, next,
@@ -307,6 +312,14 @@ export function useProPageGuide(page:string){
     setProGuidePage(page);
     return ()=>{setProGuidePage(current=>current===page?null:current);closeTutorial();};
   },[page,setProGuidePage,closeTutorial]));
+}
+
+export function useMatchPageGuide(page:string){
+  const {setMatchGuidePage,closeTutorial}=useTutorial();
+  useFocusEffect(React.useCallback(()=>{
+    setMatchGuidePage(page);
+    return ()=>{closeTutorial();};
+  },[page,setMatchGuidePage,closeTutorial]));
 }
 
 export function TutorialPageGuide({ page, frame = 0, onShow, summaryLines = 3, enabled=true }: { page: string; frame?: number; onShow?: (y: number) => void; summaryLines?: number; enabled?: boolean }) {

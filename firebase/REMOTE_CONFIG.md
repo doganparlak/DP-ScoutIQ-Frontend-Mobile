@@ -9,16 +9,15 @@ Open scoutwise-prod → Remote Config (use Search for products). Create the para
 | Parameter | Default | Action |
 |---|---:|---|
 | ads_report_every | 3 | Shared player/team/pre-match/post-match reports |
-| ads_matchup_add_every | 4 | Shared qualifying matchup additions |
+| ads_matchup_add_every | 3 | Shared qualifying matchup additions |
 | ads_matchup_launch_every | 3 | Run comparison |
 | ads_potential_every | 4 | Potential reveal |
 | ads_missing_score_action_every | 3 | Player pool missing-score action |
 | ads_portfolio_lineup_every | 4 | Portfolio lineup |
+| ads_save_player_every | 3 | Shared successful player portfolio saves from all sources, regardless of score visibility |
 | ads_save_match_every | 4 | Save match |
-| ads_daily_hidden_portfolio_every | 3 | Daily Scout portfolio add, hidden scores |
-| ads_daily_revealed_portfolio_every | 4 | Daily Scout portfolio add, revealed scores |
-| ads_season_search_every | 4 | Season search |
-| ads_league_search_every | 4 | League Performance manual Search presses; automatic loads, filter changes and result selection do not count |
+| ads_season_search_every | 3 | Season search |
+| ads_league_search_every | 3 | League Performance manual Search presses; automatic loads, filter changes and result selection do not count |
 
 Only whole numbers 2–100 are accepted. Missing/invalid values use the corresponding in-app default. This does not create guaranteed ad impressions: existing eligibility, ad availability, and other checks still apply.
 
@@ -30,7 +29,7 @@ New native builds are required for both platforms. Remote Config has no Expo con
 
 Run `node scripts/test-remote-config.cjs` for validation and shared-counter regression checks.
 
-In a debug build, evaluate `scoutwiseRemoteConfigTest.status()` in React Native DevTools. Inspect values, sources (`remote` versus `default`), and lastError. Publish a value such as ads_season_search_every = 5, then run `await scoutwiseRemoteConfigTest.refresh()` and inspect status again. Restore 4 afterward if this was only a test. Publishing changes without targeting also affects other supported builds in this Firebase project.
+In a debug build, evaluate `scoutwiseRemoteConfigTest.status()` in React Native DevTools. Inspect values, sources (`remote` versus `default`), and lastError. Publish a value such as ads_season_search_every = 5, then run `await scoutwiseRemoteConfigTest.refresh()` and inspect status again. Restore 3 afterward if this was only a test. Publishing changes without targeting also affects other supported builds in this Firebase project.
 
 Firebase Console publication and a live remote-value fetch must be verified separately from local compilation/tests. No server access credentials or paid-access decisions belong in Remote Config.
 
@@ -43,4 +42,6 @@ Firebase Console publication and a live remote-value fetch must be verified sepa
 
 - `ads_save_team_every`: 4 — Free Team Pool saves; Plus/Pro skip ads, with the existing upsell fallback when an ad cannot be shown.
 
-- `ads_similar_search_every`: 4 — Free similar-player searches; shared upsell fallback, paid users skip ads.
+- `ads_similar_search_every`: 3 — Free similar-player searches; shared upsell fallback, paid users skip ads.
+
+All interstitials share a 30-second device-wide cooldown. Player saves no longer use missing-score or separate Daily Scout visibility counters; failed or cancelled saves do not advance the shared save counter. Existing reveal and report counters remain independent.

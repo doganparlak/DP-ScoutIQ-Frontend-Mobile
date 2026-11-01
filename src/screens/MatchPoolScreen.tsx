@@ -1,3 +1,6 @@
+import PreMatchReportModal from '@/components/PreMatchReportModal';
+import PostMatchReportModal from '@/components/PostMatchReportModal';
+import DailyFixtureBrowser from '@/components/DailyFixtureBrowser';
 import { recordRecentSearch } from '@/services/recentSearches';
 import type { MainTabsParamList } from '@/types';
 import type { RouteProp } from '@react-navigation/native';
@@ -9,7 +12,7 @@ import MatchPortfolioTable from "@/components/MatchPortfolioTable";
 import MatchReportActions from "@/components/MatchReportActions";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
-import { TutorialPageGuide } from "@/components/Tutorial";
+import { TutorialPageGuide, useMatchPageGuide } from "@/components/Tutorial";
 import { deleteSavedMatch,getMe,type Plan } from "@/services/api";
 import { FavoriteMatch } from "@/services/matchPool";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
@@ -63,6 +66,7 @@ MatchFilters,
 MatchFixture,
 MatchOptions,
 matchSaveType,
+matchPortfolioSaveType,
 matchScore,
 MatchSide,
 matchStateLabel,
@@ -135,6 +139,13 @@ export default function MatchPoolScreen({
   const ads = useWorkspaceActionAd();
   const nav = useNavigation<any>();
   const route = useRoute<RouteProp<MainTabsParamList, 'MatchPool'>>();
+  const [browseMode,setBrowseMode]=useState<'daily'|'team'>(route.params?.fixtureTeam?'team':'daily');
+  useMatchPageGuide(portfolio?'matchPortfolio':browseMode==='daily'?'matchDaily':'matchTeam');
+  const [dailySelection,setDailySelection]=useState<MatchFixture|null>(null);
+  const [dailyReport,setDailyReport]=useState<{fixture:MatchFixture;type:'pre_match'|'post_match'}|null>(null);
+  const dailyReportOpening=useRef(false);
+  useEffect(()=>{if(!portfolio&&route.params?.view)setBrowseMode(route.params.view);},[portfolio,route.params?.view,route.params?.viewRequest]);
+  const updateDailyFixtures=React.useCallback((fixtures:MatchFixture[])=>setDailySelection(current=>current?fixtures.find(f=>f.fixtureId===current.fixtureId)??current:null),[]);
   const { height } = useWindowDimensions();
   const [filters, setFilters] = useState<MatchFilters>(EMPTY_MATCH_FILTERS),
     [options, setOptions] = useState<MatchOptions>({
@@ -153,7 +164,7 @@ export default function MatchPoolScreen({
   const [portfolioTeamId, setPortfolioTeamId] = useState<number>();
   const [teamOptionsLoading, setTeamOptionsLoading] = useState(false);
   useEffect(() => {
-    if (portfolio) return;
+    if (portfolio || browseMode!=='team') return;
     let active = true;
     setTeamOptionsLoading(true);
     setOptionsError('');
@@ -163,7 +174,7 @@ export default function MatchPoolScreen({
       if (active) setOptionsError(tr ? 'Filtreler yüklenemedi. Yeniden deneyin.' : 'Could not load filters. Retry.');
     }).finally(() => { if (active) setTeamOptionsLoading(false); });
     return () => { active = false; };
-  }, [leagueId, portfolio, retry]);
+  }, [leagueId, portfolio, retry, browseMode]);
   function clearTeamResults() {
     version.current++;
     setLoading(false);
@@ -285,31 +296,14 @@ export default function MatchPoolScreen({
           setPlanResolved(true);
           if (nextPlan !== "Free") setShowPlanNudge(false);
           if (portfolio) return;
-          let defaultFetched=false;
-          let cached = lastSearch.current ?? await readFixtureSearch(me.id);
-          if (!active || version.current !== restoreVersion || cacheUser.current !== me.id) return;
-          if(!cached){
-            setLoading(true);
-            try{
-              const available=await getTeamFixtureOptions();
-              if(!active || version.current!==restoreVersion || cacheUser.current!==me.id)return;
-              const psg=available.teams.find(team=>fold(team.name).replace(/-/g,' ')==='paris saint germain');
-              if(!psg)throw new Error('Default team unavailable');
-              const result=await searchTeamFixtures(psg.leagueId,psg.id);
-              if(!active || version.current!==restoreVersion || cacheUser.current!==me.id)return;
-              const upcoming=result.fixtures.find(f=>new Date(f.startingAt.replace(' ','T')+(/Z$|[+-]\d\d:\d\d$/.test(f.startingAt)?'':'Z')).getTime()>=Date.now());
-              cached={isDefault:true,teamId:psg.id,leagueId:psg.leagueId,teamName:psg.name,fixtures:result.fixtures,selectedId:upcoming?.fixtureId??result.fixtures[result.fixtures.length-1]?.fixtureId??null};
-              setTeamOptions(available);defaultFetched=true;
-              void writeFixtureSearch(me.id,cached);
-            }catch(reason){if(active && version.current===restoreVersion)setError(reason instanceof Error?reason.message:String(reason));return;}
-            finally{if(active && version.current===restoreVersion)setLoading(false);}
-          }
+          const cached = lastSearch.current ?? await readFixtureSearch(me.id);
+          if (!active || version.current !== restoreVersion || cacheUser.current !== me.id || !cached) return;
           if (!lastSearch.current) {
             lastSearch.current=cached;
             setRows(cached.fixtures);setSelectedId(cached.selectedId);setSearchedTeamName(cached.teamName);
             setTeamId(cached.teamId);setLeagueId(cached.filterLeagueId);
           }
-          if(defaultFetched)return;
+          if(browseMode!=='team')return;
           try {
             const fresh=await searchTeamFixtures(cached.leagueId,cached.teamId);
             if (!active || version.current !== restoreVersion || cacheUser.current !== me.id) return;
@@ -329,11 +323,12 @@ export default function MatchPoolScreen({
       return () => {
         active = false;
       };
-    }, []),
+    }, [portfolio,browseMode]),
   );
   useEffect(() => {
     const target = route.params?.fixtureTeam;
     if (portfolio || !target) return;
+    setBrowseMode('team');
     let active = true;
     const request = ++version.current;
     setLoading(true);setError('');
@@ -345,6 +340,7 @@ export default function MatchPoolScreen({
         if (!team) throw new Error('This team is unavailable for fixture search.');
         setTeamOptions(available);setTeamId(team.id);setLeagueId(undefined);
         await searchTeam(team);
+        if(active)nav.setParams({fixtureTeam:undefined,fixtureRequest:undefined});
       } catch (e) {
         if (active && version.current === request) {setError(e instanceof Error?e.message:String(e));setLoading(false);}
       }
@@ -404,11 +400,11 @@ export default function MatchPoolScreen({
     );
   const update = (key: keyof MatchFilters, value: string) =>
     setFilters((f) => ({ ...f, [key]: value }));
-  const selected =
+  const selected = !portfolio && browseMode==='daily' ? dailySelection :
     visibleRows.find((f) => f.fixtureId === selectedId) || visibleRows[0];
-  const saveType = selected ? matchSaveType(selected) : null;
+  const saveType = selected ? matchPortfolioSaveType(selected) : null;
   const isSaved =
-    !!selected && saved.includes(`${selected.fixtureId}:${saveType}`);
+    !!selected && saved.some(key=>key.startsWith(`${selected.fixtureId}:`));
   async function search() {
     setTeamFocus(null);
     const invalid = dateValidation(filters, tr);
@@ -467,8 +463,8 @@ export default function MatchPoolScreen({
     setRetry((n) => n + 1);
   };
   const selectMatch = async (fixture: MatchFixture) => {
-    setSelectedId(fixture.fixtureId);
-    if (!portfolio && lastSearch.current && cacheUser.current !== null) {
+    if(portfolio||browseMode==='team')setSelectedId(fixture.fixtureId);
+    if (!portfolio && browseMode==='team' && lastSearch.current && cacheUser.current !== null) {
       lastSearch.current={...lastSearch.current,selectedId:fixture.fixtureId};
       void writeFixtureSearch(cacheUser.current,lastSearch.current);
     }
@@ -498,12 +494,23 @@ export default function MatchPoolScreen({
     requestAnimationFrame(() => nav.navigate("ManagePlan"));
   };
 
+  async function openDailyReport(fixture:MatchFixture) {
+    const type=matchSaveType(fixture);
+    if(!type || (type==='pre_match'&&fixture.forecastAvailable!==true) || dailyReportOpening.current || dailyReport || ads.busy)return;
+    dailyReportOpening.current=true;
+    try {
+      await ads.run(type==='pre_match'?'preMatchReport':'postMatchReport',()=>setDailyReport({fixture,type}));
+    } catch(error) {
+      Alert.alert(tr?'Rapor hatası':'Report error',String(error));
+    } finally {dailyReportOpening.current=false;}
+  }
+
   const matchCard = (
     <Frame
       title={tr ? "Maç Kartı" : "Match Card"}
       Icon={BadgeInfo}
       action={
-        portfolio ? (
+        (portfolio || browseMode==='daily') ? (
           <Pressable
             accessibilityLabel={tr ? "Maç kartını kapat" : "Close match card"}
             hitSlop={12}
@@ -600,8 +607,9 @@ export default function MatchPoolScreen({
   );
   const widths = [1.65, 1.3, 1.15, 0.6];
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView
+    <View style={{ flex: 1, backgroundColor:BG }}>
+      {!portfolio&&<View style={{flexDirection:'row',gap:8,paddingHorizontal:16,paddingTop:12}}>{(['daily','team'] as const).map(mode=><Pressable key={mode} accessibilityRole="tab" accessibilityState={{selected:browseMode===mode}} onPress={()=>{setCardOpen(false);setBrowseMode(mode);}} style={[s.button,{flex:1,paddingHorizontal:8},browseMode!==mode&&{borderColor:themed.LINE,backgroundColor:themed.CARD}]}><Text style={[s.green,{color:browseMode===mode?ACCENT:MUTED,fontSize:13}]}>{mode==='daily'?(tr?'Günün Maçları':'Daily Matches'):(tr?'Takım Fikstürü':'Team Fixtures')}</Text></Pressable>)}</View>}
+      {!portfolio&&browseMode==='daily'?<DailyFixtureBrowser tr={tr} onOpenReport={fixture=>void openDailyReport(fixture)} reportBusy={ads.busy} onFixtures={updateDailyFixtures} onSelect={fixture=>{setDailySelection(fixture);setCardOpen(true);void selectMatch(fixture);}}/>:<ScrollView
         ref={pageScroll}
         onScrollBeginDrag={() => setTeamFocus(null)}
         style={{ flex: 1, backgroundColor: BG }}
@@ -641,7 +649,7 @@ export default function MatchPoolScreen({
           {!!error && <Pressable onPress={()=>setRetry(n=>n+1)}><Text style={s.error}>{error}</Text><Text style={s.green}>{tr?'Tekrar Dene':'Retry'}</Text></Pressable>}
         </Frame>
         )}
-        <TutorialPageGuide page={portfolio ? "matchPortfolio" : "matchPool"} frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+        <TutorialPageGuide page={portfolio ? "matchPortfolio" : "matchTeam"} frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         <Frame
           title={
             portfolio
@@ -658,7 +666,7 @@ export default function MatchPoolScreen({
           {portfolio ? (!portfolioLoading && !portfolioFixtures.length && !error ? <View style={{gap:16}}>
             <Text style={{color:MUTED,fontSize:14,lineHeight:21}}>{tr?'Maçları keşfet, takip etmek istediklerini portföyüne ekle.':'Discover matches and add the ones you want to follow to your portfolio.'}</Text>
             <WorkspaceSourceActions compact sources={[
-              {label:tr?'Maç Havuzu':'Match Pool',Icon:CalendarSearch,onPress:()=>nav.navigate('MatchPool')},
+              {label:tr?'Maç Merkezi':'Match Center',Icon:CalendarSearch,onPress:()=>nav.navigate('MatchPool')},
               {label:tr?'Skor Tahmin Ligi':'Score Prediction League',Icon:Goal,onPress:()=>nav.navigate('ScorePrediction')},
             ]}/>
           </View> : <MatchPortfolioTable
@@ -746,7 +754,7 @@ export default function MatchPoolScreen({
             </>
           )}
         </Frame>
-        {!portfolio && <TutorialPageGuide page="matchPool" frame={1} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />}
+        {!portfolio && <TutorialPageGuide page="matchTeam" frame={1} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />}
         {!portfolio && matchCard}
         {portfolio && teamSelector && <Modal visible transparent animationType="fade" onRequestClose={()=>setTeamSelector(null)}>
           <View style={s.backdrop}><View style={[s.modal,{maxHeight:height*.8}]}>
@@ -835,8 +843,8 @@ export default function MatchPoolScreen({
             </View>
           </Modal>
         )}
-      </ScrollView>
-      {portfolio && cardOpen && selected && (
+      </ScrollView>}
+      {(portfolio || browseMode==='daily') && cardOpen && selected && (
         <Modal
           transparent
           visible
@@ -857,6 +865,9 @@ export default function MatchPoolScreen({
           </View>
         </Modal>
       )}
+      {dailyReport?.type==='pre_match'&&<PreMatchReportModal initialSection="forecast" fixture={dailyReport.fixture} tr={tr} onClose={()=>setDailyReport(null)} onOpenPlans={()=>{setDailyReport(null);openPlans();}}/>}
+      {dailyReport?.type==='post_match'&&<PostMatchReportModal visible fixture={dailyReport.fixture} tr={tr} onClose={()=>setDailyReport(null)} onOpenPlans={()=>{setDailyReport(null);openPlans();}}/>}
+      {!portfolio&&browseMode==='daily'&&!cardOpen&&ads.fallback}
       <TeamSuggestionsOverlay
         anchor={teamFocus === "awayTeam" ? awayAnchor : homeAnchor}
         visible={!!showTeamSuggestions}

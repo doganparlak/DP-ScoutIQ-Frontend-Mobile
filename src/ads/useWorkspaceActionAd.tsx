@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getMe } from '@/services/api';
 import { useTutorial } from '@/components/Tutorial';
 import { PlusProUpsellScreen } from './PlusProUpsellScreen';
-import { incrementWorkspaceActionAndShouldShowAd, isMatchupAddAction, shouldShowNextMatchupAddAd, type WorkspaceAdAction } from './adGating';
+import { incrementWorkspaceActionAndShouldShowAd, countsSuccessfulAction, shouldShowNextWorkspaceActionAd, type WorkspaceAdAction } from './adGating';
 import { showInterstitial } from './interstitial';
 import { acquireAdPresentation, releaseAdPresentation, isAdPresentationBusy, isAdFlowCancelled } from './presentation';
 import { logAdLifecycle } from './logging';
@@ -39,7 +39,7 @@ export function useWorkspaceActionAd() {
     const version = epoch.current;
     const active = () => focused.current && epoch.current === version && navigation.isFocused() && AppState.currentState === 'active';
     let lease: symbol | null = null;
-    let commitMatchupAdd=false;
+    let commitAction=false;
     try {
       if (!tutorial.active) {
         const profile = await getMe();
@@ -49,8 +49,8 @@ export function useWorkspaceActionAd() {
           lease = acquireAdPresentation();
           if (!lease) return;
           owner.current = lease;
-          commitMatchupAdd=isMatchupAddAction(action);
-          const due=commitMatchupAdd ? await shouldShowNextMatchupAddAd(lease) : await incrementWorkspaceActionAndShouldShowAd(action,lease);
+          commitAction=countsSuccessfulAction(action);
+          const due=commitAction ? await shouldShowNextWorkspaceActionAd(action,lease) : await incrementWorkspaceActionAndShouldShowAd(action,lease);
           if (due) {
             if(!await isInterstitialCoolingDown())await beforeAd?.();
             if(!active())return;
@@ -66,11 +66,11 @@ export function useWorkspaceActionAd() {
           }
         }
       }
-      // Keep the shared add counter reserved through its mutation; release other flows before slow requests.
-      if (lease && !commitMatchupAdd) { releaseAdPresentation(lease); lease = null; owner.current = undefined; }
+      // Reserve successful-action counters through their mutation; release other flows before slow requests.
+      if (lease && !commitAction) { releaseAdPresentation(lease); lease = null; owner.current = undefined; }
       if (active()) {
         const performed=await perform();
-        if(commitMatchupAdd && performed!==false)await incrementWorkspaceActionAndShouldShowAd(action,lease??undefined);
+        if(commitAction && performed!==false)await incrementWorkspaceActionAndShouldShowAd(action,lease??undefined);
       }
     } catch (error) {
       if (!isAdFlowCancelled(error)) throw error;
