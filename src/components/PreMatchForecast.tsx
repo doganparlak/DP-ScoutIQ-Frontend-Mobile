@@ -29,7 +29,12 @@ function hasScoreDetails(forecast: MatchForecastPreview) {
   return Array.isArray(forecast.grid) && typeof forecast.gridRemainder === 'number';
 }
 
-function totalGoalRanges(home: number[], away: number[]) {
+function totalGoalRanges(home: number[], away: number[], grid?: MatchForecastPreview['grid']) {
+  if (grid?.length) {
+    const low = grid.filter(row => row.home + row.away <= 1).reduce((sum, row) => sum + row.probability, 0);
+    const middle = grid.filter(row => row.home + row.away >= 2 && row.home + row.away <= 3).reduce((sum, row) => sum + row.probability, 0);
+    return [low, middle, Math.max(0, 1 - low - middle)];
+  }
   // Convolve exact low-goal probabilities; the complement includes every high score.
   const totals = [0, 1, 2, 3].map(total => Array.from({length: total + 1}, (_, goals) =>
     (home[goals] || 0) * (away[total - goals] || 0)).reduce((sum, probability) => sum + probability, 0));
@@ -98,7 +103,7 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
     {key: 'equal', label: tr ? 'Eşit' : 'Equal', value: half.moreGoalsHalf.equal, color: MUTED},
     {key: 'second', label: tr ? '2. Yarı' : '2nd Half', value: half.moreGoalsHalf.second, color: BLUE},
   ] : [];
-  const ranges = (details ? totalGoalRanges(details.goalDistribution.home, details.goalDistribution.away) : []).map((value, i) => ({
+  const ranges = (details ? totalGoalRanges(details.goalDistribution.home, details.goalDistribution.away, details.grid) : []).map((value, i) => ({
     index: i, label: `${['0–1', '2–3', '4+'][i]} ${tr ? 'gol' : 'goals'}`, value, color: [MUTED, ACCENT, BLUE][i],
   }));
   return <View style={s.page}>

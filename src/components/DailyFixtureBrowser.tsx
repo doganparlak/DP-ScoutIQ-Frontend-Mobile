@@ -1,8 +1,10 @@
 import {useMatchWatchlist} from '@/hooks/useMatchWatchlist';
+import {usePortfolioTeamIds} from '@/hooks/usePortfolioTeamIds';
+import {dailyFixtureKickoff as kickoff,orderDailyCompetitions} from '@/utils/dailyFixtureOrder';
 import {TutorialPageGuide} from '@/components/Tutorial';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {useIsFocused} from '@react-navigation/native';
-import {CalendarDays,ChartNoAxesCombined,ChevronLeft,ChevronRight,FileText,Shield,Star,Timer,Trophy,X} from 'lucide-react-native';
+import {CalendarDays,ChartNoAxesCombined,ChevronLeft,ChevronRight,FileText,Shield,ShieldCheck,Star,Timer,Trophy,X} from 'lucide-react-native';
 import React from 'react';
 import {ActivityIndicator,AppState,FlatList,Image,Modal,Platform,Pressable,RefreshControl,SectionList,StyleSheet,Text,View} from 'react-native';
 import {getDailyFixtures,getMatchCalendarBounds,isLiveMatch,matchSaveType,matchStateLabel,type DailyFixtures,type MatchCalendarBounds,type MatchFixture} from '@/services/matchPool';
@@ -11,13 +13,7 @@ import {createThemedStyles,useThemedStyles,type ThemeColors} from '@/theme';
 export const localDay = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const dayDate=(key:string)=>new Date(`${key}T12:00:00`);
 const shiftDay=(key:string,days:number)=>{const value=dayDate(key);value.setDate(value.getDate()+days);return localDay(value);};
-const kickoff=(fixture:MatchFixture)=>new Date(fixture.startingAt.replace(' ','T')+(/Z$|[+-]\d\d:\d\d$/.test(fixture.startingAt)?'':'Z'));
 const live=isLiveMatch;
-// Competition IDs keep the requested order consistent across both languages.
-const LEAGUE_PRIORITY = new Map([
-  600, 603, 8, 564, 384, 301, 82, 72, 462, 944,
-  208, 501, 181, 591, 9, 304, 387, 567, 85,
-].map((id,index)=>[id,index]));
 const cache=new Map<string,DailyFixtures>();
 const calendarCache=new Map<string,{value:MatchCalendarBounds;expires:number}>();
 function Logo({url,league=false,size=23}:{url?:string|null;league?:boolean;size?:number}){
@@ -36,6 +32,7 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
  const [calendarError,setCalendarError]=React.useState(false);const [calendarRetry,setCalendarRetry]=React.useState(0);
  const watchlist=useMatchWatchlist(focused&&foreground,refresh,tr);
  const [liveOnly,setLiveOnly]=React.useState(false);
+ const portfolioTeamIds=usePortfolioTeamIds(focused&&foreground,refresh);
  const locale=tr?'tr-TR':'en-GB';
  const dates=React.useMemo(()=>Array.from({length:21},(_,i)=>shiftDay(anchor,i-10)),[anchor]);
  React.useEffect(()=>{const sub=AppState.addEventListener('change',state=>setForeground(state==='active'));return()=>sub.remove();},[]);
@@ -85,13 +82,11 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
  const manualRefresh=()=>{setRefreshing(true);setRefresh(value=>value+1);};
  const choose=(value:string)=>{if(!bounds||value<bounds.minDate||value>bounds.maxDate)return;setRefreshing(false);const index=dates.indexOf(value);if(index<0)setAnchor(value);else daysRef.current?.scrollToIndex({index:Math.max(0,index-2),animated:true});setDay(value);};
  const sections=React.useMemo(()=>{
-  const groups=new Map<string,{key:string;title:string;imageUrl?:string|null;priority:number;watchlist?:boolean;data:MatchFixture[]}>();
   const visible=(data?.fixtures||[]).filter(fixture=>!liveOnly||live(fixture));
-  for(const fixture of visible){const key=String(fixture.league.id||`${fixture.country.name}:${fixture.league.name}`);if(!groups.has(key))groups.set(key,{key,title:`${fixture.country.name} | ${fixture.league.name}`,imageUrl:fixture.league.imageUrl,priority:LEAGUE_PRIORITY.get(fixture.league.id??0)??999,data:[]});groups.get(key)!.data.push(fixture);}
-  const ordered=[...groups.values()].sort((a,b)=>a.priority-b.priority||a.title.localeCompare(b.title,locale));
+  const ordered=orderDailyCompetitions(visible,portfolioTeamIds,locale);
   const tracked=visible.filter(fixture=>watchlist.ids.has(fixture.fixtureId));
-  return tracked.length?[{key:'watchlist',title:tr?'Takip Ettiklerin':'Following',priority:-1,watchlist:true,data:tracked},...ordered]:ordered;
- },[data,locale,watchlist.ids,tr,liveOnly]);
+  return tracked.length?[{key:'watchlist',title:tr?'Takip Ettiklerin':'Following',priority:-1,prioritized:true,watchlist:true,data:tracked},...ordered]:ordered;
+ },[data,locale,watchlist.ids,tr,liveOnly,portfolioTeamIds]);
  const dateTitle=dayDate(day).toLocaleDateString(locale,{day:'numeric',month:'long',year:'numeric'});
  const minimum=dayDate(bounds?.minDate??localDay()),maximum=dayDate(bounds?.maxDate??localDay());
  return <View style={{flex:1}}>
@@ -114,7 +109,7 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
    ListEmptyComponent={loading&&!refreshing?<ActivityIndicator color={ACCENT} style={{padding:36}}/>:<View style={s.empty}>{liveOnly?<Timer size={32} color={ACCENT}/>:<CalendarDays size={32} color={ACCENT}/>}<Text style={s.title}>{error?(tr?'Maçlar yüklenemedi':'Could not load matches'):liveOnly?(tr?'Bu tarihte canlı maç yok.':'No live matches on this date.'):(tr?'Bu tarihte maç bulunmuyor':'No matches on this date')}</Text><Text style={{color:MUTED,textAlign:'center'}}>{liveOnly?(tr?'Tüm maçları görmek için kronometreye tekrar dokun.':'Tap the stopwatch again to show all matches.'):(tr?'Başka bir gün seçebilir veya Takım Fikstürü’nden arayabilirsin.':'Choose another date or use Team Fixtures.')}</Text></View>}
    renderItem={({item})=>{const playing=live(item);const phase=matchSaveType(item);const reportType=phase==='pre_match'&&item.forecastAvailable!==true?null:phase;const upcoming=['NS','TBA','POSTP','POST','DELAYED','CANC','CANCL','ABAN'].includes(item.state.code.toUpperCase());return <View style={s.fixture}><View style={{flexDirection:'row',alignItems:'center'}}><Pressable testID={`daily-match-${item.fixtureId}`} accessibilityRole="button" accessibilityLabel={`${item.homeTeam.name}, ${item.awayTeam.name}, ${matchStateLabel(item,tr)}`} onPress={()=>onSelect(item)} style={({pressed})=>[s.match,{flex:1},pressed&&{opacity:.7}]}>
     <View style={s.time}><Text style={[s.timeText,playing&&{color:ACCENT}]}>{playing?(item.minute?`${item.minute}′`:tr?'Canlı':'Live'):kickoff(item).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</Text><Text style={{color:playing?ACCENT:MUTED,fontSize:10,textAlign:'center'}}>{matchStateLabel(item,tr)}</Text></View>
-    <View style={{flex:1,gap:10}}>{[item.homeTeam,item.awayTeam].map(team=><View key={team.id} style={s.team}><Logo url={team.imageUrl}/><Text numberOfLines={2} style={[s.teamName,{color:TEXT}]}>{team.name}</Text><Text style={[s.score,playing&&{color:ACCENT}]}>{upcoming?'–':team.score??'–'}</Text></View>)}</View>
+    <View style={{flex:1,gap:10}}>{[item.homeTeam,item.awayTeam].map(team=><View key={team.id} style={s.team}><Logo url={team.imageUrl}/><Text numberOfLines={2} style={[s.teamName,{color:TEXT}]}>{team.name}</Text>{portfolioTeamIds.has(team.id)&&<ShieldCheck size={13} color={ACCENT} accessible accessibilityRole="image" accessibilityLabel={tr?'Takım Portföyünde':'In Team Portfolio'}/>}<Text style={[s.score,playing&&{color:ACCENT}]}>{upcoming?'–':team.score??'–'}</Text></View>)}</View>
    </Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel={watchlist.ids.has(item.fixtureId)?(tr?'Takipten çıkar':'Unfollow match'):(tr?'Maçı takip et':'Follow match')} accessibilityState={{selected:watchlist.ids.has(item.fixtureId),disabled:watchlist.pending.has(item.fixtureId)}} disabled={watchlist.pending.has(item.fixtureId)} onPress={()=>watchlist.toggle(item.fixtureId)} style={{width:36,minHeight:44,alignItems:'center',justifyContent:'center',opacity:watchlist.pending.has(item.fixtureId)?0.5:1}}>{watchlist.pending.has(item.fixtureId)?<ActivityIndicator size="small" color={ACCENT}/>:<View style={[s.starBadge,watchlist.ids.has(item.fixtureId)&&s.starBadgeSelected]}><Star size={13} strokeWidth={1.5} strokeLinejoin="round" color={watchlist.ids.has(item.fixtureId)?ACCENT:MUTED} fill={watchlist.ids.has(item.fixtureId)?ACCENT:'transparent'}/></View>}</Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel={`${tr?'Maçı aç':'Open match'}: ${item.name}`} onPress={()=>onSelect(item)} style={{width:28,minHeight:44,marginRight:7,alignItems:'center',justifyContent:'center'}}><ChevronRight size={14} strokeWidth={1.6} color={MUTED}/></Pressable>

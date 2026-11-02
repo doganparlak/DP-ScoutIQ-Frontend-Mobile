@@ -99,6 +99,13 @@
       "eas": {
         "projectId": "ff45af19-a14f-462f-94f2-3efd08d55f4f"
       }
+    },
+    "runtimeVersion": "2.2.1-ota1",
+    "updates": {
+      "url": "https://u.expo.dev/ff45af19-a14f-462f-94f2-3efd08d55f4f",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

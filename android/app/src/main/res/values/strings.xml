@@ -1,3 +1,4 @@
 <resources>
   <string name="app_name">ScoutWise</string>
+  <string name="expo_runtime_version">2.2.1-ota1</string>
 </resources>
