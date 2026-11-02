@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Image, Pressable, Text, View} from 'react-native';
 import {Check, ChevronDown, RefreshCw} from 'lucide-react-native';
 import {createThemedStyles, useThemedStyles, type ThemeColors} from '@/theme';
@@ -44,16 +44,17 @@ function totalGoalRanges(home: number[], away: number[], grid?: MatchForecastPre
   return [low, middle, Math.max(0, 1 - low - middle)];
 }
 
-export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPlans, review, providedForecast}: {fixtureId: number; tr: boolean; active: boolean; free: boolean; onOpenPlans: () => void; review?: PostMatchCardData; providedForecast?: MatchForecastResponse}) {
+export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPlans, review, providedForecast, onUnavailable}: {fixtureId: number; tr: boolean; active: boolean; free: boolean; onOpenPlans: () => void; review?: PostMatchCardData; providedForecast?: MatchForecastResponse; onUnavailable?: () => void}) {
   const {s, ACCENT, BLUE, ACTUAL, TEXT, MUTED, LINE} = useThemedStyles(getTheme);
   const [response, setResponse] = useState<MatchForecastResponse | null>(providedForecast ?? null);
+  const responseKey = useRef(providedForecast ? `${fixtureId}:${!!review}` : '');
   const [networkError, setNetworkError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [section, setSection] = useState<Section>('outcomes');
   const [pickerOpen, setPickerOpen] = useState(false);
   useEffect(() => {setSection('outcomes'); setPickerOpen(false);}, [fixtureId]);
   useEffect(() => {
-    if (providedForecast) {setResponse(providedForecast); setNetworkError(false); return;}
+    if (providedForecast) {responseKey.current = `${fixtureId}:${!!review}`; setResponse(providedForecast); setNetworkError(false); return;}
     if (!active) return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -64,7 +65,7 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
       try {
         const next = await getMatchForecast(fixtureId, retry, !!review);
         if (!alive) return;
-        setResponse(next); failures = 0;
+        responseKey.current = `${fixtureId}:${!!review}`; setResponse(next); failures = 0;
         if (next.status === 'processing') {
           if (Date.now() - started < 180000) timer = setTimeout(() => void poll(), 2500);
           else setNetworkError(true);
@@ -78,6 +79,10 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
     void poll(attempt > 0);
     return () => {alive = false; clearTimeout(timer);};
   }, [fixtureId, active, attempt, !!review, providedForecast]);
+
+  useEffect(() => {
+    if (response?.status === 'unavailable' && responseKey.current === `${fixtureId}:${!!review}`) onUnavailable?.();
+  }, [response?.status, onUnavailable, fixtureId, !!review]);
 
   const f = response?.status === 'ready' && response.forecast?.fixtureId === fixtureId ? response.forecast : undefined;
   if (!f || networkError) return <View style={s.frame}>

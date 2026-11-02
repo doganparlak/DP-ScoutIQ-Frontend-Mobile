@@ -17,6 +17,7 @@ import MatchReportTeamAnalysis from './MatchReportTeamAnalysis';
 import MatchReportTeamComparison from './MatchReportTeamComparison';
 import MatchReportTimeline from './MatchReportTimeline';
 import PreMatchForecast from './PreMatchForecast';
+import {useReportForecastAvailability} from './useReportForecastAvailability';
 
 const reportSections = [
   { tr: 'Maç Kartı', en: 'Match Card', Icon: BadgeInfo },
@@ -135,7 +136,8 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
     point.value != null && point.value !== '' && Number.isFinite(Number(point.value)) &&
     data.teams.some(team => team.id === point.team_id)
   ));
-  const sections = useMemo(() => reportSections.filter(section => section.id !== 3 || hasMomentum), [hasMomentum]);
+  const {unavailable: forecastUnavailable, forecast, onUnavailable} = useReportForecastAvailability(fixture.fixtureId, true, visible);
+  const sections = useMemo(() => reportSections.filter(section => (section.id !== 3 || hasMomentum) && (section.id !== 8 || !forecastUnavailable)), [hasMomentum, forecastUnavailable]);
   const previousSections = useRef(sections);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -148,7 +150,7 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
     previousSections.current = sections;
     const selectedId = previous[page]?.id;
     const matchingIndex = sections.findIndex(section => section.id === selectedId);
-    const next = matchingIndex >= 0 ? matchingIndex : Math.min(page, sections.length - 1);
+    const next = matchingIndex >= 0 ? matchingIndex : 0;
     setPage(next);
     pager.current?.scrollToOffset({ offset: next * width, animated: false });
   }, [sections, page, width]);
@@ -206,7 +208,7 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
             renderItem={({ item, index }) => <ScrollView style={{ width }} contentContainerStyle={s.pageContent}>
               {(index >= 0) ? loading ? <View style={s.center}><ActionSpinner size={28} color={ACCENT} /><Text style={s.subtitle}>{tr ? 'Maç bilgileri yükleniyor…' : 'Loading match details…'}</Text></View>
                 : error ? <View style={s.center}><Text style={s.subtitle}>{tr ? 'Maç bilgileri yüklenemedi.' : 'Unable to load match details.'}</Text><Pressable accessibilityRole="button" style={s.retry} onPress={() => setRetry(value => value + 1)}><Text style={s.sectionTitle}>{tr ? 'Tekrar Dene' : 'Try Again'}</Text></Pressable></View>
-                : data ? item.id === 0 ? <MatchCard data={data} tr={tr} /> : item.id === 8 ? <PreMatchForecast fixtureId={fixture.fixtureId} tr={tr} active={visible && page === index} free={plan==='Free'} onOpenPlans={openPlans} review={data} /> : item.id === 7 ? <MatchReportPlayerPerspectives data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.player_perspectives,plan!=='Free')?savedReport?.content?.player_perspectives:undefined} loading={(!savedReport?.content?.player_perspectives || !reportScopeMatches(savedReport?.content?.sections.player_perspectives,plan!=='Free')) && savedReport?.content?.sections.player_perspectives?.status !== 'failed'} error={savedReport?.content?.sections.player_perspectives?.status === 'failed'} onRetry={retrySections} free={plan==='Free'} onOpenPlans={openPlans} /> : item.id === 6 ? <MatchReportPlayerAnalysis data={data} tr={tr} /> : item.id === 5 ? <MatchReportTeamAnalysis data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.team_analysis,plan!=='Free')?savedReport?.content?.team_analysis:undefined} loading={(!savedReport?.content?.team_analysis || !reportScopeMatches(savedReport?.content?.sections.team_analysis,plan!=='Free')) && savedReport?.content?.sections.team_analysis?.status !== 'failed'} error={savedReport?.content?.sections.team_analysis?.status === 'failed'} onRetry={retrySections} free={plan==='Free'} onOpenPlans={openPlans} /> : item.id === 4 ? <MatchReportTeamComparison data={data} tr={tr} /> : item.id === 3 ? <MatchReportMomentum data={data} tr={tr} /> : item.id === 2 ? <MatchReportTimeline data={data} tr={tr} /> : <MatchReportLineups data={data} tr={tr} /> : null
+                : data ? item.id === 0 ? <MatchCard data={data} tr={tr} /> : item.id === 8 ? <PreMatchForecast providedForecast={forecast} onUnavailable={onUnavailable} fixtureId={fixture.fixtureId} tr={tr} active={visible && page === index} free={plan==='Free'} onOpenPlans={openPlans} review={data} /> : item.id === 7 ? <MatchReportPlayerPerspectives data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.player_perspectives,plan!=='Free')?savedReport?.content?.player_perspectives:undefined} loading={(!savedReport?.content?.player_perspectives || !reportScopeMatches(savedReport?.content?.sections.player_perspectives,plan!=='Free')) && savedReport?.content?.sections.player_perspectives?.status !== 'failed'} error={savedReport?.content?.sections.player_perspectives?.status === 'failed'} onRetry={retrySections} free={plan==='Free'} onOpenPlans={openPlans} /> : item.id === 6 ? <MatchReportPlayerAnalysis data={data} tr={tr} /> : item.id === 5 ? <MatchReportTeamAnalysis data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.team_analysis,plan!=='Free')?savedReport?.content?.team_analysis:undefined} loading={(!savedReport?.content?.team_analysis || !reportScopeMatches(savedReport?.content?.sections.team_analysis,plan!=='Free')) && savedReport?.content?.sections.team_analysis?.status !== 'failed'} error={savedReport?.content?.sections.team_analysis?.status === 'failed'} onRetry={retrySections} free={plan==='Free'} onOpenPlans={openPlans} /> : item.id === 4 ? <MatchReportTeamComparison data={data} tr={tr} /> : item.id === 3 ? <MatchReportMomentum data={data} tr={tr} /> : item.id === 2 ? <MatchReportTimeline data={data} tr={tr} /> : <MatchReportLineups data={data} tr={tr} /> : null
                 : <View style={s.placeholder}><View style={s.rule} /><item.Icon size={36} color={ACCENT} /><Text style={s.placeholderTitle}>{tr ? item.tr : item.en}</Text><Text style={s.subtitle}>{fixture.name}</Text><Text style={s.soon}>{tr ? 'Yakında' : 'Coming soon'}</Text></View>}
             </ScrollView>} />}
         </View>
