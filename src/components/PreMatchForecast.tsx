@@ -11,6 +11,7 @@ const percent = (value: number, tr: boolean) => {
   const text = (value * 100).toLocaleString(tr ? 'tr-TR' : 'en-GB', {maximumFractionDigits: 1});
   return tr ? `%${text}` : `${text}%`;
 };
+const heatmapPercent = (value: number, tr: boolean) => value > 0 && value < .001 ? `<${percent(.001, tr)}` : percent(value, tr);
 const decimal = (value: number, tr: boolean) => value.toLocaleString(tr ? 'tr-TR' : 'en-GB', {maximumFractionDigits: 2});
 
 const sections = [
@@ -147,10 +148,10 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
       {[0, 1, 2, 3, 4, 5].map(home => <View key={home} style={s.gridRow}><Text style={s.axis}>{home}</Text>{[0, 1, 2, 3, 4, 5].map(away => {
         const cell = scoreDetails.grid.find(c => c.home === home && c.away === away);
         const p = cell?.probability || 0;
-        return <View accessibilityLabel={`${home}–${away}: ${percent(p, tr)}${actual?.home === home && actual?.away === away ? (tr ? ', gerçekleşen skor' : ', actual score') : ''}`} key={away} style={[s.heatCell, {backgroundColor: `${ACCENT}${Math.round(20 + p / peak * 85).toString(16).padStart(2, '0')}`, borderColor: actual?.home === home && actual?.away === away ? ACTUAL : p === peak ? ACCENT : LINE, borderWidth: actual?.home === home && actual?.away === away ? 2.5 : 1}]}><Text style={s.heatText}>{percent(p, tr)}</Text></View>;
+        return <View accessibilityLabel={`${home}–${away}: ${heatmapPercent(p, tr)}${actual?.home === home && actual?.away === away ? (tr ? ', gerçekleşen skor' : ', actual score') : ''}`} key={away} style={[s.heatCell, {backgroundColor: `${ACCENT}${Math.round(20 + p / peak * 85).toString(16).padStart(2, '0')}`, borderColor: actual?.home === home && actual?.away === away ? ACTUAL : p === peak ? ACCENT : LINE, borderWidth: actual?.home === home && actual?.away === away ? 2.5 : 1}]}><Text style={s.heatText}>{heatmapPercent(p, tr)}</Text></View>;
       })}</View>)}
       {actual && <Text style={[s.caption, {color: ACTUAL}]}>{tr ? `Gerçekleşen skor: ${actual.home}–${actual.away}${actual.home > 5 || actual.away > 5 ? ' · Diğer skorlar' : ''}` : `Actual score: ${actual.home}–${actual.away}${actual.home > 5 || actual.away > 5 ? ' · Other scores' : ''}`}</Text>}
-      <Text style={s.footnote}>{tr ? 'Diğer skorlar' : 'Other scores'}: {percent(scoreDetails.gridRemainder, tr)}</Text>
+      <Text style={s.footnote}>{tr ? 'Diğer skorlar' : 'Other scores'}: {heatmapPercent(scoreDetails.gridRemainder, tr)}</Text>
     </View>
     </>}
     {section === 'goals' && details && <>

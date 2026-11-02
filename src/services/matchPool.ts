@@ -1,3 +1,4 @@
+import { matchStatusLabel } from "@/utils/matchStatus";
 import { normalizeSearchText } from "@/utils/searchSuggestions";
 import { matchPoolRequest } from "./api";
 export type MatchFilters = {
@@ -162,9 +163,7 @@ export const matchScore = (f: MatchFixture) =>
     : `${f.homeTeam.score} – ${f.awayTeam.score}`;
 
 export function matchStateLabel(f: MatchFixture, tr: boolean) {
-  const code=f.state.code.trim().toUpperCase();
-  const labels:Record<string,[string,string]>={NS:['Başlamadı','Not started'],TBA:['Saat belirsiz','Time TBA'],FT:['Tamamlandı','Finished'],AET:['Uzatma sonu','After extra time'],PEN:['Penaltı sonu','After penalties'],FT_PEN:['Penaltı sonu','After penalties'],HT:['Devre arası','Half-time'],'1ST':['İlk yarı','First half'],'2ND':['İkinci yarı','Second half'],ET:['Uzatma','Extra time'],BREAK:['Ara','Break'],LIVE:['Canlı','Live'],PEN_LIVE:['Penaltılar','Penalties'],POST:['Ertelendi','Postponed'],POSTP:['Ertelendi','Postponed'],DELAYED:['Gecikmeli','Delayed'],CANC:['İptal','Cancelled'],CANCL:['İptal','Cancelled'],ABAN:['Yarıda kaldı','Abandoned'],INT:['Duraklatıldı','Interrupted'],SUSP:['Durduruldu','Suspended'],WO:['Hükmen','Walkover'],AWARDED:['Hükmen','Awarded']};
-  return labels[code]?.[tr?0:1] || f.state.name || f.state.code || '—';
+  return matchStatusLabel(f.state, tr);
 }
 export function dateValidation(filters: MatchFilters, tr: boolean) {
   if (!filters.startDate || !filters.endDate) return "";

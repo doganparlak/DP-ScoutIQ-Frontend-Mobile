@@ -1,3 +1,4 @@
+import { matchStatusLabel } from '@/utils/matchStatus';
 import { reportScopeMatches } from '@/services/reportAccess';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { Activity,ArrowRightLeft,BadgeInfo,CalendarDays,ChartNoAxesCombined,ChevronLeft,ChevronRight,CloudSun,Globe,Layers,MapPin,Shield,Trophy,UserRound,Users,X } from 'lucide-react-native';
@@ -42,16 +43,7 @@ function matchDate(value: string | undefined, tr: boolean) {
     timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
   }) + ' · UTC+3';
 }
-function statusLabel(state: PostMatchCardData['state'], tr: boolean) {
-  const raw = state?.name || state?.short_name || state?.developer_name || '—';
-  if (!tr) return raw;
-  const normalized = raw.toLowerCase().replace(/[_-]/g, ' ');
-  if (normalized === 'not started' || normalized === 'ns') return 'Başlamadı';
-  if (normalized.includes('full time') || normalized === 'ft' || normalized.includes('finished')) return 'Tamamlandı';
-  if (normalized.includes('after extra time') || normalized === 'aet') return 'Uzatmalar Sonunda';
-  if (normalized.includes('after penalties') || normalized === 'pen') return 'Penaltılar Sonunda';
-  return raw;
-}
+
 function Team({ team, away }: { team?: PostMatchCardData['teams'][number]; away?: boolean }) {
   const themed = useThemedStyles(getModuleTheme);
   const {s, ACCENT, themeColor} = themed;
@@ -83,7 +75,7 @@ export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardD
     { label: tr ? 'Lig' : 'League', value: data.league?.name, Icon: Trophy },
     { label: tr ? 'Şehir' : 'City', value: data.venue?.city_name, Icon: MapPin },
     { label: tr ? 'Stadyum' : 'Stadium', value: data.venue?.name, Icon: Shield },
-    { label: tr ? 'Maç Durumu' : 'Match Status', value: statusLabel(data.state, tr), Icon: Activity },
+    { label: tr ? 'Maç Durumu' : 'Match Status', value: matchStatusLabel(data.state, tr), Icon: Activity },
     { label: tr ? 'Oyuncu Adedi' : 'Squad Size', value: [home, away].map(team => `${team?.name || '—'}: ${team?.player_count ?? '—'}`).join('\n'), Icon: Users },
   ] : [
     { label: tr ? 'Tarih ve Saat' : 'Date & Time', value: matchDate(data.fixture.starting_at, tr), Icon: CalendarDays, wide: true },
@@ -92,7 +84,7 @@ export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardD
     { label: tr ? 'Şehir' : 'City', value: data.venue?.city_name, Icon: MapPin },
     { label: tr ? 'Stadyum' : 'Stadium', value: data.venue?.name, Icon: Shield },
     { label: tr ? 'Hava' : 'Weather', value: tr ? WEATHER[weather.toLowerCase().trim()] || weather : weather, Icon: CloudSun },
-    { label: tr ? 'Maç Durumu' : 'Match Status', value: statusLabel(data.state, tr), Icon: Activity },
+    { label: tr ? 'Maç Durumu' : 'Match Status', value: matchStatusLabel(data.state, tr), Icon: Activity },
     ...(!preMatch ? [{ label: tr ? 'Metrik Kaydı' : 'Metric Records', value: `${data.coverage.unique_team_metrics} ${tr ? 'takım' : 'team'} · ${data.coverage.unique_player_metrics} ${tr ? 'oyuncu' : 'player'}`, Icon: Layers },
     { label: tr ? 'Toplam Oyuncu Kaydı' : 'Total Player Records', value: `${data.coverage.players_with_minutes} ${tr ? 'oyuncu' : 'players'}`, Icon: Users }] : [
       { label: tr ? 'Oyuncu Adedi' : 'Squad Size', value: [home, away].map(team => `${team?.name || '—'}: ${team?.player_count ?? '—'}`).join(' · '), Icon: Users, wide: true },
@@ -110,7 +102,7 @@ export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardD
           <Text style={s.matchday}>MATCHDAY</Text>
           <Text style={s.vs}>VS</Text>
           {!preMatch && <View style={s.scoreBox}><Text adjustsFontSizeToFit numberOfLines={1} style={s.score}>{goals(home?.id)} – {goals(away?.id)}</Text></View>}
-          <Text style={s.status}>{statusLabel(data.state, tr)}</Text>
+          <Text style={s.status}>{matchStatusLabel(data.state, tr)}</Text>
         </View>
         <Team team={away} away />
       </View>

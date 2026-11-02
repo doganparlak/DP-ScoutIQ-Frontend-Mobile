@@ -533,7 +533,7 @@ export default function MatchPoolScreen({
                 {matchStateLabel(selected, tr)}
               </Text>
             </View>
-            <Text style={s.state}>{selected.state.code || "—"}</Text>
+            <Text style={s.state} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8}>{matchStateLabel(selected, tr)}</Text>
           </View>
           <View style={s.teams}>
             <Side team={selected.homeTeam} />
@@ -953,6 +953,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   side: { flex: 1, alignItems: "center", gap: 10 },
   score: { fontSize: 23, color: TEXT, fontWeight: "900" },
   state: {
+    maxWidth: "42%",
     color: ACCENT,
     fontWeight: "800",
     fontSize: 11,

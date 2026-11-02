@@ -1,3 +1,4 @@
+import { matchStatusLabel } from '@/utils/matchStatus';
 import type { MatchReportEvent,PostMatchCardData } from '@/services/matchPool';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { ArrowRightLeft,CircleDot,Shield } from 'lucide-react-native';
@@ -31,8 +32,7 @@ export default function MatchReportTimeline({ data, tr }: { data: PostMatchCardD
   const hp = finite(home?.possession), ap = finite(away?.possession);
   const total = (hp || 0) + (ap || 0);
   const share = total > 0 ? Math.max(0, Math.min(100, (hp || 0) / total * 100)) : 50;
-  const status = data.state?.name || data.state?.short_name || '—';
-  const statusText = tr && /full time|finished|^ft$/i.test(status) ? 'Tamamlandı' : status;
+  const statusText = matchStatusLabel(data.state, tr);
   return <View style={s.page}>
     <View style={s.hero}>
       <Team team={home} />
