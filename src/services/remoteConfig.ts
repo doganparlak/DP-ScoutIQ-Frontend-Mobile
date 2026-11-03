@@ -1,4 +1,5 @@
 import { AppState } from 'react-native';
+import {storeUpdateDefaults} from '@/utils/storeUpdatePolicy';
 import { getRemoteConfig, ensureInitialized, fetchAndActivate, getValue } from '@react-native-firebase/remote-config';
 import { remoteConfigDefaults, validatedFrequency, type AdFrequencyKey } from './remoteConfigDefaults';
 
@@ -24,7 +25,7 @@ export function refreshRemoteConfig(): Promise<void> {
   pending = (async () => {
     try {
       const config = getRemoteConfig();
-      config.defaultConfig = { ...remoteConfigDefaults };
+      config.defaultConfig = { ...remoteConfigDefaults, ...storeUpdateDefaults };
       config.settings = {
         minimumFetchIntervalMillis: __DEV__ ? 0 : 60 * 60 * 1000,
         fetchTimeoutMillis: 10000,

@@ -26,7 +26,7 @@ export default function TeamReportLockedDetail({tr,accent,onOpenPlans,kind}:{tr:
   teamRisks:{tr:"Takımın zayıf yönlerini ve risklerini görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the team weaknesses and risks.'},
   thirdTeamAnalysis:{tr:"Üçüncü takım analizini görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the third team analysis.'},
   secondStandout:{tr:"İkinci öne çıkan oyuncuyu görmek için Plus veya Pro'ya geç.",en:'Switch to Plus or Pro to reveal the second standout player.'},
-  matchForecast:{tr:"Gol dağılımı ve gol senaryoları için PLUS veya PRO'ya geç.",en:'Switch to PLUS or PRO to unlock goal distribution and goal scenarios.'},
+  matchForecast:{tr:"Gol dağılımı, devre bazlı gol ve karşılıklı gol için PLUS veya PRO'ya geç.",en:'Switch to PLUS or PRO to unlock goal distribution, goals by half and both teams to score.'},
  };
  const message=messages[kind][tr?'tr':'en'];
  return <View style={[s.card,{borderColor:`${accent}55`,backgroundColor:`${accent}0A`}]}>

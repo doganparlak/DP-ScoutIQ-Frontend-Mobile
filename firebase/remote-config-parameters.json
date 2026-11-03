@@ -26,7 +26,7 @@
     },
     "ads_portfolio_lineup_every": {
       "defaultValue": {
-        "value": "4"
+        "value": "3"
       },
       "valueType": "NUMBER"
     },
@@ -38,7 +38,7 @@
     },
     "ads_save_match_every": {
       "defaultValue": {
-        "value": "4"
+        "value": "3"
       },
       "valueType": "NUMBER"
     },
@@ -56,10 +56,10 @@
     },
     "ads_save_team_every": {
       "defaultValue": {
-        "value": "4"
+        "value": "3"
       },
       "valueType": "NUMBER",
-      "description": "Free users: show an interstitial every fourth Team Pool save action."
+      "description": "Free users: show an interstitial every third Team Pool save action."
     },
     "ads_similar_search_every": {
       "defaultValue": {
@@ -74,6 +74,20 @@
       },
       "valueType": "NUMBER",
       "description": "Free users: shared interstitial counter every third successful player portfolio save, across all sources and score visibility states."
+    },
+    "store_update_ios_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "valueType": "STRING",
+      "description": "Latest publicly released App Store version. Leave empty to disable the optional store-update notice. Publish only after this version is available in the store."
+    },
+    "store_update_android_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "valueType": "STRING",
+      "description": "Latest publicly released Google Play version. Leave empty to disable the optional store-update notice. Publish only after this version is available in the store."
     }
   }
 }

@@ -76,7 +76,7 @@ function AppStack() {
   );
 }
 
-export default function RootNavigator() {
+export default function RootNavigator({onReady}: {onReady?: () => void} = {}) {
   const colors = useThemeColors();
   const navigationTheme = React.useMemo(() => ({
     ...(colors.mode === 'dark' ? DarkTheme : DefaultTheme),
@@ -136,7 +136,7 @@ export default function RootNavigator() {
   if (booting || isAuthed === null) return <Splash />;
 
   return (
-    <NavigationContainer theme={navigationTheme} ref={navigationRef} onReady={reportScreen} onStateChange={reportScreen}>
+    <NavigationContainer theme={navigationTheme} ref={navigationRef} onReady={() => {reportScreen(); onReady?.();}} onStateChange={reportScreen}>
       <Root.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={isAuthed ? 'App' : 'Auth'}

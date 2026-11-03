@@ -520,7 +520,10 @@ function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent }:
       </View>
       <Text style={[styles.lockedInsightTitle,{color:accent}]}>{title}</Text>
     </View>
-    <Text style={styles.lockedInsightText}>{message}</Text>
+    <Text style={styles.lockedInsightText}>{message.split(/\b(PLUS|PRO)\b/gi).map((part, index) =>
+      part.toUpperCase() === 'PLUS' ? <Text key={index} style={styles.lockedPlanPlus}>PLUS</Text>
+        : part.toUpperCase() === 'PRO' ? <Text key={index} style={styles.lockedPlanPro}>PRO</Text>
+          : part)}</Text>
     <Pressable onPress={onOpenPlans} style={({pressed})=>[styles.lockedInsightButton,pressed&&{opacity:.82}]}>
       <Text style={styles.lockedInsightButtonText}>{buttonLabel}</Text>
     </Pressable>
@@ -1110,6 +1113,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   lockedInsightIcon: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   lockedInsightTitle: { flex: 1, fontSize: 14, fontWeight: '900' },
   lockedInsightText: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  lockedPlanPlus: { color: themeColor('#38BDF8', 'text'), fontWeight: '900' },
+  lockedPlanPro: { color: ACCENT, fontWeight: '900' },
   lockedInsightButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   lockedInsightButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
   analysisState:{minHeight:180,alignItems:'center',justifyContent:'center',gap:13,padding:18,borderWidth:1,borderColor:LINE,borderRadius:16,backgroundColor:themeColor('rgba(255,255,255,.02)', 'surface')},

@@ -2,6 +2,7 @@ import React from 'react';
 import {ActivityIndicator, FlatList, Image, Modal, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
 import {CalendarDays, CalendarSearch, ChartNoAxesCombined, Check, ChevronDown, ChevronRight, RotateCcw, Search, ShieldCheck, Trophy, X} from 'lucide-react-native';
 import {useTranslation} from 'react-i18next';
+import {useFocusEffect} from '@react-navigation/native';
 import {createThemedStyles, useThemedStyles, type ThemeColors} from '@/theme';
 import {getTeamFixtureOptions, searchTeamFixtures, type MatchFixture, type MatchForecastResponse, type TeamFixtureOptions} from '@/services/matchPool';
 import {getProForecastAccess, readProForecastSearch, unlockProForecast, writeProForecastSearch, type ProForecastSearch} from '@/services/proMatchForecast';
@@ -26,6 +27,7 @@ export default function ProMatchForecastFlow({userId, disabled=false, preview=fa
   const [fixtures, setFixtures] = React.useState<MatchFixture[]>([]);
   const [selected, setSelected] = React.useState<MatchFixture | null>(null);
   const [forecast, setForecast] = React.useState<MatchForecastResponse>();
+  const [unlocked, setUnlocked] = React.useState(false);
   const [selector, setSelector] = React.useState<'league'|'team'|null>(null), [query, setQuery] = React.useState('');
   const [optionsLoading, setOptionsLoading] = React.useState(true), [loading, setLoading] = React.useState(false), [checking, setChecking] = React.useState(false), [opening, setOpening] = React.useState(false);
   const [error, setError] = React.useState(''), [accessError, setAccessError] = React.useState(''), [retry, setRetry] = React.useState(0), [searched, setSearched] = React.useState(false), [hydrated, setHydrated] = React.useState(false), [limit, setLimit] = React.useState(10);
@@ -47,16 +49,36 @@ export default function ProMatchForecastFlow({userId, disabled=false, preview=fa
     getTeamFixtureOptions(leagueId).then(value => {if (alive) setOptions(value);}).catch(() => {if (alive) setError(tr ? 'Takım ve ligler yüklenemedi.' : 'Could not load teams and leagues.');}).finally(() => {if (alive) setOptionsLoading(false);});
     return () => {alive = false;};
   }, [leagueId, retry, tr]);
-  React.useEffect(() => {
-    const token = ++generation.current; setForecast(undefined); setAccessError('');
+  useFocusEffect(React.useCallback(() => {
+    const token = ++generation.current;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setForecast(undefined); setAccessError(''); setUnlocked(false);
     if (!selected) {setChecking(false); return;}
+    const fixtureId = selected.fixtureId, deadline = Date.now() + 180000;
     setChecking(true);
-    getProForecastAccess(selected.fixtureId).then(result => {
-      if (!mounted.current || token !== generation.current) return;
-      if (result.status === 'ready' && result.unlocked) setForecast({...result, status: 'ready'});
-    }).catch(() => {if (mounted.current && token === generation.current) setAccessError(tr ? 'Öngörü erişimi kontrol edilemedi.' : 'Could not check forecast access.');}).finally(() => {if (mounted.current && token === generation.current) setChecking(false);});
-    return () => {generation.current++;};
-  }, [selected?.fixtureId, tr]);
+    const current = () => mounted.current && token === generation.current;
+    const checkAccess = async () => {
+      try {
+        const result = await getProForecastAccess(fixtureId);
+        if (!current()) return;
+        setUnlocked(result.unlocked);
+        if (result.status === 'processing' && result.unlocked) {
+          if (Date.now() < deadline) {timer = setTimeout(() => void checkAccess(), 2500); return;}
+          setAccessError(tr ? 'Öngörü hazırlanıyor. Yeniden yüklemek kredi kullanmaz.' : 'The forecast is being prepared. Reloading uses no additional credit.');
+        } else if (result.status === 'ready' && result.unlocked) {
+          setForecast({...result, status: 'ready'});
+        } else if (result.unlocked) {
+          setAccessError(tr ? 'Öngörü şu anda yüklenemedi. Yeniden yüklemek kredi kullanmaz.' : 'The forecast could not be loaded. Reloading uses no additional credit.');
+        }
+      } catch {
+        if (!current()) return;
+        setAccessError(tr ? 'Öngörü erişimi kontrol edilemedi.' : 'Could not check forecast access.');
+      }
+      if (current()) setChecking(false);
+    };
+    void checkAccess();
+    return () => {generation.current++; clearTimeout(timer);};
+  }, [selected?.fixtureId, tr]));
   function clearResults() {searchGeneration.current++; setLoading(false); setSelected(null); setFixtures([]); setSearched(false); setError('');}
   function choose(fixture: MatchFixture) {
     if (openingRef.current) return;
@@ -89,7 +111,7 @@ export default function ProMatchForecastFlow({userId, disabled=false, preview=fa
         const result = await unlockProForecast(fixtureId);
         if (!mounted.current || token !== generation.current) return;
         if (result.status === 'ready' && result.unlocked) {
-          setForecast({...result, status:'ready'}); callbacks.current.onCreditsChanged(); return;
+          setForecast({...result, status:'ready'}); setUnlocked(true); callbacks.current.onCreditsChanged(); return;
         }
         if (result.status !== 'processing') {
           setAccessError(result.reason === 'model_unavailable' ? (tr ? 'Bu maç için henüz uygun bir öngörü modeli yok. Kredi kullanılmadı.' : 'No suitable forecast model is available yet. No credit was used.') : (tr ? 'Bu maç için yeterli veri bulunmuyor. Kredi kullanılmadı.' : 'There is not enough data for this match. No credit was used.')); return;
@@ -140,9 +162,9 @@ export default function ProMatchForecastFlow({userId, disabled=false, preview=fa
           <View style={s.leagueBadge}><Trophy size={14} color={PURPLE}/><Text style={s.leagueName}>{selected.league.name}</Text></View>
           <View style={s.kickoff}><CalendarDays size={14} color={MUTED}/><Text style={s.kickoffText}>{predictionDateTime(selected.startingAt,tr)}</Text></View>
         </View>
-        {checking?<ActivityIndicator color={PURPLE}/>:!forecast?<>
-          <Text style={s.hint}>{tr?'İlk açılışta 1 kredi kullanılır. Bu maçı tekrar açmak ücretsizdir.':'Opening costs 1 credit. Reopening this match is free.'}</Text>
-          <Pressable accessibilityRole="button" disabled={blocked || !upcoming(selected)} style={[s.button,(blocked || !upcoming(selected))&&s.disabled]} onPress={()=>void openForecast()}>{opening?<ActivityIndicator color={PURPLE}/>:<ChartNoAxesCombined size={18} color={PURPLE}/>}<Text style={s.buttonText}>{opening?(tr?'Hazırlanıyor…':'Preparing…'):(tr?'Öngörüyü Aç':'Open Forecast')}</Text></Pressable>
+        {checking?<View style={{gap:8}}><ActivityIndicator color={PURPLE}/><Text style={s.hint}>{tr?'Öngörü yükleniyor…':'Loading forecast…'}</Text></View>:!forecast?<>
+          <Text style={s.hint}>{unlocked ? (tr?'Bu maç zaten açık. Yeniden yüklemek kredi kullanmaz.':'This match is already unlocked. Reloading uses no additional credit.') : (tr?'İlk açılışta 1 kredi kullanılır. Bu maçı tekrar açmak ücretsizdir.':'Opening costs 1 credit. Reopening this match is free.')}</Text>
+          <Pressable accessibilityRole="button" disabled={blocked || !upcoming(selected)} style={[s.button,(blocked || !upcoming(selected))&&s.disabled]} onPress={()=>void openForecast()}>{opening?<ActivityIndicator color={PURPLE}/>:<ChartNoAxesCombined size={18} color={PURPLE}/>}<Text style={s.buttonText}>{opening?(tr?'Hazırlanıyor…':'Preparing…'):(unlocked ? (tr?'Yeniden Yükle':'Reload Forecast') : (tr?'Öngörüyü Aç':'Open Forecast'))}</Text></Pressable>
           {!upcoming(selected)&&<Text style={s.hint}>{tr?'Bu maç başladı. Yeni bir öngörü için yaklaşan bir maç seç.':'This match has started. Select an upcoming fixture for a new forecast.'}</Text>}
         </>:null}
         {!!accessError&&<Text accessibilityLiveRegion="polite" style={s.hint}>{accessError}</Text>}

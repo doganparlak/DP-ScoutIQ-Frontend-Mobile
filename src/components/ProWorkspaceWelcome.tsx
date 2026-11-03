@@ -8,7 +8,7 @@ import { TutorialPageGuide } from './Tutorial';
 
 export type ProWorkspaceMode='direct'|'discovery'|'forecast';
 export const proWorkspaceCopy=(tr:boolean)=>({
-  forecast:{title:tr?'Maç Öngörüsü':'Match Forecast',description:tr?'Takımını ve maçını seç; skor, gol ve maç sonucu olasılıklarını incele.':'Choose a team and fixture; explore score, goal and match outcome probabilities.'},
+  forecast:{title:tr?'Maç Öngörüsü':'Match Forecast',description:tr?'Takımını ve maçını seç; maç sonucu, skor farkı, devre bazlı gol ve karşılıklı gol olasılıklarını incele.':'Choose a team and fixture; explore match outcomes, goal margins, goals by half and both teams to score.'},
   direct:{title:tr?'Doğrudan Arama':'Direct Search',description:tr?'Oyuncunu bul; analiz et, uyumunu değerlendir, benzerini bul, raporla ve portföye kaydet.':'Find a player; analyze, assess fit, find similar players, create reports and save to your portfolio.',prompt:tr?'Hangi oyuncuyu incelemek istersin? Oyuncunun adını yaz.':'Which player would you like to explore? Enter their name.',placeholder:tr?'Oyuncunun adını yaz…':'Enter a player’s name…'},
   discovery:{title:tr?'Oyuncu Keşfi':'Player Discovery',description:tr?'İhtiyacına uygun oyuncuları keşfet; analiz et, uyumlarını değerlendir, benzerlerini bul, raporla ve kaydet.':'Discover players matching your needs; analyze, assess fit, find similar players, create reports and save.',prompt:tr?'Aradığın oyuncuyu tarif et. Pozisyon, yaş, uyruk, lig ve aradığın özellikleri ekleyebilirsin.':'Describe the player you need. Include position, age, nationality, league and desired qualities.',placeholder:tr?'Aradığın oyuncuyu tarif et…':'Describe your ideal player…'},
 });

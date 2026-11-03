@@ -19,6 +19,7 @@ export function forecastActuals(data: PostMatchCardData, homeId: number, awayId:
   const firstGoals = halvesKnown ? firstHome + firstAway : null;
   const secondGoals = firstGoals == null ? null : home + away - firstGoals;
   return {
+    halfGoals: halvesKnown ? {first: {home: firstHome!, away: firstAway!}, second: {home: home - firstHome!, away: away - firstAway!}} : null,
     home, away, outcome: home > away ? 'home' : home < away ? 'away' : 'draw',
     range: home + away <= 1 ? 0 : home + away <= 3 ? 1 : 2,
     over25: home + away >= 3, bothTeamsScore: home > 0 && away > 0,

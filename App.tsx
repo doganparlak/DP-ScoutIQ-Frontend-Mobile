@@ -4,6 +4,7 @@ import { LanguageProvider } from '@/context/LanguageProvider';
 import { ThemeProvider } from '@/context/ThemeProvider';
 import '@/i18n';
 import RootNavigator from '@/navigation/RootNavigator';
+import StoreUpdatePrompt from '@/components/StoreUpdatePrompt';
 import { initializePushNotifications } from '@/services/pushNotifications';
 import { initializeRemoteConfig } from '@/services/remoteConfig';
 import { initializeTelemetry } from '@/services/telemetry';
@@ -27,6 +28,7 @@ export default function App() {
 }
 
 function InteractiveApp() {
+  const [navigationReady, setNavigationReady] = React.useState(false);
   React.useEffect(() => initializeRemoteConfig(), []);
   React.useEffect(() => initializePushNotifications(), []);
   React.useEffect(() => {
@@ -39,7 +41,8 @@ function InteractiveApp() {
     <SafeAreaProvider>
       <ThemeProvider>
       <LanguageProvider>
-        <RootNavigator />
+        <RootNavigator onReady={() => setNavigationReady(true)} />
+        <StoreUpdatePrompt ready={navigationReady}/>
       </LanguageProvider>
       </ThemeProvider>
     </SafeAreaProvider>

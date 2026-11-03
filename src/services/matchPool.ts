@@ -355,10 +355,11 @@ export type MatchForecast = {
   bothTeamsScore: number; cleanSheet: {home: number; away: number}; over25: number;
   topScores: {home: number; away: number; probability: number}[];
   grid: {home: number; away: number; probability: number}[]; gridRemainder: number;
+  scoreMargins?: {homeOne: number; homeTwoPlus: number; draw: number; awayOne: number; awayTwoPlus: number};
   goalDistribution: {home: number[]; away: number[]};
-  halfScenarios?: {moreGoalsHalf: {first: number; equal: number; second: number}; firstHalfBothTeamsScore: number} | null;
+  halfScenarios?: {moreGoalsHalf: {first: number; equal: number; second: number}; firstHalfBothTeamsScore: number; projectedGoals?: {first: {home: number; away: number}; second: {home: number; away: number}}} | null;
 };
-export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersion' | 'startingAt' | 'regulationMinutes' | 'home' | 'away' | 'outcomes' | 'topScores' | 'grid' | 'gridRemainder'>;
+export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersion' | 'startingAt' | 'regulationMinutes' | 'home' | 'away' | 'outcomes' | 'topScores' | 'grid' | 'gridRemainder' | 'scoreMargins'>;
 export type MatchForecastPlus = Pick<MatchForecast, keyof MatchForecastPreview | 'goalDistribution' | 'bothTeamsScore' | 'cleanSheet' | 'over25' | 'halfScenarios'>;
 export type MatchForecastResponse = {status: 'processing' | 'ready' | 'unavailable' | 'failed'; reason?: string; accessTier?: 'free' | 'paid' | 'plus' | 'pro'; forecast?: MatchForecast | MatchForecastPlus | MatchForecastPreview};
 export const getMatchForecast = (id: number, retry = false, review = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast?retry=${retry}&review=${review}`);
