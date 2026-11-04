@@ -54,7 +54,9 @@ export type FavoriteMatch = {
   reportType: "pre_match" | "post_match";
   createdAt: string;
 };
-export type MatchReportMetric = { name: string; value: number | string | null };
+export type CompetitionMetricRank = { position: number; total_teams: number; season_value: number; matches_played: number; matches_covered: number };
+export type CompetitionRankingContext = { league_id: number; competition_name: string; season_id: number; season_name: string; basis: 'per_match'; scope: string };
+export type MatchReportMetric = { name: string; value: number | string | null; competition_rank?: CompetitionMetricRank };
 export type MatchReportTeam = {
   id: number; name: string; location: string; image_url?: string | null;
   player_count?: number | null;
@@ -285,7 +287,7 @@ export const ensureSavedPostMatchSection = (fixtureId:number,tr:boolean,section:
 export const getPreMatchCard = (fixtureId: number) => matchPoolRequest<PostMatchCardData>(`/match-pool/fixtures/${fixtureId}/pre-match-card`);
 
 export type PreMatchPerformancePlayer = { player_id:number; player_name:string; player_image_url?:string|null; position_id?:number; position_name?:string; average_rating:number; standout_metrics?:{name:string;value:number;is_percentage?:boolean}[]; development_metrics?:{name:string;value:number;is_percentage?:boolean}[] };
-export type PreMatchSquadUsage = { teams: { team_id: number; sample_size: number; summary?: { rotation_level: number; average_rating: number | null }; formations?: { formation: string; matches: number; percentage: number }[]; players: { player_id: number; player_name: string; player_image_url?: string | null; position_id?: number; position_name?: string; starts: number; substitute_appearances: number; last_match_starter?: boolean; average_rating?: number | null }[]; performance_summary?: {featured_players?:PreMatchPerformancePlayer[];top_rated?:PreMatchPerformancePlayer;top_scorers?:PreMatchPerformancePlayer[];development?:PreMatchPerformancePlayer} }[] };
+export type PreMatchSquadUsage = { competition_ranking?: CompetitionRankingContext; teams: { team_id: number; sample_size: number; summary?: { rotation_level: number; average_rating: number | null }; formations?: { formation: string; matches: number; percentage: number }[]; players: { player_id: number; player_name: string; player_image_url?: string | null; position_id?: number; position_name?: string; starts: number; substitute_appearances: number; last_match_starter?: boolean; average_rating?: number | null }[]; performance_summary?: {featured_players?:PreMatchPerformancePlayer[];top_rated?:PreMatchPerformancePlayer;top_scorers?:PreMatchPerformancePlayer[];development?:PreMatchPerformancePlayer} }[] };
 const preMatchSquadCache = new Map<number, Promise<PreMatchSquadUsage>>();
 export const getPreMatchSquad = (id: number) => {
   const cached = preMatchSquadCache.get(id);
@@ -311,14 +313,14 @@ export const getPreMatchMomentum = (id:number,tr:boolean) => matchPoolRequest<Pr
 export type PreMatchScoreFlow = { teams: { team_id:number;sample_size:number;score_flow?:{states:{key:'ahead'|'level'|'behind';minutes:number;share:number}[]} }[] };
 export const getPreMatchScoreFlow = (id:number) => matchPoolRequest<PreMatchScoreFlow>(`/match-pool/fixtures/${id}/pre-match-score-flow`);
 
-export type PreMatchComparisonData = { teams:{team_id:number;sample_size:number;team_comparison:Record<string,MatchReportMetric[]>}[] };
+export type PreMatchComparisonData = { competition_ranking?: CompetitionRankingContext; teams:{team_id:number;sample_size:number;team_comparison:Record<string,MatchReportMetric[]>}[] };
 export const getPreMatchComparison = (id:number) => matchPoolRequest<PreMatchComparisonData>(`/match-pool/fixtures/${id}/pre-match-comparison`);
 export type PreMatchTeamAnalysisData = {teams:Record<string,{positive:string;strategy:string;weakness:string}>};
 export const getPreMatchTeamAnalysis = (id:number,tr:boolean) => matchPoolRequest<PreMatchTeamAnalysisData>(`/match-pool/fixtures/${id}/pre-match-team-analysis?language=${tr?'tr':'en'}`);
 
 export type PreMatchSections = {
   data: PostMatchCardData;
-  squad: {teams: (PreMatchSquadUsage['teams'][number] & PreMatchScoreFlow['teams'][number] & PreMatchComparisonData['teams'][number])[]};
+  squad: {competition_ranking?: CompetitionRankingContext; teams: (PreMatchSquadUsage['teams'][number] & PreMatchScoreFlow['teams'][number] & PreMatchComparisonData['teams'][number])[]};
   form: PreMatchFormData;
   players: PreMatchPlayersData;
   momentum: PreMatchMomentumData;

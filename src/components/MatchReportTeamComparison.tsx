@@ -3,7 +3,7 @@ import { Check,ChevronDown,Shield } from 'lucide-react-native';
 import { useState } from 'react';
 import { Image,Pressable,StyleSheet,Text,View } from 'react-native';
 
-import type { MatchReportMetric,MatchReportTeam,PostMatchCardData } from '@/services/matchPool';
+import type { CompetitionMetricRank,MatchReportMetric,MatchReportTeam,PostMatchCardData } from '@/services/matchPool';
 import { expectedMetricOrder,matchMetricLabel,teamMetricOrder } from '@/utils/matchReportMetrics';
 
 const groups = [
@@ -32,6 +32,12 @@ function TeamHeading({ team, away }: { team?: MatchReportTeam; away?: boolean })
     {team?.image_url && !failed ? <Image source={{ uri: team.image_url }} resizeMode="contain" style={s.logo} onError={() => setFailed(true)} /> : <Shield size={25} color={away ? AWAY : ACCENT} />}
     <Text style={[s.teamName, { color: away ? AWAY : ACCENT }]}>{team?.name || '—'}</Text>
   </View>;
+}
+function CompetitionRank({rank,tr,color}:{rank:CompetitionMetricRank;tr:boolean;color:string}) {
+  const {s}=useThemedStyles(getModuleTheme);
+  const label=tr?`${rank.total_teams} takım arasında ${rank.position}. sıra`:`Rank ${rank.position} of ${rank.total_teams} teams`;
+  return <Text accessibilityLabel={label} style={[s.rankPosition,{color}]}>{tr?`${rank.position}. sıra`:`Rank ${rank.position}`}</Text>;
+
 }
 export default function MatchReportTeamComparison({ data, tr, preMatch = false }: { data: PostMatchCardData; tr: boolean; preMatch?: boolean }) {
   const themed = useThemedStyles(getModuleTheme);
@@ -63,16 +69,16 @@ export default function MatchReportTeamComparison({ data, tr, preMatch = false }
     <View style={s.table}>
       <View style={s.tableHeader}><TeamHeading team={home} /><Text style={s.metricHeading}>{tr ? 'Metrik' : 'Metric'}</Text><TeamHeading team={away} away /></View>
       {names.map(name => {
-        const lv = left.find(metric => metric.name === name)?.value;
-        const rv = right.find(metric => metric.name === name)?.value;
+        const lm = left.find(metric => metric.name === name), rm = right.find(metric => metric.name === name);
+        const lv = lm?.value, rv = rm?.value;
         const ln = numeric(lv), rn = numeric(rv);
         const comparable = ln != null && rn != null && ln !== rn;
         const leftWins = comparable && (key === 'errors_discipline' ? ln! < rn! : ln! > rn!);
         const rightWins = comparable && !leftWins;
         return <View key={name} style={s.row}>
-          <View style={[s.value, leftWins && { backgroundColor: `${ACCENT}22`, borderColor: `${ACCENT}70` }]}><Text style={[s.valueText, leftWins && { color: ACCENT }]}>{format(lv)}</Text></View>
+          <View style={[s.value, leftWins && { backgroundColor: `${ACCENT}22`, borderColor: `${ACCENT}70` }]}><Text style={[s.valueText, leftWins && { color: ACCENT }]}>{format(lv)}</Text>{preMatch && lm?.competition_rank && <><Text style={s.rankPosition}>·</Text><CompetitionRank rank={lm.competition_rank} tr={tr} color={ACCENT}/></>}</View>
           <Text style={s.metric}>{matchMetricLabel(name, tr ? 'tr' : 'en')}</Text>
-          <View style={[s.value, rightWins && { backgroundColor: `${AWAY}22`, borderColor: `${AWAY}70` }]}><Text style={[s.valueText, rightWins && { color: AWAY }]}>{format(rv)}</Text></View>
+          <View style={[s.value, rightWins && { backgroundColor: `${AWAY}22`, borderColor: `${AWAY}70` }]}><Text style={[s.valueText, rightWins && { color: AWAY }]}>{format(rv)}</Text>{preMatch && rm?.competition_rank && <><Text style={s.rankPosition}>·</Text><CompetitionRank rank={rm.competition_rank} tr={tr} color={AWAY}/></>}</View>
         </View>;
       })}
       {!names.length && <Text style={s.empty}>{tr ? period === 'overall' ? 'Bu bölüm için takım istatistiği bulunmuyor.' : 'Bu yarı için takım istatistiği bulunmuyor.' : 'No team statistics are available for this period.'}</Text>}
@@ -91,7 +97,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   switch: { flexDirection: 'row', borderWidth: 1, borderColor: LINE, borderRadius: 14, padding: 4, gap: 3, backgroundColor: themeColor('rgba(0,0,0,.16)', 'surface') }, option: { flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' }, selected: { borderColor: `${ACCENT}60`, backgroundColor: `${ACCENT}20` }, optionText: { color: MUTED, fontSize: 12, fontWeight: '800' },
   controlLabel: { color: MUTED, fontSize: 11, fontWeight: '700' }, selector: { borderWidth: 1, borderColor: ACCENT, borderRadius: 13, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 8 }, selectorText: { flex: 1, color: TEXT, fontSize: 14, fontWeight: '700' }, options: { borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden' }, choice: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 13 }, choiceText: { flex: 1, fontSize: 13, color: TEXT, fontWeight: '600' },
   table: { borderWidth: 1, borderColor: `${ACCENT}50`, borderRadius: 18, padding: 10, backgroundColor: themeColor('rgba(255,255,255,.015)', 'surface') }, tableHeader: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: LINE, paddingBottom: 13, marginBottom: 2, gap: 4 }, teamHeading: { flex: 1, alignItems: 'center', gap: 7 }, logo: { width: 36, height: 40 }, teamName: { fontSize: 11, fontWeight: '800', textAlign: 'center' }, metricHeading: { flex: 1.7, color: MUTED, fontSize: 10, textAlign: 'center', fontWeight: '800' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 4, borderBottomWidth: 1, borderBottomColor: LINE, paddingVertical: 10 }, value: { flex: 1, paddingVertical: 10, paddingHorizontal: 2, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' }, valueText: { color: TEXT, fontSize: 13, fontWeight: '800', textAlign: 'center' }, metric: { flex: 1.7, color: TEXT, fontSize: 11, lineHeight: 17, fontWeight: '700', textAlign: 'center', paddingHorizontal: 3 }, empty: { color: MUTED, fontSize: 13, lineHeight: 20, textAlign: 'center', paddingVertical: 32 },
+  rankPosition: {color:MUTED,fontSize:10,fontWeight:'700',textAlign:'center',marginLeft:5},
+  row: { flexDirection: 'row', alignItems: 'center', gap: 4, borderBottomWidth: 1, borderBottomColor: LINE, paddingVertical: 10 }, value: { flex: 1, flexDirection:'row',alignItems:'center',justifyContent:'center',paddingVertical: 10, paddingHorizontal: 2, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' }, valueText: { color: TEXT, fontSize: 13, fontWeight: '800', textAlign: 'center' }, metric: { flex: 1.7, color: TEXT, fontSize: 11, lineHeight: 17, fontWeight: '700', textAlign: 'center', paddingHorizontal: 3 }, empty: { color: MUTED, fontSize: 13, lineHeight: 20, textAlign: 'center', paddingVertical: 32 },
 });
   return {ACCENT, LINE, MUTED, TEXT, AWAY, s, themeColor};
 });
