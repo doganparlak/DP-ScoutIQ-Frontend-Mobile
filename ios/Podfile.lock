@@ -88,7 +88,7 @@ PODS:
   - ExpoWebBrowser (15.0.11):
     - ExpoModulesCore
   - EXStructuredHeaders (5.0.0)
-  - EXUpdates (29.0.20):
+  - EXUpdates (29.0.10):
     - EASClient
     - EXManifests
     - ExpoModulesCore
@@ -2898,7 +2898,7 @@ SPEC CHECKSUMS:
   ExpoModulesCore: ecb96f70bf2a80d31e87ce0a2ac980563c0df6e5
   ExpoWebBrowser: 970dd4c64c29c955c3af664c8058ba768a4c9187
   EXStructuredHeaders: c951e77f2d936f88637421e9588c976da5827368
-  EXUpdates: dca805b4aa04f48a5b1e5d8bcdc572b20c9ddd5f
+  EXUpdates: 17123d23c68b75fc4dc484078bc1f98e8699e667
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
   FBLazyVector: 9e0cd874afd81d9a4d36679daca991b58b260d42
   Firebase: 5523dd53ebe603451b4e1befcd99fa20a5c015cd
