@@ -1,7 +1,7 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import {
 CATEGORIES,
-playerPoints,
+metricGroup,
 scoreGroup,
 type ComparisonRow,
 type MetricUnit,
@@ -77,30 +77,14 @@ export default function CustomMatchupComparison({
         categoryTr: score.tr,
         categoryEn: score.en,
       }));
-    const regular = CATEGORIES.flatMap((category) => {
-      const metrics = category.metrics.filter((metric) => metric !== "Rating");
-      const points = players.map((player) =>
-        playerPoints(player, metrics, unit, worldCupMode),
-      );
-      return metrics.flatMap((metric) => {
-        const values = points.map((list) =>
-          list.find((point) => point.label === metric),
-        );
-        return values.every(Boolean)
-          ? [
-              {
-                metric,
-                points: values,
-                values: values.map((point) => point?.value),
-                lower: category.lower,
-                category: category.key,
-                categoryTr: category.tr,
-                categoryEn: category.en,
-              },
-            ]
-          : [];
-      });
-    });
+    const regular = CATEGORIES.flatMap((category) =>
+      metricGroup(players, category, unit, worldCupMode).rows.map((row) => ({
+        ...row,
+        category: category.key,
+        categoryTr: category.tr,
+        categoryEn: category.en,
+      })),
+    );
     return [...synthetic, ...regular];
   };
   const available = build("per90");

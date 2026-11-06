@@ -1,4 +1,5 @@
 import type { PlayerData } from "@/types";
+import { hasComparableMetricValues } from "./comparisonEligibility";
 import {
   CONTRIBUTION_IMPACT_METRICS,
   GK_METRICS,
@@ -168,7 +169,8 @@ export function scoreGroup(players: PlayerData[]): ComparisonGroup {
                 },
           ),
         };
-      }),
+      })
+      .filter((row) => hasComparableMetricValues(row.values)),
   };
 }
 export function metricGroup(
@@ -192,8 +194,7 @@ export function metricGroup(
     const points = maps.map((map) =>
       map.get(canonicalizeEnterpriseMetricLabel(metric)),
     );
-    if (!points.every(Boolean) || points.every((point) => point!.value === 0))
-      continue;
+    if (!hasComparableMetricValues(points.map((point) => point?.value))) continue;
     rows.push({
       metric,
       points,
@@ -206,12 +207,7 @@ export function metricGroup(
 export function categorySummary(group: ComparisonGroup, count: number) {
   const wins = Array<number>(count).fill(0);
   for (const row of group.rows) {
-    if (
-      !row.values.every(
-        (value) => value !== undefined && Number.isFinite(value),
-      )
-    )
-      continue;
+    if (!hasComparableMetricValues(row.values)) continue;
     const values = row.values as number[];
     const best = row.lower ? Math.min(...values) : Math.max(...values);
     const leaders = values.flatMap((value, index) =>
