@@ -52,6 +52,20 @@ class MainApplication : Application(), ReactApplication {
     } catch (e: IllegalArgumentException) {
       ReleaseLevel.STABLE
     }
+    // ScoutWise installed-ABI SoLoader workaround
+    val installedAbi = when (java.io.File(applicationInfo.nativeLibraryDir).name) {
+      "arm" -> "armeabi-v7a"
+      "arm64" -> "arm64-v8a"
+      "x86" -> "x86"
+      "x86_64" -> "x86_64"
+      else -> null
+    }
+    if (installedAbi != null && com.facebook.soloader.SysUtil.getSupportedAbis().firstOrNull() != installedAbi) {
+      com.facebook.soloader.SoLoader.init(this, com.facebook.react.soloader.OpenSourceMergedSoMapping)
+      val apks = listOf(applicationInfo.sourceDir) + applicationInfo.splitSourceDirs.orEmpty()
+      val paths = apks.mapTo(LinkedHashSet()) { "$it!/lib/$installedAbi" }
+      com.facebook.soloader.SoLoader.prependSoSource(com.facebook.soloader.DirectApkSoSource(paths))
+    }
     loadReactNative(this)
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
   }

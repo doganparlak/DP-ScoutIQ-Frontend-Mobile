@@ -85,6 +85,7 @@
       "./plugins/withFirebaseDiagnostics",
       "@react-native-firebase/messaging",
       "./plugins/withFirebaseMessaging",
+      "./plugins/withInstalledAbiSoLoader",
       "@react-native-firebase/perf",
       "expo-web-browser",
       "expo-apple-authentication",
