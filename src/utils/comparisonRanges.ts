@@ -242,7 +242,9 @@ function toFiniteNumber(
 ): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") {
-    const parsed = Number(value.replace("%", "").trim());
+    const text = value.replace("%", "").trim();
+    if (!text) return null;
+    const parsed = Number(text);
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
@@ -250,56 +252,6 @@ function toFiniteNumber(
 
 function isFixedUnitMetric(label: string) {
   return label === "Rating" || label === "Match Count" || label.includes("(%)");
-}
-
-function getDerivedMetricValue(
-  label: string,
-  index: Map<string, number | string>,
-) {
-  if (label === "Shot Quality (%)") {
-    const xg = toFiniteNumber(index.get("Expected Goals"));
-    const shots = toFiniteNumber(index.get("Shots Total"));
-    if (xg === null || shots === null || shots <= 0) return null;
-    return (xg / shots) * 100;
-  }
-  if (label === "On-Target Shot Quality (%)") {
-    const xgot = toFiniteNumber(index.get("Expected Goals On Target"));
-    const shotsOnTarget = toFiniteNumber(index.get("Shots On Target"));
-    if (xgot === null || shotsOnTarget === null || shotsOnTarget <= 0)
-      return null;
-    return (xgot / shotsOnTarget) * 100;
-  }
-  if (label === "Goal Conversion (%)") {
-    const goals = toFiniteNumber(index.get("Goals"));
-    const shots = toFiniteNumber(index.get("Shots Total"));
-    if (goals === null || shots === null || shots <= 0) return null;
-    return (goals / shots) * 100;
-  }
-  if (label === "On-Target to Goal Conversion (%)") {
-    const goals = toFiniteNumber(index.get("Goals"));
-    const shotsOnTarget = toFiniteNumber(index.get("Shots On Target"));
-    if (goals === null || shotsOnTarget === null || shotsOnTarget <= 0)
-      return null;
-    return (goals / shotsOnTarget) * 100;
-  }
-  if (label === "Assist Efficiency (%)") {
-    const assists = toFiniteNumber(index.get("Assists"));
-    const keyPasses = toFiniteNumber(index.get("Key Passes"));
-    if (assists === null || keyPasses === null || keyPasses <= 0) return null;
-    return (assists / keyPasses) * 100;
-  }
-  if (label === "Dribble Accuracy (%)") {
-    const successfulDribbles = toFiniteNumber(index.get("Successful Dribbles"));
-    const dribbleAttempts = toFiniteNumber(index.get("Dribble Attempts"));
-    if (
-      successfulDribbles === null ||
-      dribbleAttempts === null ||
-      dribbleAttempts <= 0
-    )
-      return null;
-    return (successfulDribbles / dribbleAttempts) * 100;
-  }
-  return null;
 }
 
 function scaleRange(
@@ -377,16 +329,9 @@ export function toSpiderPoints(
       const canonical = canonicalizeEnterpriseMetricLabel(metric);
       const range = RANGES[canonical];
       if (!range || range.max <= range.min) return null;
-      const derivedValue = getDerivedMetricValue(canonical, index);
-      const raw = index.get(canonical);
-      const rawValue =
-        derivedValue ??
-        (typeof raw === "number"
-          ? raw
-          : typeof raw === "string"
-            ? Number(raw.replace("%", "").trim())
-            : NaN);
-      if (!Number.isFinite(rawValue)) return null;
+      // Backend rates already include coverage rules, pooled inputs and caps.
+      const rawValue = toFiniteNumber(index.get(canonical));
+      if (rawValue === null) return null;
       const nextRange = scaleRange(canonical, range, effectiveOptions);
       const value = scaleValue(
         canonical,
