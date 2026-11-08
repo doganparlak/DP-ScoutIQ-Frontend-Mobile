@@ -38,7 +38,7 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
  React.useEffect(()=>{const sub=AppState.addEventListener('change',state=>setForeground(state==='active'));return()=>sub.remove();},[]);
  React.useEffect(()=>{
   if(!focused||!foreground)return;
-  let active=true;
+  let active=true;let retryTimer:ReturnType<typeof setTimeout>|undefined;
   const accept=(value:MatchCalendarBounds)=>{
    if(!active)return;
    setBounds(value);setCalendarError(false);
@@ -51,8 +51,8 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
    if(!active)return;
    calendarCache.set(timezone,{value,expires:Date.now()+21600000});if(calendarCache.size>12)calendarCache.delete(calendarCache.keys().next().value!);
    accept(value);
-  }).catch(()=>{if(active)setCalendarError(true);});
-  return()=>{active=false;};
+  }).catch(()=>{if(active){setCalendarError(true);retryTimer=setTimeout(()=>setCalendarRetry(value=>value+1),60000);}});
+  return()=>{active=false;clearTimeout(retryTimer);};
  },[timezone,focused,foreground,calendarRetry]);
  React.useEffect(()=>{
   if(!focused||!foreground){setRefreshing(false);setLoading(false);return;}
@@ -66,9 +66,9 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
     const result=await getDailyFixtures(day,timezone);
     if(!active||version!==request.current)return;
     cache.delete(key);cache.set(key,result);if(cache.size>24)cache.delete(cache.keys().next().value!);
-    setData(result);setError(!!result.stale);onFixturesRef.current(result.fixtures);
-    if(result.refreshAfter)timer=setTimeout(()=>void load(),result.refreshAfter*1000);
-   }catch{if(active&&version===request.current){setError(true);if(day===localDay())timer=setTimeout(()=>void load(),60000);}}
+    setData(result);setError(false);onFixturesRef.current(result.fixtures);
+    if(result.refreshAfter)timer=setTimeout(()=>void load(),Math.max(20,result.refreshAfter)*1000);
+   }catch{if(active&&version===request.current){setError(!cache.has(key));timer=setTimeout(()=>void load(),60000);}}
    finally{busy=false;if(active&&version===request.current){setLoading(false);setRefreshing(false);}}
   }
   void load();
@@ -99,12 +99,12 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
     <Pressable accessibilityRole="button" accessibilityLabel={tr?'Sonraki gün':'Next day'} disabled={!bounds||day>=bounds.maxDate} onPress={()=>choose(shiftDay(day,1))} style={s.icon}><ChevronRight color={ACCENT} size={21}/></Pressable>
    </View>
    <FlatList ref={daysRef} horizontal data={dates} key={anchor} keyExtractor={item=>item} initialScrollIndex={8} getItemLayout={(_,index)=>({length:66,offset:66*index,index})} showsHorizontalScrollIndicator={false} renderItem={({item})=><Pressable accessibilityRole="tab" accessibilityState={{selected:item===day}} accessibilityLabel={dayDate(item).toLocaleDateString(locale,{weekday:'long',day:'numeric',month:'long'})} disabled={!bounds||item<bounds.minDate||item>bounds.maxDate} onPress={()=>choose(item)} style={[s.day,item===day&&s.selected,(!bounds||item<bounds.minDate||item>bounds.maxDate)&&{opacity:.35}]}><Text style={[s.dayLabel,item===day&&{color:ACCENT}]}>{item===localDay()?(tr?'Bugün':'Today'):dayDate(item).toLocaleDateString(locale,{weekday:'short'})}</Text><Text style={[s.dayNumber,item===day&&{color:ACCENT}]}>{dayDate(item).getDate()}</Text></Pressable>}/>
-   {calendarError&&<Pressable accessibilityRole="button" onPress={()=>setCalendarRetry(value=>value+1)} style={{padding:8}}><Text style={{color:DANGER,fontSize:12,textAlign:'center'}}>{tr?'Takvim yüklenemedi. Yeniden dene.':'Could not load calendar. Tap to retry.'}</Text></Pressable>}
+   {calendarError&&!bounds&&!data&&<Pressable accessibilityRole="button" onPress={()=>setCalendarRetry(value=>value+1)} style={{padding:8}}><Text style={{color:DANGER,fontSize:12,textAlign:'center'}}>{tr?'Takvim yüklenemedi. Yeniden dene.':'Could not load calendar. Tap to retry.'}</Text></Pressable>}
    {day!==localDay()&&<Pressable onPress={()=>choose(localDay())} accessibilityRole="button" style={{alignSelf:'center',padding:8}}><Text style={{color:ACCENT,fontWeight:'700'}}>{tr?'Bugüne dön':'Back to today'}</Text></Pressable>}
   </View>
   <View style={{marginHorizontal:16}}><TutorialPageGuide page="matchDaily" frame={1} summaryLines={0}/></View>
   {watchlist.error&&<Pressable accessibilityRole="button" onPress={()=>setRefresh(value=>value+1)} style={{paddingHorizontal:18,paddingBottom:12}}><Text style={{color:DANGER,fontSize:12}}>{tr?'Takip listen yenilenemedi. Tekrar dene.':'Could not refresh your watchlist. Tap to retry.'}</Text></Pressable>}
-  {!!error&&<Pressable accessibilityRole="button" onPress={manualRefresh} style={{paddingHorizontal:18,paddingBottom:12}}><Text style={{color:DANGER,fontSize:13}}>{tr?'Maçlar yenilenemedi. Yeniden dene.':'Could not refresh matches. Tap to retry.'}</Text></Pressable>}
+  {!!error&&!data&&<Pressable accessibilityRole="button" onPress={manualRefresh} style={{paddingHorizontal:18,paddingBottom:12}}><Text style={{color:DANGER,fontSize:13}}>{tr?'Maçlar yüklenemedi. Yeniden dene.':'Could not load matches. Tap to retry.'}</Text></Pressable>}
   <SectionList key={day} sections={sections} keyExtractor={item=>String(item.fixtureId)} stickySectionHeadersEnabled contentContainerStyle={{padding:16,paddingTop:0,paddingBottom:32,flexGrow:1}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={manualRefresh} tintColor={ACCENT} colors={[ACCENT]}/>} renderSectionHeader={({section})=><View style={s.leagueHeading}><View style={{width:28,height:28,alignItems:'center',justifyContent:'center'}}>{section.watchlist?<Star size={19} strokeWidth={1.6} color={ACCENT} fill={ACCENT}/>:<Logo url={section.imageUrl} league size={28}/>}</View><Text style={s.leagueText}>{section.title}</Text></View>} renderSectionFooter={()=> <View style={{height:18}}/>}
    ListEmptyComponent={loading&&!refreshing?<ActivityIndicator color={ACCENT} style={{padding:36}}/>:<View style={s.empty}>{liveOnly?<Timer size={32} color={ACCENT}/>:<CalendarDays size={32} color={ACCENT}/>}<Text style={s.title}>{error?(tr?'Maçlar yüklenemedi':'Could not load matches'):liveOnly?(tr?'Bu tarihte canlı maç yok.':'No live matches on this date.'):(tr?'Bu tarihte maç bulunmuyor':'No matches on this date')}</Text><Text style={{color:MUTED,textAlign:'center'}}>{liveOnly?(tr?'Tüm maçları görmek için kronometreye tekrar dokun.':'Tap the stopwatch again to show all matches.'):(tr?'Başka bir gün seçebilir veya Takım Fikstürü’nden arayabilirsin.':'Choose another date or use Team Fixtures.')}</Text></View>}
    renderItem={({item})=>{const playing=live(item);const phase=matchSaveType(item);const reportType=phase==='pre_match'&&item.forecastAvailable!==true?null:phase;const upcoming=['NS','TBA','POSTP','POST','DELAYED','CANC','CANCL','ABAN'].includes(item.state.code.toUpperCase());return <View style={s.fixture}><View style={{flexDirection:'row',alignItems:'center'}}><Pressable testID={`daily-match-${item.fixtureId}`} accessibilityRole="button" accessibilityLabel={`${item.homeTeam.name}, ${item.awayTeam.name}, ${matchStateLabel(item,tr)}`} onPress={()=>onSelect(item)} style={({pressed})=>[s.match,{flex:1},pressed&&{opacity:.7}]}>
