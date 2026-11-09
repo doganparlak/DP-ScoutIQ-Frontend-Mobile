@@ -81,7 +81,7 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
   const rows: LeagueStanding[] = official ? officialRows : Object.entries(teams).map(([id, team]) => ({teamId: Number(id), teamName: team.teamName, teamImageUrl: officialRows.find(row => String(row.teamId) === id)?.teamImageUrl || sportmonksTeamImage(id) || null,
     position: null, played: team.matches, won: team.results?.won??null, drawn: team.results?.drawn??null, lost: team.results?.lost??null, goalsFor: team.results?.goalsFor??null, goalsAgainst: team.results?.goalsAgainst??null, goalDifference: team.results?.goalDifference??null, points: null, form: null, standingRule: null}));
   const playing = rows.filter(row => (row.played || 0) > 0);
-  const metrics = orderLeagueMetrics((data?.season.metric_catalog || []).filter(metric => metric.locked || (playing.length > 0 && (official ? playing.every(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null) : playing.some(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null)))), tr);
+  const metrics = orderLeagueMetrics((data?.season.metric_catalog || []).filter(metric => metric.locked || (playing.length > 0 && playing.some(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null))), tr);
   const metric = metrics.find(item => item.key === metricKey && !item.locked);
   const sorted = sortLeagueRows(rows, teams, metric?.key || '', usePerMatch, direction);
   const ordered = official ? sorted : sorted.map((row, index) => ({...row, position: metric && teams[String(row.teamId)]?.metrics[metric.key]?.[usePerMatch ? 'perMatch' : 'value'] != null ? index + 1 : null}));

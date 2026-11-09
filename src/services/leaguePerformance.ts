@@ -47,7 +47,7 @@ export type LeagueInsights = {
 };
 export function sortLeagueRows(rows: LeagueStanding[], teams: Record<string, TeamSeasonMetrics>, metric: string, perMatch: boolean, direction: "asc" | "desc") {
   if (!metric) return rows;
-  return [...rows].sort((a, b) => {
+  return rows.filter(row => teams[String(row.teamId)]?.metrics[metric]?.[perMatch ? "perMatch" : "value"] != null).sort((a, b) => {
     const av = teams[String(a.teamId)]?.metrics[metric]?.[perMatch ? "perMatch" : "value"];
     const bv = teams[String(b.teamId)]?.metrics[metric]?.[perMatch ? "perMatch" : "value"];
     if (av == null && bv == null) return (a.position ?? 9999) - (b.position ?? 9999);
