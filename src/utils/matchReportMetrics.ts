@@ -157,6 +157,7 @@ const MATCH_METRIC_LABELS_TR: Record<string, string> = {
     "On Target Shot Quality (%)": "İsabetli Şut Kalitesi (%)",
     "Ball Safe": "Güvenli Top",
     Injuries: "Sakatlıklar",
+    "Hit Woodwork": "Direkten Dönen Toplar",
     Substitutions: "Oyuncu Değişiklikleri",
     "Chances Created": "Yaratılan Fırsatlar",
     "Cumulative Minutes Played": "Kümülatif Oynanan Dakika",
