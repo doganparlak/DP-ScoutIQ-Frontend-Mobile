@@ -6,7 +6,7 @@ import {createThemedStyles, useThemedStyles, type ThemeColors} from '@/theme';
 import {sportmonksLeagueImage} from '@/utils/sportmonksImages';
 import type {EnterpriseMetricUnit} from '@/utils/comparisonRanges';
 import {
-  reportPercentileRows, reportPercentileColor,
+  reportPercentileRows, reportPercentileColor, reportPercentileRoles,
   type DomesticCompetition, type PercentileMetric,
 } from '@/utils/reportPercentiles';
 
@@ -18,11 +18,11 @@ export function ReportPercentileScopeSwitch({competitions, scope, onChange}: {
   const tr = i18n.language.startsWith('tr');
   if (!competitions.length) return null;
   const selected = scope === 'annual' ? undefined
-    : competitions.find(item => String(item.leagueId) === scope) || competitions[0];
+    : competitions.find(item => String(item.leagueId) === scope);
   return <View style={s.choices} accessibilityLabel={tr ? 'Veri kapsamı' : 'Data scope'}>
     {[{key: 'annual', name: tr ? 'Tüm müsabakalar' : 'All competitions'},
       ...competitions.map(item => ({key: String(item.leagueId), name: item.leagueName}))].map(item => {
-      const active = item.key === 'annual' ? scope === 'annual' : String(selected?.leagueId) === item.key;
+      const active = item.key === 'annual' ? !selected : String(selected?.leagueId) === item.key;
       return <Pressable key={item.key} accessibilityRole="button" accessibilityState={{selected: active}}
         onPress={() => onChange(item.key)} style={[s.choice, active && {borderColor: ACCENT, backgroundColor: `${ACCENT}18`}]}>
         <Text style={[s.choiceText, {color: active ? TEXT : MUTED}]}>{item.name}</Text>
@@ -58,7 +58,8 @@ export default function ReportPercentileTiles({competition, groupKey, role, onRo
   const {s, ACCENT, TEXT, MUTED, themeColor} = useThemedStyles(getStyles);
   const tr = i18n.language.startsWith('tr');
   const {selectedRole, benchmark, rows} = reportPercentileRows(competition, role, groupKey, unit, metricLabels);
-  const options = Object.entries(competition.benchmarks);
+  const options = reportPercentileRoles(competition, groupKey, unit, metricLabels, minimumMinutes);
+  if (!rows.length) return null;
   const format = (value: number) => value.toLocaleString(tr ? 'tr-TR' : 'en-GB', {maximumFractionDigits: 2});
   const isErrors = groupKey === 'errors_discipline';
   return <View style={s.block}>

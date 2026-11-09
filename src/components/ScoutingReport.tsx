@@ -41,7 +41,7 @@ import type { PlayerData } from '../types';
 import ActionSpinner from './ActionSpinner';
 import ReportPhaseDistributions from './ReportPhaseDistributions';
 import ReportPercentileTiles, {ReportPercentileScopeSwitch} from './ReportPercentileTiles';
-import {REPORT_PERCENTILE_METRICS, reportPercentileCompetition, reportPercentileLimit, type DomesticPercentiles} from '@/utils/reportPercentiles';
+import {REPORT_PERCENTILE_METRICS, reportPercentileCompetitions, reportPercentileCompetition, reportPercentileLimit, type DomesticPercentiles} from '@/utils/reportPercentiles';
 
 
 type Props = {
@@ -552,7 +552,8 @@ function ReportMetricPage({ group, name, imageUrl, report, scope, onScopeChange,
   const [width, setWidth] = useState(320);
   const percentiles = report.content_json?.domestic_percentiles as DomesticPercentiles | undefined;
   const supportsPercentiles = group.titleKey in REPORT_PERCENTILE_METRICS;
-  const competition = supportsPercentiles ? reportPercentileCompetition(percentiles, scope) : undefined;
+  const competitions = supportsPercentiles ? reportPercentileCompetitions(percentiles, group.titleKey, unit) : [];
+  const competition = scope === 'annual' ? undefined : competitions.find(item => String(item.leagueId) === scope);
   const meta = report.content_json?.metrics_docs?.[0]?.metadata ?? {};
   const stats = Object.entries(meta).flatMap(([metric, value]) => typeof value === 'number' || typeof value === 'string' ? [{metric, value}] : []);
   const points = comparisonPoints(stats, group.points.map(p=>p.label), {unit});
@@ -568,7 +569,7 @@ function ReportMetricPage({ group, name, imageUrl, report, scope, onScopeChange,
       ]}/>
       {!isErrors && !competition && <ReportToggle value={view} onChange={setView} options={[{value:'radar',label:'Radar',Icon:Radar},{value:'tiles',label:tr?'Sayılar':'Numbers',Icon:ListOrdered}]}/>}
     </View>
-    {supportsPercentiles && <ReportPercentileScopeSwitch competitions={percentiles?.competitions || []} scope={scope} onChange={onScopeChange}/>}
+    {supportsPercentiles && <ReportPercentileScopeSwitch competitions={competitions} scope={scope} onChange={onScopeChange}/>}
     {competition ? <ReportPercentileTiles competition={competition} groupKey={group.titleKey} role={role} onRoleChange={onRoleChange}
       unit={unit} minimumMinutes={percentiles?.minimumMinutes} metricLimit={reportPercentileLimit(plan)}
       lockedContent={<LockedInsightCard
