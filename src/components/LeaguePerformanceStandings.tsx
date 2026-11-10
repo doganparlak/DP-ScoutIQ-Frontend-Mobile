@@ -7,10 +7,11 @@ import { AppState,Pressable,StyleSheet,Switch,Text,useWindowDimensions,View } fr
 import AdaptiveLeagueStandingsTable from './AdaptiveLeagueStandingsTable';
 import LeaguePerformanceUpgradeModal from './LeaguePerformanceUpgradeModal';
 
-import { getLeagueInsights,completedLeaguePeriods,orderLeagueMetrics,PLUS_LEAGUE_METRICS,sortLeagueRows,type LeagueBestPlayer,type LeagueInsights,type LeagueStanding,type LeagueScope } from '@/services/leaguePerformance';
+import { getLeagueInsights,completedLeaguePeriods,orderLeagueMetrics,leagueMetricPlan,sortLeagueRows,type LeagueBestPlayer,type LeagueInsights,type LeagueStanding,type LeagueScope } from '@/services/leaguePerformance';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
 import { getThemed_styles as __getThemed_shared,getThemed_standingRuleMeta as __getThemed_standingRuleMeta,Action,SelectField,Selector,Status,Winner } from './LeaguePerformanceControls';
 import LeaguePlayerCardModal from './LeaguePlayerCardModal';
+import { groupLeagueMetrics } from '@/services/leagueMetricGroups';
 
 const SEASON_ONLY_LEAGUES = new Set([2, 5, 2286, 1328, 1329]);
 
@@ -131,7 +132,7 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
     {!official && !rows.length && !busy && <Status text={tr ? 'Bu aşamada henüz tamamlanan maç yok.' : 'No completed matches in this phase yet.'} />}
     <LeaguePerformanceUpgradeModal visible={focused && upgrade !== null} required={upgrade?.required || 'plus'} feature={upgrade?.feature || 'biweekly'} metricLabel={upgrade?.metricLabel} tr={tr} onClose={() => setUpgrade(null)} />
     {winner && <LeaguePlayerCardModal key={winner.playerId} winner={winner} onClose={() => setWinner(null)} />}
-    {selector && <Selector title={selector === 'metric' ? (tr ? 'Sıralama Ölçütü' : 'Ordering Metric') : (tr ? 'İki Haftalık Dönem' : 'Two-Week Period')} tr={tr} selected={selector === 'metric' ? metric?.key || '' : period || data?.selectedPeriodStart || ''} options={selector === 'metric' ? [{key: '', label: defaultMetricLabel}, ...metrics.map(item => ({key: item.key, label: matchMetricLabel(item.label, tr ? 'tr' : 'en'), locked: item.locked, plan: PLUS_LEAGUE_METRICS.includes(item.key) ? 'plus' as const : 'pro' as const}))] : (data?.periods || []).map(p => ({key: p.period_start, label: periodLabel(p.period_start, p.period_end, tr)}))} onClose={() => setSelector(null)} onSelect={key => {if (selector === 'metric') {if (metrics.find(item => item.key === key)?.locked) {setSelector(null); setTimeout(() => setUpgrade({required: tier === 'free' && PLUS_LEAGUE_METRICS.includes(key) ? 'plus' : 'pro', feature: 'metric', metricLabel: matchMetricLabel(metrics.find(item => item.key === key)?.label || key, tr ? 'tr' : 'en')}), 350); return;} setMetricKey(key); setDirection(metrics.find(item => item.key === key)?.direction || 'desc');} else setPeriod(key); setSelector(null);}} />}
+    {selector && <Selector title={selector === 'metric' ? (tr ? 'Sıralama Ölçütü' : 'Ordering Metric') : (tr ? 'İki Haftalık Dönem' : 'Two-Week Period')} tr={tr} selected={selector === 'metric' ? metric?.key || '' : period || data?.selectedPeriodStart || ''} options={selector === 'metric' ? [{key: '', label: defaultMetricLabel}, ...groupLeagueMetrics(metrics, tr).flatMap(group => group.metrics.map(item => ({key: item.key, label: matchMetricLabel(item.label, tr ? 'tr' : 'en'), category: group.label, locked: item.locked, plan: leagueMetricPlan(item) === 'free' ? undefined : leagueMetricPlan(item) as 'plus' | 'pro'})))] : (data?.periods || []).map(p => ({key: p.period_start, label: periodLabel(p.period_start, p.period_end, tr)}))} onClose={() => setSelector(null)} onSelect={key => {if (selector === 'metric') {if (metrics.find(item => item.key === key)?.locked) {setSelector(null); setTimeout(() => setUpgrade({required: leagueMetricPlan(metrics.find(item => item.key === key)!) === 'pro' ? 'pro' : 'plus', feature: 'metric', metricLabel: matchMetricLabel(metrics.find(item => item.key === key)?.label || key, tr ? 'tr' : 'en')}), 350); return;} setMetricKey(key); setDirection(metrics.find(item => item.key === key)?.direction || 'desc');} else setPeriod(key); setSelector(null);}} />}
   </View>;
 }
 

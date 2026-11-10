@@ -24,7 +24,7 @@ export type LeagueBestPlayer = {
   ratedAppearances: number; minutes: number;
 };
 export type LeagueMetric = {
-  key: string; label: string; locked?: boolean; aggregation: "total" | "average" | "derived_rate";
+  key: string; label: string; locked?: boolean; category?: string; preference?: 'higher' | 'lower' | 'neutral'; requiredTier?: 'free' | 'plus' | 'pro'; aggregation: "total" | "average" | "derived_rate";
   unit: string; direction: "asc" | "desc";
 };
 export type TeamSeasonMetrics = {
@@ -65,7 +65,13 @@ export function sortLeagueRows(rows: LeagueStanding[], teams: Record<string, Tea
   });
 }
 
-export const PLUS_LEAGUE_METRICS = ['Goals', 'Shots Total', 'Shots On Target', 'Passes', 'Ball Possession %', 'Accurate Passes (%)', 'Corners', 'Fouls'];
+export const FREE_LEAGUE_METRICS = ['Goals', 'Shots Total', 'Shots On Target', 'Ball Possession %', 'Corners'];
+export const PLUS_LEAGUE_METRICS = [...FREE_LEAGUE_METRICS, 'Passes', 'Accurate Passes (%)', 'Fouls',
+  'Attacks', 'Dangerous Attacks', 'Big Chances Created', 'Shots Insidebox', 'Shots Outsidebox',
+  'Accurate Passes', 'Key Passes', 'Total Crosses', 'Saves', 'Interceptions', 'Yellow Cards', 'Red Cards'];
+export function leagueMetricPlan(metric: LeagueMetric): 'free' | 'plus' | 'pro' {
+  return metric.requiredTier || (FREE_LEAGUE_METRICS.includes(metric.key) ? 'free' : PLUS_LEAGUE_METRICS.includes(metric.key) ? 'plus' : 'pro');
+}
 export function orderLeagueMetrics(metrics: LeagueMetric[], tr: boolean) {
   return [...metrics].sort((a, b) => {
     const ai = PLUS_LEAGUE_METRICS.indexOf(a.key), bi = PLUS_LEAGUE_METRICS.indexOf(b.key);
