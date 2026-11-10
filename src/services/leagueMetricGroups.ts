@@ -1,4 +1,5 @@
 import type { LeagueMetric } from './leaguePerformance';
+import { leagueMetricPlan } from './leaguePerformance';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
 
 const GROUPS = [
@@ -60,7 +61,7 @@ const CATEGORIES: Record<string, string> = {
   "Offsides": "errors_discipline",
   "Yellow Cards": "errors_discipline",
   "Red Cards": "errors_discipline",
-  "Assists": "contribution_impact",
+  "Assists": "passing",
   "Substitutions": "contribution_impact",
   "Hit Woodwork": "shooting",
   "Assist Efficiency (%)": "passing",
@@ -125,12 +126,17 @@ const CATEGORIES: Record<string, string> = {
 };
 
 export function leagueMetricCategory(metric: LeagueMetric) {
-  return metric.category || CATEGORIES[metric.key] || (metric.key.startsWith('Expected ') ? 'expected' : 'other');
+  // Keep the move effective while older backend instances finish deploying.
+  if (metric.key === 'Assists') return 'passing';
+  return metric.category || (metric.key.startsWith('Expected ') && !metric.key.includes('Against')
+    ? 'expected' : CATEGORIES[metric.key]) || 'other';
 }
 export function groupLeagueMetrics(metrics: LeagueMetric[], tr: boolean) {
   return GROUPS.flatMap(([key, turkish, english]) => {
     const items = metrics.filter(metric => leagueMetricCategory(metric) === key);
+    const plans = {free: 0, plus: 1, pro: 2};
     return items.length ? [{key, label: tr ? turkish : english, metrics: items.sort((a, b) =>
+      plans[leagueMetricPlan(a)] - plans[leagueMetricPlan(b)] ||
       matchMetricLabel(a.label, tr ? 'tr' : 'en').localeCompare(matchMetricLabel(b.label, tr ? 'tr' : 'en'), tr ? 'tr-TR' : 'en-GB'))}] : [];
   });
 }
