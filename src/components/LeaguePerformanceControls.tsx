@@ -1,9 +1,10 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { LockKeyhole,Trophy,UserRound,X } from 'lucide-react-native';
+import { ArrowUpRight,CalendarDays,Clock3,LockKeyhole,Trophy,UserRound,X } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator,Image,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View } from 'react-native';
 
 import type { LeagueBestPlayer } from '@/services/leaguePerformance';
+import { sportmonksTeamImage } from '@/utils/sportmonksImages';
 
 export const fold = (s: string) => s.replace(/ı/g, 'i').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 export function Badge({url, size = 36, player = false}: {url?: string | null; size?: number; player?: boolean}) {
@@ -46,11 +47,34 @@ export function Status({text, busy = false, error = false}: {text: string; busy?
 
   return <View style={[styles.row, {justifyContent: 'center', padding: 22}]}>{busy && <ActivityIndicator color={ACCENT} />}<Text style={[styles.hint, {flexShrink: 1}, error && {color: DANGER}]} accessibilityLiveRegion="polite">{text}</Text></View>;
 }
-export function Winner({player, title, subtitle, compact = false, framed = true, pending, unavailable, tr, onPlayer}: {player?: LeagueBestPlayer | null; title?: string; subtitle?: string; compact?: boolean; framed?: boolean; pending?: boolean; unavailable?: boolean; tr: boolean; onPlayer: (player: LeagueBestPlayer) => void}) {
-  const themed = useThemedStyles(getModuleTheme);
-  const {styles, ACCENT} = themed;
-
-  return <View style={title && framed ? styles.winner : {gap: 8, width: '100%'}}>{title && <Text style={styles.winnerTitle}>{title}</Text>}{subtitle && <Text style={styles.hint}>{subtitle}</Text>}{player ? <Pressable accessibilityRole="button" accessibilityLabel={`${player.name}, ${tr ? 'Oyuncu Kartı' : 'Player Card'}`} onPress={() => onPlayer(player)}><View style={[styles.row, {justifyContent: 'flex-start'}]}><Badge url={player.imageUrl} size={44} player /><View style={{flex: 1, gap: 4}}><Text numberOfLines={compact ? 2 : undefined} style={styles.text}>{player.name} <Text style={{color: ACCENT}}>{player.averageRating.toFixed(2)}</Text></Text><Text numberOfLines={compact ? 1 : undefined} style={styles.hint}>{player.teamName}</Text><Text numberOfLines={compact ? 2 : undefined} style={styles.hint}>{player.ratedAppearances}/{player.appearances} {tr ? 'puanlı maç' : 'rated matches'} · {Math.round(player.minutes)} {tr ? 'dk' : 'min'}</Text><Text style={{color: ACCENT, fontSize: 11, fontWeight: '700'}}>{tr ? 'Oyuncu Kartı' : 'Player Card'}</Text></View></View></Pressable> : <Text style={styles.hint}>{pending ? (tr ? 'Oyuncu hesaplanıyor…' : 'Calculating player…') : unavailable ? (tr ? 'Oyuncu bilgisi yüklenemedi.' : 'Player data unavailable.') : (tr ? 'Puanlı oyuncu verisi yok.' : 'No rated player data.')}</Text>}</View>;
+export function Winner({player, title, subtitle, compact = false, framed = true, pending, unavailable, tr, onPlayer, tone = 'season'}: {player?: LeagueBestPlayer | null; title?: string; subtitle?: string; compact?: boolean; framed?: boolean; pending?: boolean; unavailable?: boolean; tr: boolean; onPlayer: (player: LeagueBestPlayer) => void; tone?: 'biweekly' | 'season'}) {
+  const {styles, ACCENT, MUTED, themeColor} = useThemedStyles(getModuleTheme);
+  const accent = tone === 'biweekly' ? themeColor('#FBBF24', 'text') : ACCENT;
+  const tint = tone === 'biweekly' ? 'rgba(245,158,11,.07)' : 'rgba(22,163,74,.06)';
+  const border = tone === 'biweekly' ? 'rgba(245,158,11,.28)' : 'rgba(22,163,74,.26)';
+  const rating = player?.averageRating.toLocaleString(tr ? 'tr-TR' : 'en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  return <View style={[framed ? styles.winner : {gap: 12, width: '100%'}, framed && {borderColor: themeColor(border, 'border'), backgroundColor: themeColor(tint, 'surface')}]}>
+    {title && <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}><Trophy size={16} color={accent}/><Text style={[styles.winnerTitle, {color: accent, flex: 1}]}>{title}</Text></View>}
+    {subtitle && <Text style={[styles.hint, {fontSize: 11, lineHeight: 16}]}>{subtitle}</Text>}
+    {player ? <Pressable accessibilityRole="button" accessibilityLabel={`${player.name}, ${tr ? 'Oyuncu Kartı' : 'Player Card'}`} onPress={() => onPlayer(player)} style={({pressed}) => ({gap: 14, opacity: pressed ? .78 : 1})}>
+      <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
+        <View style={styles.winnerPortrait}><Badge url={player.imageUrl} size={compact ? 52 : 64} player/></View>
+        <View style={{flex: 1, minWidth: 0, gap: 7}}>
+          <Text style={styles.winnerName}>{player.name}</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 5}}><Badge url={sportmonksTeamImage(player.teamId)} size={18}/><Text style={[styles.hint, {flex: 1, fontSize: 12}]}>{player.teamName}</Text></View>
+        </View>
+        <View style={[styles.winnerRating, {borderColor: themeColor(border, 'border'), backgroundColor: themeColor(tint, 'surface')}]}>
+          <Text style={{color: accent, fontSize: 24, fontWeight: '900', fontVariant: ['tabular-nums']}}>{rating}</Text>
+          <Text style={{color: MUTED, fontSize: 9, fontWeight: '700'}}>{tr ? 'ORT. PUAN' : 'AVG. RATING'}</Text>
+        </View>
+      </View>
+      <View style={{flexDirection: 'row', gap: 8}}>
+        <View style={styles.winnerStat}><CalendarDays size={15} color={accent}/><View style={{flexShrink: 1, gap: 2}}><Text style={styles.winnerStatValue}>{player.ratedAppearances}/{player.appearances}</Text><Text style={styles.winnerStatLabel}>{tr ? 'Puanlı maç' : 'Rated matches'}</Text></View></View>
+        <View style={styles.winnerStat}><Clock3 size={15} color={accent}/><View style={{flexShrink: 1, gap: 2}}><Text style={styles.winnerStatValue}>{Math.round(player.minutes).toLocaleString(tr ? 'tr-TR' : 'en-GB')}</Text><Text style={styles.winnerStatLabel}>{tr ? 'Dakika' : 'Minutes'}</Text></View></View>
+      </View>
+      <View style={styles.winnerFooter}><Text style={{color: accent, fontSize: 12, fontWeight: '800'}}>{tr ? 'Oyuncu Kartı' : 'Player Card'}</Text><ArrowUpRight size={16} color={accent}/></View>
+    </Pressable> : <View style={{flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10}}>{pending && <ActivityIndicator size="small" color={accent}/>}<Text style={[styles.hint, {flex: 1}]}>{pending ? (tr ? 'Oyuncu hesaplanıyor…' : 'Calculating player…') : unavailable ? (tr ? 'Oyuncu bilgisi yüklenemedi.' : 'Player data unavailable.') : (tr ? 'Puanlı oyuncu verisi yok.' : 'No rated player data.')}</Text></View>}
+  </View>;
 }
 
 
@@ -83,6 +107,13 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   option: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 46, marginBottom: 8, padding: 14, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: LINE},
   empty: {padding: 24, textAlign: 'center', color: MUTED, fontSize: 13},
   winner: {borderWidth: 1, borderColor: themeColor('rgba(245,158,11,.3)', 'border'), backgroundColor: themeColor('rgba(245,158,11,.05)', 'surface'), borderRadius: 14, padding: 14, gap: 12},
+  winnerPortrait: {borderRadius: 16, padding: 4, overflow: 'hidden', backgroundColor: CARD, borderWidth: 1, borderColor: LINE},
+  winnerName: {color: TEXT, fontSize: 17, fontWeight: '900', lineHeight: 22},
+  winnerRating: {minWidth: 68, paddingHorizontal: 8, paddingVertical: 9, borderRadius: 14, borderWidth: 1, alignItems: 'center', gap: 3},
+  winnerStat: {flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9, borderRadius: 12, borderWidth: 1, borderColor: LINE, backgroundColor: CARD, paddingHorizontal: 12, paddingVertical: 9},
+  winnerStatValue: {color: TEXT, fontSize: 15, fontWeight: '800', fontVariant: ['tabular-nums']},
+  winnerStatLabel: {color: MUTED, fontSize: 10, lineHeight: 14},
+  winnerFooter: {flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 5, borderTopWidth: 1, borderColor: LINE, paddingTop: 10},
   winnerTitle: {color: themeColor('#FCD34D', 'text'), fontSize: 13, fontWeight: '800'},
 });
   return {ACCENT, CARD, LINE, MUTED, PANEL, TEXT, DANGER, standingRuleMeta, styles, themeColor};

@@ -65,10 +65,13 @@ export function sortLeagueRows(rows: LeagueStanding[], teams: Record<string, Tea
   });
 }
 
-export const FREE_LEAGUE_METRICS = ['Goals', 'Shots Total', 'Shots On Target', 'Ball Possession %', 'Corners'];
-export const PLUS_LEAGUE_METRICS = [...FREE_LEAGUE_METRICS, 'Passes', 'Accurate Passes (%)', 'Fouls',
+export const FREE_LEAGUE_METRICS = ['Goals', 'Shots Total', 'Shots On Target', 'Ball Possession %', 'Corners',
+  'Fouls', 'Opponent Shots Total', 'Opponent Passes', 'Expected Goals'];
+export const PLUS_LEAGUE_METRICS = [...FREE_LEAGUE_METRICS, 'Passes', 'Accurate Passes (%)',
   'Attacks', 'Dangerous Attacks', 'Big Chances Created', 'Shots Insidebox', 'Shots Outsidebox',
-  'Accurate Passes', 'Key Passes', 'Total Crosses', 'Saves', 'Interceptions', 'Yellow Cards', 'Red Cards'];
+  'Accurate Passes', 'Key Passes', 'Total Crosses', 'Saves', 'Interceptions', 'Yellow Cards', 'Red Cards',
+  'Penalties Scored', 'Opponent Shots Outsidebox', 'Opponent Shots Insidebox',
+  'Opponent Accurate Passes', 'Opponent Accurate Passes (%)', 'Expected Points (xPTS)'];
 export function leagueMetricPlan(metric: LeagueMetric): 'free' | 'plus' | 'pro' {
   return metric.requiredTier || (FREE_LEAGUE_METRICS.includes(metric.key) ? 'free' : PLUS_LEAGUE_METRICS.includes(metric.key) ? 'plus' : 'pro');
 }
