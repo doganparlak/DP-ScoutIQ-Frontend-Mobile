@@ -43,8 +43,16 @@ export type LeagueInsights = {
   season: Summary & { team_metrics: Record<string, TeamSeasonMetrics>; metric_catalog: LeagueMetric[] };
   biweekly: (Summary & { period_start: string; period_end: string }) | null;
   periods: { period_start: string; period_end: string; fixture_count: number }[];
-  selectedPeriodStart: string; periodTimezone: string;
+  selectedPeriodStart: string | null; periodTimezone: string;
 };
+export function completedLeaguePeriods(periods: LeagueInsights['periods'], now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(now);
+  const part = (name: string) => parts.find(item => item.type === name)?.value || '';
+  const today = `${part('year')}-${part('month')}-${part('day')}`;
+  return periods.filter(period => period.period_end <= today && period.fixture_count > 0)
+    .sort((a, b) => b.period_start.localeCompare(a.period_start));
+}
+
 export function sortLeagueRows(rows: LeagueStanding[], teams: Record<string, TeamSeasonMetrics>, metric: string, perMatch: boolean, direction: "asc" | "desc") {
   if (!metric) return rows;
   return rows.filter(row => teams[String(row.teamId)]?.metrics[metric]?.[perMatch ? "perMatch" : "value"] != null).sort((a, b) => {
