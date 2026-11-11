@@ -334,3 +334,12 @@ export function normalizeMatchMetrics<T extends { name: string; value?: unknown 
   }
   return [...chosen].map(([name, metric]) => ({ ...metric, name }));
 }
+
+/** Accept stored numbers and formatted percentage values; never infer missing data as zero. */
+export function hasNonZeroReportValue(value: unknown): boolean {
+  if (typeof value !== 'number' && typeof value !== 'string') return false;
+  const raw = typeof value === 'string' ? value.trim().replace(/%/g, '').trim().replace(',', '.') : value;
+  if (raw === '') return false;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed !== 0;
+}

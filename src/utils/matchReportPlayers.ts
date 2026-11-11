@@ -1,4 +1,4 @@
-import { normalizeMatchMetrics } from "./matchReportMetrics";
+import { hasNonZeroReportValue, normalizeMatchMetrics } from "./matchReportMetrics";
 import { normalizeCrossingMetrics } from "./crossingMetrics";
 import type { MatchReportLineup, MatchReportEvent } from '@/services/matchPool';
 export const playerGroups = [
@@ -30,5 +30,5 @@ export function setPieceTarget(name: string) {
   return 'contribution_impact';
 }
 export function playerSections(player: MatchReportLineup) {
-  return playerGroups.map(([key, tr, en]) => ({ key, tr, en, metrics: normalizeMatchMetrics(normalizeCrossingMetrics([...(player.categories?.[key] || []), ...(player.categories?.set_pieces || []).filter(m => setPieceTarget(m.name) === key)])) })).filter(g => g.metrics.length);
+  return playerGroups.map(([key, tr, en]) => ({ key, tr, en, metrics: normalizeMatchMetrics(normalizeCrossingMetrics([...(player.categories?.[key] || []), ...(player.categories?.set_pieces || []).filter(m => setPieceTarget(m.name) === key)])).filter(metric => hasNonZeroReportValue(metric.value)) })).filter(g => g.metrics.length);
 }

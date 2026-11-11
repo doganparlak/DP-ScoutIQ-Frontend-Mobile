@@ -17,7 +17,16 @@ function metrics(team: MatchReportTeam | undefined, section: string): MatchRepor
   return section === 'expected' ? (team?.expected_metrics || []).filter(metric => metric.name !== 'Expected Goals Against (xGA)') : team?.categories?.[section] || [];
 }
 function numeric(value: unknown) {
-  return value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
+  return Number.isFinite(Number(value)) ? Number(value) : null;
+}
+function comparisonNames(left: MatchReportMetric[], right: MatchReportMetric[]) {
+  const rightValues = new Map(right.map(metric => [metric.name, numeric(metric.value)]));
+  return [...new Set(left.filter(metric => {
+    const lv = numeric(metric.value), rv = rightValues.get(metric.name);
+    return lv != null && rv != null && lv !== 0 && rv !== 0;
+  }).map(metric => metric.name))];
 }
 function format(value: unknown) {
   const number = numeric(value);
@@ -47,16 +56,18 @@ export default function MatchReportTeamComparison({ data, tr, preMatch = false }
   const [section, setSection] = useState('contribution_impact');
   const [pickerOpen, setPickerOpen] = useState(false);
   const scoped = period === 'overall' ? data.teams : data.period_teams?.[period] || [];
-  const available = groups.filter(([key]) => (!preMatch || key !== 'set_pieces') && (key !== 'expected' || period === 'overall') && scoped.some(team => metrics(team, key).length));
-  const active = available.find(([key]) => key === section) || available[0];
-  const key = active?.[0] || '';
   const home = data.teams.find(team => team.location === 'home') || data.teams[0];
   const away = data.teams.find(team => team.location === 'away') || data.teams[1];
-  const left = metrics(scoped.find(team => team.id === home?.id), key);
-  const right = metrics(scoped.find(team => team.id === away?.id), key);
+  const homeScoped = scoped.find(team => team.id === home?.id);
+  const awayScoped = scoped.find(team => team.id === away?.id);
+  const available = groups.filter(([key]) => (!preMatch || key !== 'set_pieces') && (key !== 'expected' || period === 'overall') && comparisonNames(metrics(homeScoped, key), metrics(awayScoped, key)).length > 0);
+  const active = available.find(([key]) => key === section) || available[0];
+  const key = active?.[0] || '';
+  const left = metrics(homeScoped, key);
+  const right = metrics(awayScoped, key);
   const preferred = key === 'expected' ? expectedMetricOrder : teamMetricOrder[key] || [];
   const rank = (name: string) => { const index = preferred.indexOf(name); return index < 0 ? preferred.length : index; };
-  const names = [...new Set(scoped.flatMap(team => metrics(team, key).map(metric => metric.name)))].sort((a, b) => rank(a) - rank(b));
+  const names = comparisonNames(left, right).sort((a, b) => rank(a) - rank(b));
   const periods: [Period, string][] = [['overall', tr ? 'Genel' : 'Overall'], ['first_half', tr ? '1. Yarı' : '1st Half'], ['second_half', tr ? '2. Yarı' : '2nd Half']];
   return <View style={s.page}>
     <View style={s.controls}>

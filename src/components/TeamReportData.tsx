@@ -4,7 +4,7 @@ import { Pressable,StyleSheet,Text,View } from 'react-native';
 
 import type { PostMatchCardData } from '@/services/matchPool';
 import type { Team } from '@/services/teamPool';
-import { matchMetricLabel } from '@/utils/matchReportMetrics';
+import { hasNonZeroReportValue,matchMetricLabel } from '@/utils/matchReportMetrics';
 import { aggregatePlayerData } from '@/utils/teamReportPlayerData';
 import { MatchReportSelector,Metrics } from './MatchReportPlayerAnalysis';
 import ReportPlayerPortrait from './ReportPlayerPortrait';
@@ -18,8 +18,9 @@ export function TeamReportTeamData({team,matches,metrics,tr}:{team:Team;matches:
   const {s, ACCENT} = themed;
 
  const [selected,setSelected]=useState(0);
- const available=groups.filter(g=>metrics[g[0]]?.length),group=available[selected]||available[0];
- return <View style={{gap:12}}><TeamReportHeader team={team} matches={matches} tr={tr}/><View style={s.frame}><Text style={s.caption}>{tr?'Tüm istatistikler maç başına gösterilir; oranlar yüzde olarak korunur.':'All statistics are per match; rates retain their percentages.'}</Text><MatchReportSelector label={tr?'Analiz Bölümü':'Analysis Section'} value={group?.[tr?1:2]||'—'} options={available.map((g,id)=>({id,name:g[tr?1:2]}))} onSelect={setSelected} accent={ACCENT}/></View><View style={s.grid}>{(group?metrics[group[0]]:[]).filter(m=>group?.[0]!=='contribution_impact'||!/^Shooting Performance(?: \(SP\))?$/i.test(m.name)).map(m=><View key={m.name} style={s.metric}><Text style={s.caption}>{matchMetricLabel(m.name,tr?'tr':'en')}</Text><Text style={s.value}>{m.perMatch.toLocaleString(tr?'tr-TR':'en-GB',{maximumFractionDigits:2})}{/%|percentage/i.test(m.name)?'%':''}</Text><Text style={s.coverage}>{m.matchesCovered} {tr?'maç':'matches'}</Text></View>)}</View>{!group&&<Text style={s.caption}>{tr?'Takım istatistiği bulunamadı.':'No team statistics available.'}</Text>}</View>;
+ const visibleMetrics=(key:string)=>(metrics[key]||[]).filter(m=>hasNonZeroReportValue(m.perMatch)&&m.matchesCovered>0&&(key!=='contribution_impact'||!/^Shooting Performance(?: \(SP\))?$/i.test(m.name)));
+ const available=groups.filter(g=>visibleMetrics(g[0]).length),group=available[selected]||available[0];
+ return <View style={{gap:12}}><TeamReportHeader team={team} matches={matches} tr={tr}/><View style={s.frame}><Text style={s.caption}>{tr?'Tüm istatistikler maç başına gösterilir; oranlar yüzde olarak korunur.':'All statistics are per match; rates retain their percentages.'}</Text><MatchReportSelector label={tr?'Analiz Bölümü':'Analysis Section'} value={group?.[tr?1:2]||'—'} options={available.map((g,id)=>({id,name:g[tr?1:2]}))} onSelect={setSelected} accent={ACCENT}/></View><View style={s.grid}>{(group?visibleMetrics(group[0]):[]).map(m=><View key={m.name} style={s.metric}><Text style={s.caption}>{matchMetricLabel(m.name,tr?'tr':'en')}</Text><Text style={s.value}>{m.perMatch.toLocaleString(tr?'tr-TR':'en-GB',{maximumFractionDigits:2})}{/%|percentage/i.test(m.name)?'%':''}</Text><Text style={s.coverage}>{m.matchesCovered} {tr?'maç':'matches'}</Text></View>)}</View>{!group&&<Text style={s.caption}>{tr?'Takım istatistiği bulunamadı.':'No team statistics available.'}</Text>}</View>;
 }
 export function TeamReportPlayerData({team,matches,reports,tr}:{team:Team;matches:number;reports:PostMatchCardData[];tr:boolean}){
   const themed = useThemedStyles(getModuleTheme);
