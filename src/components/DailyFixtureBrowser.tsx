@@ -1,12 +1,14 @@
+import BannerAdFreePrompt from './BannerAdFreePrompt';
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
 import {useMatchWatchlist} from '@/hooks/useMatchWatchlist';
 import {usePortfolioTeamIds} from '@/hooks/usePortfolioTeamIds';
 import {dailyFixtureKickoff as kickoff,orderDailyCompetitions} from '@/utils/dailyFixtureOrder';
-import {TutorialPageGuide} from '@/components/Tutorial';
+import {TutorialPageGuide,useTutorial} from '@/components/Tutorial';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {useIsFocused} from '@react-navigation/native';
 import {CalendarDays,ChartNoAxesCombined,ChevronLeft,ChevronRight,FileText,Shield,ShieldCheck,Star,Timer,Trophy,X} from 'lucide-react-native';
 import React from 'react';
-import {ActivityIndicator,AppState,FlatList,Image,Modal,Platform,Pressable,RefreshControl,SectionList,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,AppState,FlatList,Image,Modal,Platform,Pressable,RefreshControl,SectionList,StyleSheet,Text,View,type ViewToken} from 'react-native';
 import {getDailyFixtures,getMatchCalendarBounds,isLiveMatch,matchSaveType,matchStateLabel,type DailyFixtures,type MatchCalendarBounds,type MatchFixture} from '@/services/matchPool';
 import {createThemedStyles,useThemedStyles,type ThemeColors} from '@/theme';
 
@@ -21,8 +23,9 @@ function Logo({url,league=false,size=23}:{url?:string|null;league?:boolean;size?
  React.useEffect(()=>setFailed(false),[url]);
  return url&&!failed?<Image source={{uri:url}} resizeMode="contain" style={{width:size,height:size}} onError={()=>setFailed(true)}/>:league?<Trophy size={size} color={ACCENT}/>:<Shield size={size-1} color={ACCENT}/>;
 }
-export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport,reportBusy=false}:{tr:boolean;onSelect:(fixture:MatchFixture)=>void;onFixtures:(fixtures:MatchFixture[])=>void;onOpenReport:(fixture:MatchFixture)=>void;reportBusy?:boolean}){
+export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport,reportBusy=false,showBanners=false}:{tr:boolean;onSelect:(fixture:MatchFixture)=>void;onFixtures:(fixtures:MatchFixture[])=>void;onOpenReport:(fixture:MatchFixture)=>void;reportBusy?:boolean;showBanners?:boolean}){
  const {s,ACCENT,TEXT,MUTED,DANGER}=useThemedStyles(getTheme);
+ const tutorial=useTutorial();
  const focused=useIsFocused();const [foreground,setForeground]=React.useState(AppState.currentState==='active');
  const [day,setDay]=React.useState(localDay);const [anchor,setAnchor]=React.useState(localDay);const [calendar,setCalendar]=React.useState(false);
  const [draft,setDraft]=React.useState(dayDate(day));const [data,setData]=React.useState<DailyFixtures|null>(null);const [loading,setLoading]=React.useState(false);const [error,setError]=React.useState(false);
@@ -84,9 +87,26 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
  const sections=React.useMemo(()=>{
   const visible=(data?.fixtures||[]).filter(fixture=>!liveOnly||live(fixture));
   const ordered=orderDailyCompetitions(visible,portfolioTeamIds,locale);
+  const leagues=ordered.map((section,index)=>({
+   ...section, bannerAfter:index<ordered.length-1 ? `${day}:${section.key}` : undefined,
+  }));
   const tracked=visible.filter(fixture=>watchlist.ids.has(fixture.fixtureId));
-  return tracked.length?[{key:'watchlist',title:tr?'Takip Ettiklerin':'Following',priority:-1,prioritized:true,watchlist:true,data:tracked},...ordered]:ordered;
- },[data,locale,watchlist.ids,tr,liveOnly,portfolioTeamIds]);
+  return tracked.length?[{key:'watchlist',title:tr?'Takip Ettiklerin':'Following',priority:-1,prioritized:true,watchlist:true,data:tracked,bannerAfter:undefined},...leagues]:leagues;
+ },[data,locale,watchlist.ids,tr,liveOnly,portfolioTeamIds,day]);
+ const [nearbyBanners,setNearbyBanners]=React.useState<Set<string>>(()=>new Set());
+ const onViewableItemsChanged=React.useCallback(({viewableItems}:{viewableItems:ViewToken[]})=>{
+  const nearby=viewableItems.flatMap(token=>{
+   const section=(token as ViewToken & {section?:{bannerAfter?:string;data:MatchFixture[]}}).section;
+   return section?.bannerAfter && (token.index===null || (token.index??-1)>=section.data.length-1)
+    ? [section.bannerAfter] : [];
+  });
+  if(nearby.length) setNearbyBanners(previous=>{
+   if(nearby.every(key=>previous.has(key)))return previous;
+   return new Set([...previous,...nearby]);
+  });
+ },[]);
+ const [bannerUpsell,setBannerUpsell]=React.useState(false);
+ const bannersVisible=showBanners && focused && foreground && !tutorial.active;
  const dateTitle=dayDate(day).toLocaleDateString(locale,{day:'numeric',month:'long',year:'numeric'});
  const minimum=dayDate(bounds?.minDate??localDay()),maximum=dayDate(bounds?.maxDate??localDay());
  return <View style={{flex:1}}>
@@ -105,7 +125,10 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
   <View style={{marginHorizontal:16}}><TutorialPageGuide page="matchDaily" frame={1} summaryLines={0}/></View>
   {watchlist.error&&<Pressable accessibilityRole="button" onPress={()=>setRefresh(value=>value+1)} style={{paddingHorizontal:18,paddingBottom:12}}><Text style={{color:DANGER,fontSize:12}}>{tr?'Takip listen yenilenemedi. Tekrar dene.':'Could not refresh your watchlist. Tap to retry.'}</Text></Pressable>}
   {!!error&&!data&&<Pressable accessibilityRole="button" onPress={manualRefresh} style={{paddingHorizontal:18,paddingBottom:12}}><Text style={{color:DANGER,fontSize:13}}>{tr?'Maçlar yüklenemedi. Yeniden dene.':'Could not load matches. Tap to retry.'}</Text></Pressable>}
-  <SectionList key={day} sections={sections} keyExtractor={item=>String(item.fixtureId)} stickySectionHeadersEnabled contentContainerStyle={{padding:16,paddingTop:0,paddingBottom:32,flexGrow:1}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={manualRefresh} tintColor={ACCENT} colors={[ACCENT]}/>} renderSectionHeader={({section})=><View style={s.leagueHeading}><View style={{width:28,height:28,alignItems:'center',justifyContent:'center'}}>{section.watchlist?<Star size={19} strokeWidth={1.6} color={ACCENT} fill={ACCENT}/>:<Logo url={section.imageUrl} league size={28}/>}</View><Text style={s.leagueText}>{section.title}</Text></View>} renderSectionFooter={()=> <View style={{height:18}}/>}
+  <SectionList key={day} sections={sections} keyExtractor={item=>String(item.fixtureId)} stickySectionHeadersEnabled onViewableItemsChanged={onViewableItemsChanged} extraData={nearbyBanners} contentContainerStyle={{padding:16,paddingTop:0,paddingBottom:32,flexGrow:1}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={manualRefresh} tintColor={ACCENT} colors={[ACCENT]}/>} renderSectionHeader={({section})=><View style={s.leagueHeading}><View style={{width:28,height:28,alignItems:'center',justifyContent:'center'}}>{section.watchlist?<Star size={19} strokeWidth={1.6} color={ACCENT} fill={ACCENT}/>:<Logo url={section.imageUrl} league size={28}/>}</View><Text style={s.leagueText}>{section.title}</Text></View>} renderSectionFooter={({section})=>bannersVisible && section.bannerAfter
+    ? <InlineBannerSlot key={section.bannerAfter} canLoad={nearbyBanners.has(section.bannerAfter)} tr={tr}
+      onClose={()=>setBannerUpsell(true)}/>
+    : <View style={{height:18}}/>}
    ListEmptyComponent={loading&&!refreshing?<ActivityIndicator color={ACCENT} style={{padding:36}}/>:<View style={s.empty}>{liveOnly?<Timer size={32} color={ACCENT}/>:<CalendarDays size={32} color={ACCENT}/>}<Text style={s.title}>{error?(tr?'Maçlar yüklenemedi':'Could not load matches'):liveOnly?(tr?'Bu tarihte canlı maç yok.':'No live matches on this date.'):(tr?'Bu tarihte maç bulunmuyor':'No matches on this date')}</Text><Text style={{color:MUTED,textAlign:'center'}}>{liveOnly?(tr?'Tüm maçları görmek için kronometreye tekrar dokun.':'Tap the stopwatch again to show all matches.'):(tr?'Başka bir gün seçebilir veya Takım Fikstürü’nden arayabilirsin.':'Choose another date or use Team Fixtures.')}</Text></View>}
    renderItem={({item})=>{const playing=live(item);const phase=matchSaveType(item);const reportType=phase==='pre_match'&&item.forecastAvailable!==true?null:phase;const upcoming=['NS','TBA','POSTP','POST','DELAYED','CANC','CANCL','ABAN'].includes(item.state.code.toUpperCase());return <View style={s.fixture}><View style={{flexDirection:'row',alignItems:'center'}}><Pressable testID={`daily-match-${item.fixtureId}`} accessibilityRole="button" accessibilityLabel={`${item.homeTeam.name}, ${item.awayTeam.name}, ${matchStateLabel(item,tr)}`} onPress={()=>onSelect(item)} style={({pressed})=>[s.match,{flex:1},pressed&&{opacity:.7}]}>
     <View style={s.time}><Text style={[s.timeText,playing&&{color:ACCENT}]}>{playing?(item.minute?`${item.minute}′`:tr?'Canlı':'Live'):kickoff(item).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</Text><Text style={{color:playing?ACCENT:MUTED,fontSize:10,textAlign:'center'}}>{matchStateLabel(item,tr)}</Text></View>
@@ -118,6 +141,7 @@ export default function DailyFixtureBrowser({tr,onSelect,onFixtures,onOpenReport
     {reportType==='pre_match'?<ChartNoAxesCombined size={16} color={ACCENT}/>:<FileText size={16} color={ACCENT}/>}<Text style={s.reportLabel}>{reportType==='pre_match'?<>{!tr&&'See '}<Text style={{color:TEXT}}>Scout<Text style={{color:ACCENT}}>Wise</Text></Text>{tr?'’ın Tahminini Gör':'’s Prediction'}</>:(tr?'Maç Sonu Raporu':'Post-Match Report')}</Text>
    </Pressable>}
    </View>;}}/>
+  <BannerAdFreePrompt visible={bannersVisible && bannerUpsell} tr={tr} onClose={()=>setBannerUpsell(false)}/>
   {calendar&&(Platform.OS==='android'?<DateTimePicker value={draft} mode="date" minimumDate={minimum} maximumDate={maximum} onChange={(event,value)=>{setCalendar(false);if(event.type==='set'&&value)choose(localDay(value));}}/>:<Modal visible transparent animationType="fade" onRequestClose={()=>setCalendar(false)}><View style={s.backdrop}><View style={s.calendar}><View style={s.dateHeading}><Text style={[s.title,{flex:1}]}>{tr?'Tarih Seç':'Choose Date'}</Text><Pressable accessibilityRole="button" accessibilityLabel={tr?'Kapat':'Close'} onPress={()=>setCalendar(false)} style={s.icon}><X size={23} color={DANGER}/></Pressable></View><DateTimePicker key={locale} locale={locale} value={draft} mode="date" display="inline" minimumDate={minimum} maximumDate={maximum} onChange={(_,value)=>{if(value)setDraft(value);}}/><Pressable style={[s.dateButton,s.selected]} onPress={()=>{choose(localDay(draft));setCalendar(false);}}><Text style={{color:ACCENT,fontWeight:'800'}}>{tr?'Tamam':'Done'}</Text></Pressable></View></View></Modal>)}
  </View>;
 }

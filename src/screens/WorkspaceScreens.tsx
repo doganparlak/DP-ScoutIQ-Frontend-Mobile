@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 
 import { ContractDateFilter,ContractStatusFilter,type ContractStatus } from '@/components/ContractFilters';
@@ -5,13 +7,13 @@ import FavoritePlayers from '@/components/FavoritePlayers';
 import PortfolioRoleFilter from '@/components/PortfolioRoleFilter';
 import SharedMatchupCenter from '@/components/SharedMatchupCenter';
 import { getMe,type Plan } from '@/services/api';
-import { useFocusEffect,useRoute } from '@react-navigation/native';
+import { useFocusEffect,useIsFocused,useRoute } from '@react-navigation/native';
 import { BarChart3,BookMarked,CalendarSearch,Database,ListFilter,RotateCcw,Shield,Trophy } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable,ScrollView,StyleSheet,Text,TextInput,View } from 'react-native';
 
-import { TutorialPageGuide } from '@/components/Tutorial';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 
 const MemoizedFavoritePlayers = React.memo(FavoritePlayers);
 
@@ -21,11 +23,24 @@ export function PortfolioWorkspaceScreen() {
 
   const { t, i18n } = useTranslation();
   const tr = i18n.language.startsWith('tr');
-  const [plan, setPlan] = React.useState<Plan>('Free');
+  const isFocused = useIsFocused();
+  const tutorial = useTutorial();
+  const [plan, setPlan] = React.useState<Plan>("Free");
+  const [isFree, setIsFree] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   useFocusEffect(React.useCallback(() => {
     let active = true;
-    getMe().then(me => { const current = me.plan; if (active) setPlan(current === 'No Ads Monthly' || current === 'Pro Monthly' || current === 'Pro Yearly' ? current : 'Free'); }).catch(() => { if (active) setPlan('Free'); });
-    return () => { active = false; };
+    getMe().then(me => {
+      if (!active) return;
+      const current = me.plan;
+      setPlan(current === 'No Ads Monthly' || current === 'Pro Monthly' || current === 'Pro Yearly' ? current : 'Free');
+      setIsFree(current === 'Free');
+    }).catch(() => { if (active) setPlan('Free'); });
+    return () => {
+      active = false;
+      setIsFree(false);
+      setBannerPrompt(false);
+    };
   }, []));
   const [values, setValues] = React.useState<Record<string, string>>({});
   const [status, setStatus] = React.useState<ContractStatus>('');
@@ -34,6 +49,7 @@ export function PortfolioWorkspaceScreen() {
   const portfolioFilters = React.useMemo(() => ({ values, status, roles }), [values, status, roles]);
   const deferredPortfolioFilters = React.useDeferredValue(portfolioFilters);
   const update = (key: string, value: string) => setValues(previous => ({ ...previous, [key]: value }));
+  const showBanner = isFocused && isFree && !tutorial.active;
   const fields = [['name', tr ? 'Oyuncu Adı' : 'Player Name'], ['country', tr ? 'Ülke' : 'Country'], ['team', tr ? 'Takım' : 'Team']];
   return <ScrollView ref={pageScroll} style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <View style={[styles.panel, { borderColor: ACCENT }]}>
@@ -56,6 +72,8 @@ export function PortfolioWorkspaceScreen() {
 
     </View>
     <TutorialPageGuide page="playerPortfolio" onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+    {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
+    <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
     <MemoizedFavoritePlayers plan={plan} workspaceFilters={deferredPortfolioFilters} />
   </ScrollView>;
 }

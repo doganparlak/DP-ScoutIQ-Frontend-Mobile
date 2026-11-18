@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { LeagueCard } from './LeaguePoolScreen';
 import { searchLeagues } from '@/services/leaguePool';
 import type { SearchResultRow } from '@/components/CandidatePlayers';
@@ -6,7 +8,7 @@ import { readLeaguePerformance, writeLeaguePerformance, type CachedLeaguePerform
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { Table2,Trophy } from 'lucide-react-native';
 import React from 'react';
-import { useFocusEffect,useNavigation,useRoute,type RouteProp } from '@react-navigation/native';
+import { useFocusEffect,useIsFocused,useNavigation,useRoute,type RouteProp } from '@react-navigation/native';
 import type { MainTabsParamList } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { Pressable,ScrollView,StyleSheet,Text,useWindowDimensions,View } from 'react-native';
@@ -14,7 +16,7 @@ import { getThemed_styles as __getThemed_shared,Action,SelectField,Selector,Stat
 import LeagueKnockoutRounds from '@/components/LeagueKnockoutRounds';
 import LeaguePerformanceStandings from '@/components/LeaguePerformanceStandings';
 import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
-import { TutorialPageGuide } from '@/components/Tutorial';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import { getLeagueStandings,searchLeaguePerformance,type LeagueResult,type LeagueStandings,type LeagueScope } from '@/services/leaguePerformance';
 
 function Section({title,children,action,Icon=Table2}: {title:string;children:React.ReactNode;action?:React.ReactNode;Icon?:typeof Table2}) {
@@ -25,6 +27,10 @@ export default function LeaguePerformanceScreen() {
   const {BG,styles,shared,ACCENT,MUTED}=useThemedStyles(getModuleTheme);
   const {i18n}=useTranslation(),tr=i18n.language.startsWith('tr');
   const nav=useNavigation<any>();
+  const isFocused = useIsFocused();
+  const tutorial = useTutorial();
+  const [isFree, setIsFree] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const route=useRoute<RouteProp<MainTabsParamList,'LeaguePerformance'>>();
   const {width}=useWindowDimensions();
   const pageScroll=React.useRef<ScrollView>(null);
@@ -55,6 +61,7 @@ export default function LeaguePerformanceScreen() {
       try {
         const me=await getMe();
         if(!active)return;
+        setIsFree(me.plan === "Free");
         if(cacheUser.current!==me.id){lastSearch.current=null;setLeagueCard(undefined);setRows([]);setStandings(null);setScopeSelector(false);}
         cacheUser.current=me.id;
         const incoming=route.params?.analysisRequest!==handledRequest.current?route.params?.league:undefined;
@@ -78,7 +85,11 @@ export default function LeaguePerformanceScreen() {
       }catch{if(active)setRestoreError(true);}
       finally{if(active)setRestoring(false);}
     })();
-    return()=>{active=false;};
+    return () => {
+      active = false;
+      setIsFree(false);
+      setBannerPrompt(false);
+    };
   },[route.params?.analysisRequest,route.params?.league,restoreRetry]));
   React.useEffect(()=>{
     let active=true;
@@ -122,9 +133,12 @@ export default function LeaguePerformanceScreen() {
   const selected=rows[0];
   const table=standings?.tables.find(item=>item.key===tableKey);
   const currentStandings=standings?.leagueId===selectedId?standings:null;
+  const showBanner = isFocused && isFree && !tutorial.active && !!leagueCard;
   return <ScrollView ref={pageScroll} style={{flex:1,backgroundColor:BG}} contentContainerStyle={[styles.page,{paddingHorizontal:pagePadding}]}>
     <TutorialPageGuide page="leaguePerformance" frame={0} summaryLines={0} onShow={showGuide}/>
     <LeagueCard row={leagueCard} tr={tr} added={false} full={false} hideActions onAdd={()=>{}} onAnalyze={()=>{}} headerAction={<WorkspaceSourceActions header sources={[{label:tr?'Lig Havuzu':'League Pool',Icon:Trophy,onPress:()=>nav.navigate('LeaguePool')}]}/>} emptyContent={!leagueCard?<View style={{gap:10}}><Status busy={!cardError&&!restoreError} error={cardError||restoreError} text={cardError||restoreError?(tr?'Lig kartı yüklenemedi.':'Could not load league card.'):(tr?'Lig kartı yükleniyor…':'Loading league card…')}/>{(cardError||restoreError)&&<Action label={tr?'Tekrar Dene':'Retry'} onPress={()=>{setCardRetry(v=>v+1);if(restoreError)setRestoreRetry(v=>v+1);}}/>}</View>:undefined}/>
+    {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
+    <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
     <TutorialPageGuide page="leaguePerformance" frame={1} summaryLines={0} onShow={showGuide}/>
     <Section title={tr ? 'Lig Analiz Merkezi' : 'League Analysis Center'}>
         {currentStandings?.stageScoped && <View style={{marginBottom: 14}}><SelectField label={tr ? 'Aşama' : 'Stage'} value={scopeOptions.find(option => option.key === scope)!.label} onPress={() => setScopeSelector(true)} /></View>}

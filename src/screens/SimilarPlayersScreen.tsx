@@ -1,3 +1,6 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
+import { useReportReward } from '@/ads/useReportReward';
 import { readSimilarReference,writeSimilarReference } from '@/services/similarReferenceCache';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { ContractDateFilter,ContractStatusFilter } from '@/components/ContractFilters';
@@ -5,14 +8,14 @@ import { Action,Badge,SelectField,Selector,Status } from '@/components/LeaguePer
 import LeaguePlayerCardModal from '@/components/LeaguePlayerCardModal';
 import PlayerCard from '@/components/PlayerCard';
 import SimilarPlayersUpgradeModal from '@/components/SimilarPlayersUpgradeModal';
-import { TutorialPageGuide } from '@/components/Tutorial';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
 import { getMe,getPlayerPoolOptions,searchPlayerPool,type PlayerPoolFilterOptions } from '@/services/api';
 import { emptySimilarFilters,findSimilarPlayers,getSimilarEligibility,nextSimilarCount,similarFiltersValid,similarMoreAction,similarResultLimit,type SimilarFilters,type SimilarMatch,type SimilarReference } from '@/services/similarPlayers';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { portfolioViewportHeight } from '@/utils/portfolioLayout';
 import { useFocusEffect,useIsFocused,useNavigation,useRoute } from '@react-navigation/native';
-import { BookMarked,CalendarX2,ChevronDown,Gem,ListFilter,RotateCcw,Search,UserRound,UsersRound } from 'lucide-react-native';
+import { BookMarked,CalendarX2,ChevronDown,Gem,ListFilter,Play,RotateCcw,Search,UserRound,UsersRound } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View,useWindowDimensions } from 'react-native';
@@ -31,6 +34,9 @@ export default function SimilarPlayersScreen(){
   const {t,i18n}=useTranslation(),tr=i18n.language.startsWith('tr'),focused=useIsFocused();
   const {width,height,fontScale}=useWindowDimensions(),pairColumns=(width-66)/Math.max(1,fontScale)>=240;
   const route=useRoute<any>(),nav=useNavigation<any>(),ads=useWorkspaceActionAd();
+  const tutorial = useTutorial();
+  const [isFree, setIsFree] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const resultScroll=React.useRef<ScrollView>(null),revealNewRows=React.useRef(false);
   const scroll=React.useRef<ScrollView>(null),mounted=React.useRef(true),epoch=React.useRef(0),searchLock=React.useRef(false);
   const [reference,setReference]=React.useState<SimilarReference|null>(null),[eligibility,setEligibility]=React.useState<'idle'|'checking'|'eligible'|'insufficient'|'error'>('idle');
@@ -41,9 +47,27 @@ export default function SimilarPlayersScreen(){
   const referenceOwner=React.useRef<number|null>(null);
   const referenceRef=React.useRef(reference);referenceRef.current=reference;
   const handledReference=React.useRef<SimilarReference|undefined>(undefined);
+  const [hasMoreCandidates, setHasMoreCandidates] = React.useState<boolean | undefined>();
+  const [rewardedEnabled, setRewardedEnabled] = React.useState(false);
+  const baseLimit = React.useRef<number | null>(null);
   const [upgrade,setUpgrade]=React.useState<'plus'|'pro'|'done'|null>(null);
+  const upgradeRef = React.useRef(upgrade);
+  upgradeRef.current = upgrade;
   React.useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;epoch.current++;};},[]);
-  useFocusEffect(React.useCallback(()=>{let active=true;getMe().then(me=>{if(active){const cap=similarResultLimit(me.plan);setLimit(cap);setResults(rows=>rows?rows.slice(0,cap):null);setVisibleCount(count=>Math.min(count,cap));}}).catch(()=>{});return()=>{active=false;epoch.current++;setCard(null);setUpgrade(null);};},[]));
+  useFocusEffect(React.useCallback(()=>{let active=true;getMe().then(me=>{if(active){
+    setIsFree(me.plan === "Free");
+    const cap=similarResultLimit(me.plan);
+    if (baseLimit.current !== cap) {
+      const previousBase = baseLimit.current;
+      baseLimit.current = cap;
+      if (previousBase === null) setLimit(current => Math.max(current, cap));
+      else {
+        setLimit(cap);
+        setResults(rows => rows ? rows.slice(0, cap) : null);
+        setVisibleCount(count => Math.min(count, cap));
+        if (cap < previousBase) setHasMoreCandidates(undefined);
+      }
+    }}}).catch(()=>{});return()=>{active=false;epoch.current++;setCard(null);setUpgrade(null);setIsFree(false);setBannerPrompt(false);};},[]));
   React.useEffect(()=>{if(!reference)return;let active=true;setOptionsError(false);getPlayerPoolOptions().then(value=>{if(active)setOptions(value);}).catch(()=>{if(active)setOptionsError(true);});return()=>{active=false;};},[optionsRetry,!!reference]);
   useFocusEffect(React.useCallback(()=>{
     let active=true;
@@ -75,16 +99,81 @@ export default function SimilarPlayersScreen(){
   const criteria:SimilarFilters={...filters,minAge:minAge.trim()?Number(minAge):undefined,maxAge:maxAge.trim()?Number(maxAge):undefined};
   const criteriaValid=similarFiltersValid(criteria)&&(!minAge||/^\d+$/.test(minAge))&&(!maxAge||/^\d+$/.test(maxAge));
   const currentKey=JSON.stringify([reference?.id,criteria]);
+  const matchingSearch = !!results && currentKey === searchedKey;
+  const reachedLimit = matchingSearch && visibleCount >= results.length;
+  const canExpand = reachedLimit && hasMoreCandidates === true && limit < 15;
+  const reward = useReportReward(`similar:${searchedKey}`, canExpand ? 'more' : undefined,
+    focused && matchingSearch && rewardedEnabled);
+  const earnedBatches = reward.unlockedSections.length;
+  const hasUnusedReward = baseLimit.current !== null && Math.min(15, baseLimit.current + 3 * earnedBatches) > limit;
+  const canWatch = canExpand && reward.available && !hasUnusedReward;
+  React.useEffect(() => {
+    if (canWatch) reward.prepare('more');
+  }, [canWatch, reward]);
+
+  function applyResults(result: Awaited<ReturnType<typeof findSimilarPlayers>>) {
+    setResults(result.rows);
+    setLimit(result.limit);
+    setHasMoreCandidates(result.hasMore);
+    setRewardedEnabled(result.rewardedEnabled);
+  }
+
+  async function revealRewardedResults(batches: number) {
+    if (!reference || !matchingSearch || searchLock.current) return;
+    searchLock.current = true;
+    setLoading(true);
+    setError('');
+    const version = ++epoch.current;
+    try {
+      const result = await findSimilarPlayers(reference.id, criteria, batches);
+      if (!mounted.current || version !== epoch.current) return;
+      revealNewRows.current = true;
+      applyResults(result);
+      setVisibleCount(count => nextSimilarCount(count, result.rows.length));
+    } catch {
+      if (mounted.current && version === epoch.current) {
+        setError(tr ? 'Ek oyuncular yüklenemedi. Tekrar deneyebilirsin.' : 'Could not load the additional players. You can try again.');
+      }
+    } finally {
+      searchLock.current = false;
+      if (mounted.current) setLoading(false);
+    }
+  }
+
+  function dismissUnavailable() {
+    if (!reward.claimUnavailableReward()) return;
+    setUpgrade(null);
+    void revealRewardedResults(earnedBatches + 1);
+  }
+
+  async function watchForMore() {
+    const version = epoch.current;
+    const section = `batch-${earnedBatches + 1}`;
+    if (!await reward.watch('more', section, () => upgradeRef.current !== null && epoch.current === version) || epoch.current !== version) return;
+    setUpgrade(null);
+    await revealRewardedResults(earnedBatches + 1);
+  }
   async function search(){
     if(!reference||eligibility!=='eligible'||!criteriaValid||searchLock.current)return;
     searchLock.current=true;setLoading(true);setError('');const version=++epoch.current,source=reference.id,input=criteria,key=currentKey;
-    try{await ads.run('similarPlayersSearch',async()=>{const value=await findSimilarPlayers(source,input);if(mounted.current&&version===epoch.current){setResults(value.rows);setLimit(value.limit);setVisibleCount(3);setSearchedKey(key);}});}
+    try{await ads.run('similarPlayersSearch',async()=>{const value=await findSimilarPlayers(source,input,matchingSearch ? earnedBatches : 0);if(mounted.current&&version===epoch.current){applyResults(value);setVisibleCount(3);setSearchedKey(key);}});}
     catch(reason){if(mounted.current&&version===epoch.current){const message=reason instanceof Error?reason.message:String(reason);setError(message.includes('similarity_source_insufficient')?(tr?'Bu oyuncu için güvenilir benzerlik analizi yapmaya yetecek veri yok.':'This player does not have enough data for reliable similarity analysis.'):(tr?'Benzer oyuncular yüklenemedi. Lütfen tekrar dene.':'Similar players could not be loaded. Please try again.'));}}
     finally{searchLock.current=false;if(mounted.current)setLoading(false);}
   }
-  function showMore(){const action=similarMoreAction(limit,shown.length,results?.length||0);if(action==='more'){revealNewRows.current=true;setVisibleCount(count=>nextSimilarCount(count,Math.min(results?.length||0,limit)));}else if(action==='plus'||action==='pro')setUpgrade(action);else setUpgrade('done');}
+  function showMore() {
+    if (canExpand && hasUnusedReward) { void revealRewardedResults(earnedBatches); return; }
+    const action = similarMoreAction(limit, shown.length, results?.length || 0);
+    if (action === 'more') {
+      revealNewRows.current = true;
+      setVisibleCount(count => nextSimilarCount(count, Math.min(results?.length || 0, limit)));
+    } else if (canExpand) {
+      setUpgrade(limit === 3 ? 'plus' : 'pro');
+    } else if (hasMoreCandidates === false || !matchingSearch) setUpgrade('done');
+    else setUpgrade(action);
+  }
   function reset(){setFilters(emptySimilarFilters());setMinAge('');setMaxAge('');}
   function toggleOption(value:string){if(!selector)return;setFilters(current=>{const values=current[selector];if(!values.includes(value)&&values.length>=50){Alert.alert(tr?'Seçim sınırı':'Selection limit',tr?'En fazla 50 seçenek seçebilirsin.':'Select up to 50 options.');return current;}return {...current,[selector]:value?(values.includes(value)?values.filter(v=>v!==value):[...values,value]):[]};});}
+  const showBanner = focused && isFree && !tutorial.active && !!reference && eligibility === "eligible";
   const shown=(results||[]).slice(0,Math.min(visibleCount,limit));
   return <ScrollView ref={scroll} style={{flex:1,backgroundColor:BG}} contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
     {referenceLoading && !reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><ActivityIndicator color={ACCENT} style={{padding:24}}/></Frame>:!reference?<Frame title={t('similarPlayersWorkspace')} Icon={UsersRound}><View style={{gap:16}}><Text style={s.caption}>{tr?'Oyuncu Havuzu, Oyuncu Portföyü veya ScoutWise Pro’dan bir oyuncu seç. Kartındaki “Benzeri” butonuyla alternatif profilleri keşfet.':'Choose a player from Player Pool, Player Portfolio or ScoutWise Pro. Use Similar on their card to explore alternative profiles.'}</Text><WorkspaceSourceActions sources={[
@@ -100,6 +189,7 @@ export default function SimilarPlayersScreen(){
     </Frame>
     {eligibility==='eligible'&&<>
     <TutorialPageGuide page="similarPlayers" frame={0} onShow={y=>scroll.current?.scrollTo({y:Math.max(0,y-12),animated:true})}/>
+    {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
     <Frame title={t('similarPlayersFiltersTitle')} Icon={ListFilter} action={<View style={{flexDirection:'row',alignItems:'center',gap:20}}><Pressable accessibilityRole="button" accessibilityLabel={tr?'Tarihleri temizle':'Clear dates'} disabled={loading||ads.busy||(!filters.contractEndDate&&!filters.loanEndDate)} style={(!filters.contractEndDate&&!filters.loanEndDate)||loading||ads.busy?{opacity:.4}:undefined} hitSlop={8} onPress={()=>setFilters(current=>({...current,contractEndDate:'',loanEndDate:''}))}><CalendarX2 size={20} color={ACCENT}/></Pressable><Pressable accessibilityRole="button" accessibilityLabel={tr?'Filtreleri temizle':'Clear filters'} disabled={loading} onPress={reset} hitSlop={10}><RotateCcw size={20} color={DANGER}/></Pressable></View>}>
       <View style={{gap:14}}><View style={[s.filterPair,!pairColumns&&{flexDirection:'column'}]}><View style={[s.filterCell,!pairColumns&&{flex:0}]}><SelectField compact additionalCount={Math.max(0,filters.nationality.length-1)} label={tr?'Ülke / Uyruk':'Country / Nationality'} value={filters.nationality[0]||(tr?'Çoklu seçim':'Multiple selections')} onPress={()=>{if(!loading&&!ads.busy)setSelector('nationality');}}/></View><View style={[s.filterCell,!pairColumns&&{flex:0}]}><Text style={s.caption}>{tr?'Yaş (Min / Maks)':'Age (Min / Max)'}</Text><View style={s.range}><View style={{flex:1,gap:7}}><TextInput accessibilityLabel={tr?'Minimum yaş':'Minimum age'} keyboardType="number-pad" value={minAge} onChangeText={setMinAge} placeholder="Min" placeholderTextColor={MUTED} style={[s.input,{paddingHorizontal:8}]} maxLength={2}/></View><View style={{flex:1,gap:7}}><TextInput accessibilityLabel={tr?'Maksimum yaş':'Maximum age'} keyboardType="number-pad" value={maxAge} onChangeText={setMaxAge} placeholder={tr?'Maks':'Max'} placeholderTextColor={MUTED} style={[s.input,{paddingHorizontal:8}]} maxLength={2}/></View></View></View></View>
       {!criteriaValid&&<Text style={{color:DANGER,fontSize:12}}>{tr?'Yaş aralığı 14–60 olmalı; minimum yaş maksimumdan büyük olamaz.':'Ages must be between 14 and 60, with minimum no greater than maximum.'}</Text>}
@@ -111,17 +201,18 @@ export default function SimilarPlayersScreen(){
     </Frame>
     <TutorialPageGuide page="similarPlayers" frame={1} onShow={y=>scroll.current?.scrollTo({y:Math.max(0,y-12),animated:true})}/>
     {(results!==null||loading||!!error)&&<Frame title={t('similarPlayersResultsTitle')} Icon={UsersRound}>
-      <View style={{gap:12}}><Text style={s.caption}>{tr?`Sonuçlar üçerli gösterilir. Planın en fazla ${limit} oyuncuyu kapsar.`:`Results appear in groups of three. Your plan includes up to ${limit} players.`}</Text>
+      <View style={{gap:12}}><Text style={s.caption}>{tr?`Sonuçlar üçerli gösterilir. Bu aramada en fazla ${limit} oyuncu gösterilir.`:`Results appear in groups of three. This search shows up to ${limit} players.`}</Text>
       {!!error&&<View style={{gap:10}}><Text style={{color:DANGER}}>{error}</Text><Action label={tr?'Tekrar Dene':'Retry'} disabled={loading} onPress={()=>void search()}/></View>}
       {loading?<ActivityIndicator color={ACCENT} style={{padding:24}}/>:results===null?<Status text={tr?'Referans oyuncunu seçip Benzer Oyuncuları Bul butonuna bas.':'Choose your reference and press Find Similar Players.'}/>:shown.length?<ScrollView ref={resultScroll} onContentSizeChange={()=>{if(revealNewRows.current){revealNewRows.current=false;resultScroll.current?.scrollToEnd({animated:true});}}} nestedScrollEnabled bounces={false} keyboardShouldPersistTaps="handled" style={{maxHeight:portfolioViewportHeight(height)}} contentContainerStyle={{gap:8,paddingRight:5,paddingVertical:4}}>{shown.map((match,index)=><Pressable key={match.entry.id} accessibilityRole="button" accessibilityLabel={`${match.entry.player.name}, ${match.similarity}%`} onPress={()=>setCard(match.entry)} style={({pressed})=>[s.row,card?.id===match.entry.id&&s.selected,pressed&&s.pressed]}><Text style={s.rank}>{index+1}</Text><Badge player url={match.entry.player.meta?.imageUrl} size={42}/><View style={{flex:1,gap:5}}><Text style={s.name}>{match.entry.player.name}</Text><Text style={s.caption}>{match.entry.player.meta?.team||'—'} · {match.entry.player.meta?.nationality||'—'}</Text><Text style={s.caption}>{tr?'Ortak Veri Kapsamı':'Shared Data Coverage'}: %{match.coverage}</Text></View><View style={{alignItems:'flex-end',gap:5}}><Text style={s.score}>%{match.similarity}</Text><Text style={s.caption}>{tr?'Benzerlik':'Similarity'}</Text></View></Pressable>)}</ScrollView>:<Status text={tr?'Bu kriterlere ve veri koşullarına uyan benzer oyuncu bulunamadı. Filtrelerini genişletip tekrar dene.':'No similar players meet these criteria and data requirements. Broaden your filters and try again.'}/>}
       {results&&shown.length>0&&<Text accessibilityLiveRegion="polite" style={[s.caption,{color:ACCENT,textAlign:'center',fontWeight:'700'}]}>{tr?`Gösterilen Oyuncular: ${shown.length} / ${Math.min(results.length,limit)}`:`Players Shown: ${shown.length} / ${Math.min(results.length,limit)}`}</Text>}
-      <Action icon={<ChevronDown size={18} color={ACCENT}/>} label={tr?'3 Oyuncu Daha Göster':'Show 3 More Players'} disabled={loading||ads.busy||results===null} onPress={showMore}/></View>
+      <Action icon={canWatch ? <Play size={17} color={ACCENT}/> : <ChevronDown size={18} color={ACCENT}/>} label={tr?'3 Oyuncu Daha Göster':'Show 3 More Players'} disabled={loading||ads.busy||results===null} onPress={showMore}/></View>
     </Frame>}
     </>}
     </>}
     {selector&&<Selector tr={tr} title={selector==='nationality'?(tr?'Ülke / Uyruk Seç':'Select Nationality'):(tr?'Lig Seç':'Select League')} options={[{key:'',label:tr?'Tümü / Seçimi temizle':'All / Clear selection'},...(selector==='nationality'?options?.nationalities||[]:options?.leagues||[]).map(value=>({key:value,label:`${filters[selector].includes(value)?'✓ ':''}${value}`}))]} selected="" selectedKeys={filters[selector]} searchPlaceholder={tr?'Seçeneklerde ara…':'Search options…'} onSelect={toggleOption} onClose={()=>setSelector(null)}/>}
     {focused&&card&&<LeaguePlayerCardModal key={card.id} initialEntry={card} onClose={()=>setCard(null)}/>}
-    {focused&&upgrade&&<SimilarPlayersUpgradeModal required={upgrade} tr={tr} onClose={()=>setUpgrade(null)}/>}
+    {focused&&upgrade&&<SimilarPlayersUpgradeModal required={upgrade} tr={tr} onClose={()=>setUpgrade(null)} reward={reward} currentLimit={limit} onDismissUnavailable={dismissUnavailable} onWatch={canWatch && upgrade!=='done' ? () => void watchForMore() : undefined}/>}
+    <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
     {ads.fallback}
   </ScrollView>;
 }

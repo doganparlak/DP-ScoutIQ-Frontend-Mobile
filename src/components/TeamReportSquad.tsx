@@ -2,6 +2,7 @@ import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { Activity,LayoutGrid,RefreshCw,Users } from 'lucide-react-native';
 import { useMemo,useState } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
+import TeamReportLockedDetail from './TeamReportLockedDetail';
 import TeamReportHeader from './TeamReportHeader';
 
 import type { Team } from '@/services/teamPool';
@@ -38,7 +39,7 @@ export function aggregateSquad(reports:Report[],teamId:string,tr:boolean){
  const starters=ranked.filter(p=>p.starts>0).length,subs=ranked.filter(p=>p.bench>0).length;
  return {ranked,formations:[...formations.entries()].sort((a,b)=>b[1]-a[1]),positions:[...positions.entries()].sort((a,b)=>b[1]-a[1]),rating:rated.length?rated.reduce((sum,p)=>sum+p.rating!,0)/rated.length:null,rotation:starters+subs?Math.round(subs/(starters+subs)*100):0};
 }
-export default function TeamReportSquad({team,reports,matches,tr,playersPage=false,perspectives={}}:{team:Team;reports:Report[];matches:number;tr:boolean;playersPage?:boolean;perspectives?:Record<string,Perspective>}){
+export default function TeamReportSquad({team,reports,matches,tr,playersPage=false,perspectives={},onOpenLockedPlayerPlans}:{team:Team;reports:Report[];matches:number;tr:boolean;playersPage?:boolean;perspectives?:Record<string,Perspective>;onOpenLockedPlayerPlans?:()=>void}){
   const themed = useThemedStyles(getModuleTheme);
   const {DANGER, ACCENT, s, MUTED, themeColor} = themed;
 
@@ -47,12 +48,14 @@ export default function TeamReportSquad({team,reports,matches,tr,playersPage=fal
  const accent=playersPage&&mode==='development'?DANGER:ACCENT;
  const distribution=(title:string,rows:[string,number][],total:number,color:string,unit:string)=> <View style={[s.frame,{borderColor:`${color}70`}]}><Text style={s.title}>{title}</Text>{rows.map(([name,count])=><View key={name} style={{gap:8}}><View style={s.row}><Text style={[s.text,{flex:1}]}>{name}</Text><Text style={[s.caption,{color}]}>{count} {unit} · {total?Math.round(count/total*100):0}%</Text></View><View style={s.track}><View style={{height:6,borderRadius:3,backgroundColor:color,width:`${count/(rows[0]?.[1]||1)*100}%`}}/></View></View>)}{!rows.length&&<Text style={s.caption}>{tr?'Veri bulunamadı.':'No data available.'}</Text>}</View>;
  const selected=Object.entries(perspectives).filter(([,p])=>p.selectionType===mode).slice(0,3);
+ const showThirdPlayerLock = selected.length === 3 && !!onOpenLockedPlayerPlans;
  return <View style={{gap:12}}>
   <TeamReportHeader team={team} matches={matches} tr={tr} accent={accent}/>
   {playersPage?<>
    <View style={s.switch}>{(['featured','development'] as const).map(value=><Pressable key={value} accessibilityRole="tab" accessibilityState={{selected:mode===value}} onPress={()=>setMode(value)} style={[s.option,mode===value&&{backgroundColor:`${value==='featured'?ACCENT:DANGER}25`,borderColor:value==='featured'?ACCENT:DANGER}]}><Text style={[s.optionText,{color:mode===value?accent:MUTED}]}>{value==='featured'?(tr?'Öne Çıkan Oyuncular':'Standout Players'):(tr?'Gelişime Açık Oyuncular':'Development Players')}</Text></Pressable>)}</View>
    <Text style={s.caption}>{tr?'En az 90 dakika oynayan oyuncular · Dakika ağırlıklı puan':'Players with at least 90 minutes · Minute-weighted rating'}</Text>
-   {selected.map(([id,p])=>{const player=squad.ranked.find(row=>row.id===id);return <View key={id} style={[s.frame,{borderColor:`${accent}90`,backgroundColor:`${accent}08`}]}><View style={s.row}><ReportPlayerPortrait imageUrl={player?.imageUrl} accent={accent} size={49}/><View style={{flex:1,gap:6}}><Text style={s.name}>{player?.name||'—'}</Text><Text style={s.caption}>{player?.position||'—'} · {Math.round(player?.minutes||0)} {tr?'dk.':'min'}</Text></View><View style={[s.rating,{borderColor:accent}]}><Text style={[s.ratingValue,{color:accent}]}>{(p.rating??player?.rating)?.toFixed(2)??'—'}</Text><Text style={s.caption}>{tr?'Puan':'Rating'}</Text></View></View></View>;})}
+   {selected.slice(0, showThirdPlayerLock ? 2 : 3).map(([id,p])=>{const player=squad.ranked.find(row=>row.id===id);return <View key={id} style={[s.frame,{borderColor:`${accent}90`,backgroundColor:`${accent}08`}]}><View style={s.row}><ReportPlayerPortrait imageUrl={player?.imageUrl} accent={accent} size={49}/><View style={{flex:1,gap:6}}><Text style={s.name}>{player?.name||'—'}</Text><Text style={s.caption}>{player?.position||'—'} · {Math.round(player?.minutes||0)} {tr?'dk.':'min'}</Text></View><View style={[s.rating,{borderColor:accent}]}><Text style={[s.ratingValue,{color:accent}]}>{(p.rating??player?.rating)?.toFixed(2)??'—'}</Text><Text style={s.caption}>{tr?'Puan':'Rating'}</Text></View></View></View>;})}
+   {showThirdPlayerLock && <TeamReportLockedDetail tr={tr} accent={accent} kind="thirdSquadPlayer" onOpenPlans={onOpenLockedPlayerPlans}/>}
    {!selected.length&&<View style={s.frame}><Text style={s.caption}>{tr?'Bu grupta değerlendirmeye uygun oyuncu bulunamadı.':'No eligible players in this group.'}</Text></View>}
   </>:<>
    <View style={s.grid}>{[

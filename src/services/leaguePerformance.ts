@@ -17,7 +17,9 @@ export type LeagueStandings = { stageScoped?: boolean; qualifyingRounds?: Knocko
 export const getLeaguePerformanceOptions = (filters: LeagueFilters) => leaguePerformanceRequest<LeaguePerformanceOptions>('/league-performance/options', filters);
 export const searchLeaguePerformance = (filters: LeagueFilters) => leaguePerformanceRequest<LeagueResult[]>('/league-performance/search', {...filters, limit: 100});
 export const getLeagueStandings = (leagueId: number) => leaguePerformanceRequest<LeagueStandings>('/league-standings', {leagueId});
-export const getLeagueInsights = (leagueId: number, seasonId: number, periodStart = '', scope?: LeagueScope) => leaguePerformanceRequest<LeagueInsights>('/league-insights', {leagueId, seasonId, periodStart: periodStart || null, scope});
+export type LeagueRewards = { rewardedBiweekly: boolean; rewardedMetrics: string[] };
+export const getLeagueInsights = (leagueId: number, seasonId: number, periodStart = '', scope?: LeagueScope, rewards?: LeagueRewards) =>
+  leaguePerformanceRequest<LeagueInsights>('/league-insights', {leagueId, seasonId, periodStart: periodStart || null, scope, ...rewards});
 export type LeagueBestPlayer = {
   playerId: number; teamId: number; name: string; teamName: string;
   imageUrl: string | null; averageRating: number; appearances: number;
@@ -39,7 +41,7 @@ type Summary = {
 };
 export type LeagueInsights = {
   leagueId: number; seasonId: number; refreshing: boolean; scope?: LeagueScope;
-  access: {tier: 'free' | 'plus' | 'pro'; biweekly: boolean};
+  access: {tier: 'free' | 'plus' | 'pro'; biweekly: boolean; rewarded?: boolean; biweeklyAvailable?: boolean};
   season: Summary & { team_metrics: Record<string, TeamSeasonMetrics>; metric_catalog: LeagueMetric[] };
   biweekly: (Summary & { period_start: string; period_end: string }) | null;
   periods: { period_start: string; period_end: string; fixture_count: number }[];

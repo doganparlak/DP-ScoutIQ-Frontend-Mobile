@@ -1,13 +1,15 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import LeagueRulesModal from '@/components/LeagueRulesModal';
 import MatchReportActions from '@/components/MatchReportActions';
 import PredictionHonorsBadge from '@/components/PredictionHonorsBadge';
-import { TutorialPageGuide } from '@/components/Tutorial';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import { matchScore,matchStateLabel,type MatchFixture } from '@/services/matchPool';
 import { getAllTimePredictionRankings,getPredictionState,savePredictionEntry,savePredictionNickname,type AllTimePredictionRank,type PredictionFixture,type PredictionPicks,type PredictionState } from '@/services/scorePrediction';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { predictionDateTime,predictionWeekLabel } from '@/utils/predictionPresentation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect,useNavigation } from '@react-navigation/native';
+import { useFocusEffect,useIsFocused,useNavigation } from '@react-navigation/native';
 import { BadgeInfo,CalendarDays,Check,ChevronRight,Clock3,Goal,Info,ListOrdered,Send,ShieldCheck,Trophy,UserRound,X } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,6 +56,21 @@ export default function ScorePredictionScreen() {
 
   const { i18n, t } = useTranslation(), tr = i18n.language.startsWith('tr'), nav = useNavigation<any>();
   const { height, width } = useWindowDimensions();
+  const focused = useIsFocused();
+  const tutorial = useTutorial();
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
+  const [nearbyBanners, setNearbyBanners] = React.useState<Set<string>>(() => new Set());
+  const bannerPositions = React.useRef(new Map<string, {top: number; bottom: number}>());
+  const viewport = React.useRef({top: 0, height: 0});
+  function activateNearbyBanners() {
+    const {top, height: visibleHeight} = viewport.current;
+    if (!visibleHeight) return;
+    const nearby = [...bannerPositions.current].filter(([, position]) =>
+      position.top <= top + visibleHeight + 120 && position.bottom >= top - 120);
+    if (!nearby.length) return;
+    setNearbyBanners(previous => nearby.every(([key]) => previous.has(key)) ? previous
+      : new Set([...previous, ...nearby.map(([key]) => key)]));
+  }
   const scroll = React.useRef<ScrollView>(null), alive = React.useRef(false), request = React.useRef(0);
   const dirtyIds = React.useRef(new Set<string>()), loadedKey = React.useRef(''), saveLock = React.useRef(false);
   const [data, setData] = React.useState<PredictionState | null>(null);
@@ -144,6 +161,16 @@ export default function ScorePredictionScreen() {
   }, [draft, data?.round?.id, data?.viewerId]);
 
   const round = data?.round, entry = data?.entry, fixtures = round?.fixtures ?? [];
+  const showBanners = focused && data?.tier === 'free' && !tutorial.active && fixtures.length > 0;
+  const renderBanner = (placement: string) => {
+    const key = `${round?.id}:${placement}`;
+    return <View key={key} onLayout={({nativeEvent: {layout}})=>{
+      bannerPositions.current.set(key, {top: layout.y, bottom: layout.y + layout.height});
+      activateNearbyBanners();
+    }}>
+      <InlineBannerSlot canLoad={nearbyBanners.has(key)} tr={tr} onClose={()=>setBannerPrompt(true)}/>
+    </View>;
+  };
   const viewerTier = entry?.tier ?? data?.tier ?? 'free';
   const startingPoints = viewerTier === 'pro' ? 4 : viewerTier === 'plus' ? 2 : 0;
   const eligible = fixtures.filter(f => f.predictionStatus !== 'excluded');
@@ -249,7 +276,16 @@ export default function ScorePredictionScreen() {
 
   return <>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView ref={scroll} style={s.page} contentContainerStyle={s.pageContent} keyboardShouldPersistTaps='handled' keyboardDismissMode='on-drag'>
+    <ScrollView ref={scroll} style={s.page} contentContainerStyle={s.pageContent} keyboardShouldPersistTaps='handled' keyboardDismissMode='on-drag'
+      onLayout={event=>{
+        viewport.current.height = event.nativeEvent.layout.height;
+        if (showBanners) activateNearbyBanners();
+      }}
+      onScroll={event=>{
+        viewport.current.top = event.nativeEvent.contentOffset.y;
+        if (showBanners) activateNearbyBanners();
+      }}
+      scrollEventThrottle={64}>
       <View style={s.content}>
         <TutorialPageGuide page='scorePrediction' frame={0} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         <View style={s.hero}>
@@ -288,9 +324,10 @@ export default function ScorePredictionScreen() {
           <TextInput accessibilityLabel={tr ? 'Takma ad' : 'Nickname'} autoCapitalize='none' value={nickname} onChangeText={setNickname} maxLength={24} placeholder={tr ? 'Takma adın' : 'Your nickname'} placeholderTextColor={MUTED} style={s.nicknameInput} />
           <Pressable accessibilityRole='button' disabled={registering || nickname.trim().length < 2} onPress={() => void register()} style={[s.primary, (registering || nickname.trim().length < 2) && s.disabled]}>{registering ? <ActivityIndicator color={ACCENT} /> : <Check size={18} color={ACCENT} />}<Text style={s.actionText}>{tr ? 'Takma Adı Kaydet' : 'Save Nickname'}</Text></Pressable>
         </Frame>}
+        {showBanners && renderBanner('before-fixtures')}
         <View style={[FRAME_HEADING, { marginTop: 4 }]}><CalendarDays size={21} color={ACCENT} /><Text style={[FRAME_TITLE, { flex: 1 }]}>{tr ? 'Haftanın Maçları' : 'This Week’s Matches'}</Text><Text style={s.matchCount}>{fixtures.length}</Text></View>
         {!fixtures.length && <View style={s.emptyCard}><Goal size={30} color={ACCENT} /><Text style={s.emptyText}>{round?.status === 'unavailable' ? (tr ? 'Bu hafta yeterli maç bulunamadığı için yarışma açılmadı. Yeni çekim salı günü hazırlanır.' : 'This week’s competition did not open because there were not enough eligible matches. The next draw is prepared on Tuesday.') : (tr ? 'Cuma–pazartesi fikstürü hazırlanıyor. Uygun 10 maç bulunduğunda yarışma açılır.' : 'The Friday–Monday fixture pool is being prepared. The competition opens when 10 eligible matches are available.')}</Text></View>}
-        {fixtures.map((fixture, index) => <Frame key={fixture.fixtureId} title={tr ? 'Maç Kartı' : 'Match Card'} Icon={BadgeInfo} action={<Text style={s.matchIndex}>{String(index + 1).padStart(2, '0')}</Text>}>
+        {fixtures.map((fixture, index) => <React.Fragment key={fixture.fixtureId}><Frame title={tr ? 'Maç Kartı' : 'Match Card'} Icon={BadgeInfo} action={<Text style={s.matchIndex}>{String(index + 1).padStart(2, '0')}</Text>}>
           <View style={s.matchHeading}>
             <View style={{ flex: 1, minWidth: 0, gap: 6 }}><Text style={s.league}>{fixture.country.name} · {fixture.league.name}</Text><Text style={s.caption}>{predictionDateTime(fixture.startingAt, tr)} · {matchStateLabel(fixture, tr)}</Text></View>
             <View style={s.stateBadge}><Text style={s.stateText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={.8}>{matchStateLabel(fixture, tr)}</Text></View>
@@ -298,11 +335,14 @@ export default function ScorePredictionScreen() {
           <View style={s.teams}><Team team={fixture.homeTeam} /><View style={s.actualScore}><Text style={s.matchScore} numberOfLines={1} adjustsFontSizeToFit>{matchScore(fixture)}</Text><Text style={s.vs}>VS</Text></View><Team team={fixture.awayTeam} /></View>
           {predictionForm(fixture)}
           {matchActions(fixture)}
-        </Frame>)}
+        </Frame>
+        {showBanners && (index + 1) % 2 === 0 && index < 8 && index + 1 < fixtures.length && renderBanner(`after-${index + 1}`)}
+        </React.Fragment>)}
         {!!entry?.submittedAt && <View style={s.savedFooter}><Check size={16} color={ACCENT} /><View style={{ flex: 1, gap: 4 }}><Text style={s.footerTitle}>{tr ? 'Tahminlerin Güvende' : 'Your Predictions Are Saved'}</Text><Text style={s.caption}>{locked ? (tr ? 'Kayıtlı skorlarınla haftanın sonuçlarını takip et.' : 'Follow this week’s results with your saved scores.') : (tr ? 'Son tarihe kadar düzenleyip yeniden gönderebilirsin.' : 'Edit and resubmit until the deadline.')}</Text></View></View>}
       </View>
     </ScrollView>
     </KeyboardAvoidingView>
+    <BannerAdFreePrompt visible={showBanners && bannerPrompt} tr={tr} onClose={()=>setBannerPrompt(false)} onOpenPlans={openPlans}/>
     {Platform.OS === 'ios' && <InputAccessoryView nativeID='prediction-score-keyboard'><View style={s.keyboardBar}><Pressable accessibilityRole='button' onPress={Keyboard.dismiss} style={s.keyboardDone}><Text style={s.actionText}>{tr ? 'Tamam' : 'Done'}</Text></Pressable></View></InputAccessoryView>}
     <Modal visible={ranking} transparent animationType='fade' onRequestClose={() => setRanking(false)}>
       <View style={s.backdrop}><View style={[s.modal, { height: Math.min(760, height * .86) }]} accessibilityViewIsModal>

@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { recordRecentSearch } from '@/services/recentSearches';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { readPlayerSearch, writePlayerSearch, readDefaultPlayerSearch, writeDefaultPlayerSearch, type CachedPlayerSearch } from '@/services/playerPoolCache';
@@ -278,6 +280,7 @@ export default function PlayerPoolScreen() {
   const [matchupRow1, matchupRow2, matchupRow3, matchupRow4] = sharedMatchup.rows;
   const isFocused = useIsFocused();
   const [planResolved, setPlanResolved] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const [addingMatchupPlayer, setAddingMatchupPlayer] = React.useState(false);
   const [comparisonOpen, setComparisonOpen] = React.useState(false);
   const [comparisonLoading, setComparisonLoading] = React.useState(false);
@@ -1264,6 +1267,8 @@ export default function PlayerPoolScreen() {
           },
     [worldCupMode, themed],
   );
+  const showBanner = isFocused && planResolved && plan === 'Free' && !tutorial.active && results.length > 0;
+  const bannerTurkish = i18n.language.startsWith('tr');
   return (
     <KeyboardAvoidingView
       style={[styles.safe, { backgroundColor: playerPoolTheme.bg }]}
@@ -1329,6 +1334,9 @@ export default function PlayerPoolScreen() {
         />
 
         <TutorialPageGuide page="playerPool" frame={0} onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+
+        {showBanner && <InlineBannerSlot canLoad tr={bannerTurkish} onClose={()=>setBannerPrompt(true)}/>}
+        <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={bannerTurkish} onClose={()=>setBannerPrompt(false)}/>
 
         <CandidatePlayers
           results={results}
@@ -1484,7 +1492,7 @@ export default function PlayerPoolScreen() {
             report={scoutReport}
             plan={plan}
             reloadReport={scoutReportPayload?()=>getPlayerPoolScoutingReportProgress(scoutReportPayload):undefined}
-            loadReportSection={scoutReportPayload?(section)=>getPlayerPoolScoutingReportSection(scoutReportPayload,section):undefined}
+            loadReportSection={scoutReportPayload?(section, rewarded) => getPlayerPoolScoutingReportSection(scoutReportPayload, section, rewarded):undefined}
             onReportUpdate={next=>{
               setScoutReport(next);
               if(next.status==='ready'&&scoutReportPlayerId)setReadyReportsByPlayerId(current=>({...current,[scoutReportPlayerId]:next}));

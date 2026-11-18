@@ -1,5 +1,5 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { ArrowUpRight,CalendarDays,Clock3,LockKeyhole,Trophy,UserRound,X } from 'lucide-react-native';
+import { ArrowUpRight,CalendarDays,Clock3,LockKeyhole,Play,Trophy,UserRound,X } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator,Image,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View } from 'react-native';
 
@@ -26,7 +26,23 @@ export function SelectField({label, value, onPress, valueContent, compact = fals
 
   return <View style={{gap: 7, flexGrow: 1}}><Text style={styles.hint}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={[styles.field, compact && {height:46,alignItems:'center'}]}>{compact ? <View style={{flex:1,minWidth:0,flexDirection:'row',alignItems:'center',gap:4}}><Text numberOfLines={1} ellipsizeMode="tail" style={[styles.text,{flexShrink:1}]}>{valueContent ?? value}</Text>{additionalCount>0&&<Text style={[styles.text,{flexShrink:0}]}>+ {additionalCount}</Text>}</View> : <Text style={styles.text}>{valueContent ?? value}</Text>}<Text style={{color: ACCENT}}>⌄</Text></Pressable></View>;
 }
-export function Selector({title, options, selected, selectedKeys, searchPlaceholder, onSelect, onClose, tr, columns = 1, maxSelections, showSearch = true}: {title: string; options: {key: string; label: string; category?: string; locked?: boolean; plan?: 'plus' | 'pro'}[]; selected: string; selectedKeys?: string[]; searchPlaceholder?: string; onSelect: (key: string) => void; onClose: () => void; tr: boolean; columns?: 1 | 3; maxSelections?: number; showSearch?: boolean}) {
+export function PlanUnlockBadges({plan, rewardedUnlock, tr}: {plan?: 'plus' | 'pro'; rewardedUnlock?: boolean; tr: boolean}) {
+  const {styles, ACCENT, themeColor} = useThemedStyles(getModuleTheme);
+  if (!plan && !rewardedUnlock) return null;
+  return <View style={styles.badgeGroup}>
+      {plan === 'plus' && <View style={[styles.planBadge, {
+        borderColor: themeColor('#38BDF8', 'border'), backgroundColor: themeColor('rgba(56,189,248,.1)', 'surface'),
+      }]}><Text style={[styles.badgeText, {color: themeColor('#38BDF8', 'text')}]}>PLUS</Text></View>}
+      {plan && <View style={[styles.planBadge, {
+        borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.1)', 'surface'),
+      }]}><Text style={[styles.badgeText, {color: ACCENT}]}>PRO</Text></View>}
+      {rewardedUnlock && <View style={[styles.planBadge, styles.adUnlock]}>
+        <Play size={10} color={themeColor('#FBBF24', 'text')} strokeWidth={2.3}/>
+        <Text style={[styles.badgeText, {color: themeColor('#FBBF24', 'text')}]}>{tr ? 'Aç' : 'Unlock'}</Text>
+      </View>}
+    </View>;
+}
+export function Selector({title, options, selected, selectedKeys, searchPlaceholder, onSelect, onClose, tr, columns = 1, maxSelections, showSearch = true}: {title: string; options: {key: string; label: string; category?: string; locked?: boolean; rewardedUnlock?: boolean; plan?: 'plus' | 'pro'}[]; selected: string; selectedKeys?: string[]; searchPlaceholder?: string; onSelect: (key: string) => void; onClose: () => void; tr: boolean; columns?: 1 | 3; maxSelections?: number; showSearch?: boolean}) {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, ACCENT, CARD, MUTED, DANGER, themeColor} = themed;
 
@@ -36,7 +52,7 @@ export function Selector({title, options, selected, selectedKeys, searchPlacehol
   const renderOption = (item: typeof options[number]) => {
     const active = isSelected(item.key);
     const disabled = !!item.key && !active && maxSelections !== undefined && (selectedKeys?.length ?? 0) >= maxSelections;
-    return <Pressable accessibilityRole="button" accessibilityState={{selected: active, disabled}} disabled={disabled} key={item.key} onPress={() => onSelect(item.key)} style={[styles.option, columns === 3 && {flex:1,minWidth:0,minHeight:48,marginBottom:0,paddingHorizontal:6,justifyContent:'center'}, active && {borderColor:ACCENT,backgroundColor:columns===3?themeColor('rgba(22,163,74,.1)', 'surface'):CARD}, disabled && {opacity:.35}]}><Text style={[styles.text, {flex:1}, columns===3 && {textAlign:'center',fontSize:14}, active && {color:ACCENT}]}>{item.label}</Text>{item.plan && <View style={{flexDirection:'row',gap:4,flexShrink:0}}>{item.plan==='plus' && <View style={[styles.planBadge,{borderColor:themeColor('#38BDF8', 'border'),backgroundColor:themeColor('rgba(56,189,248,.1)', 'surface')}]}><Text style={{color:themeColor('#38BDF8', 'text'),fontSize:10,fontWeight:'900'}}>PLUS</Text></View>}<View style={[styles.planBadge,{borderColor:ACCENT,backgroundColor:themeColor('rgba(22,163,74,.1)', 'surface')}]}><Text style={{color:ACCENT,fontSize:10,fontWeight:'900'}}>PRO</Text></View></View>}{item.locked && <LockKeyhole size={16} color={MUTED}/>}</Pressable>;
+    return <Pressable accessibilityRole="button" accessibilityState={{selected: active, disabled}} accessibilityHint={item.rewardedUnlock ? (tr ? 'Reklam izleyerek açma ve plan seçeneklerini gösterir.' : 'Shows ad unlock and plan options.') : undefined} disabled={disabled} key={item.key} onPress={() => onSelect(item.key)} style={[styles.option, columns === 3 && {flex:1,minWidth:0,minHeight:48,marginBottom:0,paddingHorizontal:6,justifyContent:'center'}, active && {borderColor:ACCENT,backgroundColor:columns===3?themeColor('rgba(22,163,74,.1)', 'surface'):CARD}, disabled && {opacity:.35}]}><Text style={[styles.text, {flex:1}, columns===3 && {textAlign:'center',fontSize:14}, active && {color:ACCENT}]}>{item.label}</Text><PlanUnlockBadges plan={item.plan} rewardedUnlock={item.rewardedUnlock} tr={tr}/>{item.locked && !item.rewardedUnlock && <LockKeyhole size={16} color={MUTED}/>}</Pressable>;
   };
   const gridOptions = results.filter(item=>item.key);
   return <Modal visible transparent animationType="fade" onRequestClose={onClose}><View style={styles.backdrop}><Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={tr?'Kapat':'Close'} accessibilityRole="button"/><View style={styles.modal} accessibilityViewIsModal><View style={styles.row}><Text style={styles.title}>{title}</Text>{maxSelections!==undefined && <Text style={{color:ACCENT,fontSize:12,fontWeight:'800'}}>{selectedKeys?.length ?? 0}/{maxSelections}</Text>}<Pressable onPress={onClose} accessibilityLabel={tr?'Kapat':'Close'} accessibilityRole="button" style={{padding:10}}><X color={DANGER} size={22}/></Pressable></View>{columns===1 && showSearch && <TextInput style={styles.field} placeholder={searchPlaceholder ?? (tr?'Ara':'Search')} placeholderTextColor={MUTED} value={query} onChangeText={setQuery} autoFocus accessibilityLabel={tr?'Seçeneklerde ara':'Search options'}/>}<ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={columns===3?{gap:8}:undefined}>{columns===3 ? <>{results.filter(item=>!item.key).map(renderOption)}{Array.from({length:Math.ceil(gridOptions.length/3)},(_,row)=><View key={row} style={{flexDirection:'row',gap:8}}>{gridOptions.slice(row*3,row*3+3).map(renderOption)}</View>)}</> : results.map((item, index) => <React.Fragment key={item.key}>{item.category && item.category !== results[index - 1]?.category ? <Text accessibilityRole="header" style={[styles.hint, {color: ACCENT, fontWeight: '900', marginTop: 14, marginBottom: 10}]}>{item.category}</Text> : null}{renderOption(item)}</React.Fragment>)}{!results.length && <Text style={styles.empty}>{tr?'Sonuç bulunamadı.':'No results found.'}</Text>}</ScrollView></View></View></Modal>;
@@ -103,7 +119,11 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   field: {borderWidth: 1, borderColor: LINE, backgroundColor: CARD, borderRadius: 12, minHeight: 46, padding: 12, color: TEXT, flexDirection: 'row', justifyContent: 'space-between', gap: 8},
   backdrop: {flex: 1, backgroundColor: themeColor('rgba(0,0,0,.75)', 'surface'), justifyContent: 'center', padding: 18},
   modal: {width: '100%', maxWidth: 540, maxHeight: '85%', alignSelf: 'center', backgroundColor: PANEL, borderRadius: 22, borderWidth: 1, borderColor: ACCENT, padding: 16, gap: 12},
-  planBadge: {borderWidth: 1, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 4},
+  badgeGroup: {flexDirection: 'row', gap: 4, flexShrink: 0},
+  adUnlock: {flexDirection: 'row', gap: 3,
+    borderColor: themeColor('#F59E0B', 'border'), backgroundColor: themeColor('rgba(245,158,11,.12)', 'surface')},
+  badgeText: {fontSize: 10, fontWeight: '900'},
+  planBadge: {width: 50, height: 23, borderWidth: 1, borderRadius: 7, alignItems: 'center', justifyContent: 'center'},
   option: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 46, marginBottom: 8, padding: 14, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: LINE},
   empty: {padding: 24, textAlign: 'center', color: MUTED, fontSize: 13},
   winner: {borderWidth: 1, borderColor: themeColor('rgba(245,158,11,.3)', 'border'), backgroundColor: themeColor('rgba(245,158,11,.05)', 'surface'), borderRadius: 14, padding: 14, gap: 12},

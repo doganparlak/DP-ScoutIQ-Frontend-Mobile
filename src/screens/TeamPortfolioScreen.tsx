@@ -1,9 +1,12 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
+import { getMe } from '@/services/api';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import { Action,Status } from '@/components/LeaguePerformanceControls';
 import SavedTeamReportModal from '@/components/SavedTeamReportModal';
 import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
 import TeamProfileCard from '@/components/TeamProfileCard';
-import { TutorialPageGuide } from '@/components/Tutorial';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import type { TeamFilters } from '@/services/teamPool';
 import { deleteFavoriteTeam,EMPTY_TEAM_PORTFOLIO_FILTERS,filterFavoriteTeams,getFavoriteTeams,type FavoriteTeam } from '@/services/teamPortfolio';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
@@ -30,6 +33,20 @@ export default function TeamPortfolioScreen() {
 
   const {i18n}=useTranslation(), tr=i18n.language.startsWith('tr');
   const nav=useNavigation<any>(), focused=useIsFocused(), ads=useWorkspaceActionAd();
+  const tutorial = useTutorial();
+  const [isFree, setIsFree] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
+  useFocusEffect(React.useCallback(() => {
+    let active = true;
+    getMe().then(me => {
+      if (active) setIsFree(me.plan === "Free");
+    }).catch(() => {});
+    return () => {
+      active = false;
+      setIsFree(false);
+      setBannerPrompt(false);
+    };
+  }, []));
   const {width,height,fontScale}=useWindowDimensions();
   const pageScroll=React.useRef<ScrollView>(null);
   const mounted=React.useRef(true), operation=React.useRef(false), version=React.useRef(0);
@@ -80,6 +97,7 @@ export default function TeamPortfolioScreen() {
     finally{operation.current=false;}
   }
   function closeReport(){setReportId('');setTimeout(()=>{if(mounted.current)setCardOpen(true);},350);}
+  const showBanner = focused && isFree && !tutorial.active;
   return <ScrollView ref={pageScroll} style={{flex:1,backgroundColor:BG}} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
     <Frame title={tr?'Takım Portföyü Filtreleri':'Team Portfolio Filters'} Icon={ListFilter} action={<Pressable accessibilityRole="button" accessibilityLabel={tr?'Filtreleri temizle':'Clear Filters'} onPress={clearFilters} hitSlop={10}><RotateCcw size={20} color={DANGER}/></Pressable>}>
       <View style={styles.twoCol}>
@@ -97,6 +115,7 @@ export default function TeamPortfolioScreen() {
       </View>
     </Frame>
     <TutorialPageGuide page="teamPortfolio" frame={0} onShow={y=>pageScroll.current?.scrollTo({y:Math.max(0,y-12),animated:true})}/>
+    {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
     <Frame title={tr?'Takım Portföyü':'Team Portfolio'} Icon={ShieldCheck} action={<View style={{flexDirection:'row',alignItems:'center',gap:12}}><Text style={{color:ACCENT,fontWeight:'800'}}>{visible.length}</Text><Pressable accessibilityRole="button" accessibilityLabel={tr?'Yenile':'Refresh'} disabled={loading||!!deleting} onPress={()=>setRetry(value=>value+1)} hitSlop={10}><RotateCcw size={18} color={ACCENT}/></Pressable></View>}>
       {error?<View style={{gap:10}}><Text style={{color:DANGER}}>{error}</Text><Action label={tr?'Tekrar dene':'Retry'} onPress={()=>setRetry(value=>value+1)}/></View>:loading?<ActivityIndicator color={ACCENT} style={{padding:24}}/>:visible.length?<ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={tableWidth>width-66}>
         <View style={[table.table,{width:tableWidth}]}><View style={[table.row,table.header,{marginRight:5}]}>{labels.map((label,i)=><Text key={label} style={[table.cell,table.headerText,{flex:flexes[i],fontSize:11}]}>{label}</Text>)}<View accessibilityLabel={tr?'Sil':'Delete'} style={{width:deleteWidth,alignItems:'center',justifyContent:'center'}}><Trash2 size={16} color={MUTED}/></View></View>
@@ -131,6 +150,7 @@ export default function TeamPortfolioScreen() {
       </View></View>
     </Modal>}
     <Modal visible={focused&&cardOpen&&!!selected&&!reportId} transparent animationType="fade" onRequestClose={()=>setCardOpen(false)}><View style={styles.backdrop}><View style={styles.modal} accessibilityViewIsModal><View style={[FRAME_HEADING,{marginBottom:14}]}><ShieldCheck size={20} color={ACCENT}/><Text style={[FRAME_TITLE,{flex:1}]}>{tr?'Takım Kartı':'Team Card'}</Text><Pressable accessibilityRole="button" accessibilityLabel={tr?'Kapat':'Close'} onPress={()=>setCardOpen(false)} hitSlop={10}><X size={22} color={DANGER}/></Pressable></View><ScrollView>{selected&&<TeamProfileCard team={selected.team} tr={tr} onOpenReport={selected.latestReportId?()=>void openReport():undefined} reportBusy={ads.busy} onFixtures={()=>{setCardOpen(false);setTimeout(()=>nav.navigate('MatchPool',{fixtureTeam:selected.team,fixtureRequest:Date.now()}),350);}} onAnalyze={()=>{setCardOpen(false);setTimeout(()=>nav.navigate('TeamAnalysis',{team:selected.team}),350);}}/>}</ScrollView></View></View></Modal>
+    <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
     {ads.fallback}
     {focused&&reportId&&<SavedTeamReportModal reportId={reportId} tr={tr} onClose={closeReport} onOpenPlans={()=>{setReportId('');setCardOpen(false);setTimeout(()=>nav.navigate('Profile',{screen:'ManagePlan'}),350);}}/>}
   </ScrollView>;

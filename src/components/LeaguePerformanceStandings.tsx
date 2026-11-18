@@ -1,13 +1,19 @@
 import { sportmonksTeamImage } from '@/utils/sportmonksImages';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { useIsFocused } from '@react-navigation/native';
+import { useReportReward } from '@/ads/useReportReward';
+import { useIsFocused, useNavigation, type NavigatorScreenParams } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainTabsParamList } from '@/types';
 import { LockKeyhole } from 'lucide-react-native';
 import React from 'react';
 import { AppState,Pressable,StyleSheet,Switch,Text,useWindowDimensions,View } from 'react-native';
 import AdaptiveLeagueStandingsTable from './AdaptiveLeagueStandingsTable';
+import RewardUnlockButton from './RewardUnlockButton';
+import PlanManagementButton from './PlanManagementButton';
+import ReportRewardProvider from './ReportRewardProvider';
 import LeaguePerformanceUpgradeModal from './LeaguePerformanceUpgradeModal';
 
-import { getLeagueInsights,completedLeaguePeriods,orderLeagueMetrics,leagueMetricPlan,sortLeagueRows,type LeagueBestPlayer,type LeagueInsights,type LeagueStanding,type LeagueScope } from '@/services/leaguePerformance';
+import { getLeagueInsights,completedLeaguePeriods,orderLeagueMetrics,leagueMetricPlan,sortLeagueRows,type LeagueBestPlayer,type LeagueInsights,type LeagueRewards,type LeagueStanding,type LeagueScope } from '@/services/leaguePerformance';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
 import { getThemed_styles as __getThemed_shared,getThemed_standingRuleMeta as __getThemed_standingRuleMeta,Action,SelectField,Selector,Status,Winner } from './LeaguePerformanceControls';
 import LeaguePlayerCardModal from './LeaguePlayerCardModal';
@@ -24,7 +30,14 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
   const themed = useThemedStyles(getModuleTheme);
   const {standingRuleMeta, shared, styles, MUTED, ACCENT, themeColor} = themed;
 
-  const [upgrade, setUpgrade] = React.useState<{required: 'plus' | 'pro'; feature: 'biweekly' | 'metric'; metricLabel?: string} | null>(null);
+  const [upgrade, setUpgrade] = React.useState<
+    {required: 'plus'; feature: 'biweekly'} |
+    {required: 'plus' | 'pro'; feature: 'metric'; metricLabel: string; metricKey: string} | null
+  >(null);
+  const navigation = useNavigation<BottomTabNavigationProp<Omit<MainTabsParamList, 'Profile'> & {
+    Profile: NavigatorScreenParams<{ManagePlan: undefined}>;
+  }>>();
+  const openPlans = () => navigation.navigate('Profile', {screen: 'ManagePlan'});
   const focused = useIsFocused();
   const {width} = useWindowDimensions();
   const [playersEnabled, setPlayersEnabled] = React.useState(true);
@@ -33,8 +46,21 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
   const canBiweekly = data?.access?.biweekly ?? false;
   const showBiweekly = !SEASON_ONLY_LEAGUES.has(leagueId) && (!data || !canBiweekly || data.periods.length > 0);
   const tier = data?.access?.tier ?? 'free';
+  const biweeklyLocked = !!data?.access.biweeklyAvailable && showBiweekly && !canBiweekly;
+  const activeRewardKey = upgrade?.feature === 'metric' ? `metric:${upgrade.metricKey}`
+    : biweeklyLocked ? 'biweekly' : undefined;
+  const reward = useReportReward(`league:${leagueId}:${seasonId}`, activeRewardKey, focused && !!data?.access.rewarded && tier !== 'pro');
+  const rewardedBiweekly = reward.isUnlocked('biweekly');
+  const rewardedMetricsKey = JSON.stringify(reward.unlockedSections.filter(key => key.startsWith('metric:')).map(key => key.slice(7)));
+  const canWatch = !!activeRewardKey && reward.available && !reward.isUnlocked(activeRewardKey);
+  React.useEffect(() => {
+    if (canWatch && activeRewardKey) reward.prepare(activeRewardKey);
+  }, [canWatch, activeRewardKey, reward]);
   const [period, setPeriod] = React.useState('');
   const [metricKey, setMetricKey] = React.useState('');
+  const pendingMetric = React.useRef<string | null>(null);
+  const upgradeTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  React.useEffect(() => () => clearTimeout(upgradeTimer.current), []);
   const [perMatch, setPerMatch] = React.useState(false);
   const usePerMatch = !official || perMatch;
   const [direction, setDirection] = React.useState<'asc' | 'desc'>('desc');
@@ -49,17 +75,18 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
   }, []);
   React.useEffect(() => {
     if (!focused || !active) return;
+    const rewards: LeagueRewards = {rewardedBiweekly, rewardedMetrics: JSON.parse(rewardedMetricsKey)};
     let alive = true, failures = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true); setError(false);
     async function load() {
       try {
         let result: LeagueInsights;
-        try {result = await getLeagueInsights(leagueId, seasonId, period, scope);}
+        try {result = await getLeagueInsights(leagueId, seasonId, period, scope, rewards);}
         catch (failure) {
           if (!period) throw failure;
           // Recover a previously selected paid period after a plan downgrade.
-          const current = await getLeagueInsights(leagueId, seasonId, '', scope);
+          const current = await getLeagueInsights(leagueId, seasonId, '', scope, rewards);
           if (current.access.biweekly && completedLeaguePeriods(current.periods).some(p => p.period_start === period)) throw failure;
           result = current;
           if (alive) setPeriod('');
@@ -68,7 +95,7 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
         let periods = completedLeaguePeriods(result.periods);
         const selected = periods.find(p => p.period_start === period) || periods[0];
         if (result.access.biweekly && selected && result.biweekly?.period_start !== selected.period_start) {
-          result = await getLeagueInsights(leagueId, seasonId, selected.period_start, scope);
+          result = await getLeagueInsights(leagueId, seasonId, selected.period_start, scope, rewards);
           periods = completedLeaguePeriods(result.periods);
         }
         result = {...result, periods, selectedPeriodStart: selected?.period_start || null,
@@ -76,7 +103,14 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
         if (!alive) return;
         setData(result);
         if (!result.access.biweekly) setPeriod('');
-        if (metricKey && result.season.metric_catalog.find(item => item.key === metricKey)?.locked) setMetricKey('');
+        const newlyUnlocked = result.season.metric_catalog.find(item => item.key === pendingMetric.current && !item.locked);
+        if (newlyUnlocked) {
+          pendingMetric.current = null;
+          setMetricKey(newlyUnlocked.key);
+          setDirection(newlyUnlocked.direction || 'desc');
+        } else {
+          setMetricKey(previous => result.season.metric_catalog.find(item => item.key === previous)?.locked ? '' : previous);
+        }
         setError(false); failures = 0;
         if (result.refreshing) timer = setTimeout(load, 10000);
       } catch {
@@ -87,13 +121,13 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
     }
     void load();
     return () => {alive = false; clearTimeout(timer);};
-  }, [leagueId, seasonId, scope, period, retry, focused, active]);
+  }, [leagueId, seasonId, scope, period, retry, focused, active, rewardedBiweekly, rewardedMetricsKey]);
   const selectedPeriod = data?.periods.find(p => p.period_start === (period || data.selectedPeriodStart));
   const teams = data?.season.team_metrics || {};
   const rows: LeagueStanding[] = official ? officialRows : Object.entries(teams).map(([id, team]) => ({teamId: Number(id), teamName: team.teamName, teamImageUrl: officialRows.find(row => String(row.teamId) === id)?.teamImageUrl || sportmonksTeamImage(id) || null,
     position: null, played: team.matches, won: team.results?.won??null, drawn: team.results?.drawn??null, lost: team.results?.lost??null, goalsFor: team.results?.goalsFor??null, goalsAgainst: team.results?.goalsAgainst??null, goalDifference: team.results?.goalDifference??null, points: null, form: null, standingRule: null}));
   const playing = rows.filter(row => (row.played || 0) > 0);
-  const metrics = orderLeagueMetrics((data?.season.metric_catalog || []).filter(metric => metric.locked || (playing.length > 0 && playing.some(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null))), tr);
+  const metrics = orderLeagueMetrics((data?.season.metric_catalog || []).filter(metric => metric.locked || reward.isUnlocked(`metric:${metric.key}`) || (playing.length > 0 && playing.some(row => teams[String(row.teamId)]?.metrics[metric.key]?.value != null))), tr);
   const metric = metrics.find(item => item.key === metricKey && !item.locked);
   const sorted = sortLeagueRows(rows, teams, metric?.key || '', usePerMatch, direction);
   const ordered = official ? sorted : sorted.map((row, index) => ({...row, position: metric && teams[String(row.teamId)]?.metrics[metric.key]?.[usePerMatch ? 'perMatch' : 'value'] != null ? index + 1 : null}));
@@ -107,6 +141,31 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
   const biweeklyPlayers = periodCurrent ? data?.biweekly?.team_best_players || {} : {};
   const playerView = !metric && playersEnabled;
   const rules = [...new Map(rows.flatMap(row => {const rule = standingRuleMeta(row.standingRule, tr); return rule ? [[rule.label, rule] as const] : [];})).values()];
+  const watchSelected = async () => {
+    if (!activeRewardKey || !await reward.watch(activeRewardKey)) return;
+    if (upgrade?.feature === 'metric') pendingMetric.current = upgrade.metricKey;
+    setUpgrade(null);
+  };
+  const select = (key: string) => {
+    if (selector === 'metric') {
+      const selected = metrics.find(item => item.key === key);
+      if (selected?.locked) {
+        setSelector(null);
+        clearTimeout(upgradeTimer.current);
+        upgradeTimer.current = setTimeout(() => setUpgrade({
+          required: leagueMetricPlan(selected) === 'pro' ? 'pro' : 'plus',
+          feature: 'metric',
+          metricKey: key,
+          metricLabel: matchMetricLabel(selected.label, tr ? 'tr' : 'en'),
+        }), 350);
+        return;
+      }
+      pendingMetric.current = null;
+      setMetricKey(key);
+      setDirection(selected?.direction || 'desc');
+    } else setPeriod(key);
+    setSelector(null);
+  };
   return <View style={{gap: 14}}>
     {busy && <Status busy text={tr ? 'İstatistikler ve en iyi oyuncular hazırlanıyor. Hazır olduğunda otomatik gösterilecek.' : 'Preparing statistics and top players. Results will appear automatically when ready.'} />}
     <SelectField label={scope ? (tr ? 'Aşama sıralama ölçütü' : 'Phase ordering metric') : (tr ? 'Sezon sıralama ölçütü' : 'Season ordering metric')} value={metric ? matchMetricLabel(metric.label, tr ? 'tr' : 'en') : defaultMetricLabel} onPress={() => setSelector('metric')} />
@@ -120,7 +179,10 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
         {showBiweekly && <View style={{flex: width >= 640 ? 1 : undefined, minWidth: 0}}>{!canBiweekly ? <View style={styles.lockedWinner}>
           <View style={styles.lockedHeading}><View style={styles.lockedIcon}><LockKeyhole size={17} color={ACCENT} strokeWidth={2.3} /></View><Text style={styles.lockedTitle}>{tr ? 'Ligin İki Haftalık En İyisi' : 'League’s Two-Week Top Player'}</Text></View>
           <Text style={styles.lockedText}>{tr ? <>İki haftanın öne çıkan oyuncularını <Text style={styles.plusText}>PLUS</Text> veya <Text style={styles.proText}>PRO</Text> ile keşfet.</> : <>Discover the two-week top players with <Text style={styles.plusText}>PLUS</Text> or <Text style={styles.proText}>PRO</Text>.</>}</Text>
-          <Pressable accessibilityRole="button" onPress={() => setUpgrade({required: 'plus', feature: 'biweekly'})} style={({pressed}) => [styles.unlockButton, pressed && {opacity: .82}]}><Text style={styles.unlockText}>{tr ? 'Kilidi aç' : 'Unlock'}</Text></Pressable>
+          {!upgrade && canWatch && activeRewardKey === 'biweekly' && <RewardUnlockButton
+            loading={!!reward.busy} disabled={!!reward.busy} onPress={() => void watchSelected()}/>}
+          {reward.available ? <View style={styles.planAction}><PlanManagementButton highlighted onPress={openPlans}/></View> :
+          <Pressable accessibilityRole="button" onPress={() => setUpgrade({required: 'plus', feature: 'biweekly'})} style={({pressed}) => [styles.unlockButton, pressed && {opacity: .82}]}><Text style={styles.unlockText}>{tr ? 'Kilidi aç' : 'Unlock'}</Text></Pressable>}
         </View> : <Winner tone="biweekly" title={tr ? 'Ligin İki Haftalık En İyisi' : 'League’s Two-Week Top Player'} subtitle={periodCurrent && data?.biweekly ? `${periodLabel(data.biweekly.period_start, data.biweekly.period_end, tr)} · ${data.biweekly.fixture_count} ${tr ? 'maç' : 'matches'}` : undefined} player={periodCurrent ? data?.biweekly?.league_best_player : null} pending={biweeklyPending} unavailable={unavailable} tr={tr} onPlayer={setWinner} />}</View>}
         <View style={{flex: width >= 640 ? 1 : undefined, minWidth: 0}}><Winner title={scope === 'qualifying' ? (tr ? 'Ön Elemelerin En İyisi' : 'Qualifiers Top Player') : scope === 'league' ? (tr ? 'Lig Aşamasının En İyisi' : 'League Phase Top Player') : scope === 'knockout' ? (tr ? 'Eleme Aşamasının En İyisi' : 'Knockout Phase Top Player') : (tr ? 'Ligin Sezonluk En İyisi' : 'League’s Season Top Player')} player={data?.season.league_best_player} pending={seasonPending} unavailable={unavailable} tr={tr} onPlayer={setWinner} /></View>
       </View>
@@ -129,9 +191,12 @@ export default function LeaguePerformanceStandings({leagueId, seasonId, rows: of
     <View style={[shared.row, {justifyContent: 'flex-start', flexWrap: 'wrap'}]}>{official && !rules.length && <Text style={shared.hint}>{tr ? 'Bu tablo için özel sıralama kuralı bulunmuyor.' : 'No position rules are available for this table.'}</Text>}{rules.map(rule => <Text key={rule.label} style={[styles.rule, {color: rule.color, borderColor: rule.color}]}>{rule.label}</Text>)}</View>
     <AdaptiveLeagueStandingsTable summaryStats={scope==='overall' && !official} phaseScoped={!!scope && scope !== 'overall'} official={official} rows={ordered} teams={teams} metric={metric} perMatch={usePerMatch} tr={tr} playerView={playerView} showSeason={playerView} showBiweekly={playerView && showBiweekly && canBiweekly} seasonPlayers={seasonPlayers} biweeklyPlayers={biweeklyPlayers} seasonPending={seasonPending} biweeklyPending={biweeklyPending} unavailable={unavailable} onPlayer={setWinner} />
     {!official && !rows.length && !busy && <Status text={tr ? 'Bu aşamada henüz tamamlanan maç yok.' : 'No completed matches in this phase yet.'} />}
-    <LeaguePerformanceUpgradeModal visible={focused && upgrade !== null} required={upgrade?.required || 'plus'} feature={upgrade?.feature || 'biweekly'} metricLabel={upgrade?.metricLabel} tr={tr} onClose={() => setUpgrade(null)} />
+    {upgrade ? <LeaguePerformanceUpgradeModal visible={focused} required={upgrade.required} feature={upgrade.feature}
+      metricLabel={upgrade.feature === 'metric' ? upgrade.metricLabel : undefined} tr={tr} onClose={() => setUpgrade(null)}
+      reward={reward} onWatch={canWatch ? () => void watchSelected() : undefined}/> :
+      <ReportRewardProvider reward={reward} onOpenPlans={openPlans}>{null}</ReportRewardProvider>}
     {winner && <LeaguePlayerCardModal key={winner.playerId} winner={winner} onClose={() => setWinner(null)} />}
-    {selector && <Selector title={selector === 'metric' ? (tr ? 'Sıralama Ölçütü' : 'Ordering Metric') : (tr ? 'İki Haftalık Dönem' : 'Two-Week Period')} tr={tr} selected={selector === 'metric' ? metric?.key || '' : period || data?.selectedPeriodStart || ''} options={selector === 'metric' ? [{key: '', label: defaultMetricLabel}, ...groupLeagueMetrics(metrics, tr).flatMap(group => group.metrics.map(item => ({key: item.key, label: matchMetricLabel(item.label, tr ? 'tr' : 'en'), category: group.label, locked: item.locked, plan: leagueMetricPlan(item) === 'free' ? undefined : leagueMetricPlan(item) as 'plus' | 'pro'})))] : (data?.periods || []).map(p => ({key: p.period_start, label: periodLabel(p.period_start, p.period_end, tr)}))} onClose={() => setSelector(null)} onSelect={key => {if (selector === 'metric') {if (metrics.find(item => item.key === key)?.locked) {setSelector(null); setTimeout(() => setUpgrade({required: leagueMetricPlan(metrics.find(item => item.key === key)!) === 'pro' ? 'pro' : 'plus', feature: 'metric', metricLabel: matchMetricLabel(metrics.find(item => item.key === key)?.label || key, tr ? 'tr' : 'en')}), 350); return;} setMetricKey(key); setDirection(metrics.find(item => item.key === key)?.direction || 'desc');} else setPeriod(key); setSelector(null);}} />}
+    {selector && <Selector title={selector === 'metric' ? (tr ? 'Sıralama Ölçütü' : 'Ordering Metric') : (tr ? 'İki Haftalık Dönem' : 'Two-Week Period')} tr={tr} selected={selector === 'metric' ? metric?.key || '' : period || data?.selectedPeriodStart || ''} options={selector === 'metric' ? [{key: '', label: defaultMetricLabel}, ...groupLeagueMetrics(metrics, tr).flatMap(group => group.metrics.map(item => ({key: item.key, label: matchMetricLabel(item.label, tr ? 'tr' : 'en'), category: group.label, locked: item.locked, rewardedUnlock: !!item.locked && reward.available, plan: leagueMetricPlan(item) === 'free' ? undefined : leagueMetricPlan(item) as 'plus' | 'pro'})))] : (data?.periods || []).map(p => ({key: p.period_start, label: periodLabel(p.period_start, p.period_end, tr)}))} onClose={() => setSelector(null)} onSelect={select} />}
   </View>;
 }
 
@@ -150,6 +215,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   proText: {color: ACCENT, fontWeight: '900'},
   unlockButton: {minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12},
   unlockText: {color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase'},
+  planAction: {flexDirection: 'row'},
   winnersFrame: {gap: 12},
   rule: {fontSize: 10, fontWeight: '700', borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6},
 });

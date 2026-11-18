@@ -1,22 +1,30 @@
-import { formatNarrativeNumbers } from '@/utils/narrativeNumbers';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
 
 import type { Team } from '@/services/teamPool';
 import { hasNonZeroReportValue,matchMetricLabel } from '@/utils/matchReportMetrics';
+import { teamFindingMetricLabel } from '@/utils/teamStyleMetricLabels';
 import ActionSpinner from './ActionSpinner';
 import TeamReportHeader from './TeamReportHeader';
 import TeamReportLockedDetail from './TeamReportLockedDetail';
-export type AssessmentProfile={themes:{title:string;metrics:{label:string;value:string}[];analysis:string[]}[]};
+export type AssessmentProfile={hasMoreThemes?:boolean;themes:{title:string;description?:string;relativeFallback?:boolean;metrics:{label:string;value:string;contributes?:boolean}[]}[]};
 export type TeamAssessment={strengths:AssessmentProfile;weaknesses:AssessmentProfile};
 export default function TeamReportAssessment({team,matches,tr,weak,profile,error,onRetry,free,onOpenPlans}:{team:Team;matches:number;tr:boolean;weak:boolean;profile?:AssessmentProfile;error:boolean;onRetry:()=>void;free:boolean;onOpenPlans:()=>void}){
   const themed = useThemedStyles(getModuleTheme);
   const {DANGER, ACCENT, s} = themed;
 
  const accent=weak?DANGER:ACCENT;
- return <View style={{gap:12}}><TeamReportHeader team={team} matches={matches} tr={tr} accent={accent}/><Text style={s.caption}>{tr?'Değerler 90 dakika başına; oranlar yüzde olarak gösterilir.':'Values per 90 minutes; rates retain their percentages.'}</Text>
- {!profile?error?<View style={s.frame}><Text style={s.caption}>{tr?'Analiz hazırlanamadı.':'Unable to prepare analysis.'}</Text><Pressable onPress={onRetry}><Text style={{color:accent}}>{tr?'Tekrar Dene':'Retry'}</Text></Pressable></View>:<View style={s.center}><ActionSpinner size={28} color={accent}/><Text style={s.caption}>{tr?'Analiz hazırlanıyor…':'Preparing analysis…'}</Text></View>:profile.themes.slice(0,2).map((topic,i)=><View key={i} style={[s.frame,{borderColor:`${accent}70`,backgroundColor:`${accent}08`}]}><Text style={[s.kicker,{color:accent}]}>{weak?(tr?'Zayıf Yön':'Weakness'):(tr?'Güçlü Yön':'Strength')} {i+1}</Text><Text style={s.title}>{matchMetricLabel(topic.title,tr?'tr':'en')}</Text><View style={s.grid}>{topic.metrics.filter(metric=>hasNonZeroReportValue(metric.value)).slice(0,4).map((m,j)=><View key={j} style={[s.metric,{borderColor:`${accent}55`}]}><Text style={s.caption}>{matchMetricLabel(m.label,tr?'tr':'en')}</Text><Text style={[s.value,{color:accent}]}>{m.value}</Text></View>)}</View>{!free&&!!topic.analysis?.[0]&&<View style={[s.bullet,{borderColor:`${accent}40`}]}><Text style={{color:accent}}>•</Text><Text style={s.body}>{formatNarrativeNumbers(topic.analysis[0], tr ? 'tr' : 'en')}</Text></View>}</View>)}
- {profile&&free&&<TeamReportLockedDetail tr={tr} accent={accent} kind={weak?'weaknesses':'strengths'} onOpenPlans={onOpenPlans}/>}
+ const hasSecondTopic = profile?.hasMoreThemes ?? (profile?.themes.length ?? 0) > 1;
+ return <View style={{gap:12}}><TeamReportHeader team={team} matches={matches} tr={tr} accent={accent}/><Text style={s.caption}>{tr?'Takım adetleri maç başına. Paylar ve oranlar kendi birimleriyle gösterilir.':'Team counts are per match. Shares and rates retain their units.'}</Text>
+ {!profile?error?<View style={s.frame}><Text style={s.caption}>{tr?'Analiz hazırlanamadı.':'Unable to prepare analysis.'}</Text><Pressable onPress={onRetry}><Text style={{color:accent}}>{tr?'Tekrar Dene':'Retry'}</Text></Pressable></View>:<View style={s.center}><ActionSpinner size={28} color={accent}/><Text style={s.caption}>{tr?'Analiz hazırlanıyor…':'Preparing analysis…'}</Text></View>:!profile.themes.length?<Text style={s.caption}>{weak ? (tr?'Seçili maçlarda kriterleri karşılayan bir zayıf yön belirlenmedi.':'No weakness met the criteria in the selected matches.') : (tr?'Seçili maçlarda kriterleri karşılayan bir güçlü yön belirlenmedi.':'No strength met the criteria in the selected matches.')}</Text>:profile.themes.slice(0,free?1:2).map((topic,i)=><View key={i} style={[s.frame,{borderColor:`${accent}70`,backgroundColor:`${accent}08`}]}><Text style={[s.kicker,{color:accent}]}>{weak?(tr?'Zayıf Yön':'Weakness'):(tr?'Güçlü Yön':'Strength')} {i+1}</Text><Text style={s.title}>{matchMetricLabel(topic.title,tr?'tr':'en')}</Text>{!!topic.description&&<Text style={s.caption}>{topic.description}{topic.relativeFallback && (tr ? ' Seçili maçlardaki göreli sıralamaya göre seçildi.' : ' Selected by relative ranking across the chosen matches.')}</Text>}<View style={s.grid}>{topic.metrics.filter(metric=>metric.contributes||hasNonZeroReportValue(metric.value)).slice(0,4).map((m,j)=><View key={j} style={[s.metric,{borderColor:`${accent}55`}]}><Text style={s.caption}>{teamFindingMetricLabel(m.label,tr) ?? matchMetricLabel(m.label,tr?'tr':'en')}</Text><Text style={[s.value,{color:accent}]}>{m.value}</Text></View>)}</View></View>)}
+  {profile && free && hasSecondTopic && <TeamReportLockedDetail
+   tr={tr}
+   accent={accent}
+   kind={weak ? 'weaknesses' : 'strengths'}
+   onOpenPlans={onOpenPlans}
+   titleOverride={weak ? (tr ? '2. Zayıf Yön' : 'Second Weakness') : (tr ? '2. Güçlü Yön' : 'Second Strength')}
+   messageOverride={tr ? 'İkinci değerlendirmeyi görmek için PLUS veya PRO’ya geç.' : 'Switch to PLUS or PRO to see the second finding.'}
+ />}
  </View>;
 }
 

@@ -1031,6 +1031,7 @@ export type ScoutingReportStatus = 'ready' | 'processing' | 'error' | 'failed';
 
 export type ScoutingReportResponse = {
   favorite_player_id: string;
+  rewarded_sections_enabled?: boolean;
   status: ScoutingReportStatus;
   content?: string | null;
   content_json?: any;
@@ -1067,8 +1068,10 @@ export async function getScoutingReport(
   });
 }
 
-export async function getFavoriteScoutingReportSection(favoriteId:string,section:'strengths'|'weaknesses'|'role_usage',player?:PlayerIdentityPayload):Promise<ScoutingReportResponse>{
-  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report-progress/sections/${section}`,{method:'POST',body:JSON.stringify(player??{})});
+export type ScoutingNarrativeSection = 'strengths' | 'weaknesses' | 'role_usage';
+
+export async function getFavoriteScoutingReportSection(favoriteId:string,section:ScoutingNarrativeSection,player?:PlayerIdentityPayload,rewarded=false):Promise<ScoutingReportResponse>{
+  return request<ScoutingReportResponse>(`/me/favorites/${favoriteId}/report-progress/sections/${section}${rewarded ? '?rewarded=true' : ''}`,{method:'POST',body:JSON.stringify(player??{})});
 }
 
 export async function getPlayerPoolScoutingReport(
@@ -1090,8 +1093,8 @@ export async function getPlayerPoolScoutingReportProgress(
   });
 }
 
-export async function getPlayerPoolScoutingReportSection(player:PlayerIdentityPayload,section:'strengths'|'weaknesses'|'role_usage'):Promise<ScoutingReportResponse>{
-  return request<ScoutingReportResponse>(`/player-pool/report-progress/sections/${section}`,{method:'POST',body:JSON.stringify(player??{})});
+export async function getPlayerPoolScoutingReportSection(player:PlayerIdentityPayload,section:ScoutingNarrativeSection,rewarded=false):Promise<ScoutingReportResponse>{
+  return request<ScoutingReportResponse>(`/player-pool/report-progress/sections/${section}${rewarded ? '?rewarded=true' : ''}`,{method:'POST',body:JSON.stringify(player??{})});
 }
 
 /** League data uses the same authenticated transport as existing mobile endpoints. */

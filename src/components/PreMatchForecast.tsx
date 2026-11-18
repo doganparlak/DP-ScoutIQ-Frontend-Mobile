@@ -58,7 +58,7 @@ function totalGoalRanges(home: number[], away: number[], grid?: MatchForecastPre
   return [low, middle, Math.max(0, 1 - low - middle)];
 }
 
-export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPlans, review, providedForecast, onUnavailable}: {fixtureId: number; tr: boolean; active: boolean; free: boolean; onOpenPlans: () => void; review?: PostMatchCardData; providedForecast?: MatchForecastResponse; onUnavailable?: () => void}) {
+export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPlans, review, providedForecast, onUnavailable, rewarded = false}: {fixtureId: number; tr: boolean; active: boolean; free: boolean; onOpenPlans: () => void; review?: PostMatchCardData; providedForecast?: MatchForecastResponse; onUnavailable?: () => void; rewarded?: boolean}) {
   const {s, ACCENT, BLUE, ACTUAL, TEXT, MUTED, LINE} = useThemedStyles(getTheme);
   const [response, setResponse] = useState<MatchForecastResponse | null>(providedForecast ?? null);
   const responseKey = useRef(providedForecast ? `${fixtureId}:${!!review}` : '');
@@ -68,7 +68,7 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
   const [pickerOpen, setPickerOpen] = useState(false);
   useEffect(() => {setSection('outcomes'); setPickerOpen(false);}, [fixtureId]);
   useEffect(() => {
-    if (providedForecast) {responseKey.current = `${fixtureId}:${!!review}`; setResponse(providedForecast); setNetworkError(false); return;}
+    if (providedForecast && !rewarded) {responseKey.current = `${fixtureId}:${!!review}`; setResponse(providedForecast); setNetworkError(false); return;}
     if (!active) return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -77,7 +77,7 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
     setNetworkError(false);
     const poll = async (retry = false) => {
       try {
-        const next = await getMatchForecast(fixtureId, retry, !!review);
+        const next = await getMatchForecast(fixtureId, retry, !!review, rewarded);
         if (!alive) return;
         responseKey.current = `${fixtureId}:${!!review}`; setResponse(next); failures = 0;
         if (next.status === 'processing') {
@@ -92,7 +92,7 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
     };
     void poll(attempt > 0);
     return () => {alive = false; clearTimeout(timer);};
-  }, [fixtureId, active, attempt, !!review, providedForecast]);
+  }, [fixtureId, active, attempt, !!review, providedForecast, rewarded]);
 
   useEffect(() => {
     if (response?.status === 'unavailable' && responseKey.current === `${fixtureId}:${!!review}`) onUnavailable?.();
@@ -111,11 +111,11 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
   const actual = review?.fixture.id === fixtureId ? forecastActuals(review, f.home.id, f.away.id) : null;
   const actualLabel = (label: string) => <View style={s.actualBadge}><Text style={s.actualBadgeText}>{label}</Text></View>;
   const marker = (value?: boolean | null) => actualLabel(value == null ? (tr ? 'Gerçekleşen' : 'Actual') : `${tr ? 'Gerçekleşen' : 'Actual'}: ${value ? (tr ? 'Evet' : 'Yes') : (tr ? 'Hayır' : 'No')}`);
-  const locked = !review && (free || response?.accessTier === 'free');
+  const locked = !review && ((free && !rewarded) || response?.accessTier === 'free');
   const details = !locked && hasForecastDetails(f) ? f : undefined;
   const scoreDetails = hasScoreDetails(f) ? f : undefined;
   const sides = [{key: 'home', label: f.home.name, value: f.outcomes.home, color: ACCENT}, {key: 'draw', label: tr ? 'Beraberlik' : 'Draw', value: f.outcomes.draw, color: MUTED}, {key: 'away', label: f.away.name, value: f.outcomes.away, color: BLUE}];
-  const margins = f.scoreMargins;
+  const margins = details?.scoreMargins;
   const marginRows = margins ? [
     {key: 'homeTwoPlus', team: f.home, label: tr ? '2+ farkla galibiyet' : 'Win by 2+ goals', value: margins.homeTwoPlus, color: ACCENT, actual: !!actual && actual.home - actual.away >= 2},
     {key: 'homeOne', team: f.home, label: tr ? '1 farkla galibiyet' : 'Win by 1 goal', value: margins.homeOne, color: ACCENT, actual: !!actual && actual.home - actual.away === 1},
@@ -151,7 +151,11 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
         <Text style={[s.teamName, {color: i ? BLUE : ACCENT}]}>{team.name}</Text>
       </View>)}</View>}
     </View>
-    {(section === 'goals' || section === 'halves' || section === 'scenarios') && !details && <ForecastLockedPreview section={section} tr={tr} onOpenPlans={onOpenPlans}/>}
+    {((section === 'margins' && locked) || ((section === 'goals' || section === 'halves' || section === 'scenarios') && !details)) && (
+      rewarded
+        ? <View style={s.loading}><ActionSpinner size={30} color={ACCENT}/><Text style={s.body}>{tr ? 'Öngörü yükleniyor…' : 'Loading forecast…'}</Text></View>
+        : <ForecastLockedPreview section={section} tr={tr} onOpenPlans={onOpenPlans}/>
+    )}
     {section === 'outcomes' && <>
     <View style={s.frame}>
       <View style={s.teams}>{[f.home, f.away].map((team, i) => <View key={team.id} style={s.team}>
@@ -183,7 +187,7 @@ export default function PreMatchForecast({fixtureId, tr, active, free, onOpenPla
       <Text style={s.footnote}>{tr ? 'Diğer skorlar' : 'Other scores'}: {heatmapPercent(scoreDetails.gridRemainder, tr)}</Text>
     </View>
     </>}
-    {section === 'margins' && <View style={s.frame}>
+    {section === 'margins' && !locked && <View style={s.frame}>
       <Text style={s.title}>{tr ? 'Skor Farkı Dağılımı' : 'Goal Margin Distribution'}</Text>
       <Text style={s.body}>{tr ? 'Beraberlik, tek fark ve daha farklı galibiyetlerin olasılıkları.' : 'The chances of a draw, a one-goal win or a wider winning margin.'}</Text>
       {marginRows.length ? <>

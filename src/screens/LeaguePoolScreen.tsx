@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { recordRecentSearch } from '@/services/recentSearches';
 import { readLeagueSearch, writeLeagueSearch } from '@/services/leaguePoolCache';
 import PortfolioRoleFilter from '@/components/PortfolioRoleFilter';
@@ -5,7 +7,7 @@ import { normalizeSearchText, optionMatchesSearch } from '@/utils/searchSuggesti
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
-import { TutorialPageGuide } from "@/components/Tutorial";
+import { TutorialPageGuide, useTutorial } from "@/components/Tutorial";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 
 import type { SearchResultRow } from "@/components/CandidatePlayers";
@@ -16,7 +18,7 @@ searchLeagues,
 type LeagueFilters,
 type LeagueOptions,
 } from "@/services/leaguePool";
-import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import { useFocusEffect,useIsFocused,useNavigation } from "@react-navigation/native";
 import {
 ChevronDown,
 Check,
@@ -59,6 +61,8 @@ export default function LeaguePoolScreen() {
   const {styles, TEXT, MUTED, ACCENT, FRAME_STRIPE, DANGER, poolTableStyles} = themed;
 
   const ads = useWorkspaceActionAd();
+  const isFocused = useIsFocused();
+  const tutorial = useTutorial();
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const nav = useNavigation<any>();
@@ -70,6 +74,7 @@ export default function LeaguePoolScreen() {
   const [selectedId, setSelectedId] = React.useState("");
   const [plan, setPlan] = React.useState<Plan>("Free");
   const [planResolved, setPlanResolved] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const [showPlanNudge, setShowPlanNudge] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [hasSearched, setHasSearched] = React.useState(false);
@@ -169,10 +174,12 @@ export default function LeaguePoolScreen() {
         .catch(() => {
           if (!active) return;
           setPlan("Free");
-          setPlanResolved(true);
+          setPlanResolved(false);
         });
       return () => {
         active = false;
+        setPlanResolved(false);
+        setBannerPrompt(false);
       };
     }, []),
   );
@@ -261,6 +268,7 @@ export default function LeaguePoolScreen() {
     catch(error){Alert.alert(tr?'Analiz açılamadı':'Could not open analysis',String(error));}
   }
   const selected = rows.find((row) => row.id === selectedId);
+  const showBanner = isFocused && planResolved && plan === "Free" && !tutorial.active && !!selected;
   const leagueLabel = filters.leagues[0] ? `${filters.countries[0] || '—'} | ${filters.leagues[0]}` : '';
   const optionsShown = (options.leagueChoices ?? []).filter(option => optionMatchesSearch(`${option.country} ${option.name}`, normalizeSearchText(query)));
   return (
@@ -335,6 +343,7 @@ export default function LeaguePoolScreen() {
         <TutorialPageGuide page="leaguePool" frame={0} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         {loading && <ActivityIndicator color={ACCENT}/>}
         {!loading && !selected && filters.leagues.length > 0 && !error && <Text style={styles.empty}>{hasSearched ? (tr?'Bu lig için oyuncu verisi bulunamadı.':'No player data found for this league.') : (tr?'Lig kartını görmek için Ara’ya bas.':'Press Search to view the league card.')}</Text>}
+        {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
         <LeagueCard
           row={selected}
           tr={tr}
@@ -362,6 +371,7 @@ export default function LeaguePoolScreen() {
         <TutorialPageGuide page="leaguePool" frame={1} onShow={y => scroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
 
       </ScrollView>
+      <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
       <PortfolioRoleFilter minSelections={1} description={tr?"Eşleşmeye eklemek istediğin oyuncu rollerini seç. En az bir rol seçmelisin.":"Choose the player roles to include in the matchup. Select at least one role."} hideField open={rolesOpen} onOpenChange={setRolesOpen} value={matchupRoles} onChange={setMatchupRoles} onDone={()=>void addLeagueWithRoles()}/>
         <Modal
         visible={!!selector}

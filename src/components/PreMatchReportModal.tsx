@@ -1,3 +1,5 @@
+import { useReportReward } from '@/ads/useReportReward';
+import ReportRewardProvider from './ReportRewardProvider';
 import { reportScopeMatches } from '@/services/reportAccess';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { Activity,ArrowRightLeft,BadgeInfo,ChartNoAxesCombined,ChevronLeft,ChevronRight,Shield,TrendingUp,UserRound,Users,X } from 'lucide-react-native';
@@ -70,26 +72,50 @@ export default function PreMatchReportModal({fixture,tr,onClose,onOpenPlans,init
     return()=>{cancelled=true;clearTimeout(timer);};
   },[fixture.fixtureId,tr,retry]);
 
-  const activeAiSection = activeSection===4?'players':activeSection===5?'momentum':activeSection===8?'team_analysis':null;
+  const activeAiSection = activeSection===5?'momentum':activeSection===8?'team_analysis':null;
+  const reward = useReportReward(JSON.stringify(['pre-match', fixture.fixtureId, tr]),
+    activeSection===1?'matchForecast':activeSection===4?'standout':activeSection===5?'momentum':activeSection===7?'opponentData':activeSection===8?'teamRisks':undefined,
+    plan === 'Free');
+  const rewarded = {momentum: reward.isUnlocked('momentum'), team_analysis: reward.isUnlocked('teamRisks')};
+  const activeReward = !!(activeAiSection && rewarded[activeAiSection]);
+  const hasReportData = !!data;
+  const needsPaidScope = plan !== 'Free' || activeReward;
   useEffect(()=>{
-    if(!data||!activeAiSection)return;
+    if(!hasReportData||!activeAiSection)return;
     const current=snapshot?.content?.sections?.[activeAiSection]?.status;
-    if(current==='ready'&&reportScopeMatches(snapshot?.content?.sections?.[activeAiSection],plan!=='Free'))return;
+    if(current==='ready'&&reportScopeMatches(snapshot?.content?.sections?.[activeAiSection],needsPaidScope))return;
     let active=true;let timer:ReturnType<typeof setTimeout>|undefined;
-    const accept=(next:SavedPreMatchReport)=>{if(!active)return;setSnapshot(next);setData(next.content?.data??data);const state=next.content?.sections?.[activeAiSection]?.status;if(state!=='failed'&&(state!=='ready'||!reportScopeMatches(next.content?.sections?.[activeAiSection],plan!=='Free')))timer=setTimeout(poll,2000);};
-    const poll=()=>pollSavedPreMatchReport(fixture.fixtureId,tr).then(accept).catch(()=>{if(active)timer=setTimeout(poll,5000);});
-    ensureSavedPreMatchSection(fixture.fixtureId,tr,activeAiSection).then(next=>{accept(next);if(active&&!timer)timer=setTimeout(poll,2000);}).catch(()=>{if(active)timer=setTimeout(poll,5000);});
-    return()=>{active=false;if(timer)clearTimeout(timer);};
-  },[data,activeAiSection,fixture.fixtureId,tr,retry,plan]);
+    const accept = (next: SavedPreMatchReport) => {
+      if (!active) return;
+      const content = next.content;
+      const state = content?.sections?.[activeAiSection];
+      const ready = state?.status === 'ready' && reportScopeMatches(state, needsPaidScope);
+      const deferred = !!content?.refresh_retry_after && Date.parse(content.refresh_retry_after) > Date.now();
+      if (!ready && deferred && content) {
+        setSnapshot({...next, content: {...content, sections: {
+          ...content.sections, [activeAiSection]: {...state, status: 'failed'},
+        }}});
+        return;
+      }
+      setSnapshot(next);
+      setData(previous => content?.data ?? previous);
+      if (!ready && state?.status !== 'failed') timer = setTimeout(poll, 2000);
+    };
+    const poll = () => pollSavedPreMatchReport(fixture.fixtureId, tr).then(accept)
+      .catch(() => { if (active) timer = setTimeout(poll, 5000); });
+    ensureSavedPreMatchSection(fixture.fixtureId, tr, activeAiSection, activeReward).then(accept)
+      .catch(() => { if (active) timer = setTimeout(poll, 5000); });
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  },[hasReportData,activeAiSection,fixture.fixtureId,tr,retry,needsPaidScope,activeReward]);
 
   useEffect(()=>{if(width)pager.current?.scrollToOffset({offset:page*width,animated:false});},[width]);
   const go=(next:number)=>{const index=Math.max(0,Math.min(sections.length-1,next));setPage(index);pager.current?.scrollToOffset({offset:index*width,animated:true});};
   const openPlans=()=>{onClose();onOpenPlans();};
-  return <PreMatchReportContext.Provider value={{snapshot,paid:plan!=='Free',onRetry:()=>setRetry(v=>v+1)}}><Modal transparent animationType="fade" onRequestClose={onClose}><View style={[s.backdrop,{paddingTop:Math.max(14,insets.top),paddingBottom:Math.max(14,insets.bottom)}]}><View style={s.modal}>
+  return <PreMatchReportContext.Provider value={{snapshot,paid:plan!=='Free',rewarded,onRetry:()=>setRetry(v=>v+1)}}><Modal transparent animationType="fade" onRequestClose={onClose}><ReportRewardProvider reward={reward} onOpenPlans={openPlans}><View style={[s.backdrop,{paddingTop:Math.max(14,insets.top),paddingBottom:Math.max(14,insets.bottom)}]}><View style={s.modal}>
     <View style={s.header}><View style={s.headerText}><Text style={s.headerTitle}>{tr?'Maç Önü Raporu':'Pre-Match Report'}</Text><Text style={s.sectionTitle}>{tr?sections[Math.min(page,sections.length-1)].tr:sections[Math.min(page,sections.length-1)].en}</Text></View><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={tr?'Kapat':'Close'} hitSlop={12}><X size={25} color={DANGER}/></Pressable></View>
-    <View style={s.pager} onLayout={e=>setWidth(Math.round(e.nativeEvent.layout.width))}>{width>0&&<FlatList ref={pager} initialScrollIndex={page} horizontal pagingEnabled data={sections} keyExtractor={item=>item.en} extraData={{width,data,error,tr,page,plan}} showsHorizontalScrollIndicator={false} getItemLayout={(_,index)=>({length:width,offset:width*index,index})} onMomentumScrollEnd={e=>setPage(Math.max(0,Math.min(sections.length-1,Math.round(e.nativeEvent.contentOffset.x/width))))} renderItem={({item})=><ScrollView style={{width}} contentContainerStyle={s.pageContent}>{item.id===0?data?<MatchCard data={data} tr={tr} preMatch/>:error?<View style={s.center}><Text style={s.subtitle}>{tr?'Maç bilgileri yüklenemedi.':'Unable to load match details.'}</Text><Pressable style={s.retry} onPress={()=>setRetry(v=>v+1)}><Text style={s.sectionTitle}>{tr?'Tekrar Dene':'Try Again'}</Text></Pressable></View>:<View style={s.center}><ActionSpinner size={28} color={ACCENT}/><Text style={s.subtitle}>{tr?'Maç bilgileri yükleniyor…':'Loading match details…'}</Text></View>:item.id===1&&data?<PreMatchForecast providedForecast={forecast} onUnavailable={onUnavailable} fixtureId={fixture.fixtureId} tr={tr} active={activeSection===1} free={plan==='Free'} onOpenPlans={openPlans}/>:item.id===2&&data?<PreMatchLineups data={data} tr={tr} active={activeSection===2}/>:item.id===3&&data?<PreMatchFormResults data={data} tr={tr} active={activeSection===3}/>:item.id===4&&data?<PreMatchPlayers data={data} tr={tr} active={activeSection===4} free={plan==='Free'} onOpenPlans={openPlans}/>:item.id===5&&data?<PreMatchMomentum data={data} tr={tr} active={activeSection===5} free={plan==='Free'} onOpenPlans={openPlans}/>:item.id===6&&data?<PreMatchScoreFlow data={data} tr={tr} active={activeSection===6}/>:item.id===7&&data?<PreMatchTeamComparison data={data} tr={tr} active={activeSection===7}/>:item.id===8&&data?<PreMatchTeamAnalysis data={data} tr={tr} active={activeSection===8} free={plan==='Free'} onOpenPlans={openPlans}/>:<View style={s.center}>{error?<><Text style={s.subtitle}>{tr?'Rapor yüklenemedi.':'Unable to load the report.'}</Text><Pressable style={s.retry} onPress={()=>setRetry(v=>v+1)}><Text style={s.sectionTitle}>{tr?'Tekrar Dene':'Try Again'}</Text></Pressable></>:<><ActionSpinner size={28} color={ACCENT}/><Text style={s.subtitle}>{tr?'Rapor yükleniyor…':'Loading report…'}</Text></>}</View>}</ScrollView>}/>}</View>
+    <View style={s.pager} onLayout={e=>setWidth(Math.round(e.nativeEvent.layout.width))}>{width>0&&<FlatList ref={pager} initialScrollIndex={page} horizontal pagingEnabled data={sections} keyExtractor={item=>item.en} extraData={{width,data,error,tr,page,plan,reward}} showsHorizontalScrollIndicator={false} getItemLayout={(_,index)=>({length:width,offset:width*index,index})} onMomentumScrollEnd={e=>setPage(Math.max(0,Math.min(sections.length-1,Math.round(e.nativeEvent.contentOffset.x/width))))} renderItem={({item})=><ScrollView style={{width}} contentContainerStyle={s.pageContent}>{item.id===0?data?<MatchCard data={data} tr={tr} preMatch/>:error?<View style={s.center}><Text style={s.subtitle}>{tr?'Maç bilgileri yüklenemedi.':'Unable to load match details.'}</Text><Pressable style={s.retry} onPress={()=>setRetry(v=>v+1)}><Text style={s.sectionTitle}>{tr?'Tekrar Dene':'Try Again'}</Text></Pressable></View>:<View style={s.center}><ActionSpinner size={28} color={ACCENT}/><Text style={s.subtitle}>{tr?'Maç bilgileri yükleniyor…':'Loading match details…'}</Text></View>:item.id===1&&data?<PreMatchForecast providedForecast={forecast} onUnavailable={onUnavailable} fixtureId={fixture.fixtureId} tr={tr} active={activeSection===1} free={plan==='Free'} rewarded={reward.isUnlocked('matchForecast')} onOpenPlans={openPlans}/>:item.id===2&&data?<PreMatchLineups data={data} tr={tr} active={activeSection===2}/>:item.id===3&&data?<PreMatchFormResults data={data} tr={tr} active={activeSection===3}/>:item.id===4&&data?<PreMatchPlayers data={data} tr={tr} active={activeSection===4} free={plan==='Free' && !reward.isUnlocked('standout')} onOpenPlans={openPlans}/>:item.id===5&&data?<PreMatchMomentum data={data} tr={tr} active={activeSection===5} free={plan==='Free' && !reward.isUnlocked('momentum')} onOpenPlans={openPlans}/>:item.id===6&&data?<PreMatchScoreFlow data={data} tr={tr} active={activeSection===6}/>:item.id===7&&data?<PreMatchTeamComparison data={data} tr={tr} active={activeSection===7} free={plan==='Free'} rewarded={reward.isUnlocked('opponentData')} onOpenPlans={openPlans}/>:item.id===8&&data?<PreMatchTeamAnalysis data={data} tr={tr} active={activeSection===8} free={plan==='Free' && !reward.isUnlocked('teamRisks')} onOpenPlans={openPlans}/>:<View style={s.center}>{error?<><Text style={s.subtitle}>{tr?'Rapor yüklenemedi.':'Unable to load the report.'}</Text><Pressable style={s.retry} onPress={()=>setRetry(v=>v+1)}><Text style={s.sectionTitle}>{tr?'Tekrar Dene':'Try Again'}</Text></Pressable></>:<><ActionSpinner size={28} color={ACCENT}/><Text style={s.subtitle}>{tr?'Rapor yükleniyor…':'Loading report…'}</Text></>}</View>}</ScrollView>}/>}</View>
     <View style={s.footer}><Pressable disabled={page===0} style={[s.nav,page===0&&s.disabled]} onPress={()=>go(page-1)} accessibilityLabel={tr?'Önceki bölüm':'Previous section'}><ChevronLeft size={22} color={TEXT}/></Pressable><View style={s.dots}>{sections.map((item,index)=><Pressable key={item.en} style={s.dotTarget} onPress={()=>go(index)} accessibilityLabel={tr?item.tr:item.en}><View style={[s.dot,index===page&&{backgroundColor:ACCENT}]}/></Pressable>)}</View><Pressable disabled={page===sections.length-1} style={[s.nav,page===sections.length-1&&s.disabled]} onPress={()=>go(page+1)} accessibilityLabel={tr?'Sonraki bölüm':'Next section'}><ChevronRight size={22} color={TEXT}/></Pressable></View>
-  </View></View></Modal></PreMatchReportContext.Provider>;
+  </View></View></ReportRewardProvider></Modal></PreMatchReportContext.Provider>;
 }
 
 

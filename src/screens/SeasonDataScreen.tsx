@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { readSeasonSearch, writeSeasonSearch } from '@/services/seasonDataCache';
 import { recordRecentSearch } from '@/services/recentSearches';
 import { cleanImageUrl } from '@/utils/sportmonksImages';
@@ -7,7 +9,7 @@ import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import ComparisonUnitSwitch from "@/components/ComparisonUnitSwitch";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
-import { TutorialPageGuide } from "@/components/Tutorial";
+import { TutorialPageGuide, useTutorial } from "@/components/Tutorial";
 import { useMatchup } from "@/context/MatchupContext";
 import {
 aggregateSeasonPlayerRow,
@@ -34,7 +36,7 @@ shortPlayer,
 shortSeason,
 shortTeam,
 } from "@/utils/seasonTableLabels";
-import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import { useFocusEffect,useIsFocused,useNavigation } from "@react-navigation/native";
 import {
 ChartNoAxesCombined,
 Check,
@@ -303,6 +305,8 @@ export default function SeasonDataScreen() {
   const { t, i18n } = useTranslation(),
     tr = i18n.language.startsWith("tr");
   const nav = useNavigation<any>();
+  const isFocused = useIsFocused();
+  const tutorial = useTutorial();
   const { height, width } = useWindowDimensions();
   const matchup = useMatchup();
   const pageScroll = React.useRef<ScrollView>(null);
@@ -327,6 +331,7 @@ export default function SeasonDataScreen() {
     [retry, setRetry] = React.useState(0);
   const [plan, setPlan] = React.useState<Plan>("Free");
   const [planResolved, setPlanResolved] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const [showPlanNudge, setShowPlanNudge] = React.useState(false);
   const [season, setSeason] = React.useState(""),
     [team, setTeam] = React.useState(""),
@@ -380,10 +385,12 @@ export default function SeasonDataScreen() {
         .catch(() => {
           if (!active) return;
           setPlan("Free");
-          setPlanResolved(true);
+          setPlanResolved(false);
         });
       return () => {
         active = false;
+        setPlanResolved(false);
+        setBannerPrompt(false);
       };
     }, []),
   );
@@ -524,6 +531,7 @@ export default function SeasonDataScreen() {
     setSearching(false);
     setShowPlanNudge(false);
   };
+  const showBanner = isFocused && planResolved && plan === "Free" && !tutorial.active && candidates.length > 0;
   return (
     <ScrollView
       ref={pageScroll}
@@ -669,6 +677,8 @@ export default function SeasonDataScreen() {
           )}
         </Table>
       </Frame>
+      {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
+      <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
       <Frame
         title={tr ? "Kariyer Geçmişi" : "Career History"}
         Icon={History}

@@ -1,10 +1,14 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PlusProUpsellScreen } from '@/ads/PlusProUpsellScreen';
+import { acquireAdPresentation, releaseAdPresentation } from '@/ads/presentation';
+import { preloadRewarded, showRewardedSafely } from '@/ads/rewarded';
 import { formatNarrativeNumbers } from '@/utils/narrativeNumbers';
 import { reportScopeMatches } from '@/services/reportAccess';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { toSpiderPoints as comparisonPoints,type EnterpriseMetricUnit } from '@/utils/comparisonRanges';
 import { useNavigation } from '@react-navigation/native';
 import type { TFunction } from 'i18next';
-import { BrickWall,ChevronLeft,ChevronRight,Clock3,DraftingCompass,ListOrdered,LockKeyhole,LogIn,Map as MapIcon,Radar,ShieldAlert,ShieldCheck,Star,Timer,X } from 'lucide-react-native';
+import { BrickWall,ChevronLeft,ChevronRight,Clock3,CreditCard,DraftingCompass,ListOrdered,LockKeyhole,LogIn,Map as MapIcon,Play,Radar,ShieldAlert,ShieldCheck,Star,Timer,X } from 'lucide-react-native';
 import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,7 +40,7 @@ toSpiderPoints,
 import ErrorsDisciplineTiles from '../components/ErrorsDisciplineTiles';
 import PlayerCard from '../components/PlayerCard';
 import SpiderChart,{ type SpiderPoint } from '../components/SpiderChart';
-import { rolePickerCode,type Plan,type ScoutingReportResponse } from '../services/api';
+import { rolePickerCode,type Plan,type ScoutingNarrativeSection,type ScoutingReportResponse } from '../services/api';
 import type { PlayerData } from '../types';
 import ActionSpinner from './ActionSpinner';
 import ReportPhaseDistributions from './ReportPhaseDistributions';
@@ -53,9 +57,12 @@ type Props = {
   report: ScoutingReportResponse;
   plan?: Plan;
   reloadReport?: () => Promise<ScoutingReportResponse>;
-  loadReportSection?: (section: 'strengths' | 'weaknesses' | 'role_usage') => Promise<ScoutingReportResponse>;
+  loadReportSection?: (section: ScoutingNarrativeSection, rewarded?: boolean) => Promise<ScoutingReportResponse>;
   onReportUpdate?: (report: ScoutingReportResponse) => void;
 };
+
+const rewardedSections = new Set<string>();
+let rewardSessionToken: string | null = null;
 
 type ParsedReport = {
   strengths: string[];
@@ -377,10 +384,18 @@ function NarrativeBulletRow({
 
   const { i18n } = useTranslation();
   const bullet = parseNarrativeBullet(item, section, index, translate);
+  const body = formatNarrativeNumbers(bullet.body, i18n.language);
+  const sentences = (body.match(/[\s\S]+?(?:[.!?]+(?=\s|$)|$)/g) ?? [])
+    .map(sentence => sentence.trim()).filter(Boolean);
   return (
     <View style={[styles.narrativeRow, {borderColor: `${color}55`, backgroundColor: `${color}08` }]}>
       {bullet.title ? <View style={styles.narrativeHeading}><View style={[styles.narrativeMarker, {backgroundColor:color}]} /><Text style={[styles.narrativeTitle, {color}]}>{bullet.title}</Text></View> : null}
-      <Text style={styles.narrativeText}>{formatNarrativeNumbers(bullet.body, i18n.language)}</Text>
+      {sentences.map((sentence, sentenceIndex) => (
+        <View key={sentenceIndex} style={styles.narrativeSentence}>
+          <Text style={[styles.narrativeText, {color}]} accessible={false}>•</Text>
+          <Text style={[styles.narrativeText, styles.narrativeSentenceText]}>{sentence}</Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -508,10 +523,16 @@ function ReportToggle({options, value, onChange, accent}: {accent?: string;optio
  return <View style={styles.metricSwitch}>{options.map(({value:v,label,Icon})=><Pressable key={v} accessibilityRole="button" accessibilityState={{selected:value===v}} onPress={()=>onChange(v)} style={({pressed})=>[styles.metricOption,value===v&&[styles.metricActive,{backgroundColor:`${accent}20`,borderColor:`${accent}70`}],pressed&&{opacity:.8}]}><Icon size={16} color={value===v?accent:MUTED}/><Text style={{color:value===v?TEXT:MUTED,fontSize:13,fontWeight:'700'}}>{label}</Text></Pressable>)}</View>;
 }
 
-function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent }: { title: string; message: string; buttonLabel: string; onOpenPlans: () => void; accent?: string }) {
+type SectionRewardButton = { label: string; loading: boolean; disabled: boolean; onPress: () => void; prepare: () => void };
+
+function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent, reward }: {
+  title: string; message: string; buttonLabel: string; onOpenPlans: () => void; accent?: string;
+  reward?: SectionRewardButton;
+}) {
   const themed = useThemedStyles(getModuleTheme);
   const {ACCENT, styles} = themed;
   accent ??= ACCENT;
+  useEffect(() => { reward?.prepare(); }, [reward]);
 
   return <View style={[styles.lockedInsight, {borderColor:`${accent}55`, backgroundColor:`${accent}0A`}]}>
     <View style={styles.lockedInsightHeading}>
@@ -524,8 +545,16 @@ function LockedInsightCard({ title, message, buttonLabel, onOpenPlans, accent }:
       part.toUpperCase() === 'PLUS' ? <Text key={index} style={styles.lockedPlanPlus}>PLUS</Text>
         : part.toUpperCase() === 'PRO' ? <Text key={index} style={styles.lockedPlanPro}>PRO</Text>
           : part)}</Text>
-    <Pressable onPress={onOpenPlans} style={({pressed})=>[styles.lockedInsightButton,pressed&&{opacity:.82}]}>
-      <Text style={styles.lockedInsightButtonText}>{buttonLabel}</Text>
+    {reward && <Pressable accessibilityRole="button" accessibilityState={{busy: reward.loading, disabled: reward.disabled}}
+      disabled={reward.disabled} onPress={reward.onPress}
+      style={({pressed}) => [styles.lockedInsightButton, styles.rewardButton, (pressed || reward.disabled) && {opacity:.82}]}>
+      {reward.loading ? <ActionSpinner size={15} color="#FFF"/> : <Play size={16} color="#FFF" strokeWidth={2.4}/>}
+      <Text style={[styles.lockedInsightButtonText, styles.rewardButtonText]}>{reward.label}</Text>
+    </Pressable>}
+    <Pressable accessibilityRole="button" onPress={onOpenPlans}
+      style={({pressed}) => [styles.lockedInsightButton, reward && styles.secondaryPlanButton, pressed && {opacity:.82}]}>
+      {reward && <CreditCard size={16} color="#FFF" strokeWidth={2.2}/>}
+      <Text style={[styles.lockedInsightButtonText, reward && styles.secondaryPlanButtonText]}>{buttonLabel}</Text>
     </Pressable>
   </View>;
 }
@@ -538,11 +567,11 @@ function ReportAnalysisState({failed,onRetry}:{failed:boolean;onRetry:()=>void})
  return <View style={styles.analysisState}>{failed?<><Text style={styles.analysisStateText}>{t('reportFailedBody','Could not generate the report. Please try again later.')}</Text><Pressable accessibilityRole="button" onPress={onRetry} style={styles.analysisRetry}><Text style={styles.analysisRetryText}>{t('tryAgain','Try Again')}</Text></Pressable></>:<><ActionSpinner size={27} color={ACCENT}/><Text style={styles.analysisStateText}>{t('generatingReport','Generating report…')}</Text></>}</View>;
 }
 
-function ReportMetricPage({ group, name, imageUrl, report, scope, onScopeChange, role, onRoleChange, unit, onUnitChange, plan, onOpenPlans }: {
+function ReportMetricPage({ group, name, imageUrl, report, scope, onScopeChange, role, onRoleChange, unit, onUnitChange, plan, onOpenPlans, reward, percentilesUnlocked }: {
   group: ReturnType<typeof buildSpiderGroupsFromReport>[number]; name: string; imageUrl?: string; report: ScoutingReportResponse;
   scope: string; onScopeChange: (scope: string) => void; role: string; onRoleChange: (role: string) => void;
   unit: EnterpriseMetricUnit; onUnitChange: (unit: EnterpriseMetricUnit) => void;
-  plan: Plan; onOpenPlans: () => void;
+  plan: Plan; onOpenPlans: () => void; reward?: SectionRewardButton; percentilesUnlocked: boolean;
 }) {
   const themed = useThemedStyles(getModuleTheme);
   const {DANGER, ACCENT, styles, TEXT} = themed;
@@ -571,8 +600,9 @@ function ReportMetricPage({ group, name, imageUrl, report, scope, onScopeChange,
     </View>
     {supportsPercentiles && <ReportPercentileScopeSwitch competitions={competitions} scope={scope} onChange={onScopeChange}/>}
     {competition ? <ReportPercentileTiles competition={competition} groupKey={group.titleKey} role={role} onRoleChange={onRoleChange}
-      unit={unit} minimumMinutes={percentiles?.minimumMinutes} metricLimit={reportPercentileLimit(plan)}
+      unit={unit} minimumMinutes={percentiles?.minimumMinutes} metricLimit={percentilesUnlocked ? Infinity : reportPercentileLimit(plan)}
       lockedContent={<LockedInsightCard
+        reward={reward}
         title={tr ? 'Daha fazla persentil' : 'More percentiles'}
         message={plan === 'No Ads Monthly'
           ? (tr ? 'Pro ile her kategoride sınırsız metrik persentiline erişin.' : 'Get unlimited metric percentiles in every category with Pro.')
@@ -593,6 +623,69 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
   const [page, setPage] = useState(0);
   const { t, i18n } = useTranslation();
   const [report,setReport]=useState(initialReport);
+  const [rewardToken, setRewardToken] = useState<string | null>(null);
+  const [rewardBusy, setRewardBusy] = useState<string | null>(null);
+  const [upsellVisit, setUpsellVisit] = useState<object | null>(null);
+  const reportKey = JSON.stringify([initialReport.favorite_player_id, initialReport.language, initialReport.version]);
+  const reportVisit = useMemo(() => ({preloaded: false}), [visible, reportKey]);
+  const canUnlockWithAd = (plan === 'Free' || plan === 'No Ads Monthly') && !!report.rewarded_sections_enabled;
+  const canUnlockNarrative = plan === 'Free' && Boolean(loadReportSection)
+    && report.content_json?.generation_mode === 'lazy_sections';
+  const currentVisit = useRef<typeof reportVisit | null>(null);
+  const currentPage = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!visible || !canUnlockWithAd) return;
+    currentVisit.current = reportVisit;
+    setRewardToken(null);
+    AsyncStorage.getItem('auth_token').then(token => {
+      if (currentVisit.current !== reportVisit) return;
+      if (rewardSessionToken !== token) {
+        rewardedSections.clear();
+        rewardSessionToken = token;
+      }
+      setRewardToken(token);
+    }).catch(() => {});
+    return () => {
+      currentVisit.current = null;
+    };
+  }, [visible, canUnlockWithAd, reportVisit]);
+  const unlockKey = (section: string) => JSON.stringify([reportKey, section]);
+  const isRewardUnlocked = (section: string) =>
+    canUnlockWithAd && !!rewardToken && rewardSessionToken === rewardToken && rewardedSections.has(unlockKey(section));
+  const watchForSection = async (section: string, pageKey: string) => {
+    if (!rewardToken || currentVisit.current !== reportVisit || currentPage.current !== pageKey || isRewardUnlocked(section)) return;
+    const lease = acquireAdPresentation();
+    if (!lease) return;
+    const active = () => currentVisit.current === reportVisit && currentPage.current === pageKey;
+    setRewardBusy(section);
+    try {
+      const result = await showRewardedSafely(active);
+      if (result === 'rewarded' && rewardSessionToken === rewardToken) {
+        rewardedSections.add(unlockKey(section));
+      } else if (result === 'unavailable' && active()) {
+        setUpsellVisit(reportVisit);
+      }
+    } finally {
+      releaseAdPresentation(lease);
+      setRewardBusy(null);
+    }
+  };
+  const rewardButton = (section: string, pageKey: string): SectionRewardButton | undefined => rewardToken && canUnlockWithAd ? {
+    label: rewardBusy === section
+      ? t('scoutingRewardLoading', 'Loading ad…')
+      : t('scoutingRewardWatch', 'Watch ad to unlock'),
+    loading: rewardBusy === section,
+    disabled: rewardBusy !== null,
+    onPress: () => { void watchForSection(section, pageKey); },
+    prepare: () => {
+      if (!visible || currentPage.current !== pageKey || reportVisit.preloaded || isRewardUnlocked(section)) return;
+      reportVisit.preloaded = true;
+      preloadRewarded();
+    },
+  } : undefined;
+  const strengthsUnlocked = isRewardUnlocked('strengths');
+  const weaknessesUnlocked = isRewardUnlocked('weaknesses');
+  const developmentUnlocked = isRewardUnlocked('role_usage');
   const [percentileScope, setPercentileScope] = useState('annual');
   const [percentileRole, setPercentileRole] = useState('');
   const [metricUnits, setMetricUnits] = useState<Record<string, EnterpriseMetricUnit>>({});
@@ -614,7 +707,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
   const analysisReady=report.status==='ready'&&!!report.content;
   const analysisFailed=report.status==='failed'||report.status==='error';
   const narrativeState=(section:'strengths'|'weaknesses'|'role_usage')=>report.content_json?.sections?.[section]?.status;
-  const narrativeReady=(section:'strengths'|'weaknesses'|'role_usage')=>(narrativeState(section)==='ready'&&reportScopeMatches(report.content_json?.sections?.[section],plan!=='Free'))||(!report.content_json?.generation_mode&&analysisReady);
+  const narrativeReady=(section:'strengths'|'weaknesses'|'role_usage')=>(narrativeState(section)==='ready'&&reportScopeMatches(report.content_json?.sections?.[section],(plan !== 'Free' || isRewardUnlocked(section))))||(!report.content_json?.generation_mode&&analysisReady);
   const narrativeFailed=(section:'strengths'|'weaknesses'|'role_usage')=>narrativeState(section)==='failed'||(!report.content_json?.generation_mode&&analysisFailed);
   const applyReport=useCallback((next:ScoutingReportResponse)=>{setReport(next);onReportUpdateRef.current?.(next);},[]);
   const retrySection=useCallback(async(section:'strengths'|'weaknesses'|'role_usage')=>{
@@ -628,7 +721,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
   const parsed = useMemo(() => parseReportText(report?.content || ''), [report?.content]);
   const reportDisplayPlayer = useMemo(() => buildReportDisplayPlayer(player, report), [player, report]);
   const spiderGroups = useMemo(() => buildSpiderGroupsFromReport(report), [report]);
-  const narrativeLimit = plan === 'Free' ? 2 : 3;
+
   const openPlanManagement = useCallback(() => {
     onClose();
     requestAnimationFrame(() => navigation.navigate('ManagePlan'));
@@ -681,7 +774,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               {t('noStrengthsFound', 'No strengths section found.')}
             </Text>
           ) : (
-            parsed.strengths.slice(0, narrativeLimit).map((s, i) => (
+            parsed.strengths.slice(0, plan === 'Free' && !strengthsUnlocked ? 1 : 3).map((s, i) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}
@@ -692,7 +785,8 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               />
             ))
           )}
-          {narrativeReady('strengths') && plan === 'Free' ? <LockedInsightCard
+          {narrativeReady('strengths') && plan === 'Free' && !strengthsUnlocked ? <LockedInsightCard
+            reward={canUnlockNarrative ? rewardButton('strengths', 'strengths') : undefined}
             title={t('lockedMoreStrengthsTitle', 'More Strengths')}
             message={t('lockedMoreStrengthsBody', 'Switch to Plus or Pro to reveal more strengths.')}
             buttonLabel={t('managePlan', 'Manage Plan')}
@@ -713,7 +807,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               {t('noConcernsFound', 'No concerns section found.')}
             </Text>
           ) : (
-            parsed.weaknesses.slice(0, narrativeLimit).map((s, i) => (
+            parsed.weaknesses.slice(0, plan === 'Free' && !weaknessesUnlocked ? 1 : 3).map((s, i) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}
@@ -724,7 +818,8 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               />
             ))
           )}
-          {narrativeReady('weaknesses') && plan === 'Free' ? <LockedInsightCard
+          {narrativeReady('weaknesses') && plan === 'Free' && !weaknessesUnlocked ? <LockedInsightCard
+            reward={canUnlockNarrative ? rewardButton('weaknesses', 'weaknesses') : undefined}
             title={t('lockedMoreWeaknessesTitle', 'More Weaknesses')}
             message={t('lockedMoreWeaknessesBody', 'Switch to Plus or Pro to reveal more weaknesses.')}
             buttonLabel={t('managePlan', 'Manage Plan')}
@@ -759,7 +854,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
       const title = parseNarrativeBullet(item, 'conclusion', index, t).title
         .toLocaleLowerCase('tr').replace(/ı/g, 'i').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[*_]/g, '').trim();
       if (/^(kullanim onerisi|usage recommendation|usage advice)$/.test(title)) return false;
-      if (plan === 'Free' && /^(gelisim odagi|development focus)$/.test(title)) return false;
+      if (plan === 'Free' && !developmentUnlocked && /^(gelisim odagi|development focus|topsuz oyunda|out of possession)$/.test(title)) return false;
       return true;
     });
     const roleUsagePage: PageItem = {
@@ -784,9 +879,10 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               />
             ))
           )}
-          {narrativeReady('role_usage') && plan === 'Free' ? <LockedInsightCard
-            title={t('lockedDevelopmentFocusTitle', 'Development Focus')}
-            message={t('lockedDevelopmentFocusBody', 'Switch to Plus or Pro to reveal Development Focus.')}
+          {narrativeReady('role_usage') && plan === 'Free' && !developmentUnlocked ? <LockedInsightCard
+            reward={canUnlockNarrative ? rewardButton('role_usage', 'conclusion') : undefined}
+            title={t('lockedRoleUsageDetailsTitle', 'Development Focus and Out of Possession')}
+            message={t('lockedRoleUsageDetailsBody', 'Switch to Plus or Pro to reveal both sections.')}
             buttonLabel={t('managePlan', 'Manage Plan')}
             onOpenPlans={openPlanManagement}
           /> : null}
@@ -799,8 +895,10 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
         ? possession ? 'Toplu Oyun' : 'Topsuz Oyun'
         : possession ? 'In Possession' : 'Out of Possession';
       const Icon = possession ? DraftingCompass : ShieldCheck;
+      const pageKey = possession ? 'in-possession' : 'out-of-possession';
+      const roleKey = (role: string) => JSON.stringify(['role', pageKey, role]);
       return {
-        key: possession ? 'in-possession' : 'out-of-possession', title, Icon,
+        key: pageKey, title, Icon,
         node: <View style={{ gap: 12 }}>
           <ReportPageHeading name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} title={title} Icon={Icon} accent={possession ? ACCENT : themeColor('#F59E0B')} />
           <ReportPhaseDistributions
@@ -809,6 +907,8 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
             free={plan === 'Free'}
             primaryRole={primaryPhaseRole}
             onOpenPlans={openPlanManagement}
+            isRoleUnlocked={role => isRewardUnlocked(roleKey(role))}
+            rewardForRole={role => rewardButton(roleKey(role), pageKey)}
           />
         </View>,
       };
@@ -819,27 +919,51 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
       const title = t(g.titleKey, g.fallbackTitle);
       const hasCompetition = g.titleKey in REPORT_PERCENTILE_METRICS
         && !!reportPercentileCompetition(report.content_json?.domestic_percentiles, percentileScope);
+      const pageKey = `metrics-${idx}`;
+      const percentileKey = JSON.stringify(['percentiles', g.titleKey, percentileScope]);
       const node = <ReportMetricPage group={g} name={reportDisplayPlayer.name} imageUrl={reportDisplayPlayer.meta?.imageUrl} report={report}
-        plan={plan} onOpenPlans={openPlanManagement} scope={percentileScope} onScopeChange={setPercentileScope} role={percentileRole} onRoleChange={setPercentileRole}
+        plan={plan} onOpenPlans={openPlanManagement}
+        reward={hasCompetition ? rewardButton(percentileKey, pageKey) : undefined}
+        percentilesUnlocked={isRewardUnlocked(percentileKey)} scope={percentileScope} onScopeChange={setPercentileScope} role={percentileRole} onRoleChange={setPercentileRole}
         unit={metricUnits[g.titleKey] || (hasCompetition ? 'per90' : 'perMatch')}
         onUnitChange={unit => setMetricUnits(current => ({...current, [g.titleKey]: unit}))}/>;
 
-      out.push({ key: `metrics-${idx}`, title, node, Icon: g.Icon });
+      out.push({ key: pageKey, title, node, Icon: g.Icon });
     });
 
     return out;
-  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, narrativeLimit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar, hidePlayerActions, themed, percentileScope, percentileRole, metricUnits]);
+  }, [reportDisplayPlayer, report, parsed, spiderGroups, t, i18n.language, strengthsUnlocked, weaknessesUnlocked, developmentUnlocked, rewardToken, rewardBusy, canUnlockWithAd, canUnlockNarrative, page, visible, reportVisit, openPlanManagement, plan, analysisReady, analysisFailed, retryReport, retrySection, onClose, onBeforeFindSimilar, hidePlayerActions, themed, percentileScope, percentileRole, metricUnits]);
 
   const activeNarrativeSection = pages[page]?.key === 'strengths' ? 'strengths' : pages[page]?.key === 'weaknesses' ? 'weaknesses' : pages[page]?.key === 'conclusion' ? 'role_usage' : null;
-  useEffect(()=>{
-    if(!visible||!activeNarrativeSection||!loadReportSectionRef.current||report.content_json?.generation_mode!=='lazy_sections')return;
-    const status=narrativeState(activeNarrativeSection);
-    if(status==='ready'&&reportScopeMatches(report.content_json?.sections?.[activeNarrativeSection],plan!=='Free'))return;
-    let cancelled=false;let timer:ReturnType<typeof setTimeout>;
-    const poll=async()=>{try{const next=await reloadReportRef.current!();if(cancelled)return;applyReport(next);const nextStatus=next.content_json?.sections?.[activeNarrativeSection]?.status;if(nextStatus!=='failed'&&(nextStatus!=='ready'||!reportScopeMatches(next.content_json?.sections?.[activeNarrativeSection],plan!=='Free')))timer=setTimeout(poll,2000);}catch{if(!cancelled)timer=setTimeout(poll,5000);}};
-    const request=async()=>{try{const next=await loadReportSectionRef.current!(activeNarrativeSection);if(cancelled)return;applyReport(next);const nextStatus=next.content_json?.sections?.[activeNarrativeSection]?.status;if(nextStatus!=='failed'&&(nextStatus!=='ready'||!reportScopeMatches(next.content_json?.sections?.[activeNarrativeSection],plan!=='Free')))timer=setTimeout(poll,2000);}catch{if(!cancelled)timer=setTimeout(request,5000);}};
-    request();return()=>{cancelled=true;clearTimeout(timer);};
-  },[visible,activeNarrativeSection,report.content_json?.generation_mode,report.content_json?.sections?.[activeNarrativeSection || '']?.status,applyReport,retryToken,plan]);
+  currentPage.current = pages[page]?.key;
+  const activeRewardUnlocked = activeNarrativeSection ? isRewardUnlocked(activeNarrativeSection) : false;
+  const activeSectionReady = activeNarrativeSection ? narrativeReady(activeNarrativeSection) : false;
+  useEffect(() => {
+    const loadSection = loadReportSectionRef.current;
+    const reload = reloadReportRef.current;
+    if (!visible || !activeNarrativeSection || !loadSection || !reload ||
+      activeSectionReady || report.content_json?.generation_mode !== 'lazy_sections') return;
+    const section = activeNarrativeSection;
+    const needsPaidScope = plan !== 'Free' || activeRewardUnlocked;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const refresh = async (requestSection: boolean) => {
+      try {
+        const next = await (requestSection ? loadSection(section, activeRewardUnlocked) : reload());
+        if (cancelled) return;
+        applyReport(next);
+        const state = next.content_json?.sections?.[section];
+        if (state?.status === 'failed' || (state?.status === 'ready' && reportScopeMatches(state, needsPaidScope))) return;
+        timer = setTimeout(() => { void refresh(false); }, 2000);
+      } catch {
+        if (!cancelled) timer = setTimeout(() => { void refresh(requestSection); }, 5000);
+      }
+    };
+    void refresh(true);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [visible, activeNarrativeSection, report.content_json?.generation_mode, activeSectionReady,
+    applyReport, retryToken, plan, activeRewardUnlocked, reportVisit]);
 
   const last = pages.length - 1;
   const canPrev = page > 0;
@@ -971,6 +1095,9 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
           </View>
         </View>
       </View>
+      <PlusProUpsellScreen visible={visible && upsellVisit === reportVisit} onClose={() => setUpsellVisit(null)}
+        subtitle={t('scoutingRewardUnavailable', 'No ad available right now. Try again later or unlock this section with Plus or Pro.')}
+        onViewPlans={() => { setUpsellVisit(null); openPlanManagement(); }} />
     </Modal>
   );
 }
@@ -1108,6 +1235,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   narrativeHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   narrativeMarker: { width: 5, height: 18, borderRadius: 3 },
   narrativeText: { color: TEXT, fontSize: 14, lineHeight: 22 },
+  narrativeSentence: { flexDirection: "row", gap: 8 },
+  narrativeSentenceText: { flex: 1 },
   narrativeTitle: { fontWeight: '800', fontSize: 14, flexShrink: 1 },
   lockedInsight: { gap: 10, padding: 14, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed' },
   lockedInsightHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
@@ -1118,6 +1247,10 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   lockedPlanPro: { color: ACCENT, fontWeight: '900' },
   lockedInsightButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   lockedInsightButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  rewardButton: { flexDirection: 'row', gap: 8, backgroundColor: '#166534', borderColor: '#166534' },
+  rewardButtonText: { color: '#FFF', textTransform: 'none' },
+  secondaryPlanButton: { flexDirection: 'row', gap: 8, backgroundColor: '#1E40AF', borderColor: '#3B82F6' },
+  secondaryPlanButtonText: { color: '#FFF', textTransform: 'none' },
   analysisState:{minHeight:180,alignItems:'center',justifyContent:'center',gap:13,padding:18,borderWidth:1,borderColor:LINE,borderRadius:16,backgroundColor:themeColor('rgba(255,255,255,.02)', 'surface')},
   analysisStateText:{color:MUTED,fontSize:13,lineHeight:20,fontWeight:'600',textAlign:'center'},
   analysisRetry:{minHeight:42,borderWidth:1,borderColor:ACCENT,borderRadius:12,paddingHorizontal:20,alignItems:'center',justifyContent:'center'},

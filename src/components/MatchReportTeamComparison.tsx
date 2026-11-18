@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Image,Pressable,StyleSheet,Text,View } from 'react-native';
 
 import type { CompetitionMetricRank,MatchReportMetric,MatchReportTeam,PostMatchCardData } from '@/services/matchPool';
+import { PlanUnlockBadges } from './LeaguePerformanceControls';
 import { expectedMetricOrder,matchMetricLabel,teamMetricOrder } from '@/utils/matchReportMetrics';
 
 const groups = [
@@ -12,6 +13,11 @@ const groups = [
   ['set_pieces', 'Duran Toplar', 'Set Pieces'], ['defending', 'Savunma', 'Defending'],
   ['expected', 'Gelişmiş Metrikler', 'Advanced Metrics'], ['errors_discipline', 'Hatalar ve Disiplin', 'Errors & Discipline'],
 ] as const;
+const opponentGroups = [
+  ['opponent_profile', 'Rakip Oyun Profili', 'Opponent Playing Profile'],
+  ['opponent_threat', 'Rakipten Gelen Tehdit', 'Opponent Threat'],
+] as const;
+type OpponentAccess = {onSelect:()=>void;placeholder:React.ReactNode};
 type Period = 'overall' | 'first_half' | 'second_half';
 function metrics(team: MatchReportTeam | undefined, section: string): MatchReportMetric[] {
   return section === 'expected' ? (team?.expected_metrics || []).filter(metric => metric.name !== 'Expected Goals Against (xGA)') : team?.categories?.[section] || [];
@@ -21,11 +27,11 @@ function numeric(value: unknown) {
   if (typeof value === 'string' && !value.trim()) return null;
   return Number.isFinite(Number(value)) ? Number(value) : null;
 }
-function comparisonNames(left: MatchReportMetric[], right: MatchReportMetric[]) {
+function comparisonNames(left: MatchReportMetric[], right: MatchReportMetric[], allowZero = false) {
   const rightValues = new Map(right.map(metric => [metric.name, numeric(metric.value)]));
   return [...new Set(left.filter(metric => {
     const lv = numeric(metric.value), rv = rightValues.get(metric.name);
-    return lv != null && rv != null && lv !== 0 && rv !== 0;
+    return lv != null && rv != null && (allowZero || (lv !== 0 && rv !== 0));
   }).map(metric => metric.name))];
 }
 function format(value: unknown) {
@@ -48,7 +54,7 @@ function CompetitionRank({rank,tr,color}:{rank:CompetitionMetricRank;tr:boolean;
   return <Text accessibilityLabel={label} style={[s.rankPosition,{color}]}>{tr?`${rank.position}. sıra`:`Rank ${rank.position}`}</Text>;
 
 }
-export default function MatchReportTeamComparison({ data, tr, preMatch = false }: { data: PostMatchCardData; tr: boolean; preMatch?: boolean }) {
+export default function MatchReportTeamComparison({ data, tr, preMatch = false, opponentAccess }: { data: PostMatchCardData; tr: boolean; preMatch?: boolean; opponentAccess?: OpponentAccess }) {
   const themed = useThemedStyles(getModuleTheme);
   const {s, ACCENT, AWAY} = themed;
 
@@ -61,30 +67,33 @@ export default function MatchReportTeamComparison({ data, tr, preMatch = false }
   const homeScoped = scoped.find(team => team.id === home?.id);
   const awayScoped = scoped.find(team => team.id === away?.id);
   const available = groups.filter(([key]) => (!preMatch || key !== 'set_pieces') && (key !== 'expected' || period === 'overall') && comparisonNames(metrics(homeScoped, key), metrics(awayScoped, key)).length > 0);
-  const active = available.find(([key]) => key === section) || available[0];
+  const sections = opponentAccess ? [...available, ...opponentGroups] : available;
+  const active = sections.find(([key]) => key === section) || sections[0];
   const key = active?.[0] || '';
+  const isOpponent = key.startsWith('opponent_');
   const left = metrics(homeScoped, key);
   const right = metrics(awayScoped, key);
   const preferred = key === 'expected' ? expectedMetricOrder : teamMetricOrder[key] || [];
   const rank = (name: string) => { const index = preferred.indexOf(name); return index < 0 ? preferred.length : index; };
-  const names = comparisonNames(left, right).sort((a, b) => rank(a) - rank(b));
+  const names = comparisonNames(left, right, isOpponent).sort((a, b) => rank(a) - rank(b));
   const periods: [Period, string][] = [['overall', tr ? 'Genel' : 'Overall'], ['first_half', tr ? '1. Yarı' : '1st Half'], ['second_half', tr ? '2. Yarı' : '2nd Half']];
   return <View style={s.page}>
     <View style={s.controls}>
       <View style={s.rule} />
       {!preMatch && <View style={s.switch}>{periods.map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: period === value }} onPress={() => { setPeriod(value); setPickerOpen(false); }} style={[s.option, period === value && s.selected]}><Text style={[s.optionText, period === value && { color: ACCENT }]}>{label}</Text></Pressable>)}</View>}
       <Text style={s.controlLabel}>{tr ? 'Analiz Bölümü' : 'Analysis Section'}</Text>
-      <Pressable disabled={!available.length} accessibilityRole="button" accessibilityLabel={tr ? 'Analiz bölümünü seç' : 'Select analysis section'} accessibilityState={{ expanded: pickerOpen, disabled: !available.length }} onPress={() => setPickerOpen(!pickerOpen)} style={s.selector}><Text style={s.selectorText}>{active ? active[tr ? 1 : 2] : tr ? 'Veri bulunmuyor' : 'No data available'}</Text><ChevronDown size={18} color={ACCENT} style={pickerOpen ? { transform: [{ rotate: '180deg' }] } : undefined} /></Pressable>
-      {pickerOpen && <View style={s.options}>{available.map(([value, turkish, english]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: key === value }} onPress={() => { setSection(value); setPickerOpen(false); }} style={[s.choice, key === value && { backgroundColor: `${ACCENT}15` }]}><Text style={[s.choiceText, key === value && { color: ACCENT }]}>{tr ? turkish : english}</Text>{key === value && <Check size={16} color={ACCENT} />}</Pressable>)}</View>}
+      <Pressable disabled={!sections.length} accessibilityRole="button" accessibilityLabel={tr ? 'Analiz bölümünü seç' : 'Select analysis section'} accessibilityState={{ expanded: pickerOpen, disabled: !sections.length }} onPress={() => setPickerOpen(!pickerOpen)} style={s.selector}><Text style={s.selectorText}>{active ? active[tr ? 1 : 2] : tr ? 'Veri bulunmuyor' : 'No data available'}</Text><ChevronDown size={18} color={ACCENT} style={pickerOpen ? { transform: [{ rotate: '180deg' }] } : undefined} /></Pressable>
+      {pickerOpen && <View style={s.options}>{sections.map(([value, turkish, english]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: key === value }} onPress={() => { setSection(value); setPickerOpen(false); if (value.startsWith('opponent_')) opponentAccess?.onSelect(); }} style={[s.choice, key === value && { backgroundColor: `${ACCENT}15` }]}><Text style={[s.choiceText, key === value && { color: ACCENT }]}>{tr ? turkish : english}</Text>{value.startsWith('opponent_') && <PlanUnlockBadges plan="plus" rewardedUnlock tr={tr}/>}
+        {key === value && <Check size={16} color={ACCENT} />}</Pressable>)}</View>}
     </View>
-    <View style={s.table}>
+    {isOpponent && opponentAccess?.placeholder ? opponentAccess.placeholder : <View style={s.table}>
       <View style={s.tableHeader}><TeamHeading team={home} /><Text style={s.metricHeading}>{tr ? 'Metrik' : 'Metric'}</Text><TeamHeading team={away} away /></View>
       {names.map(name => {
         const lm = left.find(metric => metric.name === name), rm = right.find(metric => metric.name === name);
         const lv = lm?.value, rv = rm?.value;
         const ln = numeric(lv), rn = numeric(rv);
-        const comparable = ln != null && rn != null && ln !== rn;
-        const leftWins = comparable && (key === 'errors_discipline' ? ln! < rn! : ln! > rn!);
+        const comparable = key !== 'opponent_profile' && ln != null && rn != null && ln !== rn;
+        const leftWins = comparable && ((key === 'errors_discipline' || key === 'opponent_threat') ? ln! < rn! : ln! > rn!);
         const rightWins = comparable && !leftWins;
         return <View key={name} style={s.row}>
           <View style={[s.value, leftWins && { backgroundColor: `${ACCENT}22`, borderColor: `${ACCENT}70` }]}><Text style={[s.valueText, leftWins && { color: ACCENT }]}>{format(lv)}</Text>{preMatch && lm?.competition_rank && <><Text style={s.rankPosition}>·</Text><CompetitionRank rank={lm.competition_rank} tr={tr} color={ACCENT}/></>}</View>
@@ -93,7 +102,7 @@ export default function MatchReportTeamComparison({ data, tr, preMatch = false }
         </View>;
       })}
       {!names.length && <Text style={s.empty}>{tr ? period === 'overall' ? 'Bu bölüm için takım istatistiği bulunmuyor.' : 'Bu yarı için takım istatistiği bulunmuyor.' : 'No team statistics are available for this period.'}</Text>}
-    </View>
+    </View>}
   </View>;
 }
 

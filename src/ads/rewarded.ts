@@ -1,167 +1,117 @@
-// src/ads/rewarded.ts
-import { RewardedAd, AdEventType, RewardedAdEventType, TestIds } from 'react-native-google-mobile-ads';
-import { InteractionManager, Keyboard, Platform } from 'react-native';
+import { AdEventType, RewardedAd, RewardedAdEventType, TestIds } from 'react-native-google-mobile-ads';
+import { AppState, Platform } from 'react-native';
+import { initializeAdvertising } from './initialization';
 import { logAdLifecycle } from './logging';
 
-const IOS_REWARDED = 'ca-app-pub-2754612075301490/7917252456';
-// REAL: ca-app-pub-2754612075301490/7917252456
-// TEST: ca-app-pub-3940256099942544/1712485313
-const ANDROID_REWARDED = 'ca-app-pub-2754612075301490/7680436978';
-// REAL ca-app-pub-2754612075301490/7680436978
-// TEST ca-app-pub-3940256099942544/5224354917
+const UNIT_ID = __DEV__ ? TestIds.REWARDED : Platform.OS === 'ios'
+  ? 'ca-app-pub-2754612075301490/7917252456' : 'ca-app-pub-2754612075301490/7680436978';
+const MAX_AGE_MS = 55 * 60 * 1000;
+const LOAD_TIMEOUT_MS = 6000;
 
-const UNIT_ID = __DEV__ ? TestIds.REWARDED : Platform.OS === 'ios' ? IOS_REWARDED : ANDROID_REWARDED;
-
-let ad: RewardedAd | null = null;
-let loaded = false;
+let reusableAd: RewardedAd | null = null;
+let cached: { ad: RewardedAd; loadedAt: number } | null = null;
+let loading: Promise<boolean> | null = null;
 let showing = false;
-let pendingShow = false;
+let retryAt = 0;
+let consentVersion = 0;
 
-function getAd() {
-  if (ad) return ad;
+function ready() {
+  if (cached && Date.now() - cached.loadedAt >= MAX_AGE_MS) {
+    cached = null;
+    reusableAd = null;
+  }
+  return cached;
+}
 
-  ad = RewardedAd.createForAdRequest(UNIT_ID);
+export function invalidateRewarded() {
+  consentVersion++;
+  reusableAd = null;
+  cached = null;
+  retryAt = 0;
+}
 
-  ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
-    loaded = true;
-    pendingShow = false;
-    logAdLifecycle('rewarded', 'loaded');
-  });
+function loadRewarded(): Promise<boolean> {
+  if (ready()) return Promise.resolve(true);
+  if (loading) return loading;
+  if (showing || Date.now() < retryAt || AppState.currentState !== 'active') return Promise.resolve(false);
 
-  ad.addAdEventListener(AdEventType.OPENED, () => {
-    showing = true;
-    pendingShow = false;
-    logAdLifecycle('rewarded', 'opened');
-  });
-
-  ad.addAdEventListener(AdEventType.CLOSED, () => {
-    loaded = false;
-    showing = false;
-    pendingShow = false; 
-    logAdLifecycle('rewarded', 'closed');
-    logAdLifecycle('rewarded', 'load_started', { reason: 'preload_next' });
-    ad?.load(); // preload next
-  });
-
-  ad.addAdEventListener(AdEventType.ERROR, (e) => {
-    loaded = false;
-    showing = false;
-    pendingShow = false;
-    const errorDetails = e as Error & { code?: string | number };
-    logAdLifecycle('rewarded', 'error', {
-      code: String(errorDetails?.code ?? 'unknown'),
-      message: String(e?.message ?? 'unknown'),
+  const version = consentVersion;
+  loading = initializeAdvertising().then(allowed => {
+    if (!allowed || version !== consentVersion || AppState.currentState !== 'active') return false;
+    return new Promise<boolean>(resolve => {
+      const ad = reusableAd ??= RewardedAd.createForAdRequest(UNIT_ID);
+      const unsubscribe: (() => void)[] = [];
+      const finish = (loaded: boolean) => {
+        clearTimeout(timer);
+        unsubscribe.splice(0).forEach(remove => remove());
+        if (version !== consentVersion) { resolve(false); return; }
+        if (loaded) cached = { ad, loadedAt: Date.now() };
+        else retryAt = Date.now() + 30000;
+        logAdLifecycle('rewarded', loaded ? 'loaded' : 'load_failed');
+        resolve(loaded);
+      };
+      const timer = setTimeout(() => {
+        reusableAd = null;
+        finish(false);
+      }, LOAD_TIMEOUT_MS);
+      unsubscribe.push(ad.addAdEventListener(RewardedAdEventType.LOADED, () => finish(true)));
+      unsubscribe.push(ad.addAdEventListener(AdEventType.ERROR, () => finish(false)));
+      logAdLifecycle('rewarded', 'load_started');
+      try { ad.load(); }
+      catch { finish(false); }
     });
-  });
-
-  return ad;
+  }).catch(() => false).finally(() => { loading = null; });
+  return loading;
 }
 
 export function preloadRewarded() {
-  logAdLifecycle('rewarded', 'load_started', { reason: 'preload' });
-  getAd().load();
+  void loadRewarded();
 }
 
-export function isRewardedLoaded() {
-  return loaded;
-}
+export async function showRewardedSafely(isActive: () => boolean): Promise<'rewarded' | 'skipped' | 'unavailable' | 'cancelled'> {
+  let waitTimer: ReturnType<typeof setTimeout> | undefined;
+  const loaded = await Promise.race([
+    loadRewarded(),
+    new Promise<false>(resolve => { waitTimer = setTimeout(() => resolve(false), LOAD_TIMEOUT_MS); }),
+  ]).finally(() => clearTimeout(waitTimer));
+  if (!isActive() || AppState.currentState !== 'active' || showing) return 'cancelled';
+  const candidate = ready();
+  if (!loaded || !candidate) return 'unavailable';
 
-/**
- * Shows rewarded ad safely.
- * Resolves with:
- *  - rewarded: true if user earned reward
- *  - rewarded: false if ad shown but no reward (rare)
- *  - shown: false if not ready (so you can skip / show message)
- */
-export function showRewardedSafely(): Promise<{ shown: boolean; rewarded: boolean }> {
-  if (showing || pendingShow) {
-    logAdLifecycle('rewarded', 'show_skipped', { reason: 'busy' });
-    return Promise.resolve({ shown: false, rewarded: false });
+  cached = null;
+  showing = true;
+  try {
+    return await new Promise(resolve => {
+      const {ad} = candidate;
+      let earned = false;
+      let settled = false;
+      const unsubscribe: (() => void)[] = [];
+      const finish = (result: 'rewarded' | 'skipped' | 'unavailable') => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(openTimer);
+        unsubscribe.splice(0).forEach(remove => remove());
+        logAdLifecycle('rewarded', result);
+        resolve(result);
+      };
+      const openTimer = setTimeout(() => {
+        reusableAd = null;
+        finish('unavailable');
+      }, LOAD_TIMEOUT_MS);
+      unsubscribe.push(ad.addAdEventListener(AdEventType.OPENED, () => clearTimeout(openTimer)));
+      unsubscribe.push(ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => { earned = true; }));
+      unsubscribe.push(ad.addAdEventListener(AdEventType.CLOSED, () => finish(earned ? 'rewarded' : 'skipped')));
+      unsubscribe.push(ad.addAdEventListener(AdEventType.ERROR, () => finish('unavailable')));
+      try {
+        ad.show().catch(() => { reusableAd = null; finish('unavailable'); });
+      } catch {
+        reusableAd = null;
+        finish('unavailable');
+      }
+    });
+  } catch {
+    return 'unavailable';
+  } finally {
+    showing = false;
   }
-
-  const a = getAd();
-
-  if (!loaded) {
-    logAdLifecycle('rewarded', 'show_skipped', { reason: 'not_ready' });
-    logAdLifecycle('rewarded', 'load_started', { reason: 'show_not_ready' });
-    a.load();
-    return Promise.resolve({ shown: false, rewarded: false });
-  }
-
-  pendingShow = true;
-  Keyboard.dismiss();
-
-  return new Promise((resolve) => {
-    let gotReward = false;
-    let finished = false;
-
-    const cleanup = () => {
-      subReward?.();
-      subClosed?.();
-      subError?.();
-    };
-
-    const finish = (shown: boolean, rewarded: boolean) => {
-      if (finished) return;
-      finished = true;
-      pendingShow = false;
-      cleanup();
-      resolve({ shown, rewarded });
-    };
-
-    const subReward = a.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
-      gotReward = true;
-      logAdLifecycle('rewarded', 'earned_reward');
-    });
-
-    const subClosed = a.addAdEventListener(AdEventType.CLOSED, () => {
-      finish(true, gotReward);
-    });
-
-    const subError = a.addAdEventListener(AdEventType.ERROR, () => {
-      finish(false, false);
-    });
-
-    InteractionManager.runAfterInteractions(() => {
-      setTimeout(() => {
-        if (!loaded || showing) {
-          pendingShow = false;
-          logAdLifecycle('rewarded', 'show_skipped', { reason: loaded ? 'already_showing' : 'not_loaded' });
-          finish(false, false);
-          return;
-        }
-        logAdLifecycle('rewarded', 'show_called');
-        a.show();
-      }, 400);
-    });
-  });
-}
-
-export function ensureRewardedLoaded(timeoutMs = 15000): Promise<boolean> {
-  const a = getAd();
-
-  // kick load if needed
-  if (!loaded) {
-    logAdLifecycle('rewarded', 'load_started', { reason: 'ensure_loaded' });
-    a.load();
-  }
-  if (loaded) return Promise.resolve(true);
-
-  return new Promise((resolve) => {
-    let done = false;
-
-    const finish = (ok: boolean) => {
-      if (done) return;
-      done = true;
-      subLoad?.();
-      subErr?.();
-      if (timer) clearTimeout(timer);
-      resolve(ok);
-    };
-
-    const subLoad = a.addAdEventListener(RewardedAdEventType.LOADED, () => finish(true));
-    const subErr = a.addAdEventListener(AdEventType.ERROR, () => finish(false));
-
-    const timer = setTimeout(() => finish(loaded), timeoutMs);
-  });
 }

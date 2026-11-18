@@ -1,8 +1,10 @@
-import { TutorialPageGuide } from '@/components/Tutorial';
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
+import { TutorialPageGuide, useTutorial } from '@/components/Tutorial';
 import WeeklyPopularPlayerCard from '@/components/WeeklyPopularPlayerCard';
-import { getWeeklyPopularPlayers } from '@/services/api';
+import { getMe, getWeeklyPopularPlayers } from '@/services/api';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { useFocusEffect,useRoute,type RouteProp } from '@react-navigation/native';
+import { useFocusEffect,useIsFocused,useRoute,type RouteProp } from '@react-navigation/native';
 import { ArrowUpRight,Flame,Trophy } from 'lucide-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +18,12 @@ export default function WeeklySearchesScreen() {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, ACCENT, themeColor} = themed;
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const tr = i18n.language.startsWith('tr');
+  const focused = useIsFocused();
+  const tutorial = useTutorial();
+  const [freePlan, setFreePlan] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const route = useRoute<RouteProp<MainTabsParamList, 'Weekly'>>();
   const [rows, setRows] = React.useState<WeeklyRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -29,6 +36,8 @@ export default function WeeklySearchesScreen() {
     setLoading(true);
     setError(false);
     setRows([]);
+    setFreePlan(false);
+    getMe().then(me => { if (active) setFreePlan(me.plan === 'Free'); }).catch(() => {});
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
     const load = async () => {
       try {
@@ -44,6 +53,7 @@ export default function WeeklySearchesScreen() {
     return () => { active = false; };
   }, [route.params?.visitKey, retry]));
 
+  const showBanner = focused && freePlan && !tutorial.active && rows.length > 1;
   return <View style={styles.screen}>
     <FlatList
       ref={listRef}
@@ -68,16 +78,19 @@ export default function WeeklySearchesScreen() {
       </View>}
       renderItem={({ item, index }) => {
         const rankColor = index === 0 ? themeColor('#D8B86A') : index < 3 ? themeColor('#8DE0B1') : themeColor('#80998B');
-        return <View style={[styles.rankedCard, index === 0 && styles.leader]} testID={`weekly-player-${index + 1}`}>
+        return <><View style={[styles.rankedCard, index === 0 && styles.leader]} testID={`weekly-player-${index + 1}`}>
           <View style={styles.rankHeader}>
             <View style={[styles.rankBadge, { borderColor: rankColor }]}><Text style={[styles.rank, { color: rankColor }]}>{String(index + 1).padStart(2, '0')}</Text></View>
             <View style={styles.rankCopy}><Text style={[styles.rankLabel, { color: rankColor }]}>{index === 0 ? t('weeklySearchesLeader', 'MOST SEARCHED') : t('weeklySearchesRank', 'WEEKLY RANKING')}</Text><Text style={styles.rankTeam}>{item.player.meta?.team || t('tabPlayerPool', 'Player Pool')}</Text></View>
             {index < 3 ? <Trophy size={20} color={rankColor} strokeWidth={1.6} /> : <ArrowUpRight size={20} color={rankColor} />}
           </View>
           <WeeklyPopularPlayerCard id={item.id} player={item.player} />
-        </View>;
+        </View>
+        {index === 0 && showBanner && <InlineBannerSlot canLoad tr={tr} onClose={()=>setBannerPrompt(true)}/>}
+        </>;
       }}
     />
+    <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={()=>setBannerPrompt(false)}/>
   </View>;
 }
 

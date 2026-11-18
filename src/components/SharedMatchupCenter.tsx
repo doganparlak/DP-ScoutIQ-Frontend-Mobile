@@ -1,3 +1,6 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from './BannerAdFreePrompt';
+import { useReportReward } from '@/ads/useReportReward';
 import { comparisonSourceShortLabel } from '@/utils/comparisonSourceLabel';
 import { matchupUpgrade } from '@/utils/matchupAccess';
 import {
@@ -17,7 +20,7 @@ type Plan,
 import { getSharedMatchupComparison } from "@/services/leaguePool";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { preserveComparisonIdentity } from "@/utils/comparisonGroups";
-import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import { useFocusEffect,useIsFocused,useNavigation } from "@react-navigation/native";
 import { ArrowUpRight,BadgeCheck,ClipboardList,Database,Gem,Trophy,UserRound,UsersRound } from "lucide-react-native";
 import React from "react";
 import { useTranslation } from "react-i18next";
@@ -26,6 +29,8 @@ import type { SearchResultRow } from "./CandidatePlayers";
 import ComparisonModal from "./ComparisonModal";
 import MatchupCenter from "./MatchupCenter";
 import MatchupWorkspaceControls from "./MatchupWorkspaceControls";
+import ReportRewardProvider from './ReportRewardProvider';
+import RewardUnlockButton from './RewardUnlockButton';
 import PlanManagementButton from './PlanManagementButton';
 import { TutorialPageGuide,useTutorial } from "./Tutorial";
 
@@ -41,7 +46,11 @@ export default function SharedMatchupCenter({
   const {styles, FRAME_STRIPE, ACCENT, FRAME_TITLE, FEATURE_COLORS, MUTED} = themed;
 
   const tutorial = useTutorial();
+  const isFocused = useIsFocused();
+  const [isFree, setIsFree] = React.useState(false);
+  const [bannerPrompt, setBannerPrompt] = React.useState(false);
   const [custom, setCustom] = React.useState(false);
+  const [customRewardKey, setCustomRewardKey] = React.useState<string | null>(null);
   const [sources, setSources] = React.useState<Record<string, string[]>>({});
   const [sourceOptions, setSourceOptions] = React.useState<Record<string, MatchupSource[]>>({});
   const { t, i18n } = useTranslation();
@@ -53,8 +62,11 @@ export default function SharedMatchupCenter({
   ), [sources, sourceOptions, tr]);
   const navigation = useNavigation<any>();
   const shared = useMatchup();
-  const [plan, setPlan] = React.useState<Plan | null>(null);
   const [upgrade, setUpgrade] = React.useState<"three" | "four" | "custom" | null>(null);
+  const upgradeRef = React.useRef(upgrade);
+  upgradeRef.current = upgrade;
+  const [launchPrompt, setLaunchPrompt] = React.useState(false);
+  const launchPromptRef = React.useRef(false);
   const [adFallback, setAdFallback] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -71,21 +83,20 @@ export default function SharedMatchupCenter({
       getMe()
         .then((me) => {
           if (!active) return;
-          const paid =
-            me.plan === "No Ads Monthly" ||
-            me.plan === "Pro Monthly" ||
-            me.plan === "Pro Yearly";
-          setPlan(paid ? (me.plan as Plan) : "Free");
+          setIsFree(me.plan === "Free");
           if (me.plan !== "Pro Monthly" && me.plan !== "Pro Yearly") setCustom(false);
         })
-        .catch(() => {
-          if (active) setPlan(null);
-        });
+        .catch(() => {});
       return () => {
         active = false;
+        setIsFree(false);
+        setBannerPrompt(false);
         fallbackWait.current?.(false); fallbackWait.current = null; setAdFallback(false);
         request.current++;
         setOpen(false);
+        setUpgrade(null);
+        setLaunchPrompt(false);
+        launchPromptRef.current = false;
         setLoading(false);
       };
     }, [shared.mode, shared.setMode]),
@@ -95,17 +106,24 @@ export default function SharedMatchupCenter({
     request.current++;
     setOpen(false);
     setData(null);
+    setUpgrade(null);
+    setLaunchPrompt(false);
+    launchPromptRef.current = false;
     setLoading(false);
   }, [slotIdentity, shared.mode, sources]);
   const entries = shared.rows
     .filter((row): row is SearchResultRow => !!row);
   const needsPlayers = entries.length < 2;
-  const planRequirement = plan ? matchupUpgrade(entries.length,plan) : null;
-  const launchNotice = planRequirement === 'four'
-    ? (tr ? '4’lü karşılaştırma için PRO gerekir.' : 'A 4-way comparison requires PRO.')
-    : planRequirement === 'three'
-      ? (tr ? '3’lü karşılaştırma için PLUS veya PRO gerekir.' : 'A 3-way comparison requires PLUS or PRO.')
-      : undefined;
+  const matchupKey = JSON.stringify(['matchup', shared.mode,
+    entries.map(row => [row.id, row.player.entityType, row.player.meta?.sportmonksId, sources[row.id] ?? []])]);
+  const rewardSection = upgrade === 'custom' ? 'custom' : launchPrompt ? 'launch' : undefined;
+  const reward = useReportReward(matchupKey, rewardSection,
+    workspace && !tutorial.active && navigation.isFocused());
+  const rewardedLaunch = reward.isUnlocked('launch');
+  const rewardedCustom = reward.isUnlocked('custom');
+  const customEnabled = custom || (rewardedCustom && customRewardKey === matchupKey);
+  const canWatch = !!rewardSection && reward.available && !reward.isUnlocked(rewardSection);
+  React.useEffect(() => { if (canWatch && rewardSection) reward.prepare(rewardSection); }, [canWatch, rewardSection, reward]);
   const playerSources = [
     { route: 'Strategy', label: tr ? 'Oyuncu\nHavuzu' : 'Player\nPool', Icon: UserRound },
     { route: 'LeaguePool', label: tr ? 'Lig\nHavuzu' : 'League\nPool', Icon: Trophy },
@@ -120,7 +138,6 @@ export default function SharedMatchupCenter({
         me.plan === "Pro Yearly"
           ? me.plan
           : "Free";
-      setPlan(next);
       return next;
     } catch {
       Alert.alert(
@@ -157,26 +174,36 @@ export default function SharedMatchupCenter({
   const changeCustom = async (value: boolean) => {
     if (!value) {
       setCustom(false);
+      setCustomRewardKey(null);
       return;
     }
+    const version = request.current;
     const currentPlan = await resolvePlan();
-    if (!currentPlan) return;
+    if (!currentPlan || version !== request.current || !navigation.isFocused()) return;
     if (currentPlan !== "Pro Monthly" && currentPlan !== "Pro Yearly") {
-      setUpgrade("custom");
+      if (rewardedCustom) setCustomRewardKey(matchupKey);
+      else setUpgrade("custom");
       return;
     }
     setCustom(true);
   };
-  const launch = async () => {
+  const launch = async (justUnlocked = false) => {
     if (entries.length < 2 || loading) return;
     if (!workspace) {
       navigation.navigate("Matchup");
       return;
     }
+    const version = request.current;
     const currentPlan = await resolvePlan();
-    if (!currentPlan || launchLock.current) return;
-    const requiredUpgrade=matchupUpgrade(entries.length,currentPlan);
-    if(requiredUpgrade){setUpgrade(requiredUpgrade);return;}
+    if (!currentPlan || launchLock.current || request.current !== version || !navigation.isFocused()) return;
+    const requiredUpgrade = matchupUpgrade(entries.length, currentPlan);
+    const viaReward = !!requiredUpgrade && (rewardedLaunch || justUnlocked);
+    if (requiredUpgrade && !viaReward) {
+      launchPromptRef.current = true;
+      setLaunchPrompt(true);
+      setUpgrade(requiredUpgrade);
+      return;
+    }
     launchLock.current = true;
     const id = ++request.current;
     setLoading(true);
@@ -184,7 +211,7 @@ export default function SharedMatchupCenter({
     setData(null);
     try {
       if (
-        currentPlan === "Free" &&
+        !viaReward && currentPlan === "Free" &&
         !tutorial.active &&
         shouldShowMatchupLaunchInterstitial(await incrementMatchupLaunchCount())
       ) {
@@ -209,12 +236,47 @@ export default function SharedMatchupCenter({
       }
     } catch (e: any) {
       if (isAdFlowCancelled(e)) return;
-      setOpen(true);
-      if (id === request.current) setError(String(e?.message || e));
+      if (id === request.current) {
+        setOpen(true);
+        setError(String(e?.message || e));
+      }
     } finally {
       launchLock.current = false;
       if (id === request.current) setLoading(false);
     }
+  };
+  const closeUpgrade = () => {
+    upgradeRef.current = null;
+    launchPromptRef.current = false;
+    setLaunchPrompt(false);
+    setUpgrade(null);
+  };
+  const openPlans = () => {
+    closeUpgrade();
+    setTimeout(() => navigation.navigate("Profile", {screen: "ManagePlan"}), 350);
+  };
+  const launchAfterReward = () => {
+    const version = request.current;
+    closeUpgrade();
+    setTimeout(() => {
+      if (version === request.current && navigation.isFocused()) void launch(true);
+    }, 450);
+  };
+  const completeReward = () => {
+    if (rewardSection === 'custom') {
+      setCustomRewardKey(matchupKey);
+      closeUpgrade();
+    } else launchAfterReward();
+  };
+  const watchToUnlock = async () => {
+    if (!rewardSection) return;
+    const version = request.current;
+    const active = () => version === request.current &&
+      (rewardSection === 'custom' ? upgradeRef.current === 'custom' : launchPromptRef.current);
+    if (await reward.watch(rewardSection, rewardSection, active)) completeReward();
+  };
+  const dismissUnavailable = () => {
+    if (reward.claimUnavailableReward()) completeReward();
   };
   const comparisonRow = (index: number) => {
     const fetched =
@@ -228,6 +290,7 @@ export default function SharedMatchupCenter({
       player: preserveComparisonIdentity(fetched.player, {...slot.player,meta:{...slot.player.meta,potential:fetched.player.meta?.potential??slot.player.meta?.potential,form:fetched.player.meta?.form??slot.player.meta?.form}}),
     };
   };
+  const showBanner = workspace && isFocused && isFree && !tutorial.active && !needsPlayers;
   return (
     <>
       {workspace && !needsPlayers && (
@@ -236,7 +299,7 @@ export default function SharedMatchupCenter({
           mode={shared.mode}
           onMode={changeMode}
           hideModeSwitch
-          custom={custom}
+          custom={customEnabled}
           onCustom={(value) => void changeCustom(value)}
           sources={sources}
           onSources={setSources}
@@ -244,6 +307,8 @@ export default function SharedMatchupCenter({
         />
       )}
       {workspace && <TutorialPageGuide page="matchup" frame={0} onShow={tutorialOnShow} />}
+      {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
+      <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
       {workspace && <TutorialPageGuide page="matchup" frame={1} onShow={tutorialOnShow} />}
       {workspace && needsPlayers && (
         <View style={styles.emptyPanel}>
@@ -304,10 +369,9 @@ export default function SharedMatchupCenter({
         hideModeSwitch
         hideLaunchButton={workspace && needsPlayers}
         onMatchupModeChange={changeMode}
-        onLaunchMatchup={launch}
+        onLaunchMatchup={() => void launch()}
         launchDisabled={entries.length < 2}
         launchLoading={loading}
-        launchNotice={launchNotice}
         tutorialStep={tutorial.active && tutorial.stage==='playerPool' ? tutorial.playerPoolStep : null}
         tutorialActive={tutorial.active && tutorial.stage==='playerPool'}
         onTutorialSkipAll={()=>void tutorial.skipTutorial()}
@@ -317,7 +381,7 @@ export default function SharedMatchupCenter({
         onRemoveRow4={() => shared.removeAt(3)}
       />}
       <ComparisonModal
-        customRadarMode={custom}
+        customRadarMode={customEnabled}
         visible={open}
         loading={loading}
         error={error}
@@ -347,8 +411,12 @@ export default function SharedMatchupCenter({
         visible={upgrade !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setUpgrade(null)}
+        onRequestClose={closeUpgrade}
       >
+        <ReportRewardProvider reward={reward} onOpenPlans={openPlans} onDismissUnavailable={dismissUnavailable}
+          unavailableSubtitle={upgrade === 'custom'
+            ? (tr ? 'Şu anda reklam yok. Bu sayfayı kapatıp karşılaştırmayı kişiselleştirebilirsin.' : 'No ad is available right now. Close this page to customize the matchup.')
+            : (tr ? 'Şu anda reklam yok. Bu sayfayı kapatıp karşılaştırmayı başlatabilirsin.' : 'No ad is available right now. Close this page to start the matchup.')}>
         <View style={styles.backdrop}>
           <View style={styles.prompt}>
             <View style={styles.upgradeHeader}>
@@ -356,7 +424,9 @@ export default function SharedMatchupCenter({
                 <BadgeCheck size={20} color={ACCENT} strokeWidth={2.3} />
               </View>
               <Text style={styles.title}>
-                {upgrade === "custom"
+                {canWatch
+                  ? (upgrade === "custom" ? (tr ? 'Karşılaştırmayı Kişiselleştir' : 'Customize Matchup') : upgrade === "three" ? (tr ? '3’lü Karşılaştırma' : '3-Way Matchup') : (tr ? '4’lü Karşılaştırma' : '4-Way Matchup'))
+                  : upgrade === "custom"
                   ? tr
                     ? <><Text style={styles.proHighlight}>PRO</Text> ile karşılaştırmanı kişiselleştir</>
                     : <>Customize with <Text style={styles.proHighlight}>PRO</Text></>
@@ -370,7 +440,13 @@ export default function SharedMatchupCenter({
               </Text>
             </View>
             <Text style={styles.body}>
-              {upgrade === "custom"
+              {canWatch
+                ? (upgrade === 'custom'
+                  ? (tr ? <>Karşılaştırmayı kişiselleştirmek için reklam izle veya planını <Text style={styles.proHighlight}>PRO</Text>’ya yükselt.</> : <>Watch an ad or upgrade to <Text style={styles.proHighlight}>PRO</Text> to customize the matchup.</>)
+                  : tr
+                  ? <>Bu oyuncuları karşılaştırmak için reklam izle veya planını {upgrade === "three" && <><Text style={styles.plusHighlight}>PLUS</Text> veya </>}<Text style={styles.proHighlight}>PRO</Text>’ya yükselt.</>
+                  : <>To compare these players, watch an ad or upgrade to {upgrade === "three" && <><Text style={styles.plusHighlight}>PLUS</Text> or </>}<Text style={styles.proHighlight}>PRO</Text>.</>)
+                : upgrade === "custom"
                 ? tr
                   ? <>Bu özelliğe erişmek için <Text style={styles.proHighlight}>PRO</Text>’ya geç.</>
                   : <>Go <Text style={styles.proHighlight}>PRO</Text> to access this feature.</>
@@ -382,20 +458,23 @@ export default function SharedMatchupCenter({
                     ? <>Bu özelliğe erişmek için <Text style={styles.proHighlight}>PRO</Text>’ya geç.</>
                     : <>Switch to <Text style={styles.proHighlight}>PRO</Text> to access this feature.</>}
             </Text>
+            {canWatch && <RewardUnlockButton loading={!!reward.busy} disabled={!!reward.busy}
+              label={upgrade === 'custom'
+                ? (tr ? 'Reklam İzle, Özelleştirmeyi Aç' : 'Watch Ad to Unlock Customization')
+                : (tr ? 'Reklam İzle, Karşılaştırmayı Başlat' : 'Watch Ad to Start Matchup')}
+              onPress={() => void watchToUnlock()}/>}
             <View style={styles.actions}>
               <Pressable
                 style={styles.button}
-                onPress={() => setUpgrade(null)}
+                onPress={closeUpgrade}
               >
                 <Text style={styles.body}>{t("notNow")}</Text>
               </Pressable>
-              <PlanManagementButton onPress={() => {
-                setUpgrade(null);
-                setTimeout(() => navigation.navigate("Profile", { screen: "ManagePlan" }), 350);
-              }} />
+              <PlanManagementButton highlighted={canWatch} onPress={openPlans} />
             </View>
           </View>
         </View>
+        </ReportRewardProvider>
       </Modal>
     </>
   );

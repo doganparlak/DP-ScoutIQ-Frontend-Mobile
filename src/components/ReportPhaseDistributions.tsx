@@ -1,3 +1,5 @@
+import PlanManagementButton from './PlanManagementButton';
+import RewardUnlockButton from './RewardUnlockButton';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { LockKeyhole } from 'lucide-react-native';
 import { useEffect,useState } from 'react';
@@ -20,7 +22,10 @@ const phaseNames: Record<string, string> = {
   'High Block': 'İleri Blok',
 };
 
-export default function ReportPhaseDistributions({ phases, possession, free = false, primaryRole, onOpenPlans }: { phases: Phase[]; possession: boolean; free?: boolean; primaryRole?: string; onOpenPlans?: () => void }) {
+export default function ReportPhaseDistributions({ phases, possession, free = false, primaryRole, onOpenPlans, isRoleUnlocked, rewardForRole }: { phases: Phase[]; possession: boolean; free?: boolean; primaryRole?: string; onOpenPlans?: () => void;
+  isRoleUnlocked?: (role: string) => boolean;
+  rewardForRole?: (role: string) => { onPress: () => void; loading: boolean; disabled: boolean; prepare: () => void } | undefined;
+}) {
   const themed = useThemedStyles(getModuleTheme);
   const {ACCENT, styles, MUTED, themeColor} = themed;
 
@@ -35,7 +40,10 @@ export default function ReportPhaseDistributions({ phases, possession, free = fa
   const resolvedPrimaryRole = roles.find(role => normalizeRole(role) === normalizeRole(primaryRole)) || roles[0];
   const orderedRoles = resolvedPrimaryRole ? [resolvedPrimaryRole, ...roles.filter(role => role !== resolvedPrimaryRole)] : roles;
   const activeRole = roles.includes(selectedRole) ? selectedRole : resolvedPrimaryRole;
-  const lockedRole = free && !!activeRole && activeRole !== resolvedPrimaryRole;
+  const roleIsLocked = (role: string) => free && role !== resolvedPrimaryRole && !isRoleUnlocked?.(role);
+  const lockedRole = !!activeRole && roleIsLocked(activeRole);
+  const reward = lockedRole && activeRole ? rewardForRole?.(activeRole) : undefined;
+  useEffect(() => { reward?.prepare(); }, [reward]);
   useEffect(() => setSelectedRole(''), [free, possession, primaryRole]);
 
   return <View style={styles.page}>
@@ -43,7 +51,7 @@ export default function ReportPhaseDistributions({ phases, possession, free = fa
       {orderedRoles.map(role => <Pressable key={role} accessibilityRole="button" accessibilityState={{ selected: role === activeRole }}
         onPress={() => setSelectedRole(role)} style={[styles.roleOption, role === activeRole && { backgroundColor: `${accent}25` }]}>
         <View style={styles.roleLabelRow}>
-          {free && role !== resolvedPrimaryRole ? <LockKeyhole size={12} color={role === activeRole ? accent : MUTED} /> : null}
+          {roleIsLocked(role) ? <LockKeyhole size={12} color={role === activeRole ? accent : MUTED} /> : null}
           <Text style={[styles.roleText, { color: role === activeRole ? accent : MUTED }]}>{role}</Text>
         </View>
       </Pressable>)}
@@ -57,9 +65,10 @@ export default function ReportPhaseDistributions({ phases, possession, free = fa
         </View>
       </View>
       <Text style={styles.lockedText}>{t('lockedOtherRolesBody', 'Switch to Plus or Pro to reveal this player’s other role analyses.')}</Text>
-      <Pressable onPress={onOpenPlans} style={({pressed})=>[styles.lockedButton,pressed&&{opacity:.82}]}>
+      {reward && <RewardUnlockButton loading={reward.loading} disabled={reward.disabled} onPress={reward.onPress}/>}
+      {reward && onOpenPlans ? <View style={styles.planAction}><PlanManagementButton highlighted onPress={onOpenPlans}/></View> : <Pressable onPress={onOpenPlans} style={({pressed})=>[styles.lockedButton,pressed&&{opacity:.82}]}>
         <Text style={styles.lockedButtonText}>{t('managePlan', 'Manage Plan')}</Text>
-      </Pressable>
+      </Pressable>}
     </View> : visible.map((phase, index) => {
       const items = [...((phase.role_views.find(view => view.role === activeRole) || phase.role_views[0])?.items || [])]
         .sort((a, b) => b.percentage - a.percentage);
@@ -114,6 +123,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   lockedTitle: { fontSize: 15, fontWeight: '900' },
   lockedRoleName: { color: TEXT, fontSize: 13, fontWeight: '800' },
   lockedText: { color: MUTED, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  planAction: {flexDirection:'row'},
   lockedButton: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: ACCENT, backgroundColor: themeColor('rgba(22,163,74,0.14)', 'surface'), alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   lockedButtonText: { color: ACCENT, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
 });

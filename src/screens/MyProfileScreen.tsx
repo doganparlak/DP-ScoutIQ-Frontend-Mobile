@@ -1,6 +1,6 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 // MyProfileScreen.tsx
-import { useFocusEffect,useNavigation } from '@react-navigation/native';
+import { useFocusEffect,useIsFocused,useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React,{ useCallback,useState } from 'react';
 import { ScrollView,StyleSheet,View } from 'react-native';
@@ -11,6 +11,8 @@ import type { Plan,Profile } from '@/services/api';
 import { getMe,logout } from '../services/api';
 import type { RootStackParamList } from '../types';
 
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import AdPrivacyOptions from '@/ads/AdPrivacyOptions';
 import Account from '@/components/Account';
 import ProfileSummary from '@/components/ProfileSummary';
@@ -24,13 +26,17 @@ export default function MyProfileScreen() {
 
   const insets = useSafeAreaInsets();
   const rootNav = useNavigation<RootNav>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const tr = i18n.language.startsWith('tr');
+  const focused = useIsFocused();
+  const [bannerPrompt, setBannerPrompt] = useState(false);
   const tutorial = useTutorial();
   const scrollRef = React.useRef<ScrollView | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const plan = (profile?.plan ?? 'Free') as Plan;
+  const showBanner = focused && profile?.plan === 'Free' && !tutorial.active;
 
   const loadMe = useCallback(async () => {
     try {
@@ -92,9 +98,14 @@ export default function MyProfileScreen() {
           <TutorialPageGuide page="panel" onShow={y => scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         </View>
         <ProfileSummary />
+        {showBanner && <View style={styles.banner}>
+          <InlineBannerSlot canLoad tr={tr} onClose={()=>setBannerPrompt(true)}/>
+        </View>}
         <AdPrivacyOptions />
       </ScrollView>
 
+      <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={()=>setBannerPrompt(false)}
+        onOpenPlans={()=>rootNav.getParent()?.navigate('ManagePlan')}/>
       <ProfileTutorialModal
         visible={isProfileTutorial && tutorial.profileStep === 'intro'}
         onDone={moveToScoutWiseTutorial}
@@ -114,6 +125,7 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
   tutorialGuide: { marginHorizontal: 16 },
+  banner: { marginHorizontal: 16 },
 });
   return {BG, styles, themeColor};
 });

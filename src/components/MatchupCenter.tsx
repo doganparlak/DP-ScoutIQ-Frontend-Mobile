@@ -51,7 +51,6 @@ type Props = {
   onLaunchMatchup: () => void;
   launchDisabled?: boolean;
   launchLoading?: boolean;
-  launchNotice?: string;
   sourceLabels?: Record<string, string>;
   onRemoveRow1: () => void;
   onRemoveRow2: () => void;
@@ -113,7 +112,6 @@ export default function MatchupCenter({
   onLaunchMatchup,
   launchDisabled = false,
   launchLoading = false,
-  launchNotice,
   sourceLabels,
   onRemoveRow1,
   onRemoveRow2,
@@ -298,10 +296,6 @@ export default function MatchupCenter({
           targetLabel={t('tutorialPressLaunchMatchup', 'Press Launch Matchup')}
           arrow="down"
         />
-
-        {!hideLaunchButton && !!launchNotice && <Text style={{color:theme?.muted??MUTED,fontSize:12,lineHeight:18,marginBottom:10,textAlign:'center'}}>{launchNotice.split(/(PLUS|PRO)/g).map((part, index) => part === 'PLUS' || part === 'PRO'
-          ? <Text key={index} style={{ color: themeColor(part === 'PRO' ? '#4ADE80' : '#38BDF8', 'text'), fontWeight: '900' }}>{part}</Text>
-          : part)}</Text>}
 
         {!hideLaunchButton && <Pressable
           onPress={onLaunchMatchup}

@@ -15,6 +15,7 @@ import type { MainTabsParamList } from '@/types';
 type PlusProUpsellProps = {
   visible: boolean;
   presentationOwner?: symbol;
+  subtitle?: string;
   onClose: () => void;
   onViewPlans?: () => void;
 };
@@ -25,7 +26,7 @@ type ComparisonRow = {
   pro: React.ReactNode;
 };
 
-export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentationOwner }: PlusProUpsellProps) {
+export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentationOwner, subtitle }: PlusProUpsellProps) {
   const themed = useThemedStyles(getModuleTheme);
   const {styles, TEXT, ACCENT, themeColor} = themed;
 
@@ -161,7 +162,7 @@ export function PlusProUpsellScreen({ visible, onClose, onViewPlans, presentatio
                   {t('plusProComparisonTitle', 'Compare Plus and Pro')}
                 </Text>
                 <Text style={styles.comparisonSubtitle}>
-                  {t('plusProComparisonSubtitle', 'Choose the plan that fits your ScoutWise workflow.')}
+                  {subtitle ?? t('plusProComparisonSubtitle', 'Choose the plan that fits your ScoutWise workflow.')}
                 </Text>
               </View>
             </View>

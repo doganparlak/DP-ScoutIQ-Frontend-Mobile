@@ -1379,9 +1379,9 @@ export default function FavoritePlayers({
             const row=rows.find(item=>item.id===scoutReport.favorite_player_id);
             return getScoutingReport(scoutReport.favorite_player_id,row?{name:row.name,gender:row.gender,nationality:row.nationality,team:row.team,age:row.age,height:row.height,weight:row.weight,potential:row.potential,form:row.form}:{},true);
           }}
-          loadReportSection={async(section)=>{
+          loadReportSection={async(section,rewarded)=>{
             const row=rows.find(item=>item.id===scoutReport.favorite_player_id);
-            return getFavoriteScoutingReportSection(scoutReport.favorite_player_id,section,row?{name:row.name,gender:row.gender,nationality:row.nationality,team:row.team,age:row.age,height:row.height,weight:row.weight,potential:row.potential,form:row.form}:{});
+            return getFavoriteScoutingReportSection(scoutReport.favorite_player_id,section,row?{name:row.name,gender:row.gender,nationality:row.nationality,team:row.team,age:row.age,height:row.height,weight:row.weight,potential:row.potential,form:row.form}:{},rewarded);
           }}
           onReportUpdate={next=>{
             setScoutReport(next);

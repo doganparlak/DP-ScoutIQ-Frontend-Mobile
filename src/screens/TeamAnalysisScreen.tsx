@@ -1,10 +1,12 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { readAnalysisTeam,writeAnalysisTeam } from '@/services/teamAnalysisCache';
 import { getTeamCard,getTeamSelectorOptions } from '@/services/teamPool';
 import { ContractDateFilter } from '@/components/ContractFilters';
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import TeamAnalysisReportModal from "@/components/TeamAnalysisReportModal";
 import TeamProfileCard from "@/components/TeamProfileCard";
-import { TutorialPageGuide } from "@/components/Tutorial";
+import { TutorialPageGuide, useTutorial } from "@/components/Tutorial";
 import WorkspaceSourceActions from '@/components/WorkspaceSourceActions';
 import { useTeamAnalysisSession } from '@/context/TeamAnalysisContext';
 import { getMe,matchPoolRequest,type Plan } from "@/services/api";
@@ -20,7 +22,7 @@ toggleAnalysisMatch,
 } from "@/services/teamAnalysis";
 import { Team } from "@/services/teamPool";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { useFocusEffect,useNavigation,useRoute } from "@react-navigation/native";
+import { useFocusEffect,useIsFocused,useNavigation,useRoute } from "@react-navigation/native";
 import {
 BarChart3,
 CalendarCheck2,
@@ -89,6 +91,10 @@ export default function TeamAnalysisScreen() {
   const {TEXT, ACCENT, DANGER, s, BG, MUTED, table, FRAME_HEADING, FRAME_TITLE, themeColor} = themed;
 
   const ads = useWorkspaceActionAd();
+  const isFocused = useIsFocused();
+  const tutorial = useTutorial();
+  const [isFree, setIsFree] = useState(false);
+  const [bannerPrompt, setBannerPrompt] = useState(false);
   const { i18n } = useTranslation(),
     tr = i18n.language.startsWith("tr"),
     nav = useNavigation<any>(),
@@ -119,6 +125,7 @@ export default function TeamAnalysisScreen() {
       try{
         const profile=await getMe();
         if(!active)return;
+        setIsFree(profile.plan === "Free");
         setPlan(profile.plan==='No Ads Monthly'||profile.plan==='Pro Monthly'||profile.plan==='Pro Yearly'?profile.plan:'Free');
         const sameOwner=cacheOwner.current===profile.id;
         if(!sameOwner)setSessionTeam(undefined);
@@ -139,7 +146,11 @@ export default function TeamAnalysisScreen() {
       }catch{if(active)setTeamError(true);}
       finally{if(active)setTeamLoading(false);}
     })();
-    return()=>{active=false;};
+    return () => {
+      active = false;
+      setIsFree(false);
+      setBannerPrompt(false);
+    };
   },[incomingTeam,setSessionTeam,teamRetry]));
   const [matches, setMatches] = useState<PlayedMatch[]>([]),
     [ids, setIds] = useState<number[]>([]),
@@ -255,6 +266,7 @@ export default function TeamAnalysisScreen() {
       </Text>
     </Text>
   );
+  const showBanner = isFocused && isFree && !tutorial.active && !!team;
   return (
     <ScrollView
       ref={pageScroll}
@@ -280,6 +292,8 @@ export default function TeamAnalysisScreen() {
         )}
       </Frame>
       <TutorialPageGuide page="teamAnalysis" frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+      {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
+      <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
       {team && (
         <>
           <Frame

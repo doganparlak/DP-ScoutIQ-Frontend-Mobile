@@ -3,7 +3,7 @@ import { Text,View } from 'react-native';
 
 import type { Team } from '@/services/teamPool';
 import TeamReportIdentity from './TeamReportIdentity';
-export default function TeamReportHeader({team,matches,tr,accent}:{team:Team;matches:number;tr:boolean;accent?:string}){
+export default function TeamReportHeader({team,matches,tr,accent}:{team:Pick<Team,'name'|'logoUrl'>;matches:number;tr:boolean;accent?:string}){
   const themed = useThemedStyles(getModuleTheme);
   const {ACCENT, CARD, MUTED} = themed;
   accent ??= ACCENT;

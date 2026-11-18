@@ -4,13 +4,14 @@ import Svg, {Defs, FeGaussianBlur, Filter, G, LinearGradient, Rect, Stop} from '
 import {createThemedStyles, useThemedStyles, type ThemeColors} from '@/theme';
 import TeamReportLockedDetail from './TeamReportLockedDetail';
 
-type PreviewSection = 'goals' | 'halves' | 'scenarios';
+type PreviewSection = 'margins' | 'goals' | 'halves' | 'scenarios';
 
 export default function ForecastLockedPreview({section, tr, onOpenPlans}: {section: PreviewSection; tr: boolean; onOpenPlans: () => void}) {
   const {s, ACCENT, BLUE, CARD, LINE} = useThemedStyles(getTheme);
   const id = useId().replace(/[^\w-]/g, '');
   const blur = `forecast-blur-${id}`, fade = `forecast-fade-${id}`;
   const title = section === 'goals' ? (tr ? 'Toplam Gol Aralığı ve Gol Dağılımı' : 'Total Goal Range & Goal Distribution')
+    : section === 'margins' ? (tr ? 'Skor Farkı Dağılımı' : 'Goal Margin Distribution')
     : section === 'halves' ? (tr ? 'Devre Bazlı Gol' : 'Goals by Half')
     : (tr ? 'Karşılıklı Gol' : 'Both Teams to Score');
   return <View style={s.frame}>
@@ -23,6 +24,18 @@ export default function ForecastLockedPreview({section, tr, onOpenPlans}: {secti
           <LinearGradient id={fade} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={CARD} stopOpacity={0.08}/><Stop offset="0.65" stopColor={CARD} stopOpacity={0.3}/><Stop offset="1" stopColor={CARD} stopOpacity={1}/></LinearGradient>
         </Defs>
         <G filter={`url(#${blur})`} opacity={0.65}>
+          {section === 'margins' && [164, 220, 125, 190, 96].map((width, index) => {
+            const y = 4 + index * 37;
+            const color = index < 2 ? ACCENT : index === 2 ? LINE : BLUE;
+            return <G key={index}>
+              <Rect x={8} y={y} width={304} height={30} rx={8} fill={color} fillOpacity={0.08} stroke={LINE}/>
+              <Rect x={18} y={y + 8} width={10} height={10} rx={3} fill={color}/>
+              <Rect x={36} y={y + 9} width={106} height={6} rx={3} fill={LINE}/>
+              <Rect x={265} y={y + 8} width={35} height={8} rx={3} fill={color}/>
+              <Rect x={18} y={y + 22} width={282} height={4} rx={2} fill={LINE}/>
+              <Rect x={18} y={y + 22} width={width} height={4} rx={2} fill={color}/>
+            </G>;
+          })}
           {section === 'goals' && <>
             <Rect x={8} y={12} width={78} height={13} rx={6} fill={LINE}/><Rect x={90} y={12} width={136} height={13} rx={6} fill={ACCENT}/><Rect x={230} y={12} width={82} height={13} rx={6} fill={BLUE}/>
             {[38, 76, 100, 69, 39, 18, 8].map((height, index) => <G key={index}>

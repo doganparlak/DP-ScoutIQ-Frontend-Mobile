@@ -6,6 +6,7 @@ import { Alert,Pressable,Text } from 'react-native';
 import { AdsConsent } from 'react-native-google-mobile-ads';
 
 import { invalidateAdvertisingConsent } from './initialization';
+import { invalidateRewarded } from './rewarded';
 import { invalidateInterstitial } from './interstitial';
 import { acquireAdPresentation,releaseAdPresentation } from './presentation';
 
@@ -27,9 +28,9 @@ export default function AdPrivacyOptions() {
     const lease = acquireAdPresentation();
     if (!lease) return;
     setBusy(true);
-    try { invalidateInterstitial(); await AdsConsent.showPrivacyOptionsForm(); }
+    try { invalidateInterstitial(); invalidateRewarded(); await AdsConsent.showPrivacyOptionsForm(); }
     catch { Alert.alert(tr ? 'Reklam Gizliliği' : 'Ad Privacy', tr ? 'Seçenekler açılamadı. Lütfen yeniden dene.' : 'Could not open privacy options. Please retry.'); }
-    finally { invalidateInterstitial(); invalidateAdvertisingConsent(); releaseAdPresentation(lease); setBusy(false); }
+    finally { invalidateInterstitial(); invalidateRewarded(); invalidateAdvertisingConsent(); releaseAdPresentation(lease); setBusy(false); }
   }
   return required ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void open()} style={{ padding: 16, alignSelf: 'center' }}>
     <Text style={{ color: MUTED, textDecorationLine: 'underline', textAlign: 'center' }}>{tr ? 'Reklam Gizliliği Seçenekleri' : 'Ad Privacy Options'}</Text>

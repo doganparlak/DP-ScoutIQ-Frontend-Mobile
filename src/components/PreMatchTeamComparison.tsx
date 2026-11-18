@@ -1,21 +1,45 @@
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
+import { useEffect, useState } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
 import { usePreMatchSection } from './PreMatchReportContext';
 
-import { type PostMatchCardData } from '@/services/matchPool';
+import { getSavedPreMatchOpponentComparison, type MatchReportMetric, type PostMatchCardData } from '@/services/matchPool';
 import ActionSpinner from './ActionSpinner';
+import TeamReportLockedDetail from './TeamReportLockedDetail';
 import MatchReportTeamComparison from './MatchReportTeamComparison';
-export default function PreMatchTeamComparison({data,tr,active}:{data:PostMatchCardData;tr:boolean;active:boolean}){
+export default function PreMatchTeamComparison({data,tr,active,free,rewarded,onOpenPlans}:{data:PostMatchCardData;tr:boolean;active:boolean;free:boolean;rewarded:boolean;onOpenPlans:()=>void}){
   const themed = useThemedStyles(getModuleTheme);
   const {s, ACCENT, MUTED} = themed;
 
- const {result,error,loading,onRetry}=usePreMatchSection('squad');
+ const {result,error,onRetry}=usePreMatchSection('squad');
+ const [requested,setRequested] = useState(false);
+ const [opponents,setOpponents] = useState<{fixtureId:number;groups:Record<string,Record<string,MatchReportMetric[]>>}>();
+ const [opponentError,setOpponentError] = useState(false);
+ const [retry,setRetry] = useState(0);
+ const locked = free && !rewarded;
+ const fixtureId = data.fixture.id;
+ const opponentGroups = opponents?.fixtureId === fixtureId ? opponents.groups : undefined;
+ useEffect(() => {
+   if (!active || !requested || locked || opponentGroups) return;
+   let cancelled = false;
+   setOpponentError(false);
+   getSavedPreMatchOpponentComparison(fixtureId,rewarded).then(groups => {
+     if (!cancelled) setOpponents({fixtureId,groups});
+   }).catch(() => {
+     if (!cancelled) setOpponentError(true);
+   });
+   return () => { cancelled = true; };
+ }, [active,requested,locked,opponentGroups,fixtureId,rewarded,retry]);
  if(error)return <View style={s.feedback}><Text style={s.caption}>{tr?'Takım karşılaştırması yüklenemedi.':'Unable to load team comparison.'}</Text><Pressable style={s.frame} onPress={onRetry}><Text style={{color:ACCENT}}>{tr?'Tekrar Dene':'Try Again'}</Text></Pressable></View>;
  if(!result)return <View style={s.feedback}><ActionSpinner size={25} color={ACCENT}/><Text style={s.caption}>{tr?'Takım istatistikleri yükleniyor…':'Loading team statistics…'}</Text></View>;
  const teams=[...data.teams].sort((a,b)=>Number(a.location!=='home')-Number(b.location!=='home'));
  const ranking=result.competition_ranking;
- const comparison={...data,teams:teams.map(team=>{const metrics=result.teams.find(t=>t.team_id===team.id)?.team_comparison||{};return {...team,categories:metrics,expected_metrics:metrics.expected||[]};})};
- return <View style={{gap:8}}>{ranking && <Text style={s.caption}>{ranking.competition_name} · {ranking.season_name} · {tr?'Sıralama: sezon geneli, maç başına':'Rank: full season, per match'}</Text>}<MatchReportTeamComparison data={comparison} tr={tr} preMatch/><Text style={{color:MUTED,fontSize:10,lineHeight:15,textAlign:'center',opacity:.75}}>{teams.map(team=>`${team.name} · ${tr?'Son':'Last'} ${result.teams.find(t=>t.team_id===team.id)?.sample_size??0} ${tr?'tamamlanmış maç':'completed matches'}`).join('\n')}</Text></View>;
+ const comparison={...data,teams:teams.map(team=>{const metrics=result.teams.find(t=>t.team_id===team.id)?.team_comparison||{};return {...team,categories:{...metrics,...(!locked ? opponentGroups?.[team.id] : undefined)},expected_metrics:metrics.expected||[]};})};
+ const placeholder = locked ? <TeamReportLockedDetail tr={tr} kind="opponentData" onOpenPlans={onOpenPlans}/>
+   : !opponentGroups ? <View style={s.feedback}>{opponentError
+     ? <Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}><Text style={{color:ACCENT}}>{tr ? 'Rakip verileri yüklenemedi. Tekrar dene.' : 'Could not load opponent data. Retry.'}</Text></Pressable>
+     : <ActionSpinner size={25} color={ACCENT}/>}</View> : null;
+ return <View style={{gap:8}}>{ranking && <Text style={s.caption}>{ranking.competition_name} · {ranking.season_name} · {tr?'Sıralama: sezon geneli, maç başına':'Rank: full season, per match'}</Text>}<MatchReportTeamComparison data={comparison} tr={tr} preMatch opponentAccess={{onSelect:()=>setRequested(true),placeholder}}/><Text style={{color:MUTED,fontSize:10,lineHeight:15,textAlign:'center',opacity:.75}}>{teams.map(team=>`${team.name} · ${tr?'Son':'Last'} ${result.teams.find(t=>t.team_id===team.id)?.sample_size??0} ${tr?'tamamlanmış maç':'completed matches'}`).join('\n')}</Text></View>;
 }
 
 

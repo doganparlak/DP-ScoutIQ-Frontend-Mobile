@@ -120,7 +120,7 @@ export default function WeeklyPopularPlayerCard({ id, player }: { id: string; pl
       }); }} />
     {report && <ScoutingReport visible={reportOpen} onClose={() => setReportOpen(false)} player={shownPlayer} report={report} plan={plan}
       reloadReport={reportPayload ? () => getPlayerPoolScoutingReportProgress(reportPayload) : undefined}
-      loadReportSection={reportPayload ? section => getPlayerPoolScoutingReportSection(reportPayload, section) : undefined}
+      loadReportSection={reportPayload ? (section, rewarded) => getPlayerPoolScoutingReportSection(reportPayload, section, rewarded) : undefined}
       onReportUpdate={setReport} />}
     <PlusProUpsellScreen visible={upsell} onClose={() => setUpsell(false)} />
   </View>;

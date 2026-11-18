@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import PreMatchReportModal from '@/components/PreMatchReportModal';
 import PostMatchReportModal from '@/components/PostMatchReportModal';
 import DailyFixtureBrowser from '@/components/DailyFixtureBrowser';
@@ -12,7 +14,7 @@ import MatchPortfolioTable from "@/components/MatchPortfolioTable";
 import MatchReportActions from "@/components/MatchReportActions";
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import TeamSuggestionsOverlay from "@/components/TeamSuggestionsOverlay";
-import { TutorialPageGuide, useMatchPageGuide } from "@/components/Tutorial";
+import { TutorialPageGuide, useMatchPageGuide, useTutorial } from "@/components/Tutorial";
 import { deleteSavedMatch,getMe,type Plan } from "@/services/api";
 import { FavoriteMatch } from "@/services/matchPool";
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
@@ -20,7 +22,7 @@ import {
 normalizeSearchText as fold,
 optionMatchesSearch,
 } from "@/utils/searchSuggestions";
-import { useFocusEffect,useNavigation,useRoute } from "@react-navigation/native";
+import { useFocusEffect,useIsFocused,useNavigation,useRoute } from "@react-navigation/native";
 import {
 BadgeInfo,
 BookMarked,
@@ -137,6 +139,9 @@ export default function MatchPoolScreen({
   const { i18n } = useTranslation();
   const tr = i18n.language.startsWith("tr");
   const ads = useWorkspaceActionAd();
+  const focused = useIsFocused();
+  const tutorial = useTutorial();
+  const [bannerPrompt, setBannerPrompt] = useState(false);
   const nav = useNavigation<any>();
   const route = useRoute<RouteProp<MainTabsParamList, 'MatchPool'>>();
   const [browseMode,setBrowseMode]=useState<'daily'|'team'>(route.params?.fixtureTeam?'team':'daily');
@@ -318,10 +323,12 @@ export default function MatchPoolScreen({
         .catch(() => {
           if (!active) return;
           setPlan("Free");
-          setPlanResolved(true);
+          setPlanResolved(!portfolio);
         });
       return () => {
         active = false;
+        if (portfolio) setPlanResolved(false);
+        setBannerPrompt(false);
       };
     }, [portfolio,browseMode]),
   );
@@ -609,7 +616,7 @@ export default function MatchPoolScreen({
   return (
     <View style={{ flex: 1, backgroundColor:BG }}>
       {!portfolio&&<View style={{flexDirection:'row',gap:8,paddingHorizontal:16,paddingTop:12}}>{(['daily','team'] as const).map(mode=><Pressable key={mode} accessibilityRole="tab" accessibilityState={{selected:browseMode===mode}} onPress={()=>{setCardOpen(false);setBrowseMode(mode);}} style={[s.button,{flex:1,paddingHorizontal:8},browseMode!==mode&&{borderColor:themed.LINE,backgroundColor:themed.CARD}]}><Text style={[s.green,{color:browseMode===mode?ACCENT:MUTED,fontSize:13}]}>{mode==='daily'?(tr?'Günün Maçları':'Daily Matches'):(tr?'Takım Fikstürü':'Team Fixtures')}</Text></Pressable>)}</View>}
-      {!portfolio&&browseMode==='daily'?<DailyFixtureBrowser tr={tr} onOpenReport={fixture=>void openDailyReport(fixture)} reportBusy={ads.busy} onFixtures={updateDailyFixtures} onSelect={fixture=>{setDailySelection(fixture);setCardOpen(true);void selectMatch(fixture);}}/>:<ScrollView
+      {!portfolio&&browseMode==='daily'?<DailyFixtureBrowser showBanners={planResolved && plan === "Free"} tr={tr} onOpenReport={fixture=>void openDailyReport(fixture)} reportBusy={ads.busy} onFixtures={updateDailyFixtures} onSelect={fixture=>{setDailySelection(fixture);setCardOpen(true);void selectMatch(fixture);}}/>:<ScrollView
         ref={pageScroll}
         onScrollBeginDrag={() => setTeamFocus(null)}
         style={{ flex: 1, backgroundColor: BG }}
@@ -649,6 +656,11 @@ export default function MatchPoolScreen({
           {!!error && <Pressable onPress={()=>setRetry(n=>n+1)}><Text style={s.error}>{error}</Text><Text style={s.green}>{tr?'Tekrar Dene':'Retry'}</Text></Pressable>}
         </Frame>
         )}
+        {focused && planResolved && plan === 'Free' && !tutorial.active
+          && (portfolio || (browseMode === 'team' && rows.length > 0)) && <>
+          <InlineBannerSlot canLoad tr={tr} onClose={()=>setBannerPrompt(true)}/>
+          <BannerAdFreePrompt visible={bannerPrompt} tr={tr} onClose={()=>setBannerPrompt(false)}/>
+        </>}
         <TutorialPageGuide page={portfolio ? "matchPortfolio" : "matchTeam"} frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
         <Frame
           title={

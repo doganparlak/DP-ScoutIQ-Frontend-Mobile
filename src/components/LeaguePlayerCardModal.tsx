@@ -189,7 +189,7 @@ export default function LeaguePlayerCardModal({winner, initialEntry, inline = fa
       </View></View>
     </Modal>}
     <PlusProUpsellScreen visible={focused && upsellOpen} onClose={closeUpsell} />
-    {report && reportPlayer && reportPayload && <ScoutingReport hidePlayerActions={proMode} visible={focused && reportOpen} player={reportPlayer} report={report} plan={plan} onClose={() => {setReportOpen(false); setTimeout(() => {if (mounted.current) setCardVisible(true);}, 350);}} reloadReport={() => getPlayerPoolScoutingReportProgress(reportPayload)} loadReportSection={section => getPlayerPoolScoutingReportSection(reportPayload, section)} onReportUpdate={setReport} />}
+    {report && reportPlayer && reportPayload && <ScoutingReport hidePlayerActions={proMode} visible={focused && reportOpen} player={reportPlayer} report={report} plan={plan} onClose={() => {setReportOpen(false); setTimeout(() => {if (mounted.current) setCardVisible(true);}, 350);}} reloadReport={() => getPlayerPoolScoutingReportProgress(reportPayload)} loadReportSection={(section, rewarded) => getPlayerPoolScoutingReportSection(reportPayload, section, rewarded)} onReportUpdate={setReport} />}
   </>;
 }
 

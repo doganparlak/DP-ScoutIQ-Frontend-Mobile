@@ -261,18 +261,18 @@ export const readMatchReport = (favoriteId: string) =>
   }>(`/favorite-matches/${encodeURIComponent(favoriteId)}/report`);
 
 export type MatchTeamInsight = { header: string; text: string; tone: 'positive' | 'neutral' | 'negative' };
-export type MatchTeamAnalysis = { teams: Record<string, MatchTeamInsight[]> };
+export type MatchTeamAnalysis = { analysis_version?: number; teams: Record<string, MatchTeamInsight[]> };
 export const getMatchTeamAnalysis = (fixtureId: number, tr: boolean) =>
   matchPoolRequest<MatchTeamAnalysis>(`/match-pool/fixtures/${fixtureId}/team-analysis?language=${tr ? 'tr' : 'en'}`, {});
 
-export type MatchPlayerPerspective = { player_id: number; player_name: string; selection_type: 'featured' | 'development'; text: string };
+export type MatchPlayerPerspective = { player_id?: number; player_name?: string; rating?: number | null; selection_type: 'featured' | 'development'; locked?: boolean };
 export type MatchPlayerPerspectives = { teams: Record<string, MatchPlayerPerspective[]> };
 export const getMatchPlayerPerspectives = (fixtureId: number, tr: boolean) =>
   matchPoolRequest<MatchPlayerPerspectives>(`/match-pool/fixtures/${fixtureId}/player-perspectives?language=${tr ? 'tr' : 'en'}`, {});
 
 export type SavedPostMatchReport = {
   favoriteId: string; status: 'not_started' | 'processing' | 'ready' | 'failed';
-  content: null | { version: number; language: string; data?: PostMatchCardData;
+  content: null | { version: number; language: string; refresh_retry_after?: string; data?: PostMatchCardData;
     team_analysis?: MatchTeamAnalysis; player_perspectives?: MatchPlayerPerspectives;
     sections: Record<string, { status: 'pending' | 'processing' | 'ready' | 'failed'; access_tier?: 'free' | 'paid' }>;
   };
@@ -281,8 +281,8 @@ export const openSavedPostMatchReport = (fixtureId: number, tr: boolean) =>
   matchPoolRequest<SavedPostMatchReport>(`/match-pool/fixtures/${fixtureId}/saved-report?language=${tr ? 'tr' : 'en'}&lazy=true`, {});
 export const pollSavedPostMatchReport = (fixtureId: number, tr: boolean) =>
   matchPoolRequest<SavedPostMatchReport>(`/match-pool/fixtures/${fixtureId}/saved-report?language=${tr ? 'tr' : 'en'}&lazy=true`);
-export const ensureSavedPostMatchSection = (fixtureId:number,tr:boolean,section:'team_analysis'|'player_perspectives') =>
-  matchPoolRequest<SavedPostMatchReport>(`/match-pool/fixtures/${fixtureId}/saved-report/sections/${section}?language=${tr?'tr':'en'}`,{});
+export const ensureSavedPostMatchSection = (fixtureId:number,tr:boolean,section:'team_analysis'|'player_perspectives',rewarded=false) =>
+  matchPoolRequest<SavedPostMatchReport>(`/match-pool/fixtures/${fixtureId}/saved-report/sections/${section}?language=${tr?'tr':'en'}&rewarded=${rewarded}`,{});
 
 export const getPreMatchCard = (fixtureId: number) => matchPoolRequest<PostMatchCardData>(`/match-pool/fixtures/${fixtureId}/pre-match-card`);
 
@@ -315,7 +315,9 @@ export const getPreMatchScoreFlow = (id:number) => matchPoolRequest<PreMatchScor
 
 export type PreMatchComparisonData = { competition_ranking?: CompetitionRankingContext; teams:{team_id:number;sample_size:number;team_comparison:Record<string,MatchReportMetric[]>}[] };
 export const getPreMatchComparison = (id:number) => matchPoolRequest<PreMatchComparisonData>(`/match-pool/fixtures/${id}/pre-match-comparison`);
-export type PreMatchTeamAnalysisData = {teams:Record<string,{positive:string;strategy:string;weakness:string}>};
+export const getSavedPreMatchOpponentComparison = (id:number,rewarded:boolean) =>
+  matchPoolRequest<Record<string, Record<string, MatchReportMetric[]>>>(`/match-pool/fixtures/${id}/saved-pre-report/opponent-comparison?rewarded=${rewarded}`);
+export type PreMatchTeamAnalysisData = {compact_strategy?:boolean;teams:Record<string,{positive:string;strategy:string;weakness:string}>};
 export const getPreMatchTeamAnalysis = (id:number,tr:boolean) => matchPoolRequest<PreMatchTeamAnalysisData>(`/match-pool/fixtures/${id}/pre-match-team-analysis?language=${tr?'tr':'en'}`);
 
 export type PreMatchSections = {
@@ -330,13 +332,14 @@ export type SavedPreMatchReport = {
   favoriteId: string;
   status: 'not_started' | 'processing' | 'ready' | 'failed';
   content: (Partial<PreMatchSections> & {
+    refresh_retry_after?: string;
     version: number; language: string;
     sections: Record<string, {status: 'pending' | 'processing' | 'ready' | 'failed'; access_tier?: 'free' | 'paid'}>;
   }) | null;
 };
 export const openSavedPreMatchReport = (id:number,tr:boolean) => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report?language=${tr?'tr':'en'}&lazy=true`, {});
 export const pollSavedPreMatchReport = (id:number,tr:boolean) => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report?language=${tr?'tr':'en'}&lazy=true`);
-export const ensureSavedPreMatchSection = (id:number,tr:boolean,section:'players'|'momentum'|'team_analysis') => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report/sections/${section}?language=${tr?'tr':'en'}`,{});
+export const ensureSavedPreMatchSection = (id:number,tr:boolean,section:'players'|'momentum'|'team_analysis',rewarded=false) => matchPoolRequest<SavedPreMatchReport>(`/match-pool/fixtures/${id}/saved-pre-report/sections/${section}?language=${tr?'tr':'en'}&rewarded=${rewarded}`,{});
 
 export type TeamFixtureOptions = {
   leagues: { id: number; name: string; country: string | null }[];
@@ -361,10 +364,10 @@ export type MatchForecast = {
   goalDistribution: {home: number[]; away: number[]};
   halfScenarios?: {moreGoalsHalf: {first: number; equal: number; second: number}; firstHalfBothTeamsScore: number; projectedGoals?: {first: {home: number; away: number}; second: {home: number; away: number}}} | null;
 };
-export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersion' | 'startingAt' | 'regulationMinutes' | 'home' | 'away' | 'outcomes' | 'topScores' | 'grid' | 'gridRemainder' | 'scoreMargins'>;
-export type MatchForecastPlus = Pick<MatchForecast, keyof MatchForecastPreview | 'goalDistribution' | 'bothTeamsScore' | 'cleanSheet' | 'over25' | 'halfScenarios'>;
+export type MatchForecastPreview = Pick<MatchForecast, 'fixtureId' | 'modelVersion' | 'startingAt' | 'regulationMinutes' | 'home' | 'away' | 'outcomes' | 'topScores' | 'grid' | 'gridRemainder'>;
+export type MatchForecastPlus = Pick<MatchForecast, keyof MatchForecastPreview | 'scoreMargins' | 'goalDistribution' | 'bothTeamsScore' | 'cleanSheet' | 'over25' | 'halfScenarios'>;
 export type MatchForecastResponse = {status: 'processing' | 'ready' | 'unavailable' | 'failed'; reason?: string; accessTier?: 'free' | 'paid' | 'plus' | 'pro'; forecast?: MatchForecast | MatchForecastPlus | MatchForecastPreview};
-export const getMatchForecast = (id: number, retry = false, review = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast?retry=${retry}&review=${review}`);
+export const getMatchForecast = (id: number, retry = false, review = false, rewarded = false) => matchPoolRequest<MatchForecastResponse>(`/match-pool/fixtures/${id}/forecast?retry=${retry}&review=${review}&rewarded=${rewarded}`);
 
 export type DailyFixtures = {date:string;fixtures:MatchFixture[];refreshAfter:number|null;stale:boolean};
 export const getDailyFixtures = (day:string,timezone:string) => matchPoolRequest<DailyFixtures>(`/match-pool/daily?day=${encodeURIComponent(day)}&timezone=${encodeURIComponent(timezone)}`);

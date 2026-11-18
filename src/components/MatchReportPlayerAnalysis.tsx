@@ -9,16 +9,20 @@ import type { MatchReportLineup,PostMatchCardData } from '@/services/matchPool';
 import { toSpiderPoints } from '@/utils/comparisonRanges';
 import { matchMetricLabel } from '@/utils/matchReportMetrics';
 import { numeric,playerSections,playerValue,positionOrder,teamPlayers } from '@/utils/matchReportPlayers';
+import { PlanUnlockBadges } from './LeaguePerformanceControls';
 import ReportPlayerPortrait from './ReportPlayerPortrait';
 const format = (v: unknown) => numeric(v) == null ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const aliases: Record<string, string> = { 'On Target Goal Conversion (%)': 'On-Target to Goal Conversion (%)', 'On Target Shot Quality (%)': 'On-Target Shot Quality (%)', 'Accurate Crosses (%)': 'Successful Crosses (%)' };
-export function MatchReportSelector({ label, value, options, onSelect, accent, imageUrl }: { imageUrl?: string | null; label: string; value: string; options: { id: number; name: string; detail?: string; color?: string }[]; onSelect: (id: number) => void; accent: string }) {
+export function MatchReportSelector({ label, value, options, onSelect, accent, imageUrl, tr = false }: { imageUrl?: string | null; label: string; value: string; options: { id: number; name: string; detail?: string; color?: string; plan?: 'plus' | 'pro'; rewardedUnlock?: boolean }[]; onSelect: (id: number) => void; accent: string; tr?: boolean }) {
   const themed = useThemedStyles(getModuleTheme);
   const {s} = themed;
 
   const [open, setOpen] = useState(false);
   const [failedImage, setFailedImage] = useState<string>();
-  return <View style={s.selectWrap}><Text style={s.caption}>{label}</Text><Pressable accessibilityRole="button" accessibilityState={{ expanded: open, disabled: !options.length }} disabled={!options.length} onPress={() => setOpen(!open)} style={[s.selector, { borderColor: accent }]}><>{imageUrl && (failedImage !== imageUrl ? <Image source={{ uri: imageUrl }} resizeMode="contain" style={s.teamLogo} onError={() => setFailedImage(imageUrl)} /> : <Shield size={30} color={accent} />)}<Text style={s.selectorText}>{value}</Text></><ChevronDown size={18} color={accent} /></Pressable>{open && <ScrollView nestedScrollEnabled style={s.options}>{options.map(o => <Pressable key={o.id} accessibilityRole="button" onPress={() => { onSelect(o.id); setOpen(false); }} style={s.option}><Text style={s.body}>{o.name}</Text>{o.detail && <Text style={[s.caption, { color: o.color || accent, marginTop: 5 }]}>{o.detail}</Text>}</Pressable>)}</ScrollView>}</View>;
+  return <View style={s.selectWrap}><Text style={s.caption}>{label}</Text><Pressable accessibilityRole="button" accessibilityState={{ expanded: open, disabled: !options.length }} disabled={!options.length} onPress={() => setOpen(!open)} style={[s.selector, { borderColor: accent }]}><>{imageUrl && (failedImage !== imageUrl ? <Image source={{ uri: imageUrl }} resizeMode="contain" style={s.teamLogo} onError={() => setFailedImage(imageUrl)} /> : <Shield size={30} color={accent} />)}<Text style={s.selectorText}>{value}</Text></><ChevronDown size={18} color={accent} /></Pressable>{open && <ScrollView nestedScrollEnabled style={s.options}>{options.map(o => <Pressable key={o.id} accessibilityRole="button" accessibilityHint={o.rewardedUnlock ? (tr ? 'Reklam izleyerek açma ve plan seçeneklerini gösterir.' : 'Shows ad unlock and plan options.') : undefined} onPress={() => { onSelect(o.id); setOpen(false); }} style={s.option}>{o.plan || o.rewardedUnlock ? <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
+    <Text style={[s.body,{flex:1}]}>{o.name}</Text>
+    <PlanUnlockBadges plan={o.plan} rewardedUnlock={o.rewardedUnlock} tr={tr}/>
+  </View> : <Text style={s.body}>{o.name}</Text>}{o.detail && <Text style={[s.caption, { color: o.color || accent, marginTop: 5 }]}>{o.detail}</Text>}</Pressable>)}</ScrollView>}</View>;
 }
 export function Metrics({ player, tr, accent, onClose, unit = 'perMatch' }: { player: MatchReportLineup; tr: boolean; accent: string; onClose: () => void; unit?: 'perMatch' | 'per90' }) {
   const themed = useThemedStyles(getModuleTheme);

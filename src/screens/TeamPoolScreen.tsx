@@ -1,3 +1,5 @@
+import InlineBannerSlot from '@/ads/InlineBannerSlot';
+import BannerAdFreePrompt from '@/components/BannerAdFreePrompt';
 import { recordRecentSearch } from '@/services/recentSearches';
 import { readLastTeam, writeLastTeam } from '@/services/teamPoolCache';
 import { type TeamFixtureOptions } from '@/services/matchPool';
@@ -6,11 +8,11 @@ import { normalizeSearchText, optionMatchesSearch } from '@/utils/searchSuggesti
 import { useWorkspaceActionAd } from '@/ads/useWorkspaceActionAd';
 import PlanDiscoveryNudge from "@/components/PlanDiscoveryNudge";
 import TeamProfileCard from "@/components/TeamProfileCard";
-import { TutorialPageGuide } from "@/components/Tutorial";
+import { TutorialPageGuide, useTutorial } from "@/components/Tutorial";
 import { getThemed_poolTableStyles as __getThemed_poolTableStyles } from "@/components/poolTableStyles";
 import { getFavoriteTeams,saveFavoriteTeam } from '@/services/teamPortfolio';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { useFocusEffect,useNavigation } from "@react-navigation/native";
+import { useFocusEffect,useIsFocused,useNavigation } from "@react-navigation/native";
 import {
 ChevronDown,
 ListFilter,
@@ -77,6 +79,8 @@ export default function TeamPoolScreen() {
   const tr = i18n.language.startsWith("tr");
   const nav = useNavigation<any>();
   const ads = useWorkspaceActionAd();
+  const isFocused = useIsFocused();
+  const tutorial = useTutorial();
   const { height, width } = useWindowDimensions();
   const [options, setOptions] = useState<TeamFixtureOptions>({leagues:[],teams:[]});
   const [leagueId, setLeagueId] = useState<number>();
@@ -110,6 +114,7 @@ export default function TeamPoolScreen() {
   const [plan, setPlan] = useState<Plan>("Free");
   const [planResolved, setPlanResolved] = useState(false);
   const [showPlanNudge, setShowPlanNudge] = useState(false);
+  const [bannerPrompt, setBannerPrompt] = useState(false);
   const pageScroll = useRef<ScrollView>(null);
   const version = useRef(0);
   const userId = useRef<number | null>(null);
@@ -159,10 +164,12 @@ export default function TeamPoolScreen() {
         .catch(() => {
           if (!active) return;
           setPlan("Free");
-          setPlanResolved(true);
+          setPlanResolved(false);
         });
       return () => {
         active = false;
+        setPlanResolved(false);
+        setBannerPrompt(false);
       };
     }, []),
   );
@@ -199,6 +206,7 @@ export default function TeamPoolScreen() {
     } catch(e) {if(request===version.current)setError(e instanceof Error?e.message:String(e));}
     finally {if(request===version.current)setLoading(false);}
   }
+  const showBanner = isFocused && planResolved && plan === "Free" && !tutorial.active && !!selected;
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
@@ -237,6 +245,7 @@ export default function TeamPoolScreen() {
           {!!optionsError && <Pressable onPress={()=>setRetry(v=>v+1)}><Text style={{color:DANGER}}>{optionsError}</Text></Pressable>}
         </Frame>
         <TutorialPageGuide page="teamPool" frame={0} onShow={y => pageScroll.current?.scrollTo({ y: Math.max(0, y - 12), animated: true })} />
+        {showBanner && <InlineBannerSlot canLoad tr={tr} onClose={() => setBannerPrompt(true)} />}
         <TutorialPageGuide page="teamPool" frame={1} onShow={y=>pageScroll.current?.scrollTo({y:Math.max(0,y-12),animated:true})}/>
         <Frame title={tr ? "Takım Kartı" : "Team Card"} icon={ShieldCheck}>
           {selected ? (
@@ -271,6 +280,7 @@ export default function TeamPoolScreen() {
           <FlatList data={(selector==='league'?options.leagues.map(l=>({id:l.id,name:`${l.country || '—'} | ${l.name}`})):options.teams).filter(v=>optionMatchesSearch(v.name,normalizeSearchText(query)))} keyExtractor={v=>String(v.id)} initialNumToRender={15} maxToRenderPerBatch={15} windowSize={5} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}} ListHeaderComponent={selector==='league'?<Pressable style={s.option} onPress={()=>{setLeagueId(undefined);setSelector(null);}}><Text style={s.green}>{tr?'Tüm ligler':'All leagues'}</Text></Pressable>:null} ListEmptyComponent={<Text style={s.empty}>{tr?'Sonuç bulunamadı.':'No results found.'}</Text>} renderItem={({item})=><Pressable accessibilityRole="radio" accessibilityState={{selected:item.id===(selector==='team'?teamId:leagueId)}} style={[s.option,item.id===(selector==='team'?teamId:leagueId)&&s.filterSelected]} onPress={()=>{if(selector==='league'){clearCard();setTeamId(undefined);setLeagueId(item.id);setOptions(v=>({...v,teams:[]}));}else {clearCard();setTeamId(item.id);}setSelector(null);}}><Text style={[s.text,{fontWeight:'700'}]}>{item.name}</Text></Pressable>}/>
         </View></View></Modal>}
       </ScrollView>
+      <BannerAdFreePrompt visible={showBanner && bannerPrompt} tr={tr} onClose={() => setBannerPrompt(false)} />
       {ads.fallback}
     </View>
   );

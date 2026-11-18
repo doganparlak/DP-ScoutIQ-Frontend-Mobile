@@ -1,3 +1,5 @@
+import { useReportReward } from '@/ads/useReportReward';
+import ReportRewardProvider from './ReportRewardProvider';
 import { matchStatusLabel } from '@/utils/matchStatus';
 import { reportScopeMatches } from '@/services/reportAccess';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
@@ -14,6 +16,7 @@ import MatchReportMomentum from './MatchReportMomentum';
 import MatchReportPlayerAnalysis from './MatchReportPlayerAnalysis';
 import MatchReportPlayerPerspectives from './MatchReportPlayerPerspectives';
 import MatchReportTeamAnalysis from './MatchReportTeamAnalysis';
+import { PostMatchTacticalProfile } from './TeamReportTacticalProfile';
 import MatchReportTeamComparison from './MatchReportTeamComparison';
 import MatchReportTimeline from './MatchReportTimeline';
 import PreMatchForecast from './PreMatchForecast';
@@ -30,6 +33,11 @@ const reportSections = [
   { tr: 'Oyuncu Analizi · Öne Çıkanlar', en: 'Player Analysis · Standouts', Icon: UserRound },
 ].map((section, id) => ({ ...section, id }));
 reportSections.splice(1, 0, {tr: 'Maç Öngörüsü', en: 'Match Forecast', Icon: ChartNoAxesCombined, id: 8});
+reportSections.splice(reportSections.findIndex(section => section.id === 5), 0,
+  {tr:'Hücum Profili', en:'Attack Profile', Icon:ChartNoAxesCombined, id:9},
+  {tr:'Savunma Profili', en:'Defense Profile', Icon:Shield, id:10},
+);
+
 const WEATHER: Record<string, string> = {
   'clear sky': 'Açık', 'few clouds': 'Az Bulutlu', 'scattered clouds': 'Parçalı Bulutlu',
   'broken clouds': 'Çok Bulutlu', 'overcast clouds': 'Kapalı', 'light rain': 'Hafif Yağmurlu',
@@ -176,16 +184,41 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
     return () => { active = false; if (timer) clearTimeout(timer); };
   }, [visible, fixture.fixtureId, retry, tr]);
   const activeAiSection = sections[page]?.id === 5 ? 'team_analysis' : sections[page]?.id === 7 ? 'player_perspectives' : null;
+  const reward = useReportReward(JSON.stringify(['post-match', fixture.fixtureId, tr]),
+    sections[page]?.id === 9 ? 'attack' : sections[page]?.id === 10 ? 'defense' : activeAiSection === 'team_analysis' ? 'thirdTeamAnalysis' : activeAiSection === 'player_perspectives' ? 'secondStandout' : undefined,
+    visible && plan === 'Free');
+  const freeTeamAnalysis = plan === 'Free' && !reward.isUnlocked('thirdTeamAnalysis');
+  const freePerspectives = plan === 'Free' && !reward.isUnlocked('secondStandout');
+  const activeReward = plan === 'Free' && (activeAiSection === 'team_analysis' ? !freeTeamAnalysis : activeAiSection === 'player_perspectives' && !freePerspectives);
+  const hasReportData = !!data;
+  const needsPaidScope = plan !== 'Free' || activeReward;
   useEffect(()=>{
-    if(!visible||!data||!activeAiSection)return;
+    if(!visible||!hasReportData||!activeAiSection)return;
     const current=savedReport?.content?.sections?.[activeAiSection]?.status;
-    if(current==='ready'&&reportScopeMatches(savedReport?.content?.sections?.[activeAiSection],plan!=='Free'))return;
+    if(current==='ready'&&reportScopeMatches(savedReport?.content?.sections?.[activeAiSection],needsPaidScope))return;
     let active=true;let timer:ReturnType<typeof setTimeout>|undefined;
-    const accept=(next:SavedPostMatchReport)=>{if(!active)return;setSavedReport(next);setData(next.content?.data||data);const state=next.content?.sections?.[activeAiSection]?.status;if(state!=='failed'&&(state!=='ready'||!reportScopeMatches(next.content?.sections?.[activeAiSection],plan!=='Free')))timer=setTimeout(poll,2000);};
-    const poll=()=>pollSavedPostMatchReport(fixture.fixtureId,tr).then(accept).catch(()=>{if(active)timer=setTimeout(poll,5000);});
-    ensureSavedPostMatchSection(fixture.fixtureId,tr,activeAiSection).then(next=>{accept(next);if(active&&!timer)timer=setTimeout(poll,2000);}).catch(()=>{if(active)timer=setTimeout(poll,5000);});
-    return()=>{active=false;if(timer)clearTimeout(timer);};
-  },[visible,data,activeAiSection,fixture.fixtureId,tr,retry,plan]);
+    const accept = (next: SavedPostMatchReport) => {
+      if (!active) return;
+      const content = next.content;
+      const state = content?.sections?.[activeAiSection];
+      const ready = state?.status === 'ready' && reportScopeMatches(state, needsPaidScope);
+      const deferred = !!content?.refresh_retry_after && Date.parse(content.refresh_retry_after) > Date.now();
+      if (!ready && deferred && content) {
+        setSavedReport({...next, content: {...content, sections: {
+          ...content.sections, [activeAiSection]: {...state, status: 'failed'},
+        }}});
+        return;
+      }
+      setSavedReport(next);
+      setData(previous => content?.data ?? previous);
+      if (!ready && state?.status !== 'failed') timer = setTimeout(poll, 2000);
+    };
+    const poll = () => pollSavedPostMatchReport(fixture.fixtureId, tr).then(accept)
+      .catch(() => { if (active) timer = setTimeout(poll, 5000); });
+    ensureSavedPostMatchSection(fixture.fixtureId, tr, activeAiSection, activeReward).then(accept)
+      .catch(() => { if (active) timer = setTimeout(poll, 5000); });
+    return () => { active = false; if (timer) clearTimeout(timer); };
+  },[visible,hasReportData,activeAiSection,fixture.fixtureId,tr,retry,needsPaidScope,activeReward]);
   const retrySections = () => setRetry(value => value + 1);
   const openPlans=()=>{onClose();onOpenPlans();};
   useEffect(() => { if (width) pager.current?.scrollToOffset({ offset: width * page, animated: false }); }, [width]);
@@ -194,7 +227,7 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
     setPage(index); pager.current?.scrollToOffset({ offset: index * width, animated: true });
   };
   return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-    <View style={[s.backdrop, { paddingTop: Math.max(14, insets.top), paddingBottom: Math.max(14, insets.bottom) }]}>
+    <ReportRewardProvider reward={reward} onOpenPlans={openPlans}><View style={[s.backdrop, { paddingTop: Math.max(14, insets.top), paddingBottom: Math.max(14, insets.bottom) }]}>
       <View style={s.modal}>
         <View style={s.header}>
           <View style={s.headerText}><Text style={s.headerTitle}>{tr ? 'Maç Sonu Raporu' : 'Post-Match Report'}</Text><Text style={s.sectionTitle}>{tr ? sections[Math.min(page, sections.length - 1)].tr : sections[Math.min(page, sections.length - 1)].en}</Text></View>
@@ -202,13 +235,15 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
         </View>
         <View style={s.pager} onLayout={event => setWidth(Math.round(event.nativeEvent.layout.width))}>
           {width > 0 && <FlatList ref={pager} horizontal pagingEnabled data={sections} keyExtractor={item => item.en}
-            showsHorizontalScrollIndicator={false} extraData={{ width, data, loading, error, tr, page, savedReport, plan }}
+            showsHorizontalScrollIndicator={false} extraData={{reward, width, data, loading, error, tr, page, savedReport, plan }}
             getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
             onMomentumScrollEnd={event => setPage(Math.max(0, Math.min(sections.length - 1, Math.round(event.nativeEvent.contentOffset.x / width))))}
             renderItem={({ item, index }) => <ScrollView style={{ width }} contentContainerStyle={s.pageContent}>
               {(index >= 0) ? loading ? <View style={s.center}><ActionSpinner size={28} color={ACCENT} /><Text style={s.subtitle}>{tr ? 'Maç bilgileri yükleniyor…' : 'Loading match details…'}</Text></View>
                 : error ? <View style={s.center}><Text style={s.subtitle}>{tr ? 'Maç bilgileri yüklenemedi.' : 'Unable to load match details.'}</Text><Pressable accessibilityRole="button" style={s.retry} onPress={() => setRetry(value => value + 1)}><Text style={s.sectionTitle}>{tr ? 'Tekrar Dene' : 'Try Again'}</Text></Pressable></View>
-                : data ? item.id === 0 ? <MatchCard data={data} tr={tr} /> : item.id === 8 ? <PreMatchForecast providedForecast={forecast} onUnavailable={onUnavailable} fixtureId={fixture.fixtureId} tr={tr} active={visible && page === index} free={plan==='Free'} onOpenPlans={openPlans} review={data} /> : item.id === 7 ? <MatchReportPlayerPerspectives data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.player_perspectives,plan!=='Free')?savedReport?.content?.player_perspectives:undefined} loading={(!savedReport?.content?.player_perspectives || !reportScopeMatches(savedReport?.content?.sections.player_perspectives,plan!=='Free')) && savedReport?.content?.sections.player_perspectives?.status !== 'failed'} error={savedReport?.content?.sections.player_perspectives?.status === 'failed'} onRetry={retrySections} free={plan==='Free'} onOpenPlans={openPlans} /> : item.id === 6 ? <MatchReportPlayerAnalysis data={data} tr={tr} /> : item.id === 5 ? <MatchReportTeamAnalysis data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.team_analysis,plan!=='Free')?savedReport?.content?.team_analysis:undefined} loading={(!savedReport?.content?.team_analysis || !reportScopeMatches(savedReport?.content?.sections.team_analysis,plan!=='Free')) && savedReport?.content?.sections.team_analysis?.status !== 'failed'} error={savedReport?.content?.sections.team_analysis?.status === 'failed'} onRetry={retrySections} free={plan==='Free'} onOpenPlans={openPlans} /> : item.id === 4 ? <MatchReportTeamComparison data={data} tr={tr} /> : item.id === 3 ? <MatchReportMomentum data={data} tr={tr} /> : item.id === 2 ? <MatchReportTimeline data={data} tr={tr} /> : <MatchReportLineups data={data} tr={tr} /> : null
+                : data ? item.id === 0 ? <MatchCard data={data} tr={tr} /> : item.id === 8 ? <PreMatchForecast providedForecast={forecast} onUnavailable={onUnavailable} fixtureId={fixture.fixtureId} tr={tr} active={visible && page === index} free={plan==='Free'} onOpenPlans={openPlans} review={data} /> : (item.id === 9 || item.id === 10) ? <PostMatchTacticalProfile data={data} tr={tr}
+                  kind={item.id === 9 ? 'attack' : 'defense'} active={visible && page === index} free={plan === 'Free'}
+                  rewarded={reward.isUnlocked(item.id === 9 ? 'attack' : 'defense')} onOpenPlans={openPlans}/> : item.id === 7 ? <MatchReportPlayerPerspectives data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.player_perspectives,!freePerspectives)?savedReport?.content?.player_perspectives:undefined} loading={(!savedReport?.content?.player_perspectives || !reportScopeMatches(savedReport?.content?.sections.player_perspectives,!freePerspectives)) && savedReport?.content?.sections.player_perspectives?.status !== 'failed'} error={savedReport?.content?.sections.player_perspectives?.status === 'failed'} onRetry={retrySections} free={freePerspectives} onOpenPlans={openPlans} /> : item.id === 6 ? <MatchReportPlayerAnalysis data={data} tr={tr} /> : item.id === 5 ? <MatchReportTeamAnalysis data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.team_analysis,!freeTeamAnalysis)?savedReport?.content?.team_analysis:undefined} loading={(!savedReport?.content?.team_analysis || !reportScopeMatches(savedReport?.content?.sections.team_analysis,!freeTeamAnalysis)) && savedReport?.content?.sections.team_analysis?.status !== 'failed'} error={savedReport?.content?.sections.team_analysis?.status === 'failed'} onRetry={retrySections} free={freeTeamAnalysis} onOpenPlans={openPlans} /> : item.id === 4 ? <MatchReportTeamComparison data={data} tr={tr} /> : item.id === 3 ? <MatchReportMomentum data={data} tr={tr} /> : item.id === 2 ? <MatchReportTimeline data={data} tr={tr} /> : <MatchReportLineups data={data} tr={tr} /> : null
                 : <View style={s.placeholder}><View style={s.rule} /><item.Icon size={36} color={ACCENT} /><Text style={s.placeholderTitle}>{tr ? item.tr : item.en}</Text><Text style={s.subtitle}>{fixture.name}</Text><Text style={s.soon}>{tr ? 'Yakında' : 'Coming soon'}</Text></View>}
             </ScrollView>} />}
         </View>
@@ -219,7 +254,7 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
         </View>
       </View>
     </View>
-  </Modal>;
+  </ReportRewardProvider></Modal>;
 }
 
 

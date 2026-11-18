@@ -4,7 +4,7 @@ import { useEffect,useState } from 'react';
 import { Image,Text,View } from 'react-native';
 
 import type { Team } from '@/services/teamPool';
-export default function TeamReportIdentity({team,accent}:{team:Team;accent?:string}){
+export default function TeamReportIdentity({team,accent}:{team:Pick<Team,'name'|'logoUrl'>;accent?:string}){
   const themed = useThemedStyles(getModuleTheme);
   const {ACCENT} = themed;
   accent ??= ACCENT;
