@@ -86,7 +86,7 @@ export default function WeeklySearchesScreen() {
           </View>
           <WeeklyPopularPlayerCard id={item.id} player={item.player} />
         </View>
-        {index === 0 && showBanner && <InlineBannerSlot canLoad tr={tr} onClose={()=>setBannerPrompt(true)}/>}
+        {showBanner && index < rows.length - 1 && <InlineBannerSlot canLoad tr={tr} onClose={()=>setBannerPrompt(true)}/>}
         </>;
       }}
     />

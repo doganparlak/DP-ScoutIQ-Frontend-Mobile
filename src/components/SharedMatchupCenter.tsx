@@ -290,7 +290,7 @@ export default function SharedMatchupCenter({
       player: preserveComparisonIdentity(fetched.player, {...slot.player,meta:{...slot.player.meta,potential:fetched.player.meta?.potential??slot.player.meta?.potential,form:fetched.player.meta?.form??slot.player.meta?.form}}),
     };
   };
-  const showBanner = workspace && isFocused && isFree && !tutorial.active && !needsPlayers;
+  const showBanner = workspace && isFocused && isFree && !tutorial.active;
   return (
     <>
       {workspace && !needsPlayers && (

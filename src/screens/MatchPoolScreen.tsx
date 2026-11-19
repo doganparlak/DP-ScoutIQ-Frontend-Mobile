@@ -657,7 +657,7 @@ export default function MatchPoolScreen({
         </Frame>
         )}
         {focused && planResolved && plan === 'Free' && !tutorial.active
-          && (portfolio || (browseMode === 'team' && rows.length > 0)) && <>
+          && (portfolio || browseMode === 'team') && <>
           <InlineBannerSlot canLoad tr={tr} onClose={()=>setBannerPrompt(true)}/>
           <BannerAdFreePrompt visible={bannerPrompt} tr={tr} onClose={()=>setBannerPrompt(false)}/>
         </>}
