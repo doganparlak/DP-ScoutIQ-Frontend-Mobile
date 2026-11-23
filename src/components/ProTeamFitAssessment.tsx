@@ -1,3 +1,4 @@
+import { matchMetricLabel, playerGoalsConcededLabel } from '@/utils/matchReportMetrics';
 import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
 import { CheckCircle2,Compass,Target,Users } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -26,9 +27,9 @@ export function TeamContextStats({playerName,teamName,playerEvidence=[],teamEvid
   const {s, ACCENT, BLUE, themeColor} = themed;
 
  const {t,i18n}=useTranslation();
- const column=(name:string,items:Evidence[],color:string)=><View style={{flex:1,minWidth:0}}><Text style={[s.label,{color,padding:10,fontWeight:'700'}]}>{name}</Text>{items.map((item,index)=><View key={item.metric+index} style={{borderTopWidth:1,borderTopColor:themeColor('rgba(255,255,255,0.08)', 'border'),padding:10,gap:6}}><Text style={s.label}>{fitMetricLabel(canonicalizeEnterpriseMetricLabel(item.metric),tr?'tr':'en',String(t('metric.'+item.metric,{defaultValue:item.metric})))}</Text><Text style={[s.value,{textAlign:'left'}]}>{Number.isFinite(item.value)?new Intl.NumberFormat(i18n.language,{maximumFractionDigits:2}).format(item.value)+(item.unit==='percent'?'%':''):'—'}</Text></View>)}</View>;
+ const column=(name:string,items:Evidence[],color:string,player:boolean)=><View style={{flex:1,minWidth:0}}><Text style={[s.label,{color,padding:10,fontWeight:'700'}]}>{name}</Text>{items.map((item,index)=><View key={item.metric+index} style={{borderTopWidth:1,borderTopColor:themeColor('rgba(255,255,255,0.08)', 'border'),padding:10,gap:6}}><Text style={s.label}>{!player && playerGoalsConcededLabel(item.metric,tr?'tr':'en') ? matchMetricLabel('Goals Conceded',tr?'tr':'en') : fitMetricLabel(canonicalizeEnterpriseMetricLabel(item.metric),tr?'tr':'en',String(t('metric.'+item.metric,{defaultValue:item.metric})))}</Text><Text style={[s.value,{textAlign:'left'}]}>{Number.isFinite(item.value)?new Intl.NumberFormat(i18n.language,{maximumFractionDigits:2}).format(item.value)+(item.unit==='percent'?'%':''):'—'}</Text></View>)}</View>;
  if(!playerEvidence.length&&!teamEvidence.length)return null;
- return <View style={s.table}><Text style={s.caption}>{tr?'Değerlendirmede Kullanılan İstatistikler':'Supporting Statistics'}</Text><View style={{flexDirection:'row',alignItems:'flex-start'}}>{column(playerName,playerEvidence,ACCENT)}<View style={{width:1,alignSelf:'stretch',backgroundColor:themeColor('rgba(255,255,255,0.08)', 'surface')}}/>{column(teamName,teamEvidence,BLUE)}</View></View>;
+ return <View style={s.table}><Text style={s.caption}>{tr?'Değerlendirmede Kullanılan İstatistikler':'Supporting Statistics'}</Text><View style={{flexDirection:'row',alignItems:'flex-start'}}>{column(playerName,playerEvidence,ACCENT,true)}<View style={{width:1,alignSelf:'stretch',backgroundColor:themeColor('rgba(255,255,255,0.08)', 'surface')}}/>{column(teamName,teamEvidence,BLUE,false)}</View></View>;
 }
 export default function ProTeamFitAssessment({player,team,insights}:{player:ProPlayerEntry['player'];team:Team;insights:Insights}){
   const themed = useThemedStyles(getModuleTheme);

@@ -1095,8 +1095,9 @@ export const resources = {
         'Through Balls': 'Through Balls Attempted',
         'Through Balls Won': 'Successful Through Balls',
 
-        'Goals Conceded': 'Goals Conceded',
-        'Goalkeeper Goals Conceded': 'Goals Conceded',
+        'Goals Conceded': 'On-Pitch Goals Conceded',
+        'Goals Conceded.1': 'On-Pitch Goals Conceded',
+        'Goalkeeper Goals Conceded': 'On-Pitch Goals Conceded',
         'Penalties Committed': 'Penalties Committed',
         'Penalties Missed': 'Penalties Missed',
         'Big Chances Missed': 'Big Chances Missed',
@@ -2283,8 +2284,9 @@ export const resources = {
         'Dribbles': 'Çalımlar',
         'Dribble Accuracy (%)': 'Başarılı Çalım (%)',
 
-        'Goals Conceded': 'Yenilen Goller',
-        'Goalkeeper Goals Conceded': 'Yenilen Goller',
+        'Goals Conceded': 'Sahadayken Yenen Goller',
+        'Goals Conceded.1': 'Sahadayken Yenen Goller',
+        'Goalkeeper Goals Conceded': 'Sahadayken Yenen Goller',
         'Penalties Committed': 'Yapılan Penaltılar',
         'Penalties Missed': 'Kaçan Penaltılar',
         'Big Chances Missed': 'Kaçırılan Net Pozisyonlar',

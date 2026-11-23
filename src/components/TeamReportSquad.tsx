@@ -50,7 +50,7 @@ export default function TeamReportSquad({team,reports,matches,tr,playersPage=fal
  const selected=Object.entries(perspectives).filter(([,p])=>p.selectionType===mode).slice(0,3);
  const showThirdPlayerLock = selected.length === 3 && !!onOpenLockedPlayerPlans;
  return <View style={{gap:12}}>
-  <TeamReportHeader team={team} matches={matches} tr={tr} accent={accent}/>
+  <TeamReportHeader team={team} matches={matches} tr={tr} accent={accent} showCoach/>
   {playersPage?<>
    <View style={s.switch}>{(['featured','development'] as const).map(value=><Pressable key={value} accessibilityRole="tab" accessibilityState={{selected:mode===value}} onPress={()=>setMode(value)} style={[s.option,mode===value&&{backgroundColor:`${value==='featured'?ACCENT:DANGER}25`,borderColor:value==='featured'?ACCENT:DANGER}]}><Text style={[s.optionText,{color:mode===value?accent:MUTED}]}>{value==='featured'?(tr?'Öne Çıkan Oyuncular':'Standout Players'):(tr?'Gelişime Açık Oyuncular':'Development Players')}</Text></Pressable>)}</View>
    <Text style={s.caption}>{tr?'En az 90 dakika oynayan oyuncular · Dakika ağırlıklı puan':'Players with at least 90 minutes · Minute-weighted rating'}</Text>

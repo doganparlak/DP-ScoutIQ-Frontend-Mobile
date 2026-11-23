@@ -8,7 +8,7 @@ import type { PlayedMatch } from '@/services/teamAnalysis';
 import type { PostMatchCardData } from '@/services/matchPool';
 import { MatchReportSelector } from './MatchReportPlayerAnalysis';
 import type { Team } from '@/services/teamPool';
-import { hasNonZeroReportValue,matchMetricLabel } from '@/utils/matchReportMetrics';
+import { hasNonZeroReportValue,matchMetricLabel,playerGoalsConcededLabel } from '@/utils/matchReportMetrics';
 import { attackingStyleMetricLabel, defensiveStyleMetricLabel } from '@/utils/teamStyleMetricLabels';
 import ActionSpinner from './ActionSpinner';
 import ReportPlayerPortrait from './ReportPlayerPortrait';
@@ -88,7 +88,7 @@ export default function TeamReportTacticalProfile({team,matches,tr,kind,active,f
          </View>}
          <View style={s.grid}>{item.metrics.filter(metric => metric.contributes || hasNonZeroReportValue(metric.value)).slice(0,4).map(metric => (
            <View key={metric.label} style={[s.metric, {borderColor:`${accent}65`, backgroundColor:`${accent}08`}]}>
-             <Text style={s.caption}>{metricLabel(metric.label)}</Text>
+             <Text style={s.caption}>{(!isStrategy ? playerGoalsConcededLabel(metric.label, locale) : undefined) ?? metricLabel(metric.label)}</Text>
              <Text style={[s.value, {color:accent}]}>{metric.value}</Text>
            </View>
          ))}</View>

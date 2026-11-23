@@ -1,63 +1,89 @@
-import { compactSavedExplanation } from '@/utils/compactSavedExplanation';
-import { formatNarrativeNumbers } from '@/utils/narrativeNumbers';
-import { createThemedStyles,useThemedStyles,type ThemeColors } from '@/theme';
-import { ChevronDown,Shield } from 'lucide-react-native';
+import type { MatchTeamAnalysis, PostMatchCardData } from '@/services/matchPool';
+import { createThemedStyles, useThemedStyles, type ThemeColors } from '@/theme';
+import { matchMetricLabel } from '@/utils/matchReportMetrics';
+import { teamFindingMetricLabel } from '@/utils/teamStyleMetricLabels';
 import { useState } from 'react';
-import { Image,Pressable,StyleSheet,Text,View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MatchReportSelector } from './MatchReportPlayerAnalysis';
 
-import { type MatchTeamAnalysis,type PostMatchCardData } from '@/services/matchPool';
-import ActionSpinner from './ActionSpinner';
-import TeamReportLockedDetail from './TeamReportLockedDetail';
-
-export default function MatchReportTeamAnalysis({ data, tr, analysis, loading, error, onRetry, free, onOpenPlans }: { data: PostMatchCardData; tr: boolean; analysis?: MatchTeamAnalysis; loading: boolean; error: boolean; onRetry: () => void; free: boolean; onOpenPlans: () => void }) {
-  const themed = useThemedStyles(getModuleTheme);
-  const {ACCENT, s, themeColor} = themed;
-
-  const teams = [...data.teams].sort((a, b) => Number(a.location !== 'home') - Number(b.location !== 'home'));
+export default function MatchReportTeamAnalysis({data, tr, analysis}: {
+  data: PostMatchCardData;
+  tr: boolean;
+  analysis?: MatchTeamAnalysis;
+}) {
+  const {ACCENT, s, themeColor} = useThemedStyles(getModuleTheme);
   const [selectedId, setSelectedId] = useState<number>();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [failedLogo, setFailedLogo] = useState<string | null>(null);
-  const team = teams.find(item => item.id === selectedId) || teams[0];
-  const accent = team?.location === 'away' ? themeColor('#38BDF8') : ACCENT;
-  const order = { positive: 0, neutral: 1, negative: 2 };
-  const insights = [...(analysis?.teams[String(team?.id)] || [])].sort((a, b) => order[a.tone] - order[b.tone]).slice(0, 3);
+  const teams = [...data.teams].sort((a, b) => Number(a.location !== 'home') - Number(b.location !== 'home'));
+  const team = teams.find(item => item.id === selectedId) ?? teams[0];
+  const awayAccent = themeColor('#38BDF8', 'text');
+  const teamColor = (location: string) => location === 'away' ? awayAccent : ACCENT;
+  const locale = tr ? 'tr' : 'en';
+  const format = new Intl.NumberFormat(locale, {maximumFractionDigits: 2});
+  const findings = (analysis?.teams[String(team?.id)] ?? [])
+    .filter(finding => Array.isArray(finding.metrics))
+    .sort((a, b) => Number(a.side === 'weakness') - Number(b.side === 'weakness'));
+
   return <View style={s.page}>
-    <View style={[s.controls, { borderColor: `${accent}70` }]}>
-      <View style={[s.rule, { backgroundColor: accent }]} />
-      <Text style={s.caption}>{tr ? 'Takım Seçimi' : 'Select Team'}</Text>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: pickerOpen }} onPress={() => setPickerOpen(!pickerOpen)} style={[s.selector, { borderColor: accent }]}>
-        <Text style={s.selectorName}>{team?.name || '—'}</Text><ChevronDown size={18} color={accent} style={pickerOpen ? { transform: [{ rotate: '180deg' }] } : undefined} />
-      </Pressable>
-      {pickerOpen && <View style={s.choices}>{teams.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityState={{ selected: item.id === team?.id }} onPress={() => { setSelectedId(item.id); setPickerOpen(false); }} style={[s.choice, item.id === team?.id && { backgroundColor: `${accent}15` }]}>
-        <Text style={s.choiceName}>{item.name}</Text><Text style={[s.location, { color: item.location === 'home' ? ACCENT : themeColor('#38BDF8', 'text') }]}>{item.location === 'home' ? tr ? 'Ev Sahibi' : 'Home' : tr ? 'Deplasman' : 'Away'}</Text>
-      </Pressable>)}</View>}
+    <View style={[s.panel, {borderColor: teamColor(team?.location || 'home') + '80'}]}>
+      <MatchReportSelector label={tr ? 'Takım Seçimi' : 'Select Team'} value={team?.name || '—'}
+        imageUrl={team?.image_url} options={teams.map(item => ({
+          id: item.id, name: item.name, color: teamColor(item.location),
+          detail: item.location === 'away' ? (tr ? 'Deplasman' : 'Away') : (tr ? 'Ev Sahibi' : 'Home'),
+        }))} onSelect={setSelectedId} accent={teamColor(team?.location || 'home')} tr={tr}/>
     </View>
-    <View style={[s.hero, { borderColor: `${accent}60`, backgroundColor: `${accent}0C` }]}>
-      {team?.image_url && failedLogo !== team.image_url ? <Image source={{ uri: team.image_url }} style={s.logo} resizeMode="contain" onError={() => setFailedLogo(team.image_url || '')} /> : <Shield size={35} color={accent} />}
-      <View style={s.identity}><Text style={[s.eyebrow, { color: accent }]}>ScoutWise · {tr ? 'Takım Analizi' : 'Team Analysis'}</Text><Text style={s.teamName}>{team?.name || '—'}</Text><Text style={s.caption}>{team?.formation || '—'} · {tr ? '3 analiz başlığı' : '3 analysis points'}</Text></View>
-    </View>
-    {loading ? <View style={s.feedback}><ActionSpinner size={25} color={accent} /><Text style={s.feedbackText}>{tr ? 'Takım analizi hazırlanıyor…' : 'Preparing team analysis…'}</Text></View>
-      : error || (analysis && insights.length !== 3) ? <View style={s.feedback}><Text style={s.feedbackText}>{tr ? 'Takım analizi şu anda yüklenemedi.' : 'Team analysis could not be loaded.'}</Text><Pressable accessibilityRole="button" onPress={onRetry} style={[s.retry, { borderColor: accent }]}><Text style={{ color: accent, fontWeight: '700' }}>{tr ? 'Tekrar Dene' : 'Try Again'}</Text></Pressable></View>
-      : insights.map((insight, index) => {
-        const color = insight.tone === 'negative' ? themeColor('#FB7185') : insight.tone === 'neutral' ? themeColor('#94A3B8') : accent;
-        if (free && index === 2) return <TeamReportLockedDetail key="locked-third-analysis" tr={tr} accent={color} kind="thirdTeamAnalysis" onOpenPlans={onOpenPlans} />;
-        return <View key={`${index}-${insight.header}`} style={[s.insight, { borderColor: `${color}70`, backgroundColor: `${color}09` }]}>
-          <View style={s.insightHeading}><View style={[s.number, { backgroundColor: `${color}18`, borderColor: `${color}50` }]}><Text style={[s.numberText, { color }]}>{String(index + 1).padStart(2, '0')}</Text></View><Text style={[s.insightTitle, { color }]}>{insight.header}</Text></View>
-          <Text style={s.explanation}>{formatNarrativeNumbers((analysis?.analysis_version ?? 0) < 5 ? compactSavedExplanation(insight.text) : insight.text, tr ? 'tr' : 'en')}</Text>
-        </View>;
-      })}
+    {findings.map(finding => {
+      const color = finding.side === 'weakness' ? themeColor('#FB7185', 'text') : ACCENT;
+      return <View key={finding.id} style={[s.card, {borderColor: color + '80', backgroundColor: color + '08'}]}>
+        <View style={[s.heading, {backgroundColor: color + '0B'}]}>
+          <Text accessibilityRole="header" style={[s.title, {color}]}>{finding.title}</Text>
+          <Text style={s.description}>{finding.description}</Text>
+        </View>
+        <View style={s.values}>
+          <Text accessibilityRole="header" style={s.valuesTitle}>{tr ? 'Bu Maçın Değerleri' : 'This Match’s Values'}</Text>
+          <View style={[s.table, {borderColor: color + '45'}]}>
+            <View style={[s.row, {backgroundColor: color + '0D'}]}>
+              <Text style={[s.metric, s.columnHeading]}>{tr ? 'Metrik' : 'Metric'}</Text>
+              {teams.map(side => <Text key={side.id} style={[s.value, s.columnHeading, {color: teamColor(side.location)}]}>
+                {side.name}
+              </Text>)}
+            </View>
+            {finding.metrics.map(metric => {
+              const name = metric.metric_name;
+              const suffix = /%|percentage/i.test(name) ? '%' : '';
+              return <View key={name} style={[s.row, s.metricRow]}>
+                <Text style={[s.metric, s.metricName]}>{teamFindingMetricLabel(name, tr) ?? matchMetricLabel(name, locale)}</Text>
+                {teams.map(side => <Text key={side.id} style={[s.value, {color: teamColor(side.location)}]}>
+                  {format.format(side.id === team?.id ? metric.team.value : metric.opponent.value)}{suffix}
+                </Text>)}
+              </View>;
+            })}
+          </View>
+        </View>
+      </View>;
+    })}
+    {!findings.length && <View style={s.panel}>
+      <Text style={s.description}>{tr ? 'Bu maç için yeterli karşılaştırma verisi bulunmuyor.' : 'This match has insufficient comparison data.'}</Text>
+    </View>}
   </View>;
 }
 
-
-const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
-  const {ACCENT, LINE, MUTED, TEXT, themeColor} = colors;
-
+const getModuleTheme = createThemedStyles(({ACCENT, LINE, MUTED, TEXT, themeColor}: ThemeColors) => {
   const s = StyleSheet.create({
-  page: { gap: 13 }, controls: { padding: 13, borderWidth: 1, borderRadius: 18, gap: 11 }, rule: { height: 3, borderRadius: 3 }, caption: { color: MUTED, fontSize: 11, fontWeight: '600' }, selector: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderRadius: 12, padding: 13 }, selectorName: { flex: 1, color: TEXT, fontSize: 14, fontWeight: '800' }, choices: { borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden' }, choice: { padding: 13, gap: 5 }, choiceName: { color: TEXT, fontSize: 13, fontWeight: '700' }, location: { fontSize: 10, fontWeight: '700' },
-  hero: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 18, padding: 15 }, logo: { width: 49, height: 57 }, identity: { flex: 1, gap: 7 }, eyebrow: { fontSize: 10, fontWeight: '700' }, teamName: { color: TEXT, fontSize: 20, fontWeight: '800' },
-  insight: { borderWidth: 1, borderRadius: 18, padding: 15, gap: 12 }, insightHeading: { flexDirection: 'row', alignItems: 'center', gap: 11 }, number: { width: 33, height: 33, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' }, numberText: { fontSize: 12, fontWeight: '800' }, insightTitle: { flex: 1, fontSize: 16, lineHeight: 22, fontWeight: '800' }, explanation: { color: TEXT, fontSize: 13, lineHeight: 22 },
-  feedback: { minHeight: 170, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 18 }, feedbackText: { color: MUTED, textAlign: 'center', fontSize: 13, lineHeight: 21 }, retry: { borderWidth: 1, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 20 },
-});
-  return {ACCENT, LINE, MUTED, TEXT, s, themeColor};
+    page: {gap: 13},
+    panel: {padding: 14, borderWidth: 1, borderColor: LINE, borderRadius: 18},
+    card: {borderWidth: 1, borderRadius: 18, overflow: 'hidden'},
+    heading: {padding: 14, gap: 5},
+    title: {fontSize: 17, fontWeight: '800'},
+    description: {color: MUTED, fontSize: 13, lineHeight: 20},
+    values: {padding: 12, gap: 8},
+    valuesTitle: {color: TEXT, fontSize: 13, fontWeight: '800'},
+    table: {borderWidth: 1, borderColor: LINE, borderRadius: 12, overflow: 'hidden'},
+    row: {flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 10, gap: 8},
+    metricRow: {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: LINE},
+    metric: {flex: 1.5, minWidth: 0},
+    metricName: {color: TEXT, fontSize: 12, fontWeight: '600'},
+    value: {flex: 1, minWidth: 0, textAlign: 'right', fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums']},
+    columnHeading: {color: MUTED, fontSize: 11, fontWeight: '700'},
+  });
+  return {ACCENT, s, themeColor};
 });

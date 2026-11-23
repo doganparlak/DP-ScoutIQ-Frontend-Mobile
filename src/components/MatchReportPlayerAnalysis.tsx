@@ -7,7 +7,7 @@ import Svg,{ Circle,Line,Polygon,Text as SvgText,TSpan } from 'react-native-svg'
 
 import type { MatchReportLineup,PostMatchCardData } from '@/services/matchPool';
 import { toSpiderPoints } from '@/utils/comparisonRanges';
-import { matchMetricLabel } from '@/utils/matchReportMetrics';
+import { playerMatchMetricLabel } from '@/utils/matchReportMetrics';
 import { numeric,playerSections,playerValue,positionOrder,teamPlayers } from '@/utils/matchReportPlayers';
 import { PlanUnlockBadges } from './LeaguePerformanceControls';
 import ReportPlayerPortrait from './ReportPlayerPortrait';
@@ -43,7 +43,7 @@ export function Metrics({ player, tr, accent, onClose, unit = 'perMatch' }: { pl
   const radar = points.filter(p => p.normalized != null);
   const coordinate = (index: number, radius: number) => ({ x: 250 + Math.cos(-Math.PI / 2 + index / radar.length * Math.PI * 2) * radius, y: 212 + Math.sin(-Math.PI / 2 + index / radar.length * Math.PI * 2) * radius });
   const polygon = (scale: number) => radar.map((_, i) => { const p = coordinate(i, 138 * scale); return `${p.x},${p.y}`; }).join(' ');
-  const label = (name: string) => matchMetricLabel(name, tr ? 'tr' : 'en');
+  const label = (name: string) => playerMatchMetricLabel(name, tr ? 'tr' : 'en');
   return <Modal transparent animationType="fade" onRequestClose={onClose}><View style={[s.backdrop, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}><View style={[s.modal, { height: Math.min(height * .88, height - insets.top - insets.bottom - 16), borderColor: accent }]}>
     <View style={s.heading}><ReportPlayerPortrait imageUrl={player.player_image_url} accent={accent} size={45}/><View style={{ flex: 1, gap: 5 }}><Text style={[s.caption, { color: accent }]}>{tr ? 'Oyuncu Metrikleri' : 'Player Metrics'}</Text><Text style={s.name}>{player.player_name}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={tr ? 'Kapat' : 'Close'} onPress={onClose} style={s.close}><X color={themeColor("#FB7185", 'text')} size={24} /></Pressable></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabStrip} contentContainerStyle={s.tabs}>{sections.map(g => <Pressable key={g.key} accessibilityRole="button" accessibilityState={{ selected: group?.key === g.key }} onPress={() => { setSelected(g.key); detailScroll.current?.scrollTo({ y: 0, animated: false }); }} style={[s.tab, group?.key === g.key && { borderColor: accent, backgroundColor: `${accent}20` }]}><Text style={[s.caption, group?.key === g.key && { color: accent }]}>{tr ? g.tr : g.en}</Text></Pressable>)}</ScrollView>

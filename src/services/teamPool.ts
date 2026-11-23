@@ -8,6 +8,7 @@ export type Team = {
   logoUrl?: string | null;
   city: string;
   coachName: string;
+  coachImageUrl?: string | null;
   playerCount: number;
   stadiumName: string;
   stadiumImageUrl?: string | null;

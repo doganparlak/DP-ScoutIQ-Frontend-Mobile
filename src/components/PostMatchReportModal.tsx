@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMe,type Plan } from '@/services/api';
 import { ensureSavedPostMatchSection,openSavedPostMatchReport,pollSavedPostMatchReport,type MatchFixture,type PostMatchCardData,type SavedPostMatchReport } from '@/services/matchPool';
 import ActionSpinner from './ActionSpinner';
+import ReportPlayerPortrait from './ReportPlayerPortrait';
 import MatchReportLineups from './MatchReportLineups';
 import MatchReportMomentum from './MatchReportMomentum';
 import MatchReportPlayerAnalysis from './MatchReportPlayerAnalysis';
@@ -23,20 +24,18 @@ import PreMatchForecast from './PreMatchForecast';
 import {useReportForecastAvailability} from './useReportForecastAvailability';
 
 const reportSections = [
-  { tr: 'Maç Kartı', en: 'Match Card', Icon: BadgeInfo },
-  { tr: 'Kadro ve Diziliş', en: 'Lineup & Formation', Icon: Users },
-  { tr: 'Maç Akışı', en: 'Match Timeline', Icon: Activity },
-  { tr: 'Momentum', en: 'Momentum', Icon: ChartNoAxesCombined },
-  { tr: 'Takım Karşılaştırması', en: 'Team Comparison', Icon: ArrowRightLeft },
-  { tr: 'Takım Analizi', en: 'Team Analysis', Icon: Shield },
-  { tr: 'Oyuncu Analizi', en: 'Player Analysis', Icon: UserRound },
-  { tr: 'Oyuncu Analizi · Öne Çıkanlar', en: 'Player Analysis · Standouts', Icon: UserRound },
-].map((section, id) => ({ ...section, id }));
-reportSections.splice(1, 0, {tr: 'Maç Öngörüsü', en: 'Match Forecast', Icon: ChartNoAxesCombined, id: 8});
-reportSections.splice(reportSections.findIndex(section => section.id === 5), 0,
-  {tr:'Hücum Profili', en:'Attack Profile', Icon:ChartNoAxesCombined, id:9},
-  {tr:'Savunma Profili', en:'Defense Profile', Icon:Shield, id:10},
-);
+  { id: 0, tr: 'Maç Kartı', en: 'Match Card', Icon: BadgeInfo },
+  { id: 8, tr: 'Maç Öngörüsü', en: 'Match Forecast', Icon: ChartNoAxesCombined },
+  { id: 1, tr: 'Kadro ve Diziliş', en: 'Lineup & Formation', Icon: Users },
+  { id: 2, tr: 'Maç Akışı', en: 'Match Timeline', Icon: Activity },
+  { id: 3, tr: 'Momentum', en: 'Momentum', Icon: ChartNoAxesCombined },
+  { id: 9, tr: 'Hücum Profili', en: 'Attack Profile', Icon: ChartNoAxesCombined },
+  { id: 10, tr: 'Savunma Profili', en: 'Defense Profile', Icon: Shield },
+  { id: 5, tr: 'Takım Analizi', en: 'Team Analysis', Icon: Shield },
+  { id: 7, tr: 'Oyuncu Analizi · Öne Çıkanlar', en: 'Player Analysis · Standouts', Icon: UserRound },
+  { id: 4, tr: 'Takım Karşılaştırması', en: 'Team Comparison', Icon: ArrowRightLeft },
+  { id: 6, tr: 'Oyuncu Analizi', en: 'Player Analysis', Icon: UserRound },
+];
 
 const WEATHER: Record<string, string> = {
   'clear sky': 'Açık', 'few clouds': 'Az Bulutlu', 'scattered clouds': 'Parçalı Bulutlu',
@@ -48,9 +47,12 @@ function matchDate(value: string | undefined, tr: boolean) {
   if (!value) return '—';
   const date = new Date(value.replace(' ', 'T') + (/Z$|[+-]\d\d:\d\d$/.test(value) ? '' : 'Z'));
   if (!Number.isFinite(date.getTime())) return '—';
-  return date.toLocaleString(tr ? 'tr-TR' : 'en-GB', {
-    timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
-  }) + ' · UTC+3';
+  const parts = new Intl.DateTimeFormat(tr ? 'tr-TR' : 'en-GB', {
+    timeZone: 'Europe/Istanbul', day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const part = (type: string) => parts.find(value => value.type === type)?.value;
+  return `${part('day')} ${part('month')} ${part('year')} ${part('hour')}:${part('minute')}`;
 }
 
 function Team({ team, away }: { team?: PostMatchCardData['teams'][number]; away?: boolean }) {
@@ -65,41 +67,26 @@ function Team({ team, away }: { team?: PostMatchCardData['teams'][number]; away?
         : <Shield size={40} color={away ? themeColor('#38BDF8', 'text') : ACCENT} />}
     </View>
     <Text style={s.teamName}>{team?.name || '—'}</Text>
-    {!!team?.coach_name && <Text style={s.coach}>{team.coach_name}</Text>}
     {!!team?.formation && <Text style={[s.formation, away && { color: themeColor('#38BDF8', 'text') }]}>{team.formation}</Text>}
   </View>;
 }
 export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardData; tr: boolean; preMatch?: boolean }) {
   const themed = useThemedStyles(getModuleTheme);
-  const {s, ACCENT} = themed;
+  const {s, ACCENT, themeColor} = themed;
 
   const home = data.teams.find(team => team.location === 'home') || data.teams[0];
   const away = data.teams.find(team => team.location === 'away') || data.teams[1];
   const goals = (id?: number) => data.scores.find(score => score.description === 'CURRENT' && Number(score.participant_id) === id)?.score?.goals ?? '—';
   const weather = data.weather?.description || '';
-  const facts = preMatch ? [
-    { label: tr ? 'Tarih ve Saat' : 'Date & Time', value: matchDate(data.fixture.starting_at, tr).replace(/[, ]+(\d{2}:\d{2}) · UTC\+3$/, '\n$1 UTC +3'), Icon: CalendarDays },
-    { label: tr ? 'Sezon' : 'Season', value: data.season?.name, Icon: Layers },
+  const facts = [
+    { label: tr ? 'Tarih ve Saat' : 'Date & Time', value: matchDate(data.fixture.starting_at, tr), Icon: CalendarDays },
+    ...(preMatch ? [{ label: tr ? 'Sezon' : 'Season', value: data.season?.name, Icon: Layers }] : []),
     { label: tr ? 'Ülke' : 'Country', value: data.league?.country?.name, Icon: Globe },
     { label: tr ? 'Lig' : 'League', value: data.league?.name, Icon: Trophy },
     { label: tr ? 'Şehir' : 'City', value: data.venue?.city_name, Icon: MapPin },
     { label: tr ? 'Stadyum' : 'Stadium', value: data.venue?.name, Icon: Shield },
-    { label: tr ? 'Maç Durumu' : 'Match Status', value: matchStatusLabel(data.state, tr), Icon: Activity },
-    { label: tr ? 'Oyuncu Adedi' : 'Squad Size', value: [home, away].map(team => `${team?.name || '—'}: ${team?.player_count ?? '—'}`).join('\n'), Icon: Users },
-  ] : [
-    { label: tr ? 'Tarih ve Saat' : 'Date & Time', value: matchDate(data.fixture.starting_at, tr), Icon: CalendarDays, wide: true },
-    { label: tr ? 'Ülke' : 'Country', value: data.league?.country?.name, Icon: Globe },
-    { label: tr ? 'Lig' : 'League', value: data.league?.name, Icon: Trophy },
-    { label: tr ? 'Şehir' : 'City', value: data.venue?.city_name, Icon: MapPin },
-    { label: tr ? 'Stadyum' : 'Stadium', value: data.venue?.name, Icon: Shield },
-    { label: tr ? 'Hava' : 'Weather', value: tr ? WEATHER[weather.toLowerCase().trim()] || weather : weather, Icon: CloudSun },
-    { label: tr ? 'Maç Durumu' : 'Match Status', value: matchStatusLabel(data.state, tr), Icon: Activity },
-    ...(!preMatch ? [{ label: tr ? 'Metrik Kaydı' : 'Metric Records', value: `${data.coverage.unique_team_metrics} ${tr ? 'takım' : 'team'} · ${data.coverage.unique_player_metrics} ${tr ? 'oyuncu' : 'player'}`, Icon: Layers },
-    { label: tr ? 'Toplam Oyuncu Kaydı' : 'Total Player Records', value: `${data.coverage.players_with_minutes} ${tr ? 'oyuncu' : 'players'}`, Icon: Users }] : [
-      { label: tr ? 'Oyuncu Adedi' : 'Squad Size', value: [home, away].map(team => `${team?.name || '—'}: ${team?.player_count ?? '—'}`).join(' · '), Icon: Users, wide: true },
-      { label: tr ? 'Sezon' : 'Season', value: data.season?.name, Icon: Layers },
-    ]),
-  ].filter(fact => !preMatch || fact.Icon !== CloudSun);
+    ...(!preMatch ? [{ label: tr ? 'Hava' : 'Weather', value: tr ? WEATHER[weather.toLowerCase().trim()] || weather : weather, Icon: CloudSun }] : []),
+  ];
   return <View style={s.content}>
     <View style={s.hero}>
       <View style={s.rule} />
@@ -115,9 +102,21 @@ export function MatchCard({ data, tr, preMatch = false }: { data: PostMatchCardD
         </View>
         <Team team={away} away />
       </View>
+      {!!(home?.coach_name || away?.coach_name) && <View style={s.coaches}>
+        <Text style={s.coachHeading}>{tr ? 'Teknik Direktörler' : 'Head Coaches'}</Text>
+        <View style={s.coachRow}>
+          {[home, away].map((team, index) => <View key={index} style={[s.coachBlock, index === 0 ? s.homeCoach : s.awayCoach]}>
+            {team?.coach_name && <>
+              <ReportPlayerPortrait imageUrl={team.coach_image_url}
+                accent={index === 0 ? ACCENT : themeColor('#38BDF8', 'text')} size={44}/>
+              <Text style={s.coachName}>{team.coach_name}</Text>
+            </>}
+          </View>)}
+        </View>
+      </View>}
     </View>
     <View style={s.facts}>
-      {facts.map(({ label, value, Icon, wide }) => <View key={label} style={[s.fact, wide && s.wideFact]}>
+      {facts.map(({ label, value, Icon }) => <View key={label} style={s.fact}>
         <View style={s.factHeading}><Icon size={15} color={ACCENT} /><Text style={s.factLabel}>{label}</Text></View>
         <Text style={s.factValue}>{value || '—'}</Text>
       </View>)}
@@ -183,13 +182,12 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
     openSavedPostMatchReport(fixture.fixtureId, tr).then(update).catch(() => { if (active) { setLoading(false); setError(true); } });
     return () => { active = false; if (timer) clearTimeout(timer); };
   }, [visible, fixture.fixtureId, retry, tr]);
-  const activeAiSection = sections[page]?.id === 5 ? 'team_analysis' : sections[page]?.id === 7 ? 'player_perspectives' : null;
+  const activeAiSection = sections[page]?.id === 7 ? 'player_perspectives' : null;
   const reward = useReportReward(JSON.stringify(['post-match', fixture.fixtureId, tr]),
-    sections[page]?.id === 9 ? 'attack' : sections[page]?.id === 10 ? 'defense' : activeAiSection === 'team_analysis' ? 'thirdTeamAnalysis' : activeAiSection === 'player_perspectives' ? 'secondStandout' : undefined,
+    sections[page]?.id === 9 ? 'attack' : sections[page]?.id === 10 ? 'defense' : activeAiSection === 'player_perspectives' ? 'secondStandout' : undefined,
     visible && plan === 'Free');
-  const freeTeamAnalysis = plan === 'Free' && !reward.isUnlocked('thirdTeamAnalysis');
   const freePerspectives = plan === 'Free' && !reward.isUnlocked('secondStandout');
-  const activeReward = plan === 'Free' && (activeAiSection === 'team_analysis' ? !freeTeamAnalysis : activeAiSection === 'player_perspectives' && !freePerspectives);
+  const activeReward = plan === 'Free' && (activeAiSection === 'player_perspectives' && !freePerspectives);
   const hasReportData = !!data;
   const needsPaidScope = plan !== 'Free' || activeReward;
   useEffect(()=>{
@@ -243,7 +241,7 @@ export default function PostMatchReportModal({ visible, onClose, onOpenPlans, fi
                 : error ? <View style={s.center}><Text style={s.subtitle}>{tr ? 'Maç bilgileri yüklenemedi.' : 'Unable to load match details.'}</Text><Pressable accessibilityRole="button" style={s.retry} onPress={() => setRetry(value => value + 1)}><Text style={s.sectionTitle}>{tr ? 'Tekrar Dene' : 'Try Again'}</Text></Pressable></View>
                 : data ? item.id === 0 ? <MatchCard data={data} tr={tr} /> : item.id === 8 ? <PreMatchForecast providedForecast={forecast} onUnavailable={onUnavailable} fixtureId={fixture.fixtureId} tr={tr} active={visible && page === index} free={plan==='Free'} onOpenPlans={openPlans} review={data} /> : (item.id === 9 || item.id === 10) ? <PostMatchTacticalProfile data={data} tr={tr}
                   kind={item.id === 9 ? 'attack' : 'defense'} active={visible && page === index} free={plan === 'Free'}
-                  rewarded={reward.isUnlocked(item.id === 9 ? 'attack' : 'defense')} onOpenPlans={openPlans}/> : item.id === 7 ? <MatchReportPlayerPerspectives data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.player_perspectives,!freePerspectives)?savedReport?.content?.player_perspectives:undefined} loading={(!savedReport?.content?.player_perspectives || !reportScopeMatches(savedReport?.content?.sections.player_perspectives,!freePerspectives)) && savedReport?.content?.sections.player_perspectives?.status !== 'failed'} error={savedReport?.content?.sections.player_perspectives?.status === 'failed'} onRetry={retrySections} free={freePerspectives} onOpenPlans={openPlans} /> : item.id === 6 ? <MatchReportPlayerAnalysis data={data} tr={tr} /> : item.id === 5 ? <MatchReportTeamAnalysis data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.team_analysis,!freeTeamAnalysis)?savedReport?.content?.team_analysis:undefined} loading={(!savedReport?.content?.team_analysis || !reportScopeMatches(savedReport?.content?.sections.team_analysis,!freeTeamAnalysis)) && savedReport?.content?.sections.team_analysis?.status !== 'failed'} error={savedReport?.content?.sections.team_analysis?.status === 'failed'} onRetry={retrySections} free={freeTeamAnalysis} onOpenPlans={openPlans} /> : item.id === 4 ? <MatchReportTeamComparison data={data} tr={tr} /> : item.id === 3 ? <MatchReportMomentum data={data} tr={tr} /> : item.id === 2 ? <MatchReportTimeline data={data} tr={tr} /> : <MatchReportLineups data={data} tr={tr} /> : null
+                  rewarded={reward.isUnlocked(item.id === 9 ? 'attack' : 'defense')} onOpenPlans={openPlans}/> : item.id === 7 ? <MatchReportPlayerPerspectives data={data} tr={tr} analysis={reportScopeMatches(savedReport?.content?.sections.player_perspectives,!freePerspectives)?savedReport?.content?.player_perspectives:undefined} loading={(!savedReport?.content?.player_perspectives || !reportScopeMatches(savedReport?.content?.sections.player_perspectives,!freePerspectives)) && savedReport?.content?.sections.player_perspectives?.status !== 'failed'} error={savedReport?.content?.sections.player_perspectives?.status === 'failed'} onRetry={retrySections} free={freePerspectives} onOpenPlans={openPlans} /> : item.id === 6 ? <MatchReportPlayerAnalysis data={data} tr={tr} /> : item.id === 5 ? <MatchReportTeamAnalysis data={data} tr={tr} analysis={savedReport?.content?.team_analysis} /> : item.id === 4 ? <MatchReportTeamComparison data={data} tr={tr} /> : item.id === 3 ? <MatchReportMomentum data={data} tr={tr} /> : item.id === 2 ? <MatchReportTimeline data={data} tr={tr} /> : <MatchReportLineups data={data} tr={tr} /> : null
                 : <View style={s.placeholder}><View style={s.rule} /><item.Icon size={36} color={ACCENT} /><Text style={s.placeholderTitle}>{tr ? item.tr : item.en}</Text><Text style={s.subtitle}>{fixture.name}</Text><Text style={s.soon}>{tr ? 'Yakında' : 'Coming soon'}</Text></View>}
             </ScrollView>} />}
         </View>
@@ -271,12 +269,18 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   rule: { height: 3, width: '100%', backgroundColor: ACCENT, borderRadius: 3, marginBottom: 16 },
   eyebrow: { textAlign: 'center', color: ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
   subtitle: { color: MUTED, textAlign: 'center', fontSize: 12, lineHeight: 19, marginTop: 6 },
-  matchup: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 22, marginBottom: 10 },
+  matchup: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 22, marginBottom: 10 },
   team: { flex: 1, minWidth: 0, alignItems: 'center', gap: 7 }, crest: { height: 68, width: '100%', alignItems: 'center', justifyContent: 'center' }, image: { width: '100%', maxWidth: 76, height: 68 },
-  teamName: { textAlign: 'center', color: TEXT, fontSize: 14, fontWeight: '800' }, coach: { color: MUTED, fontSize: 10, textAlign: 'center' }, formation: { color: ACCENT, fontWeight: '700', fontSize: 12 },
-  scoreColumn: { width: '28%', alignItems: 'center', gap: 8 }, matchday: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1 }, vs: { color: ACCENT, fontSize: 19, fontWeight: '900', fontStyle: 'italic' },
+  teamName: { textAlign: 'center', color: TEXT, fontSize: 14, fontWeight: '800' }, formation: { color: ACCENT, fontWeight: '700', fontSize: 12 },
+  coaches: { borderTopWidth: 1, borderTopColor: LINE, marginTop: 5, paddingTop: 12, gap: 10 },
+  coachHeading: { color: MUTED, textAlign: 'center', fontSize: 11, fontWeight: '700' },
+  coachRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  coachBlock: { width: '36%', minWidth: 0, alignItems: 'center', gap: 5 },
+  homeCoach: { paddingRight: 8 }, awayCoach: { paddingLeft: 8 },
+  coachName: { textAlign: 'center', color: TEXT, fontSize: 12, fontWeight: '700' },
+  scoreColumn: { width: '28%', alignSelf: 'center', alignItems: 'center', gap: 8 }, matchday: { color: MUTED, fontSize: 8, fontWeight: '800', letterSpacing: 1 }, vs: { color: ACCENT, fontSize: 19, fontWeight: '900', fontStyle: 'italic' },
   scoreBox: { width: '100%', borderWidth: 1, borderColor: ACCENT, borderRadius: 12, backgroundColor: themeColor('rgba(0,0,0,.22)', 'surface'), paddingVertical: 10, paddingHorizontal: 5 }, score: { color: TEXT, fontSize: 25, fontWeight: '900', textAlign: 'center' }, status: { color: MUTED, fontSize: 10, textAlign: 'center', fontWeight: '700' },
-  facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, fact: { flexBasis: '45%', flexGrow: 1, minWidth: 0, borderWidth: 1, borderColor: `${ACCENT}40`, borderRadius: 14, padding: 12, gap: 8, backgroundColor: themeColor('rgba(255,255,255,.025)', 'surface') }, wideFact: { flexBasis: '100%' },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, fact: { flexBasis: '45%', flexGrow: 1, minWidth: 0, borderWidth: 1, borderColor: `${ACCENT}40`, borderRadius: 14, padding: 12, gap: 8, backgroundColor: themeColor('rgba(255,255,255,.025)', 'surface') },
   factHeading: { flexDirection: 'row', gap: 7, alignItems: 'center' }, factLabel: { color: MUTED, fontSize: 11, fontWeight: '600', flex: 1 }, factValue: { color: TEXT, fontSize: 13, fontWeight: '700', lineHeight: 19 },
   brand: { borderWidth: 1, borderColor: `${ACCENT}60`, borderRadius: 18, padding: 20, alignItems: 'center', gap: 8 }, prepared: { color: MUTED, letterSpacing: 2, fontWeight: '700', fontSize: 9 }, brandName: { color: TEXT, fontSize: 25, fontWeight: '900' },
   center: { flex: 1, minHeight: 250, alignItems: 'center', justifyContent: 'center', gap: 14 }, retry: { borderWidth: 1, borderColor: ACCENT, borderRadius: 12, paddingHorizontal: 22, paddingVertical: 12 },

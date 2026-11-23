@@ -322,6 +322,17 @@ export function matchMetricLabel(label: string, locale: "en" | "tr") {
   return MATCH_METRIC_LABELS_EN[canonical] || canonical;
 }
 
+export function playerGoalsConcededLabel(label: string, locale: "en" | "tr") {
+  // Keep raw metric names intact for aggregation and percentile lookups.
+  if (/^(?:goalkeeper )?goals conceded(?:\.1)?$|^yen(?:il)?en goller$/i.test(label.trim())) {
+    return locale === "tr" ? "Sahadayken Yenen Goller" : "On-Pitch Goals Conceded";
+  }
+}
+
+export function playerMatchMetricLabel(label: string, locale: "en" | "tr") {
+  return playerGoalsConcededLabel(label, locale) ?? matchMetricLabel(label, locale);
+}
+
 // Provider aliases represent the same measurement, so never add their values.
 export function normalizeMatchMetrics<T extends { name: string; value?: unknown }>(metrics: T[]): T[] {
   const chosen = new Map<string, T>();

@@ -23,7 +23,8 @@ import TeamReportSquad from './TeamReportSquad';
 import TeamReportTacticalProfile from './TeamReportTacticalProfile';
 
 import { PlayedMatch } from "@/services/teamAnalysis";
-import { Team } from "@/services/teamPool";
+import { getTeamCard, type Team } from "@/services/teamPool";
+import type { PostMatchCardData } from "@/services/matchPool";
 import ActionSpinner from "./ActionSpinner";
 import { getThemed_reportModalStyles as __getThemed_modal } from "./PostMatchReportModal";
 import TeamReportCard from "./TeamReportCard";
@@ -54,6 +55,26 @@ export default function TeamAnalysisReportModal({
   const [page, setPage] = useState(0);
   const [assessment,setAssessment]=useState<TeamAssessment|null>(null),[assessmentError,setAssessmentError]=useState(false),[assessmentRequested,setAssessmentRequested]=useState(false),[assessmentRetry,setAssessmentRetry]=useState(0);
   useEffect(()=>{if(page===8||page===9)setAssessmentRequested(true);},[page]);
+  const [coachLookup, setCoachLookup] = useState<Team | null>(null);
+  const coachName = team.coachName?.trim();
+  const recordedCoach = coachName && !team.coachImageUrl
+    ? (data?.reports as PostMatchCardData[] | undefined)
+      ?.flatMap(report => report.coaches ?? [])
+      .find(coach => String(coach.meta?.participant_id) === team.id && !!coach.image_path &&
+        [coach.display_name, coach.name].some(name => name?.trim() === coachName))?.image_path
+    : undefined;
+  const coachImageUrl = team.coachImageUrl || recordedCoach ||
+    (coachLookup?.id === team.id && coachLookup.coachName?.trim() === coachName ? coachLookup.coachImageUrl : null);
+  const needsCoachLookup = !!coachName && !team.coachImageUrl && !recordedCoach;
+  useEffect(() => {
+    if (!needsCoachLookup || !Number(team.id)) return;
+    let active = true;
+    getTeamCard(Number(team.id)).then(result => {
+      if (active) setCoachLookup(result);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [team.id, needsCoachLookup]);
+  const teamWithCoach = {...team, coachImageUrl};
   const matchKey=matches.map(m=>m.fixtureId).join(',');
   const reward = useReportReward(
     JSON.stringify(['team', data?.reportId ?? team.id, team.leagueId, matchKey, tr]),
@@ -76,10 +97,10 @@ export default function TeamAnalysisReportModal({
   const go=(index:number)=>{setPage(index);pager.current?.scrollToOffset({offset:index*width,animated:true});};
   useEffect(()=>{if(width)pager.current?.scrollToOffset({offset:page*width,animated:false});},[width]);
   const renderPage=(index:number)=>{
-    if(index===0)return <TeamReportCard team={team} matches={matches} tr={tr}/>;
+    if(index===0)return <TeamReportCard team={teamWithCoach} tr={tr}/>;
     if(index===1)return <TeamReportFormResults team={team} matches={matches} tr={tr}/>;
 
-    if(index===2&&data?.reports?.length)return <TeamReportSquad team={team} reports={data.reports} matches={matches.length} tr={tr}/>;
+    if(index===2&&data?.reports?.length)return <TeamReportSquad team={teamWithCoach} reports={data.reports} matches={matches.length} tr={tr}/>;
     if((index===6||index===7)&&data?.reports?.length)return <TeamReportTacticalProfile team={team} matches={matches} tr={tr} kind={index===6?'attack':'defense'} active={page===index} rewarded={reward.isUnlocked(index===6?'attack':'defense')} free={plan==='Free'} onOpenPlans={onOpenPlans} reportId={data?.reportId}/>;
     if((index===8||index===9)&&data?.reports?.length)return <TeamReportAssessment team={team} matches={matches.length} tr={tr} weak={index===9} profile={assessment?.[index===9?'weaknesses':'strengths']} error={assessmentError} onRetry={()=>setAssessmentRetry(r=>r+1)} free={plan==='Free' && !reward.isUnlocked(index===9?'weaknesses':'strengths')} onOpenPlans={onOpenPlans}/>;
     if(loading)return <View style={modal.center}><ActionSpinner color={ACCENT} size={28}/><Text style={modal.subtitle}>{tr?'Seçilen maçlar analiz ediliyor…':'Analyzing selected matches…'}</Text></View>;
@@ -88,12 +109,12 @@ export default function TeamAnalysisReportModal({
     if(index===11)return <TeamReportPlayerData team={team} matches={matches.length} reports={data?.reports??[]} tr={tr}/>;
     if(index===4)return <TeamReportMomentum team={team} reports={data?.reports??[]} tr={tr}/>;
     if(index===5)return <TeamReportScoreFlow team={team} profile={data?.scoreFlowProfile} matches={matches.length} tr={tr}/>;
-    return <TeamReportSquad team={team} reports={data?.reports??[]} matches={matches.length} tr={tr} playersPage={index===3} perspectives={data?.playerPerspectives??{}} onOpenLockedPlayerPlans={plan==='Free' && !reward.isUnlocked('thirdSquadPlayer') ? onOpenPlans : undefined}/>;
+    return <TeamReportSquad team={teamWithCoach} reports={data?.reports??[]} matches={matches.length} tr={tr} playersPage={index===3} perspectives={data?.playerPerspectives??{}} onOpenLockedPlayerPlans={plan==='Free' && !reward.isUnlocked('thirdSquadPlayer') ? onOpenPlans : undefined}/>;
   };
   return <Modal transparent animationType="fade" onRequestClose={onClose}>
     <ReportRewardProvider reward={reward} onOpenPlans={onOpenPlans}><View style={[modal.backdrop,{paddingTop:Math.max(14,insets.top),paddingBottom:Math.max(14,insets.bottom)}]}><View style={modal.modal}>
       <View style={modal.header}><View style={modal.headerText}><Text style={modal.headerTitle}>{tr?'Takım Analiz Raporu':'Team Analysis Report'}</Text><Text style={[modal.sectionTitle,page===9&&{color:DANGER}]}>{titles[page]}</Text></View><Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel={tr?'Kapat':'Close'}><X size={25} color={DANGER}/></Pressable></View>
-      <View style={modal.pager} onLayout={e=>setWidth(Math.round(e.nativeEvent.layout.width))}>{width>0&&<FlatList ref={pager} horizontal pagingEnabled data={titles} keyExtractor={(_,index)=>String(index)} extraData={{width,data,loading,error,tr,team,matches,page,assessment,assessmentError,plan,reward}} showsHorizontalScrollIndicator={false} getItemLayout={(_,index)=>({length:width,offset:width*index,index})} onMomentumScrollEnd={e=>setPage(Math.max(0,Math.min(titles.length-1,Math.round(e.nativeEvent.contentOffset.x/width))))} renderItem={({index})=><ScrollView style={{width}} contentContainerStyle={[modal.pageContent,{gap:12}]}>{renderPage(index)}</ScrollView>}/>}</View>
+      <View style={modal.pager} onLayout={e=>setWidth(Math.round(e.nativeEvent.layout.width))}>{width>0&&<FlatList ref={pager} horizontal pagingEnabled data={titles} keyExtractor={(_,index)=>String(index)} extraData={{width,data,loading,error,tr,team,coachImageUrl,matches,page,assessment,assessmentError,plan,reward}} showsHorizontalScrollIndicator={false} getItemLayout={(_,index)=>({length:width,offset:width*index,index})} onMomentumScrollEnd={e=>setPage(Math.max(0,Math.min(titles.length-1,Math.round(e.nativeEvent.contentOffset.x/width))))} renderItem={({index})=><ScrollView style={{width}} contentContainerStyle={[modal.pageContent,{gap:12}]}>{renderPage(index)}</ScrollView>}/>}</View>
       <View style={modal.footer}><Pressable disabled={page===0} style={[modal.nav,page===0&&modal.disabled]} onPress={()=>go(page-1)} accessibilityLabel={tr?'Önceki bölüm':'Previous section'}><ChevronLeft size={22} color={TEXT}/></Pressable><View style={modal.dots}>{titles.map((title,index)=><Pressable key={index} style={[modal.dotTarget,{paddingHorizontal:3}]} onPress={()=>go(index)} accessibilityLabel={title}><View style={[modal.dot,index===page&&{backgroundColor:ACCENT}]}/></Pressable>)}</View><Pressable disabled={page===titles.length-1} style={[modal.nav,page===titles.length-1&&modal.disabled]} onPress={()=>go(page+1)} accessibilityLabel={tr?'Sonraki bölüm':'Next section'}><ChevronRight size={22} color={TEXT}/></Pressable></View>
     </View></View></ReportRewardProvider>
   </Modal>;

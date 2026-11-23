@@ -44,6 +44,13 @@ function TeamLineup({ team, data, tr }: { team: PostMatchCardData['teams'][numbe
           <View style={s.formation}><Text style={s.formationLabel}>{tr ? 'Diziliş' : 'Formation'}</Text><Text style={[s.formationValue, { color: accent }]}>{team.formation || '—'}</Text></View>
         </View>
       </View>
+      {!!team.coach_name && <View style={s.coachRow}>
+        <View style={s.teamInfo}>
+          <Text style={s.formationLabel}>{tr ? 'Teknik Direktör' : 'Head Coach'}</Text>
+          <Text style={s.coachName}>{team.coach_name}</Text>
+        </View>
+        <ReportPlayerPortrait imageUrl={team.coach_image_url} accent={accent} size={48}/>
+      </View>}
     </View>
     <View style={s.body}>
       <View style={s.sectionHeader}><Users size={16} color={accent} /><Text style={s.sectionTitle}>{tr ? 'Başlangıç Kadrosu' : 'Starting Lineup'}</Text><Text style={[s.count, { color: accent, backgroundColor: `${accent}18` }]}>{starters.length}</Text></View>
@@ -97,6 +104,8 @@ const getModuleTheme = createThemedStyles((colors: ThemeColors) => {
   page: { gap: 18 }, card: { borderWidth: 1, borderRadius: 20, backgroundColor: CARD, overflow: 'hidden' },
   hero: { padding: 15, borderBottomWidth: 1, borderBottomColor: LINE }, rule: { height: 3, borderRadius: 3, marginBottom: 15 }, teamRow: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   logoFrame: { width: 68, height: 76, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: themeColor('rgba(0,0,0,.18)', 'surface') }, logo: { width: 52, height: 60 },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: LINE, paddingTop: 10 },
+  coachName: { color: TEXT, fontSize: 14, fontWeight: '800' },
   teamInfo: { flex: 1, minWidth: 0, gap: 7 }, location: { fontSize: 9, fontWeight: '800', letterSpacing: 1.4 }, teamName: { color: TEXT, fontSize: 19, fontWeight: '800' },
   formation: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', alignSelf: 'flex-start', gap: 9, borderWidth: 1, borderColor: LINE, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6 }, formationLabel: { color: MUTED, fontSize: 10, fontWeight: '600' }, formationValue: { fontWeight: '800', fontSize: 14 },
   body: { padding: 13, gap: 9 }, sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 }, sectionTitle: { flex: 1, color: TEXT, fontSize: 12, fontWeight: '800' }, count: { fontSize: 11, fontWeight: '800', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },

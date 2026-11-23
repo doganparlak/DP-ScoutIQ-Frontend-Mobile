@@ -774,7 +774,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               {t('noStrengthsFound', 'No strengths section found.')}
             </Text>
           ) : (
-            parsed.strengths.slice(0, plan === 'Free' && !strengthsUnlocked ? 1 : 3).map((s, i) => (
+            parsed.strengths.slice(0, plan === 'Free' && !strengthsUnlocked ? 1 : 2).map((s, i) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}
@@ -807,7 +807,7 @@ export default function ScoutingReport({ visible, onClose, onBeforeFindSimilar, 
               {t('noConcernsFound', 'No concerns section found.')}
             </Text>
           ) : (
-            parsed.weaknesses.slice(0, plan === 'Free' && !weaknessesUnlocked ? 1 : 3).map((s, i) => (
+            parsed.weaknesses.slice(0, plan === 'Free' && !weaknessesUnlocked ? 1 : 2).map((s, i) => (
               <NarrativeBulletRow
                 key={`${i}-${s}`}
                 item={s}

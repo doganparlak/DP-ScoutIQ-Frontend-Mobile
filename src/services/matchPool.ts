@@ -60,11 +60,12 @@ export type MatchReportMetric = { name: string; value: number | string | null; c
 export type MatchReportTeam = {
   id: number; name: string; location: string; image_url?: string | null;
   player_count?: number | null;
-  coach_name?: string | null; formation?: string | null; possession?: number | string | null;
+  coach_name?: string | null; coach_image_url?: string | null; formation?: string | null; possession?: number | string | null;
   categories?: Record<string, MatchReportMetric[]>;
   expected_metrics?: MatchReportMetric[];
 };
 export type PostMatchCardData = {
+  coaches?: { display_name?: string; name?: string; image_path?: string; meta?: { participant_id?: number } }[];
   season?: { name?: string } | null;
   round?: { name?: string } | null;
   pressure?: { team_id: number; minute: number | null; value: number | string | null }[];
@@ -260,7 +261,13 @@ export const readMatchReport = (favoriteId: string) =>
     reportType: ReportType;
   }>(`/favorite-matches/${encodeURIComponent(favoriteId)}/report`);
 
-export type MatchTeamInsight = { header: string; text: string; tone: 'positive' | 'neutral' | 'negative' };
+export type MatchTeamInsight = {
+  id: string;
+  side: 'strength' | 'weakness';
+  title: string;
+  description: string;
+  metrics: { metric_name: string; team: { value: number }; opponent: { value: number }; context_only: boolean }[];
+};
 export type MatchTeamAnalysis = { analysis_version?: number; teams: Record<string, MatchTeamInsight[]> };
 export const getMatchTeamAnalysis = (fixtureId: number, tr: boolean) =>
   matchPoolRequest<MatchTeamAnalysis>(`/match-pool/fixtures/${fixtureId}/team-analysis?language=${tr ? 'tr' : 'en'}`, {});
@@ -317,7 +324,11 @@ export type PreMatchComparisonData = { competition_ranking?: CompetitionRankingC
 export const getPreMatchComparison = (id:number) => matchPoolRequest<PreMatchComparisonData>(`/match-pool/fixtures/${id}/pre-match-comparison`);
 export const getSavedPreMatchOpponentComparison = (id:number,rewarded:boolean) =>
   matchPoolRequest<Record<string, Record<string, MatchReportMetric[]>>>(`/match-pool/fixtures/${id}/saved-pre-report/opponent-comparison?rewarded=${rewarded}`);
-export type PreMatchTeamAnalysisData = {compact_strategy?:boolean;teams:Record<string,{positive:string;strategy:string;weakness:string}>};
+type PreMatchFinding = { id: string; title: string; description: string };
+export type PreMatchTeamAnalysisData = {
+  compact_strategy?: boolean;
+  teams: Record<string, { strategy?: string | null; findings?: { strength: PreMatchFinding[]; weakness?: PreMatchFinding[] } }>;
+};
 export const getPreMatchTeamAnalysis = (id:number,tr:boolean) => matchPoolRequest<PreMatchTeamAnalysisData>(`/match-pool/fixtures/${id}/pre-match-team-analysis?language=${tr?'tr':'en'}`);
 
 export type PreMatchSections = {
