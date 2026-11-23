@@ -1,5 +1,5 @@
 import type { MatchReportLineup, PostMatchCardData } from '@/services/matchPool';
-import { normalizeMatchMetrics } from './matchReportMetrics';
+import { canonicalizeMatchMetricLabel, normalizeMatchMetrics } from './matchReportMetrics';
 import { numeric, setPieceTarget } from './matchReportPlayers';
 
 // These views receive individual fixtures, so pool their raw inputs using the
@@ -37,6 +37,22 @@ type PlayerInput = {
 export function aggregatePlayerData(reports: PostMatchCardData[], teamId: string) {
   const players = new Map<number, PlayerInput>();
   for (const report of reports) {
+    const coveredCounts = new Map<string, string>();
+    for (const peer of report.lineups ?? []) {
+      const minutes = numeric(peer.categories?.contribution_impact?.find(m => m.name === 'Minutes Played')?.value);
+      if (!minutes || minutes <= 0) continue;
+      for (const [group, metrics] of Object.entries(peer.categories ?? {})) {
+        for (const metric of normalizeMatchMetrics(metrics)) {
+          if (/%|percentage|expected|^xg|^xa|^npxg|performance|rating|captain|minutes played/i.test(metric.name)) continue;
+          if (numeric(metric.value) !== null && !(metric as { _inferred_zero?: boolean })._inferred_zero) {
+            coveredCounts.set(metric.name, group === 'set_pieces' ? setPieceTarget(metric.name) : group);
+          }
+        }
+      }
+    }
+    const scoreless = (report.scores ?? []).some(score =>
+      score.description === 'CURRENT' && String(score.participant_id) === String(teamId) && score.score?.goals === 0);
+    if (scoreless) coveredCounts.set('Goals', 'shooting');
     const seen = new Set<number>();
     for (const row of report.lineups || []) {
       if (String(row.team_id) !== String(teamId) || seen.has(row.player_id)) continue;
@@ -78,6 +94,15 @@ export function aggregatePlayerData(reports: PostMatchCardData[], teamId: string
           p.stats[group].set(metric.name, entry);
         }
       }
+      const present = new Set(Object.values(sources).flatMap(metrics => metrics.map(metric => canonicalizeMatchMetricLabel(metric.name))));
+      const goalkeeper = row.position_id === 24 || /goalkeeper|kaleci/i.test(row.position_name ?? '');
+      for (const [name, group] of coveredCounts) {
+        if (present.has(name) || (group === 'goalkeeping' && !goalkeeper)) continue;
+        const stats = p.stats[group] ??= new Map();
+        const entry = stats.get(name) ?? {sum: 0, weighted: 0, weight: 0, average: false};
+        entry.weight += minutes;
+        stats.set(name, entry);
+      }
       for (const [name, [numerator, denominator]] of Object.entries(rates)) {
         const input = p.rates[name] ??= { numerator: 0, denominator: 0, minutes: 0, invalid: false };
         let a = recorded.get(numerator), b = recorded.get(denominator);
@@ -113,8 +138,7 @@ export function aggregatePlayerData(reports: PostMatchCardData[], teamId: string
           .filter(([name]) => !p.incompleteAttempts.has(name))
           .map(([name, v]) => ({
             name,
-            value: v.average ? v.weighted / v.weight : v.sum * 90 /
-              (/expected|^xg|^xa|^npxg/i.test(name) ? v.weight : p.minutes),
+            value: v.average ? v.weighted / v.weight : v.sum * 90 / v.weight,
           }));
       }
       for (const [name, [, , group]] of Object.entries(rates)) {
